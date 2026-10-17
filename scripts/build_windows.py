@@ -37,7 +37,7 @@ def main() -> int:
     if result.returncode:
         # Contains only build-tool output for public source/generated fixtures, never user scans.
         message = (
-            result.stdout[-5000:].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+            result.stdout[-1500:].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
         )
         print(f"::error title=PyInstaller build failed::{message}")
     return result.returncode

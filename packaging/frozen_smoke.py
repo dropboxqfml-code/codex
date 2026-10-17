@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw, features
 from PySide6.QtCore import QBuffer, QIODevice, QTimer, qVersion
 from PySide6.QtWidgets import QApplication, QMessageBox
 
+from image_duplicate_finder.cross_models import CrossDecision
 from image_duplicate_finder.folder_dialog import LocalFolderDialog
 from image_duplicate_finder.gui import MainWindow
 from image_duplicate_finder.models import Decision
@@ -59,7 +60,14 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
     report_path = local_path(report_path)
     if report_path.suffix.lower() != ".json":
         raise ValueError("Diagnostic report must be a new .json file")
-    if report_path.exists() or report_path.with_suffix(".png").exists():
+    if any(
+        p.exists()
+        for p in (
+            report_path,
+            report_path.with_suffix(".png"),
+            report_path.with_suffix(".cross.png"),
+        )
+    ):
         raise FileExistsError("Diagnostic mode never overwrites existing output files")
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report = {
@@ -110,6 +118,9 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
     timer.setInterval(30)
     deadline = time.monotonic() + 60
     stage = "scan"
+    cross_a, cross_b = root / "기준 A", root / "정리 B"
+    cross_target = cross_b / f"cross-target-{uuid.uuid4().hex}.bin"
+    cross_checksum = checksum
 
     def finish(error=None):
         timer.stop()
@@ -127,24 +138,29 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
             window.worker.cancel.set()
             window.worker.wait(5000)
             app.processEvents()
+        if window.cross_page.worker is not None:
+            window.cross_page.closing = True
+            window.cross_page.cancel_task()
+            window.cross_page.worker.wait(5000)
+            app.processEvents()
         window.close()
         app.exit(1 if error else 0)
 
-    def click_confirmation(answer):
+    def click_confirmation(answer, expected):
         dialogs = [w for w in app.topLevelWidgets() if isinstance(w, QMessageBox) and w.isVisible()]
         if len(dialogs) != 1:
             raise AssertionError("Expected exactly one explicit confirmation dialog")
         box = dialogs[0]
         assert box.defaultButton() == box.button(QMessageBox.StandardButton.No)
-        assert str(target) in box.detailedText()
+        assert str(expected) in box.detailedText()
         box.button(answer).click()
 
-    def confirm(answer):
+    def confirm(answer, *, cross=False):
         errors = []
 
         def click():
             try:
-                click_confirmation(answer)
+                click_confirmation(answer, cross_target if cross else target)
             except Exception:
                 errors.append(traceback.format_exc())
                 for widget in app.topLevelWidgets():
@@ -152,7 +168,7 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
                         widget.reject()
 
         QTimer.singleShot(0, click)
-        window.confirm_trash()
+        (window.cross_page.confirm_trash if cross else window.confirm_trash)()
         if errors:
             raise AssertionError(errors[0])
 
@@ -161,7 +177,7 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
         try:
             if time.monotonic() > deadline:
                 raise TimeoutError(f"Frozen smoke timed out during {stage}")
-            if window.worker is not None:
+            if window.worker is not None or window.cross_page.worker is not None:
                 return
             if stage == "scan":
                 if sys.platform == "win32" and native_windows:
@@ -220,6 +236,72 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
                         "not run (source test or non-Windows)"
                     )
                 report["confirmation_yes_recycles_generated_copy"] = "passed"
+                cross_a.mkdir()
+                cross_b.mkdir()
+                shutil.copyfile(original, cross_a / "reference.png")
+                image.save(cross_a / "reference.bmp")
+                shutil.copyfile(original, cross_target)
+                image.save(cross_b / "same-pixels.bmp")
+                image.save(cross_b / "compressed.jpg", quality=75)
+                window.mode.setCurrentIndex(1)
+                cross = window.cross_page
+                cross.folder_a.setText(str(cross_a))
+                cross.folder_b.setText(str(cross_b))
+                cross.threshold.setValue(8)
+                stage = "cross_scan"
+                cross.start_scan()
+            elif stage == "cross_scan":
+                cross = window.cross_page
+                assert not cross.result.errors, cross.result.errors
+                assert (cross.result.scanned_a, cross.result.scanned_b) == (2, 3)
+                assert len(cross.result.candidates) == 3
+                assert all(c.decision == CrossDecision.UNDECIDED for c in cross.result.candidates)
+                assert {m.kind for c in cross.result.candidates for m in c.matches} == {
+                    "file",
+                    "pixel",
+                    "similar",
+                }
+                row = next(
+                    i for i, c in enumerate(cross.model.rows) if c.target.path == cross_target
+                )
+                cross.candidates.setCurrentIndex(cross.model.index(row))
+                stage = "cross_review"
+            elif stage == "cross_review":
+                cross = window.cross_page
+                assert not cross.preview_a.pixmap().isNull()
+                assert not cross.preview_b.pixmap().isNull()
+                assert cross.match_choice.count() == 2
+                cross.decision.setCurrentIndex(cross.decision.findData("delete"))
+                assert cross.current_candidate.decision == CrossDecision.DELETE
+                buffer = QBuffer()
+                buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+                assert window.grab().save(buffer, "PNG")
+                with report_path.with_suffix(".cross.png").open("xb") as stream:
+                    stream.write(bytes(buffer.data()))
+                report["cross_folder_scan_preview_review"] = "passed"
+                timer.stop()
+                confirm(QMessageBox.StandardButton.No, cross=True)
+                assert cross_target.exists() and cross.worker is None
+                report["cross_confirmation_no_preserves_file"] = "passed"
+                stage = "cross_recycle"
+                confirm(QMessageBox.StandardButton.Yes, cross=True)
+                timer.start()
+            elif stage == "cross_recycle":
+                cross = window.cross_page
+                assert not cross.result.errors, cross.result.errors
+                assert not cross_target.exists()
+                assert (
+                    hashlib.sha256((cross_a / "reference.png").read_bytes()).hexdigest() == checksum
+                )
+                assert (cross_a / "reference.bmp").is_file()
+                assert len(list(cross_b.iterdir())) == 2
+                assert len(cross.result.candidates) == 2
+                if sys.platform == "win32" and native_windows:
+                    verify_windows_recycle_bin(cross_target, cross_checksum)
+                    report["cross_native_windows_recycle_bin_bytes"] = "passed"
+                else:
+                    report["cross_native_windows_recycle_bin_bytes"] = "not run (non-Windows)"
+                report["cross_only_selected_b_recycled_a_preserved"] = "passed"
                 assert not any(runtime_blocks().values()), (
                     f"Forbidden Python operation attempted: {runtime_block_events()}"
                 )

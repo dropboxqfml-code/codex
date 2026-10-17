@@ -23,6 +23,7 @@ class ImageRecord:
     phash: int
     thumbnail: bytes = b""
     decision: Decision = Decision.HOLD
+    root_role: str | None = None
 
     @property
     def signature(self) -> tuple[int, int, int, int]:

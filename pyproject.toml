@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "image-duplicate-finder"
-version = "0.1.1"
+version = "0.2.0"
 description = "A desktop image duplicate review tool with safe recycle-bin removal"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

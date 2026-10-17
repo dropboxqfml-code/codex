@@ -4,7 +4,7 @@
 
 1. [저장소 Actions](https://github.com/dropboxqfml-code/codex/actions/workflows/windows-build.yml)를 엽니다.
    Artifact 다운로드에는 GitHub 로그인이 필요하며 비공개 저장소라면 저장소 접근 권한도 필요합니다.
-2. **Windows executable** 워크플로에서 `main` 브랜치의 원하는 커밋을 찾습니다.
+2. **Windows executable** 워크플로에서 `main` 또는 새 기능의 `feature/cross-folder-compare` 브랜치에서 원하는 커밋을 찾습니다.
    녹색 체크로 완료된 실행을 선택하세요. 실행 중이거나 실패한 실행에서는 배포물을 받지 마세요.
 3. 해당 실행 페이지 아래 **Artifacts**에서
    **ImageDuplicateFinder-Windows-x64-실행번호**를 클릭해 ZIP을 받습니다.
@@ -83,7 +83,7 @@ Windows CI는 managed CPython 3.12.14를 사용하고 CVE-2025-6965 때문에 SQ
 PyInstaller로 함께 수집합니다. 실제 버전은 BUILD-INFO의 frozen smoke 결과에 기록합니다.
 
 `packaging/windows.spec`가 QtWidgets 기반 windowed/onedir 빌드를 정의합니다. Qt의 PyInstaller
-훅이 Qt DLL, qwindows·imageformats 플러그인을 수집합니다. Pillow 이미지 코덱, ImageHash의
+훅이 Qt DLL과 필요한 qwindows/qoffscreen 플랫폼 플러그인만 수집합니다. Pillow 이미지 코덱, ImageHash의
 NumPy·SciPy·PyWavelets, SQLite, Send2Trash와 pywin32 COM 모듈을 명시적으로 포함합니다.
 일반 실행은 앱의 `main()`을 호출하며 관리자 권한을 요구하지 않습니다. v0.1.1부터
 Python 네트워크·외부 프로그램 호출 방어, 로컬 경로 검증 및 최소 SQLite 저장을 적용합니다.
@@ -95,7 +95,9 @@ PySide6-Essentials를 사용하고 Qt Network/WebEngine·외부 이미지 표시
 플러그인으로 창을 만들고, 스스로 생성한 임시 이미지로 비동기 검색·교차 포맷·유사도·SQLite·
 ‘아니요’와 ‘예’ 확인을 검사합니다. 이 진단 모드는 임의 사용자 폴더를 입력받지 않습니다.
 ‘예’ 테스트에서는 생성한 사본 한 장만 실제 휴지통으로 이동하고 Shell의 휴지통 항목에서
-원본 바이트의 SHA-256까지 대조합니다. 하나라도 실패하면 실행 파일 Artifact를 업로드하지
+원본 바이트의 SHA-256까지 대조합니다. v0.2.0은 두 폴더 모드에서도 검색·좌우 미리보기·
+B 단일 상태·아니요 보존·예 확인 후 B만 이동·A 보존·실제 휴지통 바이트를 검사합니다.
+하나라도 실패하면 실행 파일 Artifact를 업로드하지
 않고 검사 기록만 업로드합니다. CI는 Windows 휴지통 복원을 수행하지 않으며, 사용자 PC에서의
 클릭·DPI·Defender·복원은 아래 수동 절차로 검증해야 합니다.
 

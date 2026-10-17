@@ -50,7 +50,13 @@ def file_sha256(path: Path, cancel: Event) -> str:
     return digest.hexdigest()
 
 
-def read_image(path: Path, cancel: Event) -> ImageRecord:
+def read_image(
+    path: Path,
+    cancel: Event,
+    *,
+    max_pixels: int | None = None,
+    include_thumbnail: bool = True,
+) -> ImageRecord:
     check_cancel(cancel)
     path = local_path(path)
     before = path.stat(follow_symlinks=False)
@@ -64,6 +70,8 @@ def read_image(path: Path, cancel: Event) -> ImageRecord:
         with Image.open(path, formats=SAFE_FORMATS) as source:
             if getattr(source, "n_frames", 1) != 1:
                 raise ValueError("애니메이션·다중 페이지 이미지는 지원하지 않습니다")
+            if max_pixels is not None and source.width * source.height > max_pixels:
+                raise ValueError("이미지가 디코딩 리소스 제한을 초과합니다")
             normalized = ImageOps.exif_transpose(source).convert("RGBA")
             check_cancel(cancel)
             width, height = normalized.size
@@ -74,9 +82,10 @@ def read_image(path: Path, cancel: Event) -> ImageRecord:
             visual.alpha_composite(normalized)
             visual = visual.convert("RGB")
             perceptual = int(str(imagehash.phash(visual, hash_size=8)), 16)
-            visual.thumbnail((160, 120))
             thumbnail = io.BytesIO()
-            visual.save(thumbnail, format="PNG")
+            if include_thumbnail:
+                visual.thumbnail((160, 120))
+                visual.save(thumbnail, format="PNG")
     checksum = file_sha256(path, cancel)
     after = path.stat(follow_symlinks=False)
     if stat_signature(before) != stat_signature(after) or path.is_symlink():

@@ -2,7 +2,7 @@ name: Windows executable
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/cross-folder-compare]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -84,6 +84,7 @@ jobs:
             reports/pytest.xml
             reports/frozen-smoke.json
             reports/frozen-smoke.png
+            reports/frozen-smoke.cross.png
             reports/dependency-audit.json
             reports/audit-requirements.txt
             reports/bundle-inventory.json

@@ -1,8 +1,7 @@
 import sqlite3
 from pathlib import Path
-from threading import Event
 
-from PySide6.QtCore import QSize, Qt, QThread, Signal
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QCloseEvent, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -19,6 +18,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QSplitter,
+    QStackedWidget,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -31,40 +31,10 @@ from .privacy import local_path
 from .scanner import scan
 from .storage import ReviewStore
 from .trash import TrashResult, deletion_plan, move_to_trash
+from .ui_utils import TaskThread, format_size, warning
 
 LABELS = {Decision.HOLD: "보류", Decision.KEEP: "보관", Decision.DELETE: "삭제 대상"}
 KINDS = {"file": "파일 동일", "pixel": "픽셀 동일", "similar": "유사"}
-
-
-def warning(parent, title, text):
-    box = QMessageBox(parent)
-    box.setTextFormat(Qt.TextFormat.PlainText)
-    box.setIcon(QMessageBox.Icon.Warning)
-    box.setWindowTitle(title)
-    box.setText(text)
-    box.exec()
-
-
-def format_size(size: int) -> str:
-    return f"{size / 1024 / 1024:.2f} MB" if size >= 1024 * 1024 else f"{size / 1024:.1f} KB"
-
-
-class TaskThread(QThread):
-    progress = Signal(str, int, int)
-    completed = Signal(object)
-    failed = Signal(str)
-
-    def __init__(self, operation, parent=None):
-        super().__init__(parent)
-        self.operation = operation
-        self.cancel = Event()
-
-    def run(self):
-        try:
-            result = self.operation(self.cancel, self.progress.emit)
-            self.completed.emit(result)
-        except Exception as error:
-            self.failed.emit(f"{type(error).__name__}: {error}")
 
 
 class MainWindow(QMainWindow):
@@ -153,7 +123,23 @@ class MainWindow(QMainWindow):
         layout.addLayout(actions)
         container = QWidget()
         container.setLayout(layout)
-        self.setCentralWidget(container)
+        from .cross_gui import CrossPanel
+
+        self.single_page = container
+        self.cross_page = CrossPanel(database, self)
+        self.mode = QComboBox()
+        self.mode.addItems(["폴더 내부 중복 검색", "서로 다른 두 폴더 비교"])
+        self.pages = QStackedWidget()
+        self.pages.addWidget(container)
+        self.pages.addWidget(self.cross_page)
+        self.mode.currentIndexChanged.connect(self.pages.setCurrentIndex)
+        self.cross_page.busy_changed.connect(lambda busy: self.mode.setEnabled(not busy))
+        self.cross_page.idle.connect(self.finish_cross_close)
+        wrapper = QWidget()
+        outer = QVBoxLayout(wrapper)
+        outer.addWidget(self.mode)
+        outer.addWidget(self.pages, 1)
+        self.setCentralWidget(wrapper)
 
     def choose_folder(self):
         dialog = LocalFolderDialog(self, self.folder.text())
@@ -162,6 +148,7 @@ class MainWindow(QMainWindow):
 
     def set_busy(self, busy: bool):
         for widget in (
+            self.mode,
             self.folder,
             self.browse,
             self.recursive,
@@ -384,7 +371,17 @@ class MainWindow(QMainWindow):
         self.errors_button.setEnabled(True)
         self.status.setText(f"작업 실패: {message}")
 
+    def finish_cross_close(self):
+        if self.close_requested:
+            self.close()
+
     def closeEvent(self, event: QCloseEvent):
+        if self.cross_page.worker is not None:
+            self.close_requested = True
+            self.cross_page.closing = True
+            self.cross_page.cancel_task()
+            event.ignore()
+            return
         if self.worker is not None:
             self.close_requested = True
             self.cancel_task()

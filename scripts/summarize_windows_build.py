@@ -13,6 +13,12 @@ def main() -> None:
     if junit.exists():
         tree = ET.parse(junit)
         for suite in tree.findall(".//testsuite"):
+            print(
+                "::notice title=Windows test totals::"
+                + json.dumps(
+                    {key: suite.get(key) for key in ("tests", "failures", "errors", "skipped")}
+                )
+            )
             lines.append(
                 f"Tests: **{suite.get('tests')}**; failures: **{suite.get('failures')}**; "
                 f"errors: **{suite.get('errors')}**; skipped: **{suite.get('skipped')}**."

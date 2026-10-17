@@ -2,7 +2,7 @@ name: Offline privacy regression
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/cross-folder-compare]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -48,6 +48,7 @@ jobs:
             reports/offline-probe.json
             reports/offline-functional.json
             reports/offline-functional.png
+            reports/offline-functional.cross.png
             reports/offline-syscalls.log
           retention-days: 30
           if-no-files-found: error

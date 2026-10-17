@@ -190,7 +190,7 @@ assert 'QT_PLUGIN_PATH' not in os.environ
     )
 
 
-@pytest.mark.parametrize("extension", [".json", ".png"])
+@pytest.mark.parametrize("extension", [".json", ".png", ".cross.png"])
 def test_packaged_diagnostic_cannot_overwrite_existing_files(tmp_path, extension):
     root = Path(__file__).resolve().parents[1]
     report = tmp_path / "existing.json"

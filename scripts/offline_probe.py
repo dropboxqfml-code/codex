@@ -83,6 +83,7 @@ def main() -> int:
         functional = output.with_name("offline-functional.json")
         functional.unlink(missing_ok=True)
         functional.with_suffix(".png").unlink(missing_ok=True)
+        functional.with_suffix(".cross.png").unlink(missing_ok=True)
         exit_code = run(functional)
         report["functional"] = json.loads(functional.read_text(encoding="utf-8"))
         report["python_blocked_attempts"] = runtime_blocks()

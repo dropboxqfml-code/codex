@@ -14,12 +14,15 @@ class TrashResult:
     moved: list[Path] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     cancelled: bool = False
+    skipped: list[Path] = field(default_factory=list)
 
 
 def deletion_plan(groups: list[DuplicateGroup]) -> list[ImageRecord]:
     targets = []
     seen = set()
     for group in groups:
+        if any(r.root_role is not None for r in group.images):
+            raise ValueError("A/B 비교 결과는 보호된 두 폴더 전용 서비스에서만 처리하세요")
         selected = [r for r in group.images if r.decision == Decision.DELETE]
         if selected and not any(r.decision == Decision.KEEP for r in group.images):
             raise ValueError("삭제할 그룹마다 최소 한 장을 ‘보관’으로 지정하세요")

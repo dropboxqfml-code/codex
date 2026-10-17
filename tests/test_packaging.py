@@ -48,10 +48,12 @@ def test_frozen_smoke_driver_exercises_gui_and_confirmations(tmp_path):
 import sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from image_duplicate_finder import trash
+from image_duplicate_finder import trash, cross_trash
 import frozen_smoke
 destination = Path(sys.argv[2]).parent / 'mock-recycled.bin'
 trash.recycle_file = lambda path: Path(path).rename(destination)
+cross_destination = destination.with_name('cross-recycled.bin')
+cross_trash.recycle_file = lambda path: Path(path).rename(cross_destination)
 frozen_smoke.verify_windows_recycle_bin = lambda *_: None
 raise SystemExit(frozen_smoke.run(Path(sys.argv[2]), native_windows=False))
 """
@@ -73,5 +75,10 @@ raise SystemExit(frozen_smoke.run(Path(sys.argv[2]), native_windows=False))
     assert outcome["scan_gui_sqlite"] == "passed"
     assert outcome["confirmation_no_preserves_file"] == "passed"
     assert outcome["confirmation_yes_recycles_generated_copy"] == "passed"
+    assert outcome["cross_folder_scan_preview_review"] == "passed"
+    assert outcome["cross_confirmation_no_preserves_file"] == "passed"
+    assert outcome["cross_only_selected_b_recycled_a_preserved"] == "passed"
+    assert (tmp_path / "cross-recycled.bin").exists()
+    assert report.with_suffix(".cross.png").is_file()
     assert (tmp_path / "mock-recycled.bin").exists()
     assert report.with_suffix(".png").stat().st_size > 0

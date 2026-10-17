@@ -1,7 +1,7 @@
 # Image Duplicate Finder
 
 Windows에서 중복·유사 이미지를 검토하고, 사용자가 선택한 파일만 휴지통으로 이동하는
-Python 3.12 / PySide6 데스크톱 프로그램입니다. 현재 버전은 로컬 처리 보안을 강화한 v0.1.1입니다.
+Python 3.12 / PySide6 데스크톱 프로그램입니다. 현재 버전은 두 폴더 간 비교 모드를 추가한 v0.2.0입니다.
 
 앱은 로컬 폴더에서 분석하며 업데이트 확인·AI API·클라우드 분석·업로드 기능이 없습니다.
 네트워크 드라이브·링크·확인된 OneDrive/클라우드 재분석 지점은 거부합니다.
@@ -43,7 +43,19 @@ Linux 개발 환경에서도 `uv sync --locked` 후 `uv run --locked python -m i
 실행합니다. 데스크톱 세션과 Qt 시스템 라이브러리가 필요합니다. 서버의 GUI 테스트는 아래처럼
 `QT_QPA_PLATFORM=offscreen`을 사용합니다. 앱은 서버나 API 키를 요구하지 않습니다.
 
-## 사용 순서
+## 두 폴더 간 비교
+
+상단에서 **서로 다른 두 폴더 비교**를 선택하면 A(보호할 기준 원본)와 B(정리 대상)를
+지정할 수 있습니다. 각 하위 폴더 옵션은 기본 꺼짐이며 pHash 거리는 0~12(기본 6)입니다.
+A↔B만 매칭하고 A 내부/B 내부 중복은 보고하지 않습니다. 결과는 B 하나를 중심으로 A/B를
+좌우 비교하며, 여러 A 매칭을 열람하고 상태·판별 유형·파일명으로 필터링할 수 있습니다.
+
+B는 최초 **미결정**이고 사용자가 보관·보류·휴지통 이동 예정을 지정합니다. A는 UI와 서비스에서
+보호합니다. 이동은 기본 ‘아니요’ 최종 확인 후에만 수행하며 유사 후보에는 추가 확인이 필요합니다.
+B 내용과 A 근거를 다시 검사하고 실패하면 후속 이동을 중단합니다. 이전 휴지통 예정은 복원하지 않습니다.
+[설계·캐시 저장 정보·수용 테스트·한계](docs/cross-folder-compare.md)를 확인하세요.
+
+## 단일 폴더 사용 순서
 
 1. 검색 폴더를 선택하고 하위 폴더 포함 여부를 지정합니다.
 2. pHash 허용 거리를 선택합니다. 기본값은 6(64비트 중 다른 비트 수), 0은 가장 엄격하며
@@ -83,7 +95,7 @@ Linux 개발 환경에서도 `uv sync --locked` 후 `uv run --locked python -m i
   대규모 폴더는 나누어 검색하세요. 대형 파일은 메모리를 많이 쓸 수 있으며 Pillow의 이미지 폭탄
   보호 한도를 유지합니다.
 
-## 선택 저장과 삭제 보호
+## 단일 폴더 선택 저장과 삭제 보호
 
 SQLite는 Qt의 사용자별 `AppLocalDataLocation` 아래 `reviews.sqlite3`에 저장됩니다.
 Windows에서는 일반적으로 `%LOCALAPPDATA%\ImageDuplicateFinder\Image Duplicate Finder`입니다.
@@ -93,7 +105,8 @@ DB에는 로컬 32바이트 키로 전체 경로·SHA-256을 HMAC 처리한 식�
 DB와 키를 함께 백업해야 합니다. 같은 경로·내용의 선택은 재검색 시 복원되고 파일 내용이 바뀌면
 기본 보류가 됩니다. ‘선택 기록 지우기’는 확인 후 기록만 지우며 이미지 파일을 건드리지 않습니다.
 v0.1.0 DB는 기존 선택을 유지하면서 자동 변환합니다. 변환 전 다른 앱 인스턴스를 종료하세요.
-검색 폴더/임계값/검색 결과 전체를 저장하는 기능은 아직 없습니다.
+단일 모드는 분석 캐시를 사용하지 않습니다. 두 폴더 모드의 별도 캐시와 검토 기록은
+[저장 정보](docs/cross-folder-compare.md#안전-경계와-캐시)에 설명합니다.
 
 삭제 직전 파일 크기, 수정 시각, 파일 식별자, SHA-256과 보관 파일의 상태를 재검증합니다.
 바뀌거나 사라진 파일, 심볼릭 링크로 바뀐 경로는 이동하지 않습니다. 이 검증과 운영체제 이동은
@@ -118,11 +131,12 @@ GUI가 없는 Linux에서는 `QT_QPA_PLATFORM=offscreen uv run --locked pytest -
 테스트는 실제 이미지 생성·검색, 교차 포맷 픽셀 일치, 유사도 연결, SQLite 선택 복원, 취소,
 변경 파일 보호, GUI 스레드 작업 및 확인 대화상자를 검사합니다. 일반 테스트의 휴지통 backend는
 대체하여 개인 파일을 이동하지 않습니다. Linux 임시 파일 휴지통 실검증은 별도 수행하며,
-Windows 네이티브 동작은 Windows에서 추가 검증해야 합니다.
+Windows frozen exe의 두 모드는 Windows CI에서 자동 검사하며, 사용자 PC의 수동 인수 검증은 별도입니다.
 
 Windows 실행 파일 제작은 [docs/windows-build.md](docs/windows-build.md)를 참고하세요.
 요구사항별 구현·검증 범위는 [docs/requirements.md](docs/requirements.md)에 정리했습니다.
-현재 환경의 실제 검사 결과는 [docs/validation.md](docs/validation.md)에 기록했습니다.
+기존 버전의 검사 기록은 [docs/validation.md](docs/validation.md), 새 기능의 검증 범위는
+[두 폴더 비교 문서](docs/cross-folder-compare.md)에 기록했습니다.
 
 개발 시 알려진 의존성 취약점 검사는 `uv run --locked --group security python scripts/audit_dependencies.py`로
 실행합니다. 이 **개발 도구만** 공개 패키지 이름·버전을 PyPI에 조회하며 배포 앱에는 포함되지 않습니다.

@@ -27,6 +27,7 @@ def main() -> int:
     report.unlink(missing_ok=True)
     screenshot = report.with_suffix(".png")
     screenshot.unlink(missing_ok=True)
+    report.with_suffix(".cross.png").unlink(missing_ok=True)
     # Running outside the checkout prevents source imports from masking missing bundled modules.
     result = subprocess.run(
         [str(exe), "--build-smoke-report", str(report)], cwd=bundle, timeout=120, check=False
@@ -41,6 +42,10 @@ def main() -> int:
         "confirmation_no_preserves_file",
         "confirmation_yes_recycles_generated_copy",
         "native_windows_recycle_bin_bytes",
+        "cross_folder_scan_preview_review",
+        "cross_confirmation_no_preserves_file",
+        "cross_only_selected_b_recycled_a_preserved",
+        "cross_native_windows_recycle_bin_bytes",
     )
     if (
         result.returncode != 0
@@ -52,6 +57,7 @@ def main() -> int:
         or any(outcome.get("python_blocked_attempts", {}).values())
         or any(outcome.get(key) != "passed" for key in required)
         or not screenshot.is_file()
+        or not report.with_suffix(".cross.png").is_file()
     ):
         raise RuntimeError(f"Frozen Windows smoke failed: {outcome}")
     versions = {
@@ -91,6 +97,9 @@ def main() -> int:
             stream.write(f"{digest}  {path.relative_to(root / 'dist').as_posix()}\n")
     print("PASS: frozen Windows Qt, image matching, SQLite, confirmation and Recycle Bin checks")
     evidence = {
+        "cross_folder_checks": {
+            key: outcome.get(key) for key in required if key.startswith("cross_")
+        },
         "native_versions": outcome.get("native_versions"),
         "blocked_external_operations": outcome.get("python_blocked_attempts"),
         "local_system_query_counts": outcome.get("local_system_queries"),

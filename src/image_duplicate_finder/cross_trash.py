@@ -74,7 +74,7 @@ def move_cross_to_trash(
                 for match in candidate.matches:
                     check_cancel(cancel)
                     try:
-                        if match.kind == "similar" and not similar_confirmed:
+                        if match.kind == "similar" and similar_confirmed is not True:
                             continue
                         _belongs(match.reference, a, RootRole.REFERENCE, result.recursive_a)
                         verify_unchanged(match.reference, cancel)
@@ -99,4 +99,6 @@ def move_cross_to_trash(
             progress("B 휴지통 이동", index, len(targets))
     except Cancelled:
         outcome.cancelled = True
+        moved = set(outcome.moved)
+        outcome.skipped = [c.target.path for c in targets if c.target.path not in moved]
     return outcome

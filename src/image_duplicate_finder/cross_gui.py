@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -192,18 +193,20 @@ class CrossPanel(QWidget):
         details = QVBoxLayout(self.details)
         details.addWidget(self.match_choice)
         details.addWidget(self.reason)
-        sides = QHBoxLayout()
-        for title, preview, info, control in (
-            ("A — 보호된 기준 원본 (읽기 전용)", self.preview_a, self.info_a, None),
-            ("B — 정리 대상", self.preview_b, self.info_b, self.decision),
+        sides = QGridLayout()
+        for column, (title, preview, info, control) in enumerate(
+            (
+                ("A — 보호된 기준 원본 (읽기 전용)", self.preview_a, self.info_a, None),
+                ("B — 정리 대상", self.preview_b, self.info_b, self.decision),
+            )
         ):
-            column = QVBoxLayout()
-            column.addWidget(plain(title))
-            column.addWidget(preview, 1)
-            column.addWidget(info)
+            sides.addWidget(plain(title), 0, column)
+            sides.addWidget(preview, 1, column)
+            sides.addWidget(info, 2, column)
             if control is not None:
-                column.addWidget(control)
-            sides.addLayout(column, 1)
+                sides.addWidget(control, 3, column)
+            sides.setColumnStretch(column, 1)
+        sides.setRowStretch(1, 1)
         details.addLayout(sides, 1)
         details.addWidget(self.large_preview)
         self.details.setEnabled(False)

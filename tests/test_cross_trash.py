@@ -159,7 +159,8 @@ def test_replaced_path_symlink_is_rejected(cross_result):
         move_cross_to_trash(cross_result, confirmed=True, trash=lambda _: pytest.fail())
 
 
-def test_weak_alternative_cannot_bypass_additional_confirmation(cross_result):
+@pytest.mark.parametrize("invalid_consent", [False, 1, "yes"])
+def test_weak_alternative_cannot_bypass_additional_confirmation(cross_result, invalid_consent):
     c = cross_result.candidates[0]
     c.decision = CrossDecision.DELETE
     weak_path = cross_result.root_a / "alternative.png"
@@ -174,7 +175,9 @@ def test_weak_alternative_cannot_bypass_additional_confirmation(cross_result):
     c.matches.append(replace(c.representative, reference=weak, kind="similar"))
     c.representative.reference.path.unlink()
     calls = []
-    outcome = move_cross_to_trash(cross_result, confirmed=True, trash=calls.append)
+    outcome = move_cross_to_trash(
+        cross_result, confirmed=True, similar_confirmed=invalid_consent, trash=calls.append
+    )
     assert not calls and outcome.errors
     outcome = move_cross_to_trash(
         cross_result, confirmed=True, similar_confirmed=True, trash=calls.append

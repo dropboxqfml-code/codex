@@ -49,6 +49,7 @@ def test_new_mode_real_worker_side_by_side_metadata_and_state(qtbot, cross_windo
     assert cross_window.pages.currentWidget() is p
     assert p.model.rowCount() == 1
     assert len(p.preview_data) == 2
+    assert p.preview_a.height() == p.preview_b.height()
     assert not p.preview_a.pixmap().isNull() and not p.preview_b.pixmap().isNull()
     assert str(cross_images[0] / "original.png") in p.info_a.text()
     assert str(cross_images[1] / "target.png") in p.info_b.text()

@@ -118,7 +118,7 @@ HMAC는 가명화이며 DB 암호화가 아닙니다. 로컬 계정/키가 침�
 Windows 경로 대소문자 검사는 Windows 전용이며 Linux에서 제외합니다. 권한 거부 테스트는
 의도적으로 주입한 오류입니다. Windows ACL/일반 사용자 권한 실측과 대규모 실사용 성능 시험은 별도입니다.
 
-2026-10-17 Linux 최종 전체 회귀는 **118 passed, 2 skipped**입니다. 제외된 두 검사는
+2026-10-17 Linux 최종 전체 회귀는 **120 passed, 2 skipped**입니다. 제외된 두 검사는
 Windows OneDrive 정책과 경로 대소문자 별칭 검사입니다. 기존 기준선은 57 passed, 1 skipped였습니다.
 실제 자동 결과는 `reports/pytest.xml`, CI 플랫폼별 결과는 JUnit Artifact에서 확인합니다.
 동일 의존성 51개 버전의 PyPI 권고 조회는 알려진 취약점 0, 누락 0입니다. 이는 전체 네이티브

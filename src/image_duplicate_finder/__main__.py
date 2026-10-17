@@ -12,7 +12,8 @@ def main() -> int:
     from image_duplicate_finder.gui import MainWindow
 
     configure_qt_library_paths()
-    app = QApplication(sys.argv)
+    # There is no user-facing CLI. Do not let Qt flags override the local display/plugin policy.
+    app = QApplication([sys.argv[0]])
     app.setApplicationName("Image Duplicate Finder")
     app.setOrganizationName("ImageDuplicateFinder")
     data = Path(

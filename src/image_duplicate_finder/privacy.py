@@ -116,7 +116,7 @@ def install_runtime_guard() -> None:
     }.get(sys.platform, {"offscreen", "minimal"})
     if platform and any(p.split(":", 1)[0] not in allowed for p in platform.split(";")):
         raise LocalOnlyError("원격 화면 Qt backend는 사용할 수 없습니다")
-    if sys.platform == "linux" and not platform.startswith(("offscreen", "minimal")):
+    if sys.platform == "linux":
         display = os.environ.get("DISPLAY", "")
         if display and not display.startswith((":", "unix:", "unix/:")):
             raise LocalOnlyError("원격 X11 화면은 사용할 수 없습니다")
@@ -125,6 +125,7 @@ def install_runtime_guard() -> None:
         "QT_PLUGIN_PATH",
         "QT_QPA_PLATFORM_PLUGIN_PATH",
         "QT_QPA_FONTDIR",
+        "QT_LOGGING_CONF",
         "QML_IMPORT_PATH",
         "QML2_IMPORT_PATH",
     ):

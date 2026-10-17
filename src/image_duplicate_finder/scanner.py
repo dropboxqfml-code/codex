@@ -1,6 +1,7 @@
 import hashlib
 import io
 import os
+import stat
 import warnings
 from collections import defaultdict
 from collections.abc import Callable
@@ -11,11 +12,13 @@ import imagehash
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .models import DuplicateGroup, ImageRecord, ScanResult
+from .privacy import LocalOnlyError, local_path
 from .storage import ReviewStore
 
 # Inspect all regular files by content, even when the extension is missing or misleading.
 # Animated/multi-page formats are deliberately excluded from this first version.
 Progress = Callable[[str, int, int], None]
+SAFE_FORMATS = ("PNG", "JPEG", "BMP", "WEBP", "GIF", "TIFF")
 
 
 class Cancelled(Exception):
@@ -32,8 +35,14 @@ def stat_signature(stat: os.stat_result) -> tuple[int, int, int, int]:
 
 
 def file_sha256(path: Path, cancel: Event) -> str:
+    path = local_path(path)
     digest = hashlib.sha256()
-    with path.open("rb") as stream:
+    descriptor = os.open(
+        path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    )
+    with os.fdopen(descriptor, "rb") as stream:
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+            raise ValueError("일반 이미지 파일만 사용할 수 있습니다")
         while chunk := stream.read(1024 * 1024):
             check_cancel(cancel)
             digest.update(chunk)
@@ -43,12 +52,16 @@ def file_sha256(path: Path, cancel: Event) -> str:
 
 def read_image(path: Path, cancel: Event) -> ImageRecord:
     check_cancel(cancel)
+    path = local_path(path)
     before = path.stat(follow_symlinks=False)
+    if not stat.S_ISREG(before.st_mode):
+        raise ValueError("일반 이미지 파일만 사용할 수 있습니다")
     if path.is_symlink():
         raise ValueError("심볼릭 링크는 검색하지 않습니다")
     with warnings.catch_warnings():
         warnings.simplefilter("error", Image.DecompressionBombWarning)
-        with Image.open(path) as source:
+        # EPS/PS can invoke Ghostscript. Never initialize external/delegate decoders.
+        with Image.open(path, formats=SAFE_FORMATS) as source:
             if getattr(source, "n_frames", 1) != 1:
                 raise ValueError("애니메이션·다중 페이지 이미지는 지원하지 않습니다")
             normalized = ImageOps.exif_transpose(source).convert("RGBA")
@@ -159,7 +172,7 @@ def scan(
 ) -> ScanResult:
     cancel = cancel if cancel is not None else Event()
     progress = progress or (lambda *_: None)
-    folder = folder.resolve(strict=True)
+    folder = local_path(folder).resolve(strict=True)
     if not folder.is_dir():
         raise ValueError("검색할 폴더를 선택하세요")
     if not 0 <= threshold <= 64:
@@ -174,21 +187,23 @@ def scan(
     try:
         for current, directories, files in os.walk(folder, followlinks=False, onerror=walk_error):
             check_cancel(cancel)
-            directories[:] = (
-                sorted(
-                    d
-                    for d in directories
-                    if not (Path(current) / d).is_symlink()
-                    and not (Path(current) / d).is_junction()
-                )
-                if recursive
-                else []
-            )
+            allowed = []
+            for name in sorted(directories) if recursive else []:
+                try:
+                    local_path(Path(current) / name)
+                    allowed.append(name)
+                except LocalOnlyError:
+                    continue
+            directories[:] = allowed
             for name in sorted(files):
                 check_cancel(cancel)
                 path = Path(current) / name
-                if not path.is_symlink() and path.is_file():
-                    paths.append(path)
+                try:
+                    local_path(path)
+                    if path.is_file():
+                        paths.append(path)
+                except LocalOnlyError:
+                    continue
             progress("파일 수집", len(paths), 0)
         result.discovered = len(paths)
         for index, path in enumerate(paths, 1):
@@ -208,6 +223,12 @@ def scan(
                     ".gif",
                     ".tif",
                     ".tiff",
+                    ".eps",
+                    ".ps",
+                    ".pdf",
+                    ".wmf",
+                    ".emf",
+                    ".svg",
                 }:
                     result.errors.append(f"{path}: 이미지를 해석할 수 없습니다")
             except (

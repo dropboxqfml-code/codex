@@ -106,7 +106,8 @@ def test_confirmation_controls_trash_backend(
         assert str(group.images[1].path) in box.detailedText()
         return answer
 
-    def fake_move(groups, cancel, progress):
+    def fake_move(groups, cancel, progress, *, confirmed=False):
+        assert confirmed is True
         called.append(groups)
         return TrashResult(moved=[group.images[1].path])
 
@@ -142,7 +143,7 @@ def test_failed_review_write_reverts_selection(window, tmp_path, image_factory, 
 
     warnings = []
     monkeypatch.setattr(gui, "ReviewStore", failing)
-    monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args))
+    monkeypatch.setattr(gui, "warning", lambda *args: warnings.append(args))
     combo.setCurrentIndex(combo.findData("delete"))
     assert record.decision == Decision.HOLD
     assert combo.currentData() == "hold"

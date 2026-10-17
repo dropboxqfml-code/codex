@@ -1,8 +1,11 @@
 """Use the modern recycle-on-delete Windows backend, never its legacy fallback."""
 
 import sys
+from pathlib import Path
 
 from send2trash import send2trash
+
+from .privacy import local_path
 
 
 def _windows_backend():
@@ -14,6 +17,7 @@ def _windows_backend():
 
 
 def recycle_file(path: str) -> None:
+    local_path(Path(path))
     if sys.platform != "win32":
         send2trash(path)
         return

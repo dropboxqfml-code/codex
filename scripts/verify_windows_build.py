@@ -47,13 +47,22 @@ def main() -> int:
         or outcome.get("platform") != "win32"
         or not outcome.get("frozen")
         or outcome.get("qt_platform") != "windows"
+        or not outcome.get("python_guard_enabled")
+        or any(outcome.get("python_blocked_attempts", {}).values())
         or any(outcome.get(key) != "passed" for key in required)
         or not screenshot.is_file()
     ):
         raise RuntimeError(f"Frozen Windows smoke failed: {outcome}")
     versions = {
         name: importlib.metadata.version(name)
-        for name in ["PyInstaller", "PySide6", "Pillow", "ImageHash", "Send2Trash", "pywin32"]
+        for name in [
+            "PyInstaller",
+            "PySide6-Essentials",
+            "Pillow",
+            "ImageHash",
+            "Send2Trash",
+            "pywin32",
+        ]
     }
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     info = {

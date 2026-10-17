@@ -3,6 +3,7 @@
 import hashlib
 import json
 import shutil
+import sqlite3
 import sys
 import tempfile
 import time
@@ -10,12 +11,14 @@ import traceback
 import uuid
 from pathlib import Path
 
-from PIL import Image, ImageDraw
-from PySide6.QtCore import QTimer
+from PIL import Image, ImageDraw, features
+from PySide6.QtCore import QBuffer, QIODevice, QTimer, qVersion
 from PySide6.QtWidgets import QApplication, QMessageBox
 
+from image_duplicate_finder.folder_dialog import LocalFolderDialog
 from image_duplicate_finder.gui import MainWindow
 from image_duplicate_finder.models import Decision
+from image_duplicate_finder.privacy import local_path, runtime_blocks, runtime_guard_enabled
 from image_duplicate_finder.recycling import _windows_backend
 from image_duplicate_finder.scanner import scan
 from image_duplicate_finder.storage import ReviewStore
@@ -46,17 +49,29 @@ def verify_windows_recycle_bin(original: Path, expected: str) -> None:
 
 
 def run(report_path: Path, *, native_windows: bool = True) -> int:
-    report_path = report_path.resolve()
+    report_path = local_path(report_path)
+    if report_path.suffix.lower() != ".json":
+        raise ValueError("Diagnostic report must be a new .json file")
+    if report_path.exists() or report_path.with_suffix(".png").exists():
+        raise FileExistsError("Diagnostic mode never overwrites existing output files")
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report = {
         "status": "failed",
         "platform": sys.platform,
         "frozen": bool(getattr(sys, "frozen", False)),
     }
+    report["native_versions"] = {
+        "Qt": qVersion(),
+        "SQLite": sqlite3.sqlite_version,
+        "libjpeg": features.version("jpg"),
+        "libtiff": features.version("libtiff"),
+        "libwebp": features.version("webp"),
+        "zlib": features.version("zlib"),
+    }
     app = QApplication([])
     app.setQuitOnLastWindowClosed(False)
     report["qt_platform"] = app.platformName()
-    workspace = tempfile.TemporaryDirectory(prefix="idf-build-smoke-")
+    workspace = tempfile.TemporaryDirectory(prefix="idf-build-smoke-", dir=report_path.parent)
     # Windows TEMP may use an 8.3 name; scanner paths are canonicalized with resolve().
     root = Path(workspace.name).resolve()
     pictures = root / "한글 이미지 폴더"
@@ -75,6 +90,11 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
     shutil.copyfile(original, pictures / "nested" / "copy.png")
     checksum = hashlib.sha256(target.read_bytes()).hexdigest()
     window = MainWindow(root / "state" / "reviews.sqlite3")
+    picker = LocalFolderDialog(window, str(pictures))
+    assert picker.folders.count() == 1
+    picker.accept_folder()
+    assert picker.selected_path == str(pictures)
+    picker.close()
     window.folder.setText(str(pictures))
     window.threshold.setValue(8)
     window.show()
@@ -89,7 +109,10 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
             report["error"] = error
         else:
             report["status"] = "passed"
-        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        report["python_guard_enabled"] = runtime_guard_enabled()
+        report["python_blocked_attempts"] = runtime_blocks()
+        with report_path.open("x", encoding="utf-8") as stream:
+            stream.write(json.dumps(report, ensure_ascii=False, indent=2))
         if window.worker is not None:
             window.worker.cancel.set()
             window.worker.wait(5000)
@@ -160,7 +183,11 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
                     combo.setCurrentIndex(combo.findData(decision.value))
                 with ReviewStore(window.database) as store:
                     assert store.get(records[original.name]) == Decision.KEEP
-                assert window.grab().save(str(report_path.with_suffix(".png")))
+                buffer = QBuffer()
+                buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+                assert window.grab().save(buffer, "PNG")
+                with report_path.with_suffix(".png").open("xb") as stream:
+                    stream.write(bytes(buffer.data()))
                 report["scan_gui_sqlite"] = "passed"
                 # The automated confirmation only applies to our generated temporary copy.
                 timer.stop()
@@ -183,6 +210,7 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
                         "not run (source test or non-Windows)"
                     )
                 report["confirmation_yes_recycles_generated_copy"] = "passed"
+                assert not any(runtime_blocks().values()), "Forbidden Python operation attempted"
                 finish()
         except Exception:
             finish(traceback.format_exc())

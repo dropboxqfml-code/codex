@@ -47,11 +47,11 @@ def test_requires_explicit_keep_and_never_moves_hold(reviewed_group):
     keep.decision = Decision.HOLD
     calls = []
     with pytest.raises(ValueError, match="보관"):
-        move_to_trash([reviewed_group], trash=calls.append)
+        move_to_trash([reviewed_group], confirmed=True, trash=calls.append)
     assert calls == []
     keep.decision = Decision.KEEP
     assert deletion_plan([reviewed_group]) == [delete]
-    result = move_to_trash([reviewed_group], trash=calls.append)
+    result = move_to_trash([reviewed_group], confirmed=True, trash=calls.append)
     assert calls == [str(delete.path)]
     assert result.moved == [delete.path]
     assert keep.path.exists()
@@ -61,7 +61,7 @@ def test_requires_explicit_keep_and_never_moves_hold(reviewed_group):
 def test_changed_keeper_or_target_prevents_removal(reviewed_group, which):
     reviewed_group.images[which].path.write_bytes(b"changed")
     calls = []
-    result = move_to_trash([reviewed_group], trash=calls.append)
+    result = move_to_trash([reviewed_group], confirmed=True, trash=calls.append)
     assert calls == []
     assert result.moved == []
     assert len(result.errors) == 1
@@ -75,14 +75,16 @@ def test_sha_check_catches_same_size_and_restored_timestamp(reviewed_group):
     record.path.write_bytes(data)
     os.utime(record.path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
     calls = []
-    result = move_to_trash([reviewed_group], trash=calls.append)
+    result = move_to_trash([reviewed_group], confirmed=True, trash=calls.append)
     assert not calls
     assert "내용이 변경" in result.errors[0]
 
 
 def test_missing_keeper_is_not_ignored(reviewed_group):
     reviewed_group.images[0].path.unlink()
-    result = move_to_trash([reviewed_group], trash=lambda _: pytest.fail("must not move"))
+    result = move_to_trash(
+        [reviewed_group], confirmed=True, trash=lambda _: pytest.fail("must not move")
+    )
     assert len(result.errors) == 1
     assert not result.moved
 
@@ -91,7 +93,7 @@ def test_trash_failure_has_no_unlink_fallback(reviewed_group):
     def unavailable(_):
         raise OSError("trash unavailable")
 
-    result = move_to_trash([reviewed_group], trash=unavailable)
+    result = move_to_trash([reviewed_group], confirmed=True, trash=unavailable)
     assert not result.moved
     assert "trash unavailable" in result.errors[0]
     assert all(r.path.exists() for r in reviewed_group.images)
@@ -111,7 +113,7 @@ def test_trash_cancellation_between_files(tmp_path, reviewed_group):
         calls.append(path)
         cancelled.set()
 
-    result = move_to_trash([reviewed_group], cancel=cancelled, trash=move)
+    result = move_to_trash([reviewed_group], confirmed=True, cancel=cancelled, trash=move)
     assert result.cancelled
     assert len(result.moved) == len(calls) == 1
 
@@ -123,5 +125,7 @@ def test_symlink_target_rejected(reviewed_group, tmp_path):
         target.path.symlink_to(reviewed_group.images[0].path)
     except OSError:
         pytest.skip("symlink creation unavailable")
-    result = move_to_trash([reviewed_group], trash=lambda _: pytest.fail("must not move"))
+    result = move_to_trash(
+        [reviewed_group], confirmed=True, trash=lambda _: pytest.fail("must not move")
+    )
     assert "심볼릭" in result.errors[0]

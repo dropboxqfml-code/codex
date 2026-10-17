@@ -4,6 +4,7 @@ from pathlib import Path
 from threading import Event
 
 from .models import Decision, DuplicateGroup, ImageRecord
+from .privacy import local_path
 from .recycling import recycle_file
 from .scanner import file_sha256, stat_signature
 
@@ -30,6 +31,7 @@ def deletion_plan(groups: list[DuplicateGroup]) -> list[ImageRecord]:
 
 
 def verify_unchanged(record: ImageRecord, cancel: Event) -> None:
+    local_path(record.path)
     # Reject replaced files, symlinks (including swapped ancestor directories), and edits.
     if any(p.is_symlink() or p.is_junction() for p in [record.path, *record.path.parents]):
         raise ValueError("경로가 심볼릭 링크로 변경되었습니다. 다시 검색하세요")
@@ -46,9 +48,13 @@ def move_to_trash(
     cancel: Event | None = None,
     progress: Callable[[str, int, int], None] | None = None,
     trash: Callable[[str], None] | None = None,
+    *,
+    confirmed: bool = False,
 ) -> TrashResult:
     from .scanner import Cancelled
 
+    if confirmed is not True:
+        raise ValueError("명시적인 사용자 확인이 있어야 휴지통으로 이동할 수 있습니다")
     cancel = cancel if cancel is not None else Event()
     progress = progress or (lambda *_: None)
     trash = trash or recycle_file

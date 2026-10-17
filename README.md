@@ -1,7 +1,11 @@
 # Image Duplicate Finder
 
 Windows에서 중복·유사 이미지를 검토하고, 사용자가 선택한 파일만 휴지통으로 이동하는
-Python 3.12 / PySide6 데스크톱 프로그램입니다. 첫 버전(v0.1.0)입니다.
+Python 3.12 / PySide6 데스크톱 프로그램입니다. 현재 버전은 로컬 처리 보안을 강화한 v0.1.1입니다.
+
+앱은 로컬 폴더에서 분석하며 업데이트 확인·AI API·클라우드 분석·업로드 기능이 없습니다.
+네트워크 드라이브·링크·확인된 OneDrive/클라우드 재분석 지점은 거부합니다.
+[보안 점검 결과와 검증 한계](docs/security-review.md)를 확인하세요.
 
 일반 Windows 사용자는 Python·uv 설치 없이 **Actions의 실행 파일 Artifact**를 받을 수 있습니다.
 [다운로드 및 실행 단계](docs/windows-build.md#일반-사용자-python-설치-없이-다운로드)를 참고하세요.
@@ -20,6 +24,7 @@ py -3.12 -m venv .venv
 ```
 
 의존성은 `pyproject.toml`에 선언되어 있습니다. PySide6, Pillow, ImageHash, Send2Trash를 사용하며
+QtWidgets에 필요한 **PySide6-Essentials**만 설치합니다. WebEngine/Addons는 사용하지 않습니다.
 SQLite는 Python 표준 라이브러리입니다. Windows에서는 pywin32도 설치하여 Send2Trash의
 현대식 휴지통 API를 필수로 사용합니다. 정확한 의존성 버전은 `uv.lock`에 고정합니다.
 위 pip 명령은 호환 범위 내 버전을 설치합니다. 잠금 버전을 재현하려면 [uv](https://docs.astral.sh/uv/)로:
@@ -62,7 +67,8 @@ Linux 개발 환경에서도 `uv sync --locked` 후 `uv run --locked python -m i
   단색 이미지 등은 오탐이 가능하므로 사용자가 반드시 시각적으로 검토해야 합니다.
 - 그룹은 이 관계들의 **연결 요소**입니다. A~B, B~C가 유사해도 A~C는 설정 거리를 초과할 수
   있습니다. 그룹 전체가 완전히 같은 이미지라는 뜻은 아닙니다. 자동 선택·자동 삭제는 없습니다.
-- 확장자 필터 대신 Pillow로 파일 내용을 확인합니다. 지원 코덱은 설치된 Pillow에 따릅니다.
+- 확장자 필터 대신 Pillow로 파일 내용을 확인합니다. 허용 형식은 PNG/JPEG/BMP/WebP/단일 프레임
+  GIF/TIFF입니다. 외부 디코더를 호출할 수 있는 EPS/PS, PDF/WMF/EMF/SVG는 지원하지 않습니다.
   손상된 알려진 이미지 확장자는 오류로 표시하고 일반 비이미지 파일은 건너뜁니다.
   이름을 바꾼 손상 파일은 비이미지 파일과 구분하지 못할 수 있습니다.
 - 애니메이션 GIF/WebP, 다중 페이지 TIFF 등은 프레임 누락 방지를 위해 제외하고 문제로 표시합니다.
@@ -76,8 +82,13 @@ Linux 개발 환경에서도 `uv sync --locked` 후 `uv run --locked python -m i
 
 SQLite는 Qt의 사용자별 `AppLocalDataLocation` 아래 `reviews.sqlite3`에 저장됩니다.
 Windows에서는 일반적으로 `%LOCALAPPDATA%\ImageDuplicateFinder\Image Duplicate Finder`입니다.
-선택은 전체 경로와 파일 SHA-256에 연결되어 앱을 다시 열고 검색해도 복원됩니다. 파일 내용이
-변하면 기본 보류로 돌아갑니다. 검색 폴더/임계값/검색 결과 전체를 저장하는 기능은 아직 없습니다.
+DB에는 로컬 32바이트 키로 전체 경로·SHA-256을 HMAC 처리한 식별자와 ‘보관/삭제 대상’ 선택만
+저장합니다. 전체 경로·원본 해시·시간·사진·썸네일은 DB에 저장하지 않으며 보류는 행을 삭제합니다.
+키는 같은 위치의 `reviews.sqlite3.key`에 보관합니다. 이 방식은 암호화된 DB가 아닙니다.
+DB와 키를 함께 백업해야 합니다. 같은 경로·내용의 선택은 재검색 시 복원되고 파일 내용이 바뀌면
+기본 보류가 됩니다. ‘선택 기록 지우기’는 확인 후 기록만 지우며 이미지 파일을 건드리지 않습니다.
+v0.1.0 DB는 기존 선택을 유지하면서 자동 변환합니다. 변환 전 다른 앱 인스턴스를 종료하세요.
+검색 폴더/임계값/검색 결과 전체를 저장하는 기능은 아직 없습니다.
 
 삭제 직전 파일 크기, 수정 시각, 파일 식별자, SHA-256과 보관 파일의 상태를 재검증합니다.
 바뀌거나 사라진 파일, 심볼릭 링크로 바뀐 경로는 이동하지 않습니다. 이 검증과 운영체제 이동은
@@ -107,3 +118,7 @@ Windows 네이티브 동작은 Windows에서 추가 검증해야 합니다.
 Windows 실행 파일 제작은 [docs/windows-build.md](docs/windows-build.md)를 참고하세요.
 요구사항별 구현·검증 범위는 [docs/requirements.md](docs/requirements.md)에 정리했습니다.
 현재 환경의 실제 검사 결과는 [docs/validation.md](docs/validation.md)에 기록했습니다.
+
+개발 시 알려진 의존성 취약점 검사는 `uv run --locked --group security python scripts/audit_dependencies.py`로
+실행합니다. 이 **개발 도구만** 공개 패키지 이름·버전을 PyPI에 조회하며 배포 앱에는 포함되지 않습니다.
+Linux 오프라인 검증 도구는 `scripts/offline_probe.py`와 `scripts/check_network_trace.py`입니다.

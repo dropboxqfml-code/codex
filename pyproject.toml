@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "image-duplicate-finder"
-version = "0.1.0"
+version = "0.1.1"
 description = "A desktop image duplicate review tool with safe recycle-bin removal"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "PySide6>=6.8,<7",
+  "PySide6-Essentials>=6.8,<7",
   "Pillow>=11.1,<13",
   "ImageHash>=4.3,<5",
   "Send2Trash>=1.8.3,<3",
@@ -21,6 +21,7 @@ image-duplicate-finder = "image_duplicate_finder.__main__:main"
 
 [dependency-groups]
 dev = ["pytest>=8.3,<10", "pytest-qt>=4.4,<5", "ruff>=0.11,<1", "pyinstaller>=6.12,<7"]
+security = ["pip-audit>=2.9,<3"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

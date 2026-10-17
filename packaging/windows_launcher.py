@@ -3,7 +3,9 @@
 import sys
 from pathlib import Path
 
-from image_duplicate_finder.__main__ import main
+from image_duplicate_finder.privacy import install_runtime_guard
+
+install_runtime_guard()
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--build-smoke-report":
@@ -13,4 +15,6 @@ if __name__ == "__main__":
 
         # This diagnostic can only generate its own temporary images, never accept a search folder.
         raise SystemExit(run(Path(sys.argv[2])))
+    from image_duplicate_finder.__main__ import main
+
     raise SystemExit(main())

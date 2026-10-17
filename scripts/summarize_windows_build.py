@@ -42,6 +42,40 @@ def main() -> None:
         lines.append(
             "Not completed; no successful frozen Windows executable validation is claimed."
         )
+    audit = root / "reports" / "dependency-audit.json"
+    if audit.exists():
+        dependencies = json.loads(audit.read_text(encoding="utf-8")).get("dependencies", [])
+        lines.extend(
+            [
+                "",
+                "### Dependency advisory lookup (PyPI)",
+                "",
+                f"Versions: {len(dependencies)}; known advisories: "
+                f"{sum(len(d.get('vulns', [])) for d in dependencies)}; skipped: "
+                f"{sum(bool(d.get('skip_reason')) for d in dependencies)}.",
+            ]
+        )
+    inventory = root / "reports" / "bundle-inventory.json"
+    if inventory.exists():
+        data = json.loads(inventory.read_text(encoding="utf-8"))
+        suspicious = [
+            name
+            for name in data["native_files"]
+            if any(
+                token in name.lower()
+                for token in ("qt6network", "qt6webengine", "qtwebengineprocess")
+            )
+        ]
+        lines.extend(
+            [
+                "",
+                "### Bundle inventory",
+                "",
+                f"Python modules: {len(data['python_modules'])}; "
+                f"native files: {len(data['native_files'])}.",
+                f"Unexpected network Qt files: {suspicious}.",
+            ]
+        )
     lines.extend(
         [
             "",

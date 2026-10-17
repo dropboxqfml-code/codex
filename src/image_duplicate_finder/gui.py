@@ -2,13 +2,12 @@ import sqlite3
 from pathlib import Path
 from threading import Event
 
-from PySide6.QtCore import QSize, QThread, Signal
+from PySide6.QtCore import QSize, Qt, QThread, Signal
 from PySide6.QtGui import QCloseEvent, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
-    QFileDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -26,13 +25,24 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .folder_dialog import LocalFolderDialog
 from .models import Decision, ImageRecord, ScanResult
+from .privacy import local_path
 from .scanner import scan
 from .storage import ReviewStore
 from .trash import TrashResult, deletion_plan, move_to_trash
 
 LABELS = {Decision.HOLD: "보류", Decision.KEEP: "보관", Decision.DELETE: "삭제 대상"}
 KINDS = {"file": "파일 동일", "pixel": "픽셀 동일", "similar": "유사"}
+
+
+def warning(parent, title, text):
+    box = QMessageBox(parent)
+    box.setTextFormat(Qt.TextFormat.PlainText)
+    box.setIcon(QMessageBox.Icon.Warning)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.exec()
 
 
 def format_size(size: int) -> str:
@@ -88,6 +98,8 @@ class MainWindow(QMainWindow):
         self.errors_button = QPushButton("문제 보기")
         self.errors_button.setEnabled(False)
         self.errors_button.clicked.connect(self.show_errors)
+        self.forget_button = QPushButton("선택 기록 지우기…")
+        self.forget_button.clicked.connect(self.forget_reviews)
 
         folder_row = QHBoxLayout()
         folder_row.addWidget(self.folder, 1)
@@ -116,12 +128,14 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self.images)
         splitter.setStretchFactor(1, 1)
         self.status = QLabel("폴더를 선택하고 검색을 시작하세요. 모든 이미지는 기본 ‘보류’입니다.")
+        self.status.setTextFormat(Qt.TextFormat.PlainText)
         self.status.setWordWrap(True)
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         actions = QHBoxLayout()
         actions.addWidget(self.errors_button)
+        actions.addWidget(self.forget_button)
         actions.addStretch()
         actions.addWidget(self.trash_button)
         layout = QVBoxLayout()
@@ -142,9 +156,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
     def choose_folder(self):
-        path = QFileDialog.getExistingDirectory(self, "검색할 폴더 선택", self.folder.text())
-        if path:
-            self.folder.setText(path)
+        dialog = LocalFolderDialog(self, self.folder.text())
+        if dialog.exec():
+            self.folder.setText(dialog.selected_path)
 
     def set_busy(self, busy: bool):
         for widget in (
@@ -155,6 +169,7 @@ class MainWindow(QMainWindow):
             self.scan_button,
             self.group_list,
             self.images,
+            self.forget_button,
         ):
             widget.setEnabled(not busy)
         self.cancel_button.setEnabled(busy)
@@ -198,8 +213,11 @@ class MainWindow(QMainWindow):
         if self.worker is not None:
             return
         raw_path = self.folder.text().strip()
-        if not raw_path or not Path(raw_path).is_dir():
-            QMessageBox.warning(self, "폴더 확인", "존재하는 검색 폴더를 선택하세요.")
+        try:
+            if not raw_path or not local_path(Path(raw_path)).is_dir():
+                raise ValueError("존재하는 로컬 검색 폴더를 선택하세요.")
+        except (OSError, ValueError) as error:
+            warning(self, "폴더 확인", str(error))
             return
         folder = Path(raw_path)
         recursive, threshold = self.recursive.isChecked(), self.threshold.value()
@@ -268,11 +286,11 @@ class MainWindow(QMainWindow):
             with ReviewStore(self.database) as store:
                 store.set(record, decision)
             record.decision = decision
-        except (OSError, sqlite3.Error) as error:
+        except (OSError, ValueError, sqlite3.Error) as error:
             combo.blockSignals(True)
             combo.setCurrentIndex(combo.findData(record.decision.value))
             combo.blockSignals(False)
-            QMessageBox.warning(self, "선택 저장 실패", str(error))
+            warning(self, "선택 저장 실패", str(error))
 
     def confirm_trash(self):
         if self.worker is not None:
@@ -280,7 +298,7 @@ class MainWindow(QMainWindow):
         try:
             targets = deletion_plan(self.result.groups)
         except ValueError as error:
-            QMessageBox.warning(self, "보관 이미지 필요", str(error))
+            warning(self, "보관 이미지 필요", str(error))
             return
         if not targets:
             QMessageBox.information(
@@ -288,6 +306,7 @@ class MainWindow(QMainWindow):
             )
             return
         question = QMessageBox(self)
+        question.setTextFormat(Qt.TextFormat.PlainText)
         question.setIcon(QMessageBox.Icon.Warning)
         question.setWindowTitle("휴지통 이동 확인")
         question.setText(f"선택한 {len(targets)}개 파일을 휴지통으로 이동할까요?")
@@ -302,7 +321,7 @@ class MainWindow(QMainWindow):
             return
         groups = self.result.groups
         self.start_task(
-            lambda cancel, progress: move_to_trash(groups, cancel, progress),
+            lambda cancel, progress: move_to_trash(groups, cancel, progress, confirmed=True),
             self.trash_completed,
         )
 
@@ -329,10 +348,34 @@ class MainWindow(QMainWindow):
 
     def show_errors(self):
         box = QMessageBox(self)
+        box.setTextFormat(Qt.TextFormat.PlainText)
         box.setWindowTitle("검색·휴지통 이동 문제")
         box.setText(f"총 {len(self.result.errors)}건. 자세히 보기에서 내용을 확인하세요.")
         box.setDetailedText("\n".join(self.result.errors))
         box.exec()
+
+    def forget_reviews(self):
+        if self.worker is not None:
+            return
+        answer = QMessageBox.question(
+            self,
+            "선택 기록 지우기",
+            "저장된 선택을 모두 지우고 보류로 바꿀까요? 이미지 파일은 유지됩니다.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            with ReviewStore(self.database) as store:
+                store.clear()
+            for group in self.result.groups:
+                for record in group.images:
+                    record.decision = Decision.HOLD
+            self.show_group(self.group_list.currentRow())
+            self.status.setText("선택 기록을 지웠습니다. 이미지 파일은 그대로입니다.")
+        except (OSError, ValueError, sqlite3.Error) as error:
+            warning(self, "기록 지우기 실패", str(error))
 
     def on_failure(self, message: str):
         self.progress.setRange(0, 100)

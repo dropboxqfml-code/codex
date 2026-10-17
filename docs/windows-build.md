@@ -80,8 +80,11 @@ Actions는 각 단계 실패 시 다음 빌드·배포 단계를 실행하지 �
 `packaging/windows.spec`가 QtWidgets 기반 windowed/onedir 빌드를 정의합니다. Qt의 PyInstaller
 훅이 Qt DLL, qwindows·imageformats 플러그인을 수집합니다. Pillow 이미지 코덱, ImageHash의
 NumPy·SciPy·PyWavelets, SQLite, Send2Trash와 pywin32 COM 모듈을 명시적으로 포함합니다.
-원본 `src/image_duplicate_finder`의 기능은 변경하지 않습니다. 일반 실행은 기존 `main()`을
-호출하며 관리자 권한을 요구하지 않습니다.
+일반 실행은 앱의 `main()`을 호출하며 관리자 권한을 요구하지 않습니다. v0.1.1부터
+Python 네트워크·외부 프로그램 호출 방어, 로컬 경로 검증 및 최소 SQLite 저장을 적용합니다.
+PySide6-Essentials를 사용하고 Qt Network/WebEngine·외부 이미지 표시기·EPS 디코더를 제외합니다.
+`bundle-inventory.json`에는 실제 수집한 모듈·네이티브 파일 목록이 기록되며 불필요한 Qt 통신
+바이너리가 들어오면 빌드를 중단합니다. [보안 보고서](security-review.md)에 결과·제한을 기록합니다.
 
 빌드 전 테스트는 Qt offscreen으로 실행합니다. 빌드 후에는 **실제 번들 exe**가 native qwindows
 플러그인으로 창을 만들고, 스스로 생성한 임시 이미지로 비동기 검색·교차 포맷·유사도·SQLite·

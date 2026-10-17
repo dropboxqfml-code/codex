@@ -43,6 +43,14 @@ Windows 전용 조건부 의존성도 Linux에서 조회하도록 마커를 제�
 | 수정 전 런타임 13개 버전 | 조회된 알려진 취약점 0, 누락 0 |
 | 수정 후 런타임·개발·빌드·감사 도구 51개 버전 | 조회된 알려진 취약점 0, 누락 0 |
 | 수정 후 런타임 | 9개: PySide6-Essentials 6.12.0, shiboken6 6.12.0, Pillow 12.3.0, ImageHash 4.3.2, NumPy 2.5.4, SciPy 1.18.1, PyWavelets 1.10.0, Send2Trash 2.1.0, pywin32 312 |
+| Windows 내장 SQLite 별도 조회 | 기존 빌드의 3.49.1은 CVE-2025-6965 영향 범위에 해당. managed CPython 3.12 런타임으로 교체하고 앱·빌드에서 SQLite 3.50.2 미만을 거부 |
+
+[공식 CNA CVE-2025-6965 기록](https://github.com/CVEProject/cvelistV5/blob/main/cves/2025/6xxx/CVE-2025-6965.json)은
+SQLite 3.50.2 미만의 aggregate 항목 처리에 메모리 손상 가능성을 명시합니다. 앱은 고정 SQL과
+바인딩 매개변수를 사용하고 사용자 SQL을 받지 않지만, 영향 버전을 그대로 배포하지 않습니다.
+Windows 런타임 설치·다운로드는 개발/CI 단계에만 수행하며 앱에 자동 설치·업데이트 코드를
+넣지 않습니다. SQLite가 기준 미만이면 DB를 열기 전에 중단합니다. 새 번들의 실제 SQLite 버전은
+`frozen-smoke.json`의 `native_versions`에서 확인해야 합니다.
 
 `reports/dependency-audit.json`와 `audit-requirements.txt`를 CI 증거로 보관합니다. 이 조회는
 현재 공개된 Python 패키지 권고에 한정됩니다. 미공개 취약점, OS·드라이버, Qt/C++ 및 Pillow에

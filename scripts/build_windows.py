@@ -1,5 +1,6 @@
 """Build the checked-in Windows spec; never cross-build an exe."""
 
+import sqlite3
 import struct
 import subprocess
 import sys
@@ -12,6 +13,12 @@ def main() -> int:
         return 1
     if struct.calcsize("P") != 8:
         print("Windows x64 Python이 필요합니다.", file=sys.stderr)
+        return 1
+    if sqlite3.sqlite_version_info < (3, 50, 2):
+        print(
+            "SQLite 3.50.2+ is required (CVE-2025-6965); use the managed build runtime.",
+            file=sys.stderr,
+        )
         return 1
     root = Path(__file__).resolve().parents[1]
     result = subprocess.run(

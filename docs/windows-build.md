@@ -61,7 +61,9 @@ Windows 10/11 **x64**와 Python **3.12 x64**가 대상입니다. 빌드는 GitHu
 PowerShell에서 저장소 루트로 이동한 후:
 
 ```powershell
-uv sync --locked
+uv python install 3.12.14
+$idfPythonPath = uv python find --managed-python 3.12.14
+uv sync --locked --python "$idfPythonPath"
 uv run --locked ruff check .
 uv run --locked ruff format --check .
 $env:QT_QPA_PLATFORM = 'offscreen'
@@ -76,6 +78,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Frozen verification failed; do not distribute.
 
 Actions는 각 단계 실패 시 다음 빌드·배포 단계를 실행하지 않습니다. 위 수동 명령에서는
 오류가 발생하면 계속 진행하지 마세요. 결과물은 `dist` 전체입니다.
+Windows CI는 managed CPython 3.12.14를 사용하고 CVE-2025-6965 때문에 SQLite 3.50.2 미만을
+거부합니다. sqlite3.dll만 임의 공급자의 DLL로 덮어쓰지 않고 선택한 Python 런타임의 DLL을
+PyInstaller로 함께 수집합니다. 실제 버전은 BUILD-INFO의 frozen smoke 결과에 기록합니다.
 
 `packaging/windows.spec`가 QtWidgets 기반 windowed/onedir 빌드를 정의합니다. Qt의 PyInstaller
 훅이 Qt DLL, qwindows·imageformats 플러그인을 수집합니다. Pillow 이미지 코덱, ImageHash의

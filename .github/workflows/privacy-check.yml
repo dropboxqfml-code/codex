@@ -18,12 +18,15 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
       - uses: astral-sh/setup-uv@v7
         with:
           version: '0.12.23'
+      - name: Select managed CPython with a patched SQLite runtime
+        run: |
+          uv python install 3.12.14
+          idf_python_path="$(uv python find --managed-python 3.12.14)"
+          printf 'UV_PYTHON=%s\n' "$idf_python_path" >> "$GITHUB_ENV"
+          "$idf_python_path" -c "import sqlite3; print('Managed SQLite:', sqlite3.sqlite_version); assert sqlite3.sqlite_version_info >= (3, 50, 2)"
       - name: Prepare Qt and tracing tools (build-time network only)
         run: |
           sudo apt-get update

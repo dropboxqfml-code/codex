@@ -17,6 +17,9 @@ Artifact는 해당 Windows 빌드와 번들 검사가 성공한 실행에서만 
 
 Windows 10/11 64비트와 Python 3.12 64비트를 권장합니다. PowerShell에서 저장소 폴더로 이동한 뒤:
 
+소스 실행 런타임은 SQLite **3.50.2 이상**도 필요합니다(CVE-2025-6965).
+기존 Windows Python의 내장 SQLite가 오래됐다면 아래 uv managed 런타임 방식을 사용하세요.
+
 ```powershell
 py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -e .
@@ -30,7 +33,9 @@ SQLite는 Python 표준 라이브러리입니다. Windows에서는 pywin32도 �
 위 pip 명령은 호환 범위 내 버전을 설치합니다. 잠금 버전을 재현하려면 [uv](https://docs.astral.sh/uv/)로:
 
 ```powershell
-uv sync --locked
+uv python install 3.12.14
+$idfPythonPath = uv python find --managed-python 3.12.14
+uv sync --locked --python "$idfPythonPath"
 uv run --locked python -m image_duplicate_finder
 ```
 

@@ -73,6 +73,15 @@ def test_database_stores_no_plaintext_path_hash_or_thumbnail(tmp_path, image_fac
         assert database.with_name(database.name + ".key").stat().st_mode & 0o777 == 0o600
 
 
+def test_vulnerable_sqlite_is_rejected_before_opening_any_database(tmp_path, monkeypatch):
+    database = tmp_path / "private.sqlite3"
+    monkeypatch.setattr(sqlite3, "sqlite_version_info", (3, 49, 1))
+    monkeypatch.setattr(sqlite3, "connect", lambda *a, **k: pytest.fail("must not open database"))
+    with pytest.raises(ValueError, match="CVE-2025-6965"):
+        ReviewStore(database)
+    assert not database.exists()
+
+
 def test_legacy_db_migration_preserves_decisions_and_removes_raw_fields(tmp_path, image_factory):
     record = read_image(image_factory(), Event())
     database = tmp_path / "legacy.sqlite3"

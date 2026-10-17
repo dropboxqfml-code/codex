@@ -8,11 +8,18 @@ from pathlib import Path
 from .models import Decision, ImageRecord
 from .privacy import local_path
 
+MIN_SQLITE_VERSION = (3, 50, 2)  # CVE-2025-6965: older SQLite expr.c is affected.
+
 
 class ReviewStore:
     """Store only a keyed review identifier and a non-default decision, locally."""
 
     def __init__(self, path: Path):
+        if sqlite3.sqlite_version_info < MIN_SQLITE_VERSION:
+            raise ValueError(
+                "SQLite 3.50.2 이상이 필요합니다(CVE-2025-6965). "
+                "최신 검증된 실행 파일을 사용하세요."
+            )
         path = local_path(path)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.connection = sqlite3.connect(path, timeout=10)

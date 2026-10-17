@@ -27,18 +27,21 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Python 3.12 x64
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-          architecture: x64
-
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           version: '0.12.23'
           enable-cache: true
           cache-dependency-glob: uv.lock
+
+      - name: Install managed CPython 3.12 and reject vulnerable SQLite
+        run: |
+          uv python install 3.12.14
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $idfPythonPath = uv python find --managed-python 3.12.14
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "UV_PYTHON=$idfPythonPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $idfPythonPath -c "import sqlite3; print('Managed SQLite:', sqlite3.sqlite_version); assert sqlite3.sqlite_version_info >= (3, 50, 2), 'CVE-2025-6965 requires newer SQLite'"
 
       - name: Install locked dependencies
         run: uv sync --locked --group security

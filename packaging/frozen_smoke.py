@@ -57,7 +57,8 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
     app.setQuitOnLastWindowClosed(False)
     report["qt_platform"] = app.platformName()
     workspace = tempfile.TemporaryDirectory(prefix="idf-build-smoke-")
-    root = Path(workspace.name)
+    # Windows TEMP may use an 8.3 name; scanner paths are canonicalized with resolve().
+    root = Path(workspace.name).resolve()
     pictures = root / "한글 이미지 폴더"
     pictures.mkdir()
     original = pictures / "original.png"

@@ -23,18 +23,18 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: Install Python 3.12 x64
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           architecture: x64
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: '0.12.23'
           enable-cache: true
@@ -61,7 +61,7 @@ jobs:
         run: uv run --locked python scripts/verify_windows_build.py
 
       - name: Upload runnable Windows bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ImageDuplicateFinder-Windows-x64-${{ github.run_number }}
           path: dist/
@@ -71,7 +71,7 @@ jobs:
 
       - name: Upload test reports and build diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Windows-build-reports-${{ github.run_number }}
           path: |
@@ -79,3 +79,7 @@ jobs:
             build/**/warn-*.txt
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Summarize test and packaged executable results
+        if: always()
+        run: python scripts/summarize_windows_build.py

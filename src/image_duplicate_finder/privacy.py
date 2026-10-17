@@ -94,10 +94,29 @@ def local_path(path: Path) -> Path:
 
 _installed = False
 _blocked = {"network": 0, "process": 0}
+_block_events = {}
 
 
 def runtime_blocks() -> dict[str, int]:
     return dict(_blocked)
+
+
+def runtime_block_events() -> dict:
+    return {name: dict(details) for name, details in _block_events.items()}
+
+
+def record_block(event):
+    # Diagnostic metadata only: never retain audit arguments, paths, hosts, hashes, or image data.
+    frame = sys._getframe(2)
+    callers = []
+    try:
+        while frame is not None and len(callers) < 8:
+            callers.append(f"{frame.f_globals.get('__name__', '')}.{frame.f_code.co_name}")
+            frame = frame.f_back
+    finally:
+        del frame
+    previous = _block_events.get(event, {"count": 0})
+    _block_events[event] = {"count": previous["count"] + 1, "callers": callers}
 
 
 def runtime_guard_enabled() -> bool:
@@ -144,11 +163,13 @@ def install_runtime_guard() -> None:
             network |= int(args[1]) in {2, 10, 23}  # IPv4, IPv6 (POSIX and Windows)
         if network:
             _blocked["network"] += 1
+            record_block(event)
             raise PermissionError("이 앱에서는 Python 네트워크 통신이 차단됩니다")
         if event in {"subprocess.Popen", "os.system", "os.exec", "os.posix_spawn", "os.spawn"} or (
             event.startswith("os.startfile") or event == "webbrowser.open"
         ):
             _blocked["process"] += 1
+            record_block(event)
             raise PermissionError("이 앱에서는 외부 프로그램 실행이 차단됩니다")
 
     sys.addaudithook(guard)

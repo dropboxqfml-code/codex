@@ -21,6 +21,7 @@ from image_duplicate_finder.models import Decision
 from image_duplicate_finder.privacy import (
     configure_qt_library_paths,
     local_path,
+    runtime_block_events,
     runtime_blocks,
     runtime_guard_enabled,
 )
@@ -117,6 +118,7 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
             report["status"] = "passed"
         report["python_guard_enabled"] = runtime_guard_enabled()
         report["python_blocked_attempts"] = runtime_blocks()
+        report["python_block_events"] = runtime_block_events()
         with report_path.open("x", encoding="utf-8") as stream:
             stream.write(json.dumps(report, ensure_ascii=False, indent=2))
         if window.worker is not None:
@@ -216,7 +218,9 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
                         "not run (source test or non-Windows)"
                     )
                 report["confirmation_yes_recycles_generated_copy"] = "passed"
-                assert not any(runtime_blocks().values()), "Forbidden Python operation attempted"
+                assert not any(runtime_blocks().values()), (
+                    f"Forbidden Python operation attempted: {runtime_block_events()}"
+                )
                 finish()
         except Exception:
             finish(traceback.format_exc())

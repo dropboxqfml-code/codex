@@ -20,6 +20,8 @@
 | Pillow ImageShow | 앱에서 사용하지 않음. 배포물에서 외부 표시기·EPS/PDF/WMF 플러그인 제외 |
 | Pillow JPEG/GIF의 선택적 외부 helper | 일반 load 경로가 아닌 명시적 helper 기능에 subprocess가 존재. 앱은 호출하지 않으며 Python 실행 가드로 차단 |
 | NumPy DataSource / SciPy datasets | URL 입력 시 다운로드하는 별도 API가 존재. 앱은 배열 연산만 사용. SciPy datasets는 배포 제외, NumPy URL 다운로드는 클라이언트 제외·런타임 가드로 차단 |
+| Qt generic TUIO 입력 플러그인 | PyInstaller 기본 GUI 훅이 불필요한 qtuiotouchplugin.dll과 Qt6Network.dll을 수집함을 발견. GUI 훅을 최소 플랫폼 플러그인으로 제한하고 통신 DLL 검사는 유지 |
+| Qt 환경 설정 | VNC/WebGL·원격 X11 화면 거부, generic 입력·외부 플러그인 경로 override 제거, 앱의 로컬 Qt 플러그인 경로로 고정 |
 | 상태·오류 문구 | 경로에 포함된 HTML이 해석되지 않도록 PlainText로 고정 |
 | 빌드·감사 도구 | PyInstaller·Git·pip-audit를 고정된 인수 목록으로 실행. 앱 기능과 분리되며 앱에 배포하지 않음 |
 | GitHub Actions | 설치·의존성 감사·Artifact 업로드에 인터넷 사용. 분석 대상은 시험용 생성 이미지뿐이며 사용자 폴더를 검색하지 않음 |
@@ -94,7 +96,7 @@ RAM·페이지 파일·GPU 버퍼·OS crash dump의 삭제까지 보증하지 �
 
 | 점검 | 수정 전 / 후 |
 | --- | --- |
-| 회귀 테스트 | 수정 전 37 passed. 수정 후 Linux 50 passed, Windows 전용 경로 검사 1 skipped. CI JUnit에 플랫폼별 실제 결과 기록 |
+| 회귀 테스트 | 수정 전 37 passed. 수정 후 결과는 CI JUnit에 플랫폼별 통과·실패·제외로 구분해 기록 |
 | 평문 DB | 이전 fixture에서 경로·SHA 바이트 존재 확인 → 변환 후 DB/부속 파일에 해당 바이트 없음, 선택 복원 통과 |
 | EPS | 외부 delegate 사용 가능 → 잘못된 `.png` 확장자를 붙인 EPS도 해석·delegate 호출 없이 거부 |
 | 파일 이동 | GUI 기본 ‘아니요’ 유지, backend는 confirmed=True 없으면 거부. 보관·변경 파일·실패 시 영구 삭제 방지 회귀 검사 |

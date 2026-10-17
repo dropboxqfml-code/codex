@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from image_duplicate_finder.privacy import install_runtime_guard
+from image_duplicate_finder.privacy import configure_qt_library_paths, install_runtime_guard
 
 
 def main() -> int:
@@ -11,6 +11,7 @@ def main() -> int:
 
     from image_duplicate_finder.gui import MainWindow
 
+    configure_qt_library_paths()
     app = QApplication(sys.argv)
     app.setApplicationName("Image Duplicate Finder")
     app.setOrganizationName("ImageDuplicateFinder")

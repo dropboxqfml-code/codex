@@ -128,6 +128,41 @@ def test_move_requires_positive_confirmation():
         move_to_trash([], trash=lambda _: pytest.fail("must not move"))
 
 
+@pytest.mark.parametrize("platform", ["vnc", "webgl"])
+def test_remote_qt_backend_is_rejected_before_qt_initialization(platform):
+    code = """
+from image_duplicate_finder.privacy import LocalOnlyError, install_runtime_guard
+try: install_runtime_guard()
+except LocalOnlyError: pass
+else: raise AssertionError('remote GUI backend accepted')
+"""
+    subprocess.run(
+        [sys.executable, "-c", code],
+        env={**os.environ, "QT_QPA_PLATFORM": platform},
+        check=True,
+    )
+
+
+def test_generic_input_plugin_override_is_removed():
+    code = """
+import os
+from image_duplicate_finder.privacy import install_runtime_guard
+install_runtime_guard()
+assert 'QT_QPA_GENERIC_PLUGINS' not in os.environ
+assert 'QT_PLUGIN_PATH' not in os.environ
+"""
+    subprocess.run(
+        [sys.executable, "-c", code],
+        env={
+            **os.environ,
+            "QT_QPA_PLATFORM": "offscreen",
+            "QT_QPA_GENERIC_PLUGINS": "tuio",
+            "QT_PLUGIN_PATH": "//example.invalid/plugins",
+        },
+        check=True,
+    )
+
+
 @pytest.mark.parametrize("extension", [".json", ".png"])
 def test_packaged_diagnostic_cannot_overwrite_existing_files(tmp_path, extension):
     root = Path(__file__).resolve().parents[1]

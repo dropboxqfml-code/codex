@@ -18,7 +18,12 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from image_duplicate_finder.folder_dialog import LocalFolderDialog
 from image_duplicate_finder.gui import MainWindow
 from image_duplicate_finder.models import Decision
-from image_duplicate_finder.privacy import local_path, runtime_blocks, runtime_guard_enabled
+from image_duplicate_finder.privacy import (
+    configure_qt_library_paths,
+    local_path,
+    runtime_blocks,
+    runtime_guard_enabled,
+)
 from image_duplicate_finder.recycling import _windows_backend
 from image_duplicate_finder.scanner import scan
 from image_duplicate_finder.storage import ReviewStore
@@ -68,6 +73,7 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
         "libwebp": features.version("webp"),
         "zlib": features.version("zlib"),
     }
+    configure_qt_library_paths()
     app = QApplication([])
     app.setQuitOnLastWindowClosed(False)
     report["qt_platform"] = app.platformName()

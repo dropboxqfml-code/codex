@@ -29,7 +29,7 @@ analysis = Analysis(
         "pythoncom", "pywintypes", "win32com.shell.shell", "win32com.shell.shellcon",
         "win32com.client.dynamic",
     ],
-    hookspath=[],
+    hookspath=[str(root / "packaging" / "hooks")],
     runtime_hooks=[],
     excludes=[
         "PyQt5", "PyQt6", "PySide2", "tkinter", "matplotlib", "pytest", "IPython",

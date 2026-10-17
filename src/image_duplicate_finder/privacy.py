@@ -108,6 +108,27 @@ def install_runtime_guard() -> None:
     global _installed
     if _installed:
         return
+    platform = os.environ.get("QT_QPA_PLATFORM", "").lower()
+    allowed = {
+        "win32": {"windows", "offscreen", "minimal"},
+        "linux": {"xcb", "wayland", "wayland-egl", "offscreen", "minimal"},
+        "darwin": {"cocoa", "offscreen", "minimal"},
+    }.get(sys.platform, {"offscreen", "minimal"})
+    if platform and any(p.split(":", 1)[0] not in allowed for p in platform.split(";")):
+        raise LocalOnlyError("원격 화면 Qt backend는 사용할 수 없습니다")
+    if sys.platform == "linux" and not platform.startswith(("offscreen", "minimal")):
+        display = os.environ.get("DISPLAY", "")
+        if display and not display.startswith((":", "unix:", "unix/:")):
+            raise LocalOnlyError("원격 X11 화면은 사용할 수 없습니다")
+    for name in (
+        "QT_QPA_GENERIC_PLUGINS",
+        "QT_PLUGIN_PATH",
+        "QT_QPA_PLATFORM_PLUGIN_PATH",
+        "QT_QPA_FONTDIR",
+        "QML_IMPORT_PATH",
+        "QML2_IMPORT_PATH",
+    ):
+        os.environ.pop(name, None)
 
     def guard(event, args):
         network = event.startswith(("socket.connect", "socket.bind", "socket.sendto"))
@@ -131,3 +152,13 @@ def install_runtime_guard() -> None:
 
     sys.addaudithook(guard)
     _installed = True
+
+
+def configure_qt_library_paths() -> None:
+    from PySide6.QtCore import QCoreApplication, QLibraryInfo
+
+    if sys.platform == "win32" and getattr(sys, "frozen", False):
+        plugins = Path(sys._MEIPASS) / "PySide6" / "plugins"
+    else:
+        plugins = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath))
+    QCoreApplication.setLibraryPaths([str(local_path(plugins))])

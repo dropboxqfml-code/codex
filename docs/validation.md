@@ -1,5 +1,24 @@
 # v0.1 검증 기록
 
+## Windows 배포 자동화 추가 검증
+
+- Linux 로컬 테스트: **37 passed**, 실패·skip 없음. 기존 기능 회귀 테스트 34개와 빌드 도구 테스트
+  3개를 실행했습니다. `ruff check`, `ruff format --check`도 통과했습니다.
+- 번들 진단 드라이버의 소스 모드 테스트: 이미지 검색·픽셀/유사 판별·SQLite·GUI 확인 대화상자를
+  실제로 실행했습니다. 이 테스트의 휴지통은 대체 backend이고 Qt는 offscreen입니다.
+  Windows 네이티브/동결 exe 검증 통과를 의미하지 않습니다.
+- Windows x64 호환 wheel이 잠금 파일의 PySide6·Pillow·NumPy·SciPy·PyWavelets·pywin32에
+  포함된 것을 확인했습니다. Windows spec·버전 리소스의 Python 문법을 확인했습니다.
+- 현재 클라우드 머신은 Linux입니다. Windows exe 자체는 GitHub Actions `windows-latest`의
+  테스트 → 빌드 → frozen smoke가 완료돼야 검증할 수 있습니다. 워크플로의 존재만으로
+  성공을 주장하지 않습니다. 실행별 `pytest.xml`, `frozen-smoke.json`, `BUILD-INFO.json`이
+  실제 결과의 근거입니다.
+- Windows 10/11 일반 사용자 PC, Python 미설치 환경, DPI·Defender·휴지통 복원 수동 검증은
+  **미실행**입니다. [수동 인수 테스트](windows-acceptance.md)에 미검증 상태로 기록했습니다.
+- 앱의 기존 `src/image_duplicate_finder` 파일은 이 배포 작업에서 변경하지 않았습니다.
+
+## 최초 MVP 검증
+
 검증 환경: 클라우드 Linux, Python 3.12.14, PySide6 6.12.0, Pillow 12.3.0,
 ImageHash 4.3.2, Send2Trash 2.1.0. 정확한 전체 버전은 `uv.lock`을 참고하세요.
 

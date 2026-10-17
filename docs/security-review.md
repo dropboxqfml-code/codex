@@ -18,6 +18,8 @@
 | 기본 폴더 선택 | Windows Shell·클라우드 provider가 개입할 수 있어 직접 로컬 디렉터리만 나열하는 Qt 선택기로 교체 |
 | Pillow EPS | 기존 전체 형식 검색에서 Ghostscript를 실행할 수 있었음. PNG/JPEG/BMP/WebP/GIF/TIFF 허용 목록으로 제한 |
 | Pillow ImageShow | 앱에서 사용하지 않음. 배포물에서 외부 표시기·EPS/PDF/WMF 플러그인 제외 |
+| Pillow JPEG/GIF의 선택적 외부 helper | 일반 load 경로가 아닌 명시적 helper 기능에 subprocess가 존재. 앱은 호출하지 않으며 Python 실행 가드로 차단 |
+| NumPy DataSource / SciPy datasets | URL 입력 시 다운로드하는 별도 API가 존재. 앱은 배열 연산만 사용. SciPy datasets는 배포 제외, NumPy URL 다운로드는 클라이언트 제외·런타임 가드로 차단 |
 | 상태·오류 문구 | 경로에 포함된 HTML이 해석되지 않도록 PlainText로 고정 |
 | 빌드·감사 도구 | PyInstaller·Git·pip-audit를 고정된 인수 목록으로 실행. 앱 기능과 분리되며 앱에 배포하지 않음 |
 | GitHub Actions | 설치·의존성 감사·Artifact 업로드에 인터넷 사용. 분석 대상은 시험용 생성 이미지뿐이며 사용자 폴더를 검색하지 않음 |
@@ -58,6 +60,8 @@ Windows 전용 조건부 의존성도 Linux에서 조회하도록 마커를 제�
 PySide6 메타 패키지를 PySide6-Essentials로 교체하여 Addons/Pdf/WebEngine을 런타임 의존성에서
 제거했습니다. PyInstaller는 Qt Network/WebEngine/WebSockets/QML, requests/httpx/urllib3 등
 사용하지 않는 클라이언트, pip/pip-audit/pytest 및 외부 디코더를 제외합니다.
+NumPy 2의 f2py는 SciPy의 호환성 import가 요구하므로 통째로 제거하지 않습니다. 컴파일 helper의
+존재가 자동 실행을 의미하지 않으며 앱의 분석 흐름은 해당 API를 호출하지 않습니다.
 Qt 통신 DLL이 실제 수집되면 빌드가 실패하도록 검사합니다. 모듈·네이티브 파일 목록은
 `reports/bundle-inventory.json`에 남깁니다. 소스의 제외 설정만으로 배포물이 검증됐다고
 주장하지 않으며, 해당 커밋의 Windows 빌드·번들 검사가 통과해야 합니다.

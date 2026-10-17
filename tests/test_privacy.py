@@ -132,6 +132,24 @@ print(json.dumps(runtime_blocks()))
     assert counts["process"] == 1
 
 
+def test_local_hostname_getter_is_distinct_from_network_resolution():
+    code = """
+import socket
+from image_duplicate_finder.privacy import (
+    install_runtime_guard, runtime_blocks, runtime_local_observations,
+)
+install_runtime_guard()
+assert isinstance(socket.gethostname(), str)
+assert runtime_local_observations() == {'socket.gethostname': 1}
+assert runtime_blocks() == {'network': 0, 'process': 0}
+try: socket.getaddrinfo('example.invalid',443)
+except PermissionError: pass
+else: raise AssertionError('DNS resolution was allowed')
+assert runtime_blocks()['network'] == 1
+"""
+    subprocess.run([sys.executable, "-c", code], check=True, timeout=20)
+
+
 def test_move_requires_positive_confirmation():
     with pytest.raises(ValueError, match="확인"):
         move_to_trash([], trash=lambda _: pytest.fail("must not move"))

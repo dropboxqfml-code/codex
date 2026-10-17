@@ -24,6 +24,7 @@ from image_duplicate_finder.privacy import (
     runtime_block_events,
     runtime_blocks,
     runtime_guard_enabled,
+    runtime_local_observations,
 )
 from image_duplicate_finder.recycling import _windows_backend
 from image_duplicate_finder.scanner import scan
@@ -119,6 +120,7 @@ def run(report_path: Path, *, native_windows: bool = True) -> int:
         report["python_guard_enabled"] = runtime_guard_enabled()
         report["python_blocked_attempts"] = runtime_blocks()
         report["python_block_events"] = runtime_block_events()
+        report["local_system_queries"] = runtime_local_observations()
         with report_path.open("x", encoding="utf-8") as stream:
             stream.write(json.dumps(report, ensure_ascii=False, indent=2))
         if window.worker is not None:

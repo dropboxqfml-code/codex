@@ -23,6 +23,7 @@
 | Qt generic TUIO 입력 플러그인 | PyInstaller 기본 GUI 훅이 불필요한 qtuiotouchplugin.dll과 Qt6Network.dll을 수집함을 발견. GUI 훅을 최소 플랫폼 플러그인으로 제한하고 통신 DLL 검사는 유지 |
 | Qt 환경 설정 | VNC/WebGL·원격 X11 화면 거부, generic 입력·외부 플러그인 경로 override 제거, 앱의 로컬 Qt 플러그인 경로로 고정 |
 | Send2Trash OS 버전 조회 | platform.version의 불필요한 로컬 hostname 조회가 엄격한 감사 가드에 걸림. 외부 전송이 확인된 건은 아님. 가드는 유지하고 Windows 커널 버전 API를 사용하는 어댑터로 대체 |
+| NumPy의 로컬 시스템 조회 | numpy.testing의 platform.machine이 인수 없는 gethostname을 호출함을 스택으로 확인. 로컬 컴퓨터 이름 조회는 별도 카운트로 관찰하고 값은 보관하지 않음. 주소 해석 getaddrinfo/gethostbyname 및 인터넷 소켓은 계속 차단 |
 | 상태·오류 문구 | 경로에 포함된 HTML이 해석되지 않도록 PlainText로 고정 |
 | 빌드·감사 도구 | PyInstaller·Git·pip-audit를 고정된 인수 목록으로 실행. 앱 기능과 분리되며 앱에 배포하지 않음 |
 | GitHub Actions | 설치·의존성 감사·Artifact 업로드에 인터넷 사용. 분석 대상은 시험용 생성 이미지뿐이며 사용자 폴더를 검색하지 않음 |
@@ -30,6 +31,9 @@
 정상 앱 진입점과 배포 진입점은 제3자 GUI/분석 모듈을 사용하기 전에 Python 런타임 가드를
 설치합니다. DNS·인터넷 소켓, subprocess, shell/open/startfile을 차단하며 별도 해제 스위치는
 제공하지 않습니다. **Python 감사 훅은 C/C++·ctypes·COM을 격리하는 OS 샌드박스가 아닙니다.**
+`gethostname()`은 외부 주소를 받지 않는 로컬 조회입니다. 이를 DNS 해석으로 오분류했던 진단을
+수정했으며, 커널 인터넷 소켓 거부 상태에서도 로컬 조회가 동작하는 별도 대조를 추가했습니다.
+이 구분은 외부 송신 검사 해제가 아니며 Windows 네이티브 패킷 캡처를 대체하지 않습니다.
 
 ## 2. 라이브러리와 알려진 취약점
 

@@ -70,6 +70,11 @@ def main() -> int:
         from image_duplicate_finder.privacy import install_runtime_guard, runtime_blocks
 
         install_runtime_guard()
+        import socket
+
+        # A separate positive control: this zero-argument local getter works with Internet denied.
+        assert isinstance(socket.gethostname(), str)
+        report["local_hostname_control"] = "passed (value not retained)"
         # Isolate the disposable Linux trash from the developer's profile (which may be read-only).
         os.environ["XDG_DATA_HOME"] = str(output.parent / "offline-xdg-data")
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packaging"))

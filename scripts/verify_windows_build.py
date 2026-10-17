@@ -90,6 +90,12 @@ def main() -> int:
                 digest = hashlib.file_digest(source, "sha256").hexdigest()
             stream.write(f"{digest}  {path.relative_to(root / 'dist').as_posix()}\n")
     print("PASS: frozen Windows Qt, image matching, SQLite, confirmation and Recycle Bin checks")
+    evidence = {
+        "native_versions": outcome.get("native_versions"),
+        "blocked_external_operations": outcome.get("python_blocked_attempts"),
+        "local_system_query_counts": outcome.get("local_system_queries"),
+    }
+    print("::notice title=Verified native runtime and privacy counters::" + json.dumps(evidence))
     return 0
 
 

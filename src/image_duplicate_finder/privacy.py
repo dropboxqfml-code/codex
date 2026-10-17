@@ -95,6 +95,7 @@ def local_path(path: Path) -> Path:
 _installed = False
 _blocked = {"network": 0, "process": 0}
 _block_events = {}
+_local_observations = {"socket.gethostname": 0}
 
 
 def runtime_blocks() -> dict[str, int]:
@@ -103,6 +104,10 @@ def runtime_blocks() -> dict[str, int]:
 
 def runtime_block_events() -> dict:
     return {name: dict(details) for name, details in _block_events.items()}
+
+
+def runtime_local_observations() -> dict[str, int]:
+    return dict(_local_observations)
 
 
 def record_block(event):
@@ -151,13 +156,18 @@ def install_runtime_guard() -> None:
         os.environ.pop(name, None)
 
     def guard(event, args):
+        if event == "socket.gethostname":
+            # Zero-argument local computer-name retrieval, not DNS resolution or a socket send.
+            # NumPy's platform.machine() calls this through platform.uname() on Windows.
+            # Record only the API count, never the returned hostname.
+            _local_observations[event] += 1
+            return
         network = event.startswith(("socket.connect", "socket.bind", "socket.sendto"))
         network |= event in {
             "socket.getaddrinfo",
             "socket.gethostbyname",
             "socket.gethostbyaddr",
             "socket.getnameinfo",
-            "socket.gethostname",
         }
         if event == "socket.__new__" and len(args) >= 2:
             network |= int(args[1]) in {2, 10, 23}  # IPv4, IPv6 (POSIX and Windows)

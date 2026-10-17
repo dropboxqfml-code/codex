@@ -84,6 +84,7 @@ jobs:
             reports/dependency-audit.json
             reports/audit-requirements.txt
             reports/bundle-inventory.json
+            reports/pyinstaller.log
             build/**/warn-*.txt
           if-no-files-found: warn
           retention-days: 30

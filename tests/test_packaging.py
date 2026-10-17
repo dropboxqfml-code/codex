@@ -30,11 +30,11 @@ def test_windows_build_uses_spec_and_propagates_failure(monkeypatch):
     monkeypatch.setattr(build, "sys", SimpleNamespace(platform="win32", executable="python.exe"))
     calls = []
 
-    def fail(command, cwd):
+    def fail(command, cwd, **kwargs):
         calls.append((command, cwd))
-        return 7
+        return SimpleNamespace(returncode=7, stdout="simulated build failure")
 
-    monkeypatch.setattr(build.subprocess, "call", fail)
+    monkeypatch.setattr(build.subprocess, "run", fail)
     assert build.main() == 7
     command, cwd = calls[0]
     assert command[:3] == ["python.exe", "-m", "PyInstaller"]

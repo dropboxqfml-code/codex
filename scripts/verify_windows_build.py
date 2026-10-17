@@ -7,6 +7,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -93,4 +94,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception:
+        detail = traceback.format_exc()[-1800:]
+        detail = detail.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title=Frozen Windows verification failed::{detail}")
+        raise

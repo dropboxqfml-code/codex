@@ -22,6 +22,7 @@
 | NumPy DataSource / SciPy datasets | URL 입력 시 다운로드하는 별도 API가 존재. 앱은 배열 연산만 사용. SciPy datasets는 배포 제외, NumPy URL 다운로드는 클라이언트 제외·런타임 가드로 차단 |
 | Qt generic TUIO 입력 플러그인 | PyInstaller 기본 GUI 훅이 불필요한 qtuiotouchplugin.dll과 Qt6Network.dll을 수집함을 발견. GUI 훅을 최소 플랫폼 플러그인으로 제한하고 통신 DLL 검사는 유지 |
 | Qt 환경 설정 | VNC/WebGL·원격 X11 화면 거부, generic 입력·외부 플러그인 경로 override 제거, 앱의 로컬 Qt 플러그인 경로로 고정 |
+| Send2Trash OS 버전 조회 | platform.version의 불필요한 로컬 hostname 조회가 엄격한 감사 가드에 걸림. 외부 전송이 확인된 건은 아님. 가드는 유지하고 Windows 커널 버전 API를 사용하는 어댑터로 대체 |
 | 상태·오류 문구 | 경로에 포함된 HTML이 해석되지 않도록 PlainText로 고정 |
 | 빌드·감사 도구 | PyInstaller·Git·pip-audit를 고정된 인수 목록으로 실행. 앱 기능과 분리되며 앱에 배포하지 않음 |
 | GitHub Actions | 설치·의존성 감사·Artifact 업로드에 인터넷 사용. 분석 대상은 시험용 생성 이미지뿐이며 사용자 폴더를 검색하지 않음 |

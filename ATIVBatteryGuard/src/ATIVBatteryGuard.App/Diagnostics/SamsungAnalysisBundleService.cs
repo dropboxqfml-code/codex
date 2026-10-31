@@ -786,6 +786,7 @@ namespace ATIVBatteryGuard.Diagnostics
 			{
 				stringBuilder.AppendLine("[Settings 앱 수집 범위]");
 				stringBuilder.AppendLine("HKLM 32/64비트의 정확한 Samsung Settings 등록과 전용 설치 경로만 확인했습니다. 제거 명령은 읽거나 실행하지 않습니다.");
+				stringBuilder.AppendLine("설치·아이콘 위치가 모두 비었을 때만 앱 등록 확인 후 전용 후보 폴더 최대 6곳을 확인합니다. 제공된 경로가 거부된 경우에는 사용하지 않습니다.");
 				stringBuilder.AppendLine("폴더 깊이 최대 2, 디렉터리 최대 16, 항목 최대 512, 후보 파일 최대 128, 복사 모듈 최대 16개입니다.");
 				stringBuilder.AppendLine("파일당 최대 16MiB, 총 최대 24MiB, ZIP은 32MiB 미만입니다. 링크 경로를 따라가지 않습니다.");
 				stringBuilder.AppendLine("충전 관련 이름을 우선하지만 이름과 회사 표시 정보만으로 배터리 기능이나 전자서명 신뢰를 입증할 수 없습니다.");

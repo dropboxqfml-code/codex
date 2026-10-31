@@ -21,12 +21,12 @@
 | 항목 | 현재 상태 |
 | --- | --- |
 | 새 변경의 WPF 빌드 | 성공, 경고 0개·오류 0개 |
-| 새 변경의 portable 회귀 테스트 | 105개 통과·실패 0개·건너뜀 0개 |
+| 새 변경의 portable 회귀 테스트 | 108개 통과·실패 0개·건너뜀 0개 |
 | 새 수집 기능의 Windows 동작 | 미검증, 새 ZIP 결과 필요 |
 | Windows GUI 자동 self-test | 미실행 |
 | 실제 충전 제한 | 구현하지 않음, 항상 미지원 |
 
-새 suite는 기존 78개와 Settings 경계 검사 27개를 이번 변경에서 다시 실행했습니다. pure 정책과 공유 Core·ViewModel의 회귀 검증이며, Windows Registry 열거·파일 수집을 실행한 결과가 아닙니다.
+새 suite는 기존 78개와 Settings 경계 검사 30개를 이번 변경에서 다시 실행했습니다. pure 정책과 공유 Core·ViewModel의 회귀 검증이며, Windows Registry 열거·파일 수집을 실행한 결과가 아닙니다.
 
 재실행할 주요 명령입니다. `dotnet`은 .NET 8 SDK를 사용합니다.
 
@@ -38,3 +38,7 @@ python scripts/package_preview.py --test-report reports/portable-tests.json
 ```
 
 Windows용 `scripts/Test-Windows.ps1`은 제공하지만 이 환경에서는 실행하지 않았습니다. 빌드 성공·클래스 발견·파일 수집 성공을 실제 충전 제어 성공으로 해석하지 않습니다. 과거 149개 또는 이전 WMI 판의 78개 시험 기록을 새 변경의 시험 수치로 재사용하지 않았습니다.
+
+## 위치 누락 수정판
+
+사용자 ZIP에서 앱 등록만 있고 설치·아이콘 위치가 없는 원인을 확인했습니다. 수정 후 전체 portable suite는 108개이며 등록 불일치/제공 경로의 대체 조회 금지와 고정 후보 범위를 검사합니다. 새 native 대체 조회는 Windows 결과가 필요합니다.

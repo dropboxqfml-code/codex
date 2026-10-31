@@ -12,6 +12,30 @@ internal static partial class Program
 
     private static void RegisterSettingsPolicyTests()
     {
+        Add("Missing Settings location uses only six approved dedicated directories", () =>
+        {
+            var policy = SettingsPaths();
+            var directories = policy.MissingLocationDirectories(true, null, "");
+            Equal(6, directories.Length);
+            foreach (string directory in directories)
+                Check(policy.ResolveInstallDirectory(directory).Accepted && directory.Contains("\\Samsung\\"), "fallback escaped scope");
+        });
+        Add("Settings fallback cannot bypass registration or a provided path", () =>
+        {
+            Equal(0, SettingsPaths().MissingLocationDirectories(false, null, null).Length);
+            foreach (string provided in new[] { " ", @"C:\Users\Private\Settings", @"C:\Program Files\Samsung\Settings", "bad" })
+            {
+                Equal(0, SettingsPaths().MissingLocationDirectories(true, provided, null).Length);
+                Equal(0, SettingsPaths().MissingLocationDirectories(true, null, provided).Length);
+            }
+        });
+        Add("Settings fallback deduplicates roots and returns independent arrays", () =>
+        {
+            var policy = new SamsungSettingsPathPolicy(@"C:\Program Files", @"C:\Program Files", null);
+            var first = policy.MissingLocationDirectories(true, null, null);
+            Equal(2, first.Length); first[0] = @"C:\Users\Private";
+            Check(policy.MissingLocationDirectories(true, null, null)[0] != first[0], "mutable policy roots");
+        });
         Add("Settings registration matches only the intended product", () =>
         {
             Check(SamsungSettingsPathPolicy.IsMatchingRegistration("Samsung Settings", "Samsung Electronics CO., LTD."), "installed product missed");

@@ -70,6 +70,22 @@ namespace ATIVBatteryGuard.Diagnostics
         private static SamsungServiceLocation ResolveRegistration(string installLocation, string displayIcon,
             SamsungSettingsPathPolicy policy, IList<string> notes)
         {
+            if (string.IsNullOrEmpty(installLocation) && string.IsNullOrEmpty(displayIcon))
+            {
+                Note(notes, "SETTINGS_REGISTERED_LOCATION_FIELDS_MISSING");
+                foreach (string candidate in policy.MissingLocationDirectories(true, installLocation, displayIcon))
+                {
+                    if (!SafeSourceDirectory(candidate) || !Directory.Exists(candidate)) continue;
+                    var directory = policy.ResolveInstallDirectory(candidate);
+                    try
+                    {
+                        var located = FindAnchor(directory.Path, directory.Category, policy, notes, "RegisteredKnownDirectory");
+                        if (located.Found) { Note(notes, "SETTINGS_KNOWN_DIRECTORY_FOUND"); return located; }
+                    }
+                    catch (Exception exception) when (ReadFailure(exception)) { Note(notes, "SETTINGS_KNOWN_DIRECTORY_READ_FAILED"); }
+                }
+                return Failure("SETTINGS_KNOWN_DIRECTORIES_NOT_FOUND");
+            }
             if (!string.IsNullOrEmpty(installLocation))
             {
                 SamsungSettingsPathResult directory = policy.ResolveInstallDirectory(installLocation);
@@ -101,7 +117,7 @@ namespace ATIVBatteryGuard.Diagnostics
         }
 
         private static SamsungServiceLocation FindAnchor(string directory, string category,
-            SamsungSettingsPathPolicy policy, IList<string> notes)
+            SamsungSettingsPathPolicy policy, IList<string> notes, string source = "RegistryInstallLocation")
         {
             var candidates = new List<string>();
             int visited = 0;
@@ -124,7 +140,7 @@ namespace ATIVBatteryGuard.Diagnostics
             });
             foreach (string file in candidates)
             {
-                SamsungServiceLocation location = TryFile(file, category, "RegistryInstallLocation", directory);
+                SamsungServiceLocation location = TryFile(file, category, source, directory);
                 if (location.Found) { Note(notes, "SETTINGS_ANCHOR_FOUND"); return location; }
             }
             return Failure("SETTINGS_EXECUTABLE_NOT_FOUND");

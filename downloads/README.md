@@ -1,4 +1,6 @@
-# ATIV Battery Guard — Samsung Settings 앱 분석판
+# ATIV Battery Guard — Settings 위치 정보 누락 수정판
+
+업로드 결과에서 Samsung Settings 등록은 있으나 설치·아이콘 경로가 모두 없는 것을 확인했습니다. 이 경우에만 전용 후보 폴더 최대 6곳을 확인하는 수정판입니다. 제공된 경로 거부·등록 불일치에는 대체 조회를 하지 않습니다.
 
 [새 실행용 ZIP 다운로드 페이지](ATIVBatteryGuard-SETTINGS-ANALYSIS.zip) · [현재 소스 ZIP](ATIVBatteryGuard-SOURCE.zip)
 
@@ -14,11 +16,11 @@ ZIP 페이지의 **Download raw file** 버튼으로 받을 수 있습니다.
 
 이번 변경은 실제 Samsung Settings 앱의 EXE/DLL을 전용 설치 폴더에서 제한적으로 복사하는 기능입니다. 사용자 확인 전에는 추가 탐색·복사를 시작하지 않으며, 원본 파일 실행·설정 변경·자동 업로드는 없습니다. 설정·로그·개인 문서·드라이버는 복사하지 않습니다. 관리자 권한이나 코딩 도구는 필요하지 않습니다.
 
-새 WPF 빌드는 경고·오류 0개, portable 회귀 테스트는 105개 통과·실패 0개·건너뜀 0개입니다. 새 Settings 파일 수집 기능의 실제 Windows 동작은 아직 미검증입니다. [변경 소스](../ATIVBatteryGuard)와 소스 ZIP도 이 브랜치에 보관합니다. 삼성 바이너리와 사용자 업로드 자료는 이 배포에 포함하지 않습니다. main과 클라우드 환경 구성은 변경하지 않았습니다.
+새 WPF 빌드는 경고·오류 0개, portable 회귀 테스트는 108개 통과·실패 0개·건너뜀 0개입니다. 새 Settings 파일 수집 기능의 실제 Windows 동작은 아직 미검증입니다. [변경 소스](../ATIVBatteryGuard)와 소스 ZIP도 이 브랜치에 보관합니다. 삼성 바이너리와 사용자 업로드 자료는 이 배포에 포함하지 않습니다. main과 클라우드 환경 구성은 변경하지 않았습니다.
 
 | ZIP | SHA-256 |
 |---|---|
-| Settings 앱 분석판 | `ca8dbd05951cb646b5bc7cd687adda97617e01b448f32c3738426d8f710c1ed2` |
-| 현재 소스 | `37fbe2ba47a00ba386a16ccde37ab7c45c16dbff7753fb14c2a0ae28518e8aa4` |
+| Settings 앱 분석판 | `ceb0c9b456eafff3a7726527f798dd7211234e4ca683d3373d24c04716631e27` |
+| 현재 소스 | `cf3ec55cfa441d45f4932bb442f4e1712df28e8dcac3d9e5d16241dcef211a9d` |
 
 이전 `ATIVBatteryGuard-WMI-SCHEMA.zip`은 과거 진단판입니다. 이번 작업에는 위의 새 Settings 앱 분석판을 사용하세요.

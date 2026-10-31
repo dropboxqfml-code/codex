@@ -46,7 +46,7 @@ def main():
             archive.writestr('ATIVBatteryGuard/' + name, data)
     info = {
         'schemaVersion': 1, 'application': 'ATIV Battery Guard',
-        'distribution': 'SAMSUNG SETTINGS APPLICATION ANALYSIS PREVIEW',
+        'distribution': 'SAMSUNG SETTINGS MISSING LOCATION FIX PREVIEW',
         'target': 'Windows10x64/.NETFramework4.8',
         'reconstructedSources': True,
         'sourceFingerprintSha256': fingerprint,
@@ -58,6 +58,7 @@ def main():
         'previousWmiSchemaWindowsTested': True,
         'settingsCollectionRequiresConsent': True,
         'settingsCollectionUsesRegisteredDedicatedDirectory': True,
+        'missingLocationFallbackRequiresMatchedRegistrationAndBothFieldsAbsent': True,
         'wmiClassMetadataOnly': True, 'oemMethodInvocationAllowed': False,
         'oemModuleExecutionAllowed': False, 'actualChargeControlSupported': False,
         'containsOriginalVendorBinaries': False, 'containsUserUploads': False,

@@ -36,7 +36,7 @@ namespace ATIVBatteryGuard.Services
 		{
 			return MessageBox.Show(Application.Current.MainWindow,
 				"설치된 Samsung Settings 앱의 실행 파일·DLL 복사본과 파일 정보가 로컬 ZIP에 포함됩니다.\n\n"
-				+ "프로그램 등록 정보에서 확인한 전용 설치 폴더만 조사하며, 충전 관련 이름을 우선합니다. 최대 16개 파일, 파일당 16MiB, 총 24MiB로 제한합니다.\n\n"
+				+ "등록된 Samsung Settings의 전용 설치 폴더만 조사합니다. 위치 정보가 비어 있으면 전용 후보 폴더 최대 6곳을 확인합니다. 최대 16개 파일, 파일당 16MiB, 총 24MiB로 제한합니다.\n\n"
 				+ "파일은 실행하거나 변경하지 않습니다. 설정·로그·개인 문서·드라이버는 포함하지 않으며 자동 업로드하지 않습니다.\n"
 				+ "위치나 파일을 확인하지 못하면 원인을 담은 점검 보고서만 ZIP에 포함합니다.\n\n분석 자료 ZIP을 만들까요?",
 				"Samsung Settings 분석 자료", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;

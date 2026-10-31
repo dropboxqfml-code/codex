@@ -35,6 +35,25 @@ namespace ATIVBatteryGuard.Core.Services
             return Resolve(token, false);
         }
 
+        // Registration must match first. Missing metadata permits six fixed app
+        // directories; a provided but rejected path never authorizes fallback.
+        public string[] MissingLocationDirectories(bool registrationMatched, string installLocation, string displayIcon)
+        {
+            var result = new System.Collections.Generic.List<string>();
+            if (!registrationMatched || !string.IsNullOrEmpty(installLocation) || !string.IsNullOrEmpty(displayIcon))
+                return result.ToArray();
+            foreach (string root in new[] { programFilesX86, programFiles, programData })
+            {
+                if (string.IsNullOrEmpty(root)) continue;
+                foreach (string folder in new[] { @"Samsung\Settings", @"Samsung\Samsung Settings" })
+                {
+                    var candidate = ResolveInstallDirectory(root + "\\" + folder);
+                    if (candidate.Accepted && !result.Exists(path => Same(path, candidate.Path))) result.Add(candidate.Path);
+                }
+            }
+            return result.ToArray();
+        }
+
         public SamsungSettingsPathResult ResolveDisplayIcon(string raw)
         {
             if (string.IsNullOrWhiteSpace(raw) || raw.Length > 1200) return Reject("ICON_PATH_NOT_PROVIDED");

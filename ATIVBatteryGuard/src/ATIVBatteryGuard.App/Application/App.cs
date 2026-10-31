@@ -40,8 +40,7 @@ namespace ATIVBatteryGuard
                 var interaction = new LocalUserInteraction(directory, log);
                 viewModel = new MainViewModel(
                     new WindowsBatteryStatusProvider(), store, log, interaction,
-                    new HardwareDiagnosticsCollector(), new SamsungAnalysisBundleService(directory, SamsungAnalysisScope.SettingsApplication),
-                    interaction.ConfirmSamsungAnalysisExport);
+                    new HardwareDiagnosticsCollector());
                 var window = new MainWindow { DataContext = viewModel };
                 MainWindow = window;
                 if (viewModel.InitialWindowState == "Maximized")

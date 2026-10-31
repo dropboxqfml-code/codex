@@ -135,8 +135,20 @@
 
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Text="Samsung Settings 앱 분석 자료" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="설치된 Samsung Settings 앱의 프로그램 파일과 관련 DLL 복사본을 모읍니다. 파일을 실행하거나 충전 설정을 변경하지 않습니다."
+                    <TextBlock Text="공식 지원 확인" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="장치 정보와 확인 질문을 담은 문의 초안을 검토하고 복사할 수 있습니다. 문의는 자동 전송하지 않습니다."
+                               Style="{StaticResource Detail}" />
+                    <Button Content="공식 문의문 복사(_Q)" Command="{Binding CopySupportInquiryCommand}" HorizontalAlignment="Left" />
+                    <TextBox Text="{Binding SupportInquiryText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                             MaxHeight="280" VerticalScrollBarVisibility="Auto" Padding="10"
+                             AutomationProperties.Name="공식 지원 문의 초안" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="삼성 프로그램 파일 수집 보류" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="공식 지원 여부와 사용권 조건을 확인하는 동안 삼성 프로그램 파일의 추가 수집·분석을 보류합니다."
                                Style="{StaticResource Detail}" />
                     <WrapPanel>
                         <Button Content="Settings 분석 파일 만들기(_Z)" Command="{Binding CreateSamsungBundleCommand}" />
@@ -144,7 +156,7 @@
                     </WrapPanel>
                     <TextBlock Text="{Binding SamsungBundleStatus}" Margin="0,0,0,8" AutomationProperties.LiveSetting="Polite" />
                     <TextBlock Text="{Binding SamsungBundleFileName}" Margin="0,0,0,16" />
-                    <TextBlock Text="ZIP에는 삼성 실행 파일·DLL이 포함될 수 있습니다. 생성 전에 확인을 받으며, 설정·로그·개인 문서는 포함하지 않습니다. 자동 전송하지 않습니다."
+                    <TextBlock Text="공식 지원·사용권 검토가 끝날 때까지 삼성 파일 수집 버튼을 사용할 수 없습니다."
                                Style="{StaticResource Detail}" />
                 </StackPanel>
             </Border>

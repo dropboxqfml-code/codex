@@ -76,6 +76,11 @@ namespace ATIVBatteryGuard.ViewModels
 
 		public RelayCommand CopyDiagnosticsCommand { get; }
 
+		public RelayCommand CopySupportInquiryCommand { get; }
+
+		public string SupportInquiryText => CanExportDiagnostics
+			? SupportInquiryFormatter.Format(device) : "장치 정보 조회가 끝나면 공식 지원 문의 초안을 확인하고 복사할 수 있습니다.";
+
 		public RelayCommand SaveDiagnosticsCommand { get; }
 
 		public RelayCommand CreateHardwareReportCommand { get; }
@@ -405,6 +410,8 @@ namespace ATIVBatteryGuard.ViewModels
 			this.hardwareDiagnostics = hardwareDiagnostics;
 			this.samsungAnalysis = samsungAnalysis;
 			this.confirmSamsungAnalysis = confirmSamsungAnalysis;
+			if (samsungAnalysis == null || confirmSamsungAnalysis == null)
+				samsungBundleStatus = "삼성 프로그램 파일 수집은 공식 지원·사용권 확인 전까지 보류되어 있습니다.";
 			SettingsLoadResult settingsLoadResult = store.Load();
 			settings = settingsLoadResult.Settings;
 			canSave = settingsLoadResult.CanSave;
@@ -437,6 +444,14 @@ namespace ATIVBatteryGuard.ViewModels
 				{
 					interaction.CopyDiagnostics(mainViewModel.DiagnosticsText);
 					mainViewModel.StatusMessage = "진단 정보를 클립보드에 복사했습니다. 앱은 전송하지 않습니다.";
+				});
+			}, () => mainViewModel.CanExportDiagnostics);
+			CopySupportInquiryCommand = new RelayCommand(delegate
+			{
+				mainViewModel.SafeAction(delegate
+				{
+					interaction.CopyDiagnostics(mainViewModel.SupportInquiryText);
+					mainViewModel.StatusMessage = "공식 문의 초안을 클립보드에 복사했습니다. 내용을 검토한 뒤 직접 전달할 수 있습니다.";
 				});
 			}, () => mainViewModel.CanExportDiagnostics);
 			SaveDiagnosticsCommand = new RelayCommand(delegate
@@ -561,11 +576,13 @@ namespace ATIVBatteryGuard.ViewModels
 			Changed("DiagnosticsBusy");
 			Changed("DiagnosticsSucceeded");
 			Changed("CanExportDiagnostics");
+			Changed("SupportInquiryText");
 			Changed("DeviceModelText");
 			Changed("DeviceBiosText");
 			Changed("DeviceAssessmentText");
 			ShowDiagnosticsCommand.Refresh();
 			CopyDiagnosticsCommand.Refresh();
+			CopySupportInquiryCommand.Refresh();
 			SaveDiagnosticsCommand.Refresh();
 		}
 
@@ -720,6 +737,7 @@ namespace ATIVBatteryGuard.ViewModels
 				RefreshCommand.Refresh();
 				ShowDiagnosticsCommand.Refresh();
 				CopyDiagnosticsCommand.Refresh();
+				CopySupportInquiryCommand.Refresh();
 				SaveDiagnosticsCommand.Refresh();
 				OpenSettingsFolderCommand.Refresh();
 				OpenLogCommand.Refresh();

@@ -325,6 +325,58 @@ internal static partial class Program
                 var vm = f.ViewModel(confirm: () => true); Task pending = vm.CreateSamsungBundleAsync(); await gate.WaitEntered(); vm.Dispose(); gate.Release(); await pending; Equal(string.Empty, vm.SamsungBundleFileName);
             }
         });
+        Add("Support inquiry includes device facts without inventing charge support", () =>
+        {
+            string text = SupportInquiryFormatter.Format(KnownDevice());
+            Check(text.Contains("940X3G/930X3G") && text.Contains("P05ACJ.128.140819.dg") && text.Contains("10.0.19045"), "device context missing");
+            Check(text.Contains("미지원") && text.Contains("공식 지원") && text.Contains("사용권"), "support uncertainty omitted");
+        });
+        Add("Support inquiry preserves unknown device fields", () =>
+        {
+            string text = SupportInquiryFormatter.Format(null);
+            Check(text.Contains("알 수 없음") && !text.Contains("940X3G"), "unknown device replaced by fixed laptop");
+        });
+        Add("Support inquiry excludes raw errors and private paths", () =>
+        {
+            var device = new DeviceDiagnosticsResult(model: @"C:\Users\PrivateName\device", errors: new[] { "private-error-secret" });
+            string text = SupportInquiryFormatter.Format(device);
+            Check(!text.Contains("PrivateName") && !text.Contains("private-error-secret"), "private diagnostic text copied into inquiry");
+        });
+        AddAsync("Production review configuration cannot collect OEM files", async () =>
+        {
+            using (var f = new Fixture()) using (var vm = new MainViewModel(new FakeBattery(), f.Store, new LocalLog(f.DirectoryPath), f.Interaction, f.Hardware))
+            {
+                Check(!vm.CreateSamsungBundleCommand.CanExecute(null) && vm.SamsungBundleStatus.Contains("보류"), "OEM collection not visibly held");
+                await vm.CreateSamsungBundleAsync(); Equal(string.Empty, vm.SamsungBundleFileName);
+                Check(vm.ActualModeText.Contains("미지원"), "review enabled hardware writes");
+            }
+        });
+        AddAsync("Support inquiry copy requires fresh diagnostics and stops on dispose", async () =>
+        {
+            using (var f = new Fixture())
+            {
+                var vm = f.ViewModel();
+                Check(!vm.CopySupportInquiryCommand.CanExecute(null), "copy allowed before diagnostics");
+                vm.CopySupportInquiryCommand.Execute(null); Equal(0, f.Interaction.Copies);
+                await vm.RefreshDiagnosticsAsync();
+                vm.CopySupportInquiryCommand.Execute(null); Equal(1, f.Interaction.Copies);
+                Equal(vm.SupportInquiryText, f.Interaction.LastCopiedText);
+                Check(f.Interaction.LastCopiedText.Contains("940X3G/930X3G"), "wrong inquiry copied");
+                vm.Dispose(); vm.CopySupportInquiryCommand.Execute(null); Equal(1, f.Interaction.Copies);
+            }
+        });
+        AddAsync("Support inquiry blocks stale clipboard content while refreshing", async () =>
+        {
+            using (var f = new Fixture()) using (var vm = f.ViewModel()) using (var gate = new Gate())
+            {
+                await vm.RefreshDiagnosticsAsync();
+                f.Interaction.Reader = () => { gate.Enter(); return KnownDevice(); };
+                Task pending = vm.RefreshDiagnosticsAsync(); await gate.WaitEntered();
+                Check(!vm.CopySupportInquiryCommand.CanExecute(null) && !vm.SupportInquiryText.Contains("940X3G"), "stale inquiry available");
+                vm.CopySupportInquiryCommand.Execute(null); Equal(0, f.Interaction.Copies);
+                gate.Release(); await pending;
+            }
+        });
         RegisterSchemaTests();
         RegisterSettingsPolicyTests();
     }
@@ -371,10 +423,12 @@ internal static partial class Program
     {
         public Func<DeviceDiagnosticsResult> Reader = KnownDevice;
         public int Saves;
+        public int Copies;
+        public string LastCopiedText;
         public DeviceDiagnosticsResult ReadDiagnostics() { return Reader(); }
         public void OpenSettingsFolder() { }
         public void ShowLog() { }
-        public void CopyDiagnostics(string text) { }
+        public void CopyDiagnostics(string text) { Copies++; LastCopiedText = text; }
         public string SaveDiagnostics(string text) { Saves++; return "saved"; }
     }
     private sealed class FakeHardware : IHardwareDiagnosticsProvider

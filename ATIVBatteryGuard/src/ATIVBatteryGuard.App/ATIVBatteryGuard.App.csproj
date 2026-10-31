@@ -14,6 +14,8 @@
     <AppConfig>app.config</AppConfig>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Diagnostics/SamsungAnalysisBundleService.cs" />
+    <Compile Remove="Diagnostics/SamsungSettingsLocator.cs" />
     <ProjectReference Include="../ATIVBatteryGuard.Core/ATIVBatteryGuard.Core.csproj" />
     <Reference Include="System.Management" />
     <Reference Include="System.Runtime.Serialization" />

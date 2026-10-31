@@ -46,7 +46,7 @@ def main():
             archive.writestr('ATIVBatteryGuard/' + name, data)
     info = {
         'schemaVersion': 1, 'application': 'ATIV Battery Guard',
-        'distribution': 'OFFICIAL SUPPORT REVIEW PREVIEW',
+        'distribution': 'NO SAMSUNG FILE EXTRACTION PREVIEW',
         'target': 'Windows10x64/.NETFramework4.8',
         'reconstructedSources': True,
         'sourceFingerprintSha256': fingerprint,
@@ -58,6 +58,8 @@ def main():
         'previousWmiSchemaWindowsTested': True,
         'oemFileCollectionEnabled': False,
         'legacyCollectorConnectedToStartup': False,
+        'oemExtractionCodeIncluded': False,
+        'requiresExtractedVendorDll': False,
         'supportInquiryClipboardOnly': True,
         'wmiClassMetadataOnly': True, 'oemMethodInvocationAllowed': False,
         'oemModuleExecutionAllowed': False, 'actualChargeControlSupported': False,
@@ -65,7 +67,7 @@ def main():
         'automaticUpload': False, 'digitallySigned': False,
     }
     files['BUILD-INFO.json'] = json.dumps(info, ensure_ascii=False, indent=2).encode('utf-8')
-    instructions = '''ATIV Battery Guard — 공식 지원 검토판
+    instructions = '''ATIV Battery Guard — 삼성 파일 추출 제외판
 
 1. ZIP 파일을 새 폴더에 모두 압축 해제하세요.
 2. ATIVBatteryGuard.exe를 실행하세요. 관리자 권한은 필요하지 않습니다.
@@ -73,11 +75,11 @@ def main():
 4. 필요할 때 ‘공식 문의문 복사’를 눌러 내용을 복사할 수 있습니다.
 5. 문의문은 검토 후 사용자가 직접 전달할 수 있습니다. 앱은 외부에 전송하지 않습니다.
 
-이번 버전은 삼성 프로그램 파일 수집을 보류하고 생성 버튼을 비활성화합니다.
+이번 버전은 삼성 프로그램 파일 추출 기능을 배포 빌드에서 제외했습니다.
 추가 삼성 EXE/DLL이나 분석 ZIP을 업로드할 필요가 없습니다.
 배터리 잔량은 0%를 포함한 Windows의 유효한 현재 측정값을 그대로 표시합니다.
 실제 80%/100% 충전 제한은 아직 지원하지 않습니다.
-삼성 파일이나 제어 메서드를 실행하지 않습니다. OEM 파일 수집기는 제품 시작 구성에 연결하지 않았습니다.
+삼성 파일이나 제어 메서드를 실행하지 않습니다. OEM 파일 수집기와 위치 탐색기는 컴파일에서 제외했습니다.
 공식 지원 여부와 Samsung Settings 사용권 조건은 아직 확인 중입니다.
 자동 업로드, 드라이버 설치, 서비스 등록, 충전 설정 변경은 하지 않습니다.
 실행 대상은 Windows 10 x64 및 .NET Framework 4.8입니다.
@@ -85,7 +87,7 @@ def main():
 '''
     files['먼저 읽어주세요.txt'] = instructions.replace('\n', '\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(sha(data) + '  ' + name + '\n' for name, data in sorted(files.items())).encode('utf-8')
-    binary_zip = output / 'ATIVBatteryGuard-SUPPORT-REVIEW.zip'
+    binary_zip = output / 'ATIVBatteryGuard-NO-OEM-EXTRACTION.zip'
     with zipfile.ZipFile(binary_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

@@ -135,11 +135,11 @@
 
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Text="삼성 제어 모듈 분석 자료" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="알려진 삼성 서비스의 프로그램 파일과 관련 DLL 복사본을 모읍니다. 파일을 실행하거나 충전 설정을 변경하지 않습니다."
+                    <TextBlock Text="Samsung Settings 앱 분석 자료" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="설치된 Samsung Settings 앱의 프로그램 파일과 관련 DLL 복사본을 모읍니다. 파일을 실행하거나 충전 설정을 변경하지 않습니다."
                                Style="{StaticResource Detail}" />
                     <WrapPanel>
-                        <Button Content="삼성 분석 파일 만들기(_Z)" Command="{Binding CreateSamsungBundleCommand}" />
+                        <Button Content="Settings 분석 파일 만들기(_Z)" Command="{Binding CreateSamsungBundleCommand}" />
                         <Button Content="파일 위치 열기(_O)" Command="{Binding OpenSettingsFolderCommand}" />
                     </WrapPanel>
                     <TextBlock Text="{Binding SamsungBundleStatus}" Margin="0,0,0,8" AutomationProperties.LiveSetting="Polite" />

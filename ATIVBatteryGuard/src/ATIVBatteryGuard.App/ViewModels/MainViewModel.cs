@@ -58,7 +58,7 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private bool samsungBundleBusy;
 
-		private string samsungBundleStatus = "삼성 프로그램 파일을 분석 자료로 복사할 수 있습니다. 생성 전에 포함 내용을 안내합니다.";
+		private string samsungBundleStatus = "Samsung Settings 앱 파일을 분석 자료로 복사할 수 있습니다. 생성 전에 포함 내용을 안내합니다.";
 
 		private string samsungBundleFileName = string.Empty;
 

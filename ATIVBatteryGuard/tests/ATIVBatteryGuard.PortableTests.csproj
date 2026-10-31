@@ -13,5 +13,6 @@
     <Compile Include="../src/ATIVBatteryGuard.App/Services/IUserInteraction.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="WmiSchemaTests.cs" />
+    <Compile Include="SettingsPolicyTests.cs" />
   </ItemGroup>
 </Project>

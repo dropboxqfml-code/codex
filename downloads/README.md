@@ -1,20 +1,24 @@
-# ATIV Battery Guard — 삼성 WMI 정의 진단판
+# ATIV Battery Guard — Samsung Settings 앱 분석판
 
-[실행용 ZIP 다운로드 페이지](ATIVBatteryGuard-WMI-SCHEMA.zip) · [복원 소스 ZIP](ATIVBatteryGuard-SOURCE.zip)
+[새 실행용 ZIP 다운로드 페이지](ATIVBatteryGuard-SETTINGS-ANALYSIS.zip) · [현재 소스 ZIP](ATIVBatteryGuard-SOURCE.zip)
 
-ZIP 파일 페이지의 **Download raw file** 버튼으로 다운로드할 수 있습니다. 실행용 ZIP을 새 폴더에 모두 압축 해제하고 `ATIVBatteryGuard.exe`를 실행하세요. 코딩 도구나 관리자 권한은 필요하지 않습니다.
+ZIP 페이지의 **Download raw file** 버튼으로 받을 수 있습니다.
 
-1. ‘읽기 전용 진단’에서 **진단 파일 만들기**를 누릅니다.
-2. 완료되면 **진단 파일 위치 열기**를 누릅니다.
-3. 가장 최근의 `diagnostics-*.txt` 파일을 채팅에 첨부합니다.
+1. 기존 프로그램을 닫고 새 실행용 ZIP을 새 폴더에 모두 압축 해제합니다.
+2. `ATIVBatteryGuard.exe`를 실행합니다.
+3. 아래쪽 **Settings 분석 파일 만들기**를 누릅니다.
+4. EXE/DLL 복사본 포함 안내를 읽고 만들려면 **예**를 선택합니다.
+5. 완료되면 **파일 위치 열기**를 누르고 가장 최근의 `samsung-analysis-*.zip`을 채팅에 첨부합니다.
 
-이번에는 삼성 분석 ZIP을 다시 만들 필요가 없습니다. 실제 충전 제한은 아직 미지원입니다. 배터리 0%는 Windows가 보고하는 실제 값으로 유지합니다. 새 기능은 정확한 삼성 WMI 클래스의 정의만 읽으며 DLL이나 OEM 메서드를 호출하지 않습니다.
+위치나 파일을 확인하지 못해 점검 보고서만 포함된 ZIP이 만들어져도 그 ZIP을 전달하세요. 실제 충전 제한은 여전히 미지원입니다. 충전 명령을 추측해 호출하지 않습니다. 기존 WMI 정의 진단판은 사용자 노트북에서 창 실행, 62% 배터리 표시 및 정확한 삼성 클래스 정의 조회가 확인됐습니다.
 
-실제 .NET Framework 4.8 x64 WPF 빌드는 경고·오류 0개, 새 portable 회귀 테스트는 78개 통과·실패 0개·건너뜀 0개입니다. 새 빌드의 Windows GUI와 실제 노트북 WMI 조회는 아직 미검증입니다.
+이번 변경은 실제 Samsung Settings 앱의 EXE/DLL을 전용 설치 폴더에서 제한적으로 복사하는 기능입니다. 사용자 확인 전에는 추가 탐색·복사를 시작하지 않으며, 원본 파일 실행·설정 변경·자동 업로드는 없습니다. 설정·로그·개인 문서·드라이버는 복사하지 않습니다. 관리자 권한이나 코딩 도구는 필요하지 않습니다.
 
-이 브랜치에는 복원한 수정 가능한 [앱 소스](../ATIVBatteryGuard)와 소스 ZIP도 보관합니다. 이전 원본 주석/테스트의 완전 복구가 아니라 자체 배포본에서 C#을 복원하고 XAML·프로젝트·테스트를 재구성한 코드입니다. OEM 바이너리나 사용자 업로드 자료는 포함하지 않습니다. main 및 클라우드 환경 구성은 변경하지 않았습니다.
+새 WPF 빌드는 경고·오류 0개, portable 회귀 테스트는 105개 통과·실패 0개·건너뜀 0개입니다. 새 Settings 파일 수집 기능의 실제 Windows 동작은 아직 미검증입니다. [변경 소스](../ATIVBatteryGuard)와 소스 ZIP도 이 브랜치에 보관합니다. 삼성 바이너리와 사용자 업로드 자료는 이 배포에 포함하지 않습니다. main과 클라우드 환경 구성은 변경하지 않았습니다.
 
 | ZIP | SHA-256 |
 |---|---|
-| 실행용 | `80b97773081de48197574d82a413f67b8fc76a2e8a4bbabe7cf2d400dee53e3b` |
-| 소스 | `71acfb5c8a4da178afa9bf51be9b4c4009d37700f060621cedceeadeaa6cd6ff` |
+| Settings 앱 분석판 | `ca8dbd05951cb646b5bc7cd687adda97617e01b448f32c3738426d8f710c1ed2` |
+| 현재 소스 | `37fbe2ba47a00ba386a16ccde37ab7c45c16dbff7753fb14c2a0ae28518e8aa4` |
+
+이전 `ATIVBatteryGuard-WMI-SCHEMA.zip`은 과거 진단판입니다. 이번 작업에는 위의 새 Settings 앱 분석판을 사용하세요.

@@ -18,6 +18,12 @@ using Microsoft.Win32;
 
 namespace ATIVBatteryGuard.Diagnostics
 {
+	public enum SamsungAnalysisScope
+	{
+		ServiceModules,
+		SettingsApplication
+	}
+
 	public sealed class SamsungAnalysisBundleService : ISamsungAnalysisBundleService
 	{
 		private sealed class ModuleData
@@ -75,9 +81,13 @@ namespace ATIVBatteryGuard.Diagnostics
 
 		private readonly string localOutputDirectory;
 
-		public SamsungAnalysisBundleService(string localOutputDirectory)
+		private readonly SamsungAnalysisScope scope;
+
+		public SamsungAnalysisBundleService(string localOutputDirectory, SamsungAnalysisScope scope = SamsungAnalysisScope.ServiceModules)
 		{
+			if (!Enum.IsDefined(typeof(SamsungAnalysisScope), scope)) throw new ArgumentOutOfRangeException(nameof(scope));
 			this.localOutputDirectory = localOutputDirectory;
+			this.scope = scope;
 		}
 
 		public SamsungBundleResult Create()
@@ -92,7 +102,8 @@ namespace ATIVBatteryGuard.Diagnostics
 			{
 				string text2 = LocalPathPolicy.NormalizeDirectory(localOutputDirectory);
 				List<string> notes = new List<string>();
-				SamsungServiceLocation samsungServiceLocation = LocateServiceModule(notes);
+				SamsungServiceLocation samsungServiceLocation = scope == SamsungAnalysisScope.SettingsApplication
+					? SamsungSettingsLocator.Locate(notes) : LocateServiceModule(notes);
 				List<ModuleData> list = new List<ModuleData>();
 				string reason = samsungServiceLocation.ReasonCode;
 				int totalBytes = 0;
@@ -108,9 +119,21 @@ namespace ATIVBatteryGuard.Diagnostics
 						list.Add(moduleData);
 						totalBytes = moduleData.Bytes.Length;
 						string directoryName = Path.GetDirectoryName(samsungServiceLocation.Path);
+						if (scope == SamsungAnalysisScope.SettingsApplication)
+						{
+							var policy = new SamsungSettingsPathPolicy(
+								Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+								Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+								Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData));
+							var root = policy.ResolveInstallDirectory(samsungServiceLocation.CollectionDirectory);
+							if (!root.Accepted || !SamsungSettingsPathPolicy.IsInsideDirectory(samsungServiceLocation.Path, root.Path)
+								|| !IsSafeSourcePath(root.Path)) throw new IOException("Settings collection root rejected.");
+							directoryName = root.Path;
+						}
 						HashSet<string> hashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { moduleData.Name };
 						HashSet<string> hashSet2 = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { moduleData.Name };
-						CollectReferencedModule(samsungServiceLocation, directoryName, moduleData, list, hashSet, hashSet2, excluded, targetedCollection, ref count, ref totalBytes);
+						if (scope == SamsungAnalysisScope.ServiceModules)
+							CollectReferencedModule(samsungServiceLocation, directoryName, moduleData, list, hashSet, hashSet2, excluded, targetedCollection, ref count, ref totalBytes);
 						foreach (string item in CandidateFiles(samsungServiceLocation, directoryName, moduleData, notes, out limited))
 						{
 							string fileName = Path.GetFileName(item);
@@ -195,6 +218,10 @@ namespace ATIVBatteryGuard.Diagnostics
 						flag2 = true;
 					}
 				}
+				if (scope == SamsungAnalysisScope.SettingsApplication)
+					return new SamsungBundleResult(true, list.Count == 0
+						? "Samsung Settings 앱 파일을 복사하지 못해 위치 점검 보고서만 만들었습니다. 이 ZIP으로 원인을 확인할 수 있습니다."
+						: "Samsung Settings 앱 분석 ZIP을 만들었습니다. 프로그램 파일은 실행하지 않았으며 충전 설정도 변경하지 않았습니다.", text3, list.Count != 0);
 				return (list.Count == 0) ? new SamsungBundleResult(success: true, "삼성 파일을 복사하지 못해 점검 보고서만 생성했습니다. wsabi.dll 상태는 보고서에 기록했습니다.", text3, containsModules: false) : new SamsungBundleResult(success: true, flag2 ? "삼성 분석 ZIP을 만들었습니다. wsabi.dll을 분석 데이터로 확보했습니다. 파일은 실행하지 않았습니다." : "삼성 분석 ZIP을 만들었습니다. wsabi.dll은 확보하지 못해 이유를 보고서에 기록했습니다. 원본은 변경하지 않았습니다.", text3);
 			}
 			catch (Exception exception) when (ReadFailure(exception))
@@ -304,8 +331,10 @@ namespace ATIVBatteryGuard.Diagnostics
 			}
 		}
 
-		private static List<string> CandidateFiles(SamsungServiceLocation location, string directory, ModuleData serviceModule, IList<string> notes, out bool limited)
+		private List<string> CandidateFiles(SamsungServiceLocation location, string directory, ModuleData serviceModule, IList<string> notes, out bool limited)
 		{
+			if (scope == SamsungAnalysisScope.SettingsApplication)
+				return SettingsCandidateFiles(directory, notes, out limited);
 			List<string> list = new List<string>();
 			HashSet<string> hashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { serviceModule.Name };
 			limited = false;
@@ -351,6 +380,78 @@ namespace ATIVBatteryGuard.Diagnostics
 				return (num2 == 0) ? StringComparer.OrdinalIgnoreCase.Compare(Path.GetFileName(left), Path.GetFileName(right)) : num2;
 			});
 			return list;
+		}
+
+		private static List<string> SettingsCandidateFiles(string root, IList<string> notes, out bool limited)
+		{
+			// Search only the already-approved Settings installation subtree. Never
+			// follow reparse points or search user folders, PATH, or sibling apps.
+			const int maxEntries = 512, maxDirectories = 16, maxCandidates = 128, maxDepth = 2;
+			limited = false;
+			var files = new List<string>();
+			var pending = new Queue<Tuple<string, int>>();
+			pending.Enqueue(Tuple.Create(root, 0));
+			int visitedEntries = 0, visitedDirectories = 0;
+			string prefix = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+			var pathPolicy = new SamsungSettingsPathPolicy(
+				Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+				Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+				Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData));
+			while (pending.Count > 0)
+			{
+				if (++visitedDirectories > maxDirectories) { limited = true; break; }
+				var current = pending.Dequeue();
+				if (!IsSafeSourcePath(current.Item1)) { notes.Add("SETTINGS_UNSAFE_DIRECTORY_SKIPPED"); continue; }
+				try
+				{
+					var children = new List<string>();
+					foreach (string entry in Directory.EnumerateFileSystemEntries(current.Item1, "*", SearchOption.TopDirectoryOnly))
+					{
+						if (++visitedEntries > maxEntries) { limited = true; break; }
+						// Apply the same lexical/device-name rules to every descendant
+						// before any filesystem probe, including directory candidates.
+						if (!entry.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+							|| !pathPolicy.ResolveInstallDirectory(entry).Accepted || !IsSafeSourcePath(entry)) continue;
+						FileAttributes attributes = File.GetAttributes(entry);
+						if ((attributes & FileAttributes.ReparsePoint) != 0) continue;
+						if ((attributes & FileAttributes.Directory) != 0)
+						{
+							if (current.Item2 < maxDepth) children.Add(entry);
+							else limited = true;
+							}
+						else if (IsModuleFile(entry))
+						{
+							if (files.Count == maxCandidates) { limited = true; break; }
+							files.Add(entry);
+						}
+					}
+					children.Sort(CompareSettingsCandidates);
+					foreach (string child in children) pending.Enqueue(Tuple.Create(child, current.Item2 + 1));
+				}
+				catch (Exception exception) when (ReadFailure(exception))
+				{
+					if (!notes.Contains("SETTINGS_CANDIDATE_READ_FAILED")) notes.Add("SETTINGS_CANDIDATE_READ_FAILED");
+				}
+				if (visitedEntries > maxEntries || files.Count == maxCandidates) { limited = true; break; }
+			}
+			files.Sort(CompareSettingsCandidates);
+			notes.Add("SETTINGS_SUBTREE_DEPTH2_BOUNDED");
+			return files;
+		}
+
+		private static int CompareSettingsCandidates(string left, string right)
+		{
+			int priority = SettingsPriority(left).CompareTo(SettingsPriority(right));
+			return priority != 0 ? priority : StringComparer.OrdinalIgnoreCase.Compare(left, right);
+		}
+
+		private static int SettingsPriority(string path)
+		{
+			string name = Path.GetFileName(path);
+			foreach (string word in new[] { "battery", "extender", "charge", "power" })
+				if (name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0) return 0;
+			if (name.IndexOf("settings", StringComparison.OrdinalIgnoreCase) >= 0) return 1;
+			return 2;
 		}
 
 		private static void CollectReferencedModule(SamsungServiceLocation location, string directory, ModuleData serviceModule, IList<ModuleData> modules, ISet<string> names, ISet<string> processed, IList<SkippedModule> excluded, TargetedCollection targeted, ref int skipped, ref int totalBytes)
@@ -663,11 +764,14 @@ namespace ATIVBatteryGuard.Diagnostics
 			return 1;
 		}
 
-		private static string BuildReport(SamsungServiceLocation location, string reason, IList<string> notes, IList<ModuleData> modules, int bytes, int skipped, bool limited, IList<SkippedModule> excluded, TargetedCollection targeted)
+		private string BuildReport(SamsungServiceLocation location, string reason, IList<string> notes, IList<ModuleData> modules, int bytes, int skipped, bool limited, IList<SkippedModule> excluded, TargetedCollection targeted)
 		{
 			StringBuilder stringBuilder = new StringBuilder();
-			stringBuilder.AppendLine("ATIV Battery Guard — 삼성 모듈 오프라인 분석 자료");
-			stringBuilder.AppendLine((modules.Count == 0) ? "삼성 모듈을 복사하지 못했습니다. 이 ZIP은 위치 점검 보고서만 포함합니다." : "사용자가 확인한 뒤 알려진 서비스 관련 모듈과 정적 참조 근거로 허용한 분석 데이터만 복사했습니다.");
+			bool settingsApp = scope == SamsungAnalysisScope.SettingsApplication;
+			stringBuilder.AppendLine(settingsApp ? "ATIV Battery Guard — Samsung Settings 앱 정적 분석 자료" : "ATIV Battery Guard — 삼성 모듈 오프라인 분석 자료");
+			stringBuilder.AppendLine((modules.Count == 0) ? "삼성 모듈을 복사하지 못했습니다. 이 ZIP은 위치 점검 보고서만 포함합니다." : settingsApp
+				? "사용자가 확인한 뒤 설치된 Samsung Settings 전용 폴더의 EXE/DLL만 분석 데이터로 복사했습니다."
+				: "사용자가 확인한 뒤 알려진 서비스 관련 모듈과 정적 참조 근거로 허용한 분석 데이터만 복사했습니다.");
 			stringBuilder.AppendLine("결과 코드: " + SafeToken(reason));
 			stringBuilder.AppendLine("위치 확인 출처: " + SafeToken(location.Source));
 			stringBuilder.AppendLine("설치 위치 유형: " + SafeToken(location.Category));
@@ -678,6 +782,18 @@ namespace ATIVBatteryGuard.Diagnostics
 				stringBuilder.AppendLine("확인 단계: " + SafeToken(note));
 			}
 			stringBuilder.AppendLine();
+			if (settingsApp)
+			{
+				stringBuilder.AppendLine("[Settings 앱 수집 범위]");
+				stringBuilder.AppendLine("HKLM 32/64비트의 정확한 Samsung Settings 등록과 전용 설치 경로만 확인했습니다. 제거 명령은 읽거나 실행하지 않습니다.");
+				stringBuilder.AppendLine("폴더 깊이 최대 2, 디렉터리 최대 16, 항목 최대 512, 후보 파일 최대 128, 복사 모듈 최대 16개입니다.");
+				stringBuilder.AppendLine("파일당 최대 16MiB, 총 최대 24MiB, ZIP은 32MiB 미만입니다. 링크 경로를 따라가지 않습니다.");
+				stringBuilder.AppendLine("충전 관련 이름을 우선하지만 이름과 회사 표시 정보만으로 배터리 기능이나 전자서명 신뢰를 입증할 수 없습니다.");
+				stringBuilder.AppendLine("하위 폴더에 같은 이름의 파일이 여러 개 있으면 이름별 한 파일만 포함합니다. 이 자료는 전체 설치 파일의 완전한 복사본이 아닙니다.");
+				stringBuilder.AppendLine("설정·로그·개인 문서·서비스 폴더·드라이버·ACPI 원본 테이블은 이 수집에 포함하지 않습니다.");
+			}
+			else
+			{
 			stringBuilder.AppendLine("[같은 폴더 wsabi.dll 대상 수집]");
 			stringBuilder.AppendLine("정적 참조 부모: SamsungConfigurationMonitor.exe");
 			stringBuilder.AppendLine("확인된 부모 SHA-256: 8a0d87b214623f424b7f493034bca3271e35fc4376bbfa3f72a1491d33b72281");
@@ -693,6 +809,7 @@ namespace ATIVBatteryGuard.Diagnostics
 			stringBuilder.AppendLine("참조 근거와 기본 PE 형식은 전자서명 신뢰·실행 가능성·호출 규약·충전 제어 지원의 증거가 아닙니다.");
 			stringBuilder.AppendLine("부모 모니터에서 확인된 동작은 팬·정숙 모드 관련이며 충전 제한 명령은 확인되지 않았습니다.");
 			stringBuilder.AppendLine("다른 폴더나 PATH를 검색하지 않고 파일을 로드·실행하거나 DLL 함수를 호출하지 않았습니다.");
+			}
 			stringBuilder.AppendLine();
 			stringBuilder.AppendLine("이름·버전·SHA-256·PE 가져오기 모듈/내보내기 이름만 읽었으며 파일을 로드하거나 실행하지 않았습니다.");
 			stringBuilder.AppendLine("회사 정보는 파일의 표시 정보일 뿐 신뢰 증명이 아닙니다. 전자서명 신뢰 검증 미실행; 파일은 분석 데이터일 뿐 실행 안함.");

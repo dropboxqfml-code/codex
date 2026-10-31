@@ -34,7 +34,12 @@ namespace ATIVBatteryGuard.Services
 
 		public bool ConfirmSamsungAnalysisExport()
 		{
-			return MessageBox.Show(Application.Current.MainWindow, "삼성 Settings의 실행 파일·DLL 복사본과 파일 정보가 로컬 ZIP에 포함됩니다.\n\n확인된 삼성 모니터가 참조하는 같은 폴더의 wsabi.dll도 분석 데이터로 포함될 수 있습니다.\n\n원본 파일은 실행하거나 변경하지 않습니다. 설정·로그·개인 문서는 포함하지 않으며 자동 업로드하지 않습니다.\n파일 위치를 확인할 수 없으면 원인을 담은 점검 보고서만 ZIP에 포함합니다.\n\n분석 자료 ZIP을 만들까요?", "삼성 분석 파일 만들기", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
+			return MessageBox.Show(Application.Current.MainWindow,
+				"설치된 Samsung Settings 앱의 실행 파일·DLL 복사본과 파일 정보가 로컬 ZIP에 포함됩니다.\n\n"
+				+ "프로그램 등록 정보에서 확인한 전용 설치 폴더만 조사하며, 충전 관련 이름을 우선합니다. 최대 16개 파일, 파일당 16MiB, 총 24MiB로 제한합니다.\n\n"
+				+ "파일은 실행하거나 변경하지 않습니다. 설정·로그·개인 문서·드라이버는 포함하지 않으며 자동 업로드하지 않습니다.\n"
+				+ "위치나 파일을 확인하지 못하면 원인을 담은 점검 보고서만 ZIP에 포함합니다.\n\n분석 자료 ZIP을 만들까요?",
+				"Samsung Settings 분석 자료", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
 		}
 
 		public void OpenSettingsFolder()

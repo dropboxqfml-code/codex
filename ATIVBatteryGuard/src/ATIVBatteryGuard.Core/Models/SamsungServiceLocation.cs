@@ -18,7 +18,10 @@ namespace ATIVBatteryGuard.Core.Models
 
 		public bool CanEnumerateDirectory { get; private set; }
 
-		public SamsungServiceLocation(bool found, string path, string fileName, string source, string category, string reasonCode, bool canEnumerateDirectory = false)
+		// Local-only collection boundary. Never include this path in reports or logs.
+		public string CollectionDirectory { get; private set; }
+
+		public SamsungServiceLocation(bool found, string path, string fileName, string source, string category, string reasonCode, bool canEnumerateDirectory = false, string collectionDirectory = null)
 		{
 			FileName = SafeFileName(fileName);
 			Found = found && !string.IsNullOrEmpty(path) && FileName.Length != 0;
@@ -27,6 +30,7 @@ namespace ATIVBatteryGuard.Core.Models
 			Category = Token(category, "Invalid");
 			ReasonCode = Token(reasonCode, "PATH_SYNTAX_INVALID");
 			CanEnumerateDirectory = Found && canEnumerateDirectory;
+			CollectionDirectory = Found ? (collectionDirectory ?? string.Empty) : string.Empty;
 		}
 
 		internal static string SafeFileName(string value)

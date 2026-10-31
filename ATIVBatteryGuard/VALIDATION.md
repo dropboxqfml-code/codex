@@ -1,20 +1,34 @@
-# 복원·정의 진단판 검증 기록
+# Settings 앱 분석판 검증 기록
 
-2026-10-31 한국 시간 기준입니다.
+2026-10-31 한국 시간 기준입니다. 이전 WMI 진단판의 확인 결과와 이번 Settings 수집 변경을 구분합니다.
+
+## 이전 WMI 정의 진단판
 
 | 항목 | 실제 확인 결과 |
-|---|---|
+| --- | --- |
 | .NET Framework 4.8 x64 WPF 빌드 | 성공, 경고 0개·오류 0개 |
 | 공유 Core·ViewModel 및 WMI 정책 회귀 테스트 | 78개 통과·실패 0개·건너뜀 0개 |
 | 실행 파일 정적 검사 | x64 GUI, .NET 4.8 참조, 관리 진입점 확인 |
 | 실제 XAML 컴파일 산출물 | `app.baml`, `views/mainwindow.baml` 포함 확인 |
 | 일반 권한 manifest | `asInvoker` 포함 확인 |
-| 독립 코드 검토 | 메타데이터 진단의 실행·쓰기·외부 통신 경로 발견하지 못함 |
-| Windows에서 새 앱 GUI 실행 | 미실행 |
-| 노트북의 실제 WMI 클래스 정의 조회 | 미실행, 새 TXT 결과 필요 |
+| Windows 노트북 앱 실행 | 사용자 화면으로 창·배터리 표시 확인 |
+| 실제 WMI 클래스 정의 | 사용자 TXT에서 정확한 클래스 3개·메서드 서명 확인, 조회 오류 없음 |
+
+사용자 최신 관측은 배터리 62%, AC 연결 안 됨, 방전 중이며 Win32와 WMI 잔량이 일치했습니다. 이전 0%는 과거 관측이며 현재 고정값이 아닙니다. 클래스 정의 조회는 메서드를 실행하거나 충전 제한을 적용한 시험이 아닙니다.
+
+## 새 Settings 앱 파일 수집
+
+| 항목 | 현재 상태 |
+| --- | --- |
+| 새 변경의 WPF 빌드 | 성공, 경고 0개·오류 0개 |
+| 새 변경의 portable 회귀 테스트 | 105개 통과·실패 0개·건너뜀 0개 |
+| 새 수집 기능의 Windows 동작 | 미검증, 새 ZIP 결과 필요 |
+| Windows GUI 자동 self-test | 미실행 |
 | 실제 충전 제한 | 구현하지 않음, 항상 미지원 |
 
-Linux에서 실제로 사용한 주요 명령입니다. `dotnet`은 준비된 .NET SDK 8.0.427입니다.
+새 suite는 기존 78개와 Settings 경계 검사 27개를 이번 변경에서 다시 실행했습니다. pure 정책과 공유 Core·ViewModel의 회귀 검증이며, Windows Registry 열거·파일 수집을 실행한 결과가 아닙니다.
+
+재실행할 주요 명령입니다. `dotnet`은 .NET 8 SDK를 사용합니다.
 
 ```sh
 dotnet restore ATIVBatteryGuard.sln
@@ -23,4 +37,4 @@ dotnet run --project tests/ATIVBatteryGuard.PortableTests.csproj -c Release --no
 python scripts/package_preview.py --test-report reports/portable-tests.json
 ```
 
-Windows용 `scripts/Test-Windows.ps1`은 제공하지만 이 환경에서는 실행하지 않았습니다. 빌드 성공이나 WMI 클래스 발견을 실제 충전 제어 성공으로 해석하지 않습니다. 이전 배포본의 149개 시험 기록도 이번 결과로 재사용하지 않았습니다.
+Windows용 `scripts/Test-Windows.ps1`은 제공하지만 이 환경에서는 실행하지 않았습니다. 빌드 성공·클래스 발견·파일 수집 성공을 실제 충전 제어 성공으로 해석하지 않습니다. 과거 149개 또는 이전 WMI 판의 78개 시험 기록을 새 변경의 시험 수치로 재사용하지 않았습니다.

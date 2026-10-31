@@ -52,3 +52,11 @@ OEM 메서드 호출, 인스턴스 값 수집, OEM DLL 로드·실행, 드라이
 후속 사용자 Settings 분석 ZIP은 모듈 0개인 보고서 전용 자료였습니다. 32비트 Samsung Settings 등록은 발견됐지만 InstallLocation/DisplayIcon 문자열이 모두 비어 ICON_PATH_NOT_PROVIDED로 종료했습니다. 이는 앱 미설치나 배터리 제어 미지원의 증거가 아닙니다.
 
 이 경우에만 시스템 Program Files/PFx86/ProgramData의 Samsung\Settings 또는 Samsung\Samsung Settings 전용 후보 최대 6곳을 확인하도록 수정했습니다. 등록 불일치나 제공 경로 거부에는 적용하지 않습니다. 링크 차단·회사 정보/PE 검사·복사 한도·동의 확인은 유지합니다. 수정 후 실제 Windows 파일 확보는 아직 검증하지 않았습니다.
+
+## 2026-11-01 사용자 결과 확인
+
+위치 누락 수정판의 후속 보고서에서 `RegisteredKnownDirectory`, `SettingsProgramFilesX86`, `Settings.exe` 앵커 발견을 확인했습니다. 대체 위치 확인은 동작했지만 회사 표시 정보가 수집 조건을 통과하지 않아 `COMPANY_NOT_SAMSUNG`으로 제외됐으며 복사 모듈 수는 0개입니다. 회사 정보가 누락된 것인지 다른 값인지는 이 보고서로 구분할 수 없습니다. 실제 파일 바이트는 아직 확보하지 못했습니다.
+
+같이 재첨부된 이전 서비스 ZIP의 5개 모듈 SHA-256은 기존 분석 대상과 모두 일치했습니다. `wsabi.dll`도 같은 파일이며 배터리 명령에 관한 추가 근거는 없습니다. 원본 사용자 ZIP이나 OEM 파일은 저장소에 포함하지 않습니다.
+
+남은 사용량을 고려해 다음 단계는 사용자가 Settings 앱의 `Settings.exe` 한 파일을 ZIP으로 전달하는 것입니다. 탐색기의 `%ProgramFiles(x86)%\Samsung\Settings` 또는 `%ProgramFiles(x86)%\Samsung\Samsung Settings` 전용 폴더를 확인하거나 실제 Samsung Settings 바로가기의 파일 위치 열기를 사용합니다. 파일을 새로 실행하거나 설정·로그·폴더 전체를 압축할 필요는 없습니다. 확보 후 PE/버전/참조/리소스를 정적으로 분석하고, 회사 표시 정보 조건은 이번 보고서만으로 완화하지 않습니다. 실제 충전 제어는 계속 미지원입니다.

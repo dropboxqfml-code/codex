@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../src/ATIVBatteryGuard.Core/**/*.cs" Exclude="../src/ATIVBatteryGuard.Core/Properties/**;../src/ATIVBatteryGuard.Core/obj/**;../src/ATIVBatteryGuard.Core/bin/**" />
+    <Compile Include="../src/ATIVBatteryGuard.App/ViewModels/*.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.App/Services/IUserInteraction.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="WmiSchemaTests.cs" />
+  </ItemGroup>
+</Project>

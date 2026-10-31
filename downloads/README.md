@@ -1,20 +1,20 @@
-# ATIV Battery Guard — 삼성 파일 추출 제외판
+# ATIV Battery Guard — Windows 배터리 읽기 전용 조회판
 
-[현재 실행용 ZIP](ATIVBatteryGuard-NO-OEM-EXTRACTION.zip) · [현재 소스](ATIVBatteryGuard-SOURCE.zip) · [DLL 추출 없는 조사 결과](../ATIVBatteryGuard/DLL_INDEPENDENT_RESEARCH.md)
+[현재 실행용 ZIP](ATIVBatteryGuard-WINDOWS-BATTERY-QUERY.zip) · [현재 소스](ATIVBatteryGuard-SOURCE.zip) · [구조·출처·검증 기록](../ATIVBatteryGuard/WINDOWS_BATTERY_QUERY.md)
 
-사용자의 Samsung Settings에서 DLL을 추출할 수 없다는 조건으로 진행한 버전입니다. 삼성 파일 수집기·위치 탐색기를 WPF 프로젝트의 컴파일에서 제외하고 수집 확인 창과 UI도 제거했습니다. 실행 파일 메타데이터에서 두 수집 타입이 없음을 확인했습니다. 삼성 실행 파일·DLL을 추가로 전달할 필요가 없습니다. 앱 자체 Core DLL과 Windows 내장 프레임워크는 구성 요소입니다.
+삼성 DLL을 추출하지 않고 Microsoft의 표준 배터리 조회로 Windows 드라이버의 BatteryCharge/BatteryDischarge 요청 지원 비트를 읽습니다. 이 지원 표시는 80% 상한 설정이나 충전 제한 성공의 증거가 아닙니다. 실제 제어는 계속 미지원입니다.
 
-MicrosoftDocs 공식 문서 다섯 개를 직접 읽었습니다. 표준 Windows 배터리 설정 요청 인터페이스는 존재하지만, 검토한 항목은 충전 요청·방전 요청·유지보수용 잔량 보정이며 80% 상한 매개변수가 아닙니다. WMI 정의 조회는 추출 DLL 없이 가능하지만 이 모델의 실제 충전 명령과 read-back 규약은 아직 검증하지 못했습니다. 실제 충전 제어는 계속 미지원입니다.
+새 버전을 사용할 경우 기존 앱을 닫고 ZIP을 새 폴더에 모두 압축 해제한 뒤 ATIVBatteryGuard.exe를 실행합니다. 기존 **진단 파일 만들기**로 생성한 diagnostics TXT의 **Windows 표준 배터리 드라이버의 요청 지원 여부** 섹션에서 결과를 확인할 수 있습니다. 삼성 실행 파일이나 DLL을 보낼 필요가 없습니다.
 
-배터리 상태·로컬 설정·Mock·읽기 전용 진단·공식 문의문 복사는 유지합니다. 앱은 외부 전송·드라이버 설치·서비스 등록·펌웨어 쓰기를 하지 않습니다. 새 버전을 사용할 경우 기존 프로그램을 닫고 새 폴더에 모두 압축 해제한 뒤 ATIVBatteryGuard.exe를 실행하세요. 이번 결과에 대해 추가 업로드나 노트북 테스트를 요구하지 않습니다.
+GENERIC_READ, QUERY_TAG(대기 0), QUERY_INFORMATION(BatteryInformation)만 사용합니다. SET 요청이나 OEM 메서드는 호출하지 않습니다. 자체 보조 프로세스에 10초 제한을 적용하고 최대 8개 인터페이스만 확인합니다. 장치 경로·태그·시리얼번호·고유 ID는 결과에 포함하지 않습니다. 보조 조회는 상세 진단 버튼을 선택했을 때만 실행합니다.
 
-WPF 빌드는 경고·오류 0개, portable 테스트는 114개 통과·실패 0개·건너뜀 0개입니다. x64/net48/BAML/일반권한 manifest 및 OEM 수집 타입 부재를 정적으로 확인했습니다. Windows에서 이 새 버전은 아직 실행하지 않았습니다.
+회귀 테스트 130개 통과·실패 0개·건너뜀 0개, WPF 빌드 경고·오류 0개입니다. 실행 파일의 x64/net48/BAML/일반 권한 manifest와 OEM 수집 타입 부재·새 조회 타입 포함을 확인했습니다. 새 기능의 실제 Windows 장치 조회는 아직 미검증입니다. 코드 검토와 Linux 테스트가 하드웨어 동작 검증을 대신하지 않습니다.
 
-삼성/NBRchive 원문과 사용권은 미확인입니다. 사용자가 승인한 네트워크 초안은 준비돼 있으나 현재 도구와 Codex CLI에는 환경 게시 명령이 없어 적용은 완료하지 못했습니다. 이 브랜치에는 자체 코드와 요약 연구만 포함하며 삼성 원본 파일·사용자 업로드·외부 원문 파일은 포함하지 않습니다. main과 게시된 환경은 변경하지 않았습니다.
+배포에는 자체 앱·소스·연구 요약만 들어 있으며 삼성 원본 파일·사용자 업로드·외부 문서 원본은 포함하지 않습니다. main과 게시된 환경은 변경하지 않았습니다.
 
 | ZIP | SHA-256 |
 |---|---|
-| 실행용 | `40e9573af2566bdd3578ee74012c9f5174037d2a87f832c7c006b8138021a370` |
-| 소스 | `8f4f39bbbccea9f2e6e28efd37be40ac242e620c6fd0ca0d14b74f43d2ef4109` |
+| 실행용 | `4a814e66062d2c32c98cbb6e75af20c66fb8edc48723420f1a59bf91ab244f87` |
+| 소스 | `20003da93f843a854c866c8130ba81fc52f37809a9ecb96e9968be572ec507d7` |
 
-이전 분석용 ZIP은 과거 기록입니다. 현재 사용할 파일은 위 삼성 파일 추출 제외판입니다.
+이전 ZIP은 과거 기록입니다. 현재 사용할 파일은 위 Windows 배터리 조회판입니다.

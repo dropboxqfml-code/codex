@@ -379,6 +379,7 @@ internal static partial class Program
         });
         RegisterSchemaTests();
         RegisterSettingsPolicyTests();
+        RegisterBatteryCapabilitiesTests();
     }
 
     private static void Add(string name, Action action) { Tests.Add(new KeyValuePair<string, Func<Task>>(name, () => { action(); return Task.CompletedTask; })); }

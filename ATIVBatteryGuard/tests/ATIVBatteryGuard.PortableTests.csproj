@@ -14,5 +14,6 @@
     <Compile Include="Program.cs" />
     <Compile Include="WmiSchemaTests.cs" />
     <Compile Include="SettingsPolicyTests.cs" />
+    <Compile Include="BatteryCapabilitiesTests.cs" />
   </ItemGroup>
 </Project>

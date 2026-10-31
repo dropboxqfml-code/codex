@@ -36,7 +36,9 @@ namespace ATIVBatteryGuard.Core.Models
 
 		public WmiSchemaInspectionReport OemWmiSchema { get; }
 
-		public HardwareProbeReport(DeviceDiagnosticsResult device = null, NativePowerReading power = null, IEnumerable<WmiBatteryReading> batteries = null, IEnumerable<string> oemPrograms = null, IEnumerable<string> oemServices = null, IEnumerable<string> oemWmiClasses = null, IEnumerable<string> errors = null, WmiSchemaInspectionReport oemWmiSchema = null)
+		public WindowsBatteryCapabilitiesReport WindowsBatteryCapabilities { get; }
+
+		public HardwareProbeReport(DeviceDiagnosticsResult device = null, NativePowerReading power = null, IEnumerable<WmiBatteryReading> batteries = null, IEnumerable<string> oemPrograms = null, IEnumerable<string> oemServices = null, IEnumerable<string> oemWmiClasses = null, IEnumerable<string> errors = null, WmiSchemaInspectionReport oemWmiSchema = null, WindowsBatteryCapabilitiesReport windowsBatteryCapabilities = null)
 		{
 			Device = device ?? new DeviceDiagnosticsResult();
 			Power = power ?? new NativePowerReading(success: false, null, null, null, null, "배터리 API 관측값이 없습니다.");
@@ -46,6 +48,7 @@ namespace ATIVBatteryGuard.Core.Models
 			this.oemWmiClasses = CopyLines(oemWmiClasses, 24);
 			this.errors = CopyLines(errors, 16);
 			OemWmiSchema = oemWmiSchema ?? new WmiSchemaInspectionReport(null);
+			WindowsBatteryCapabilities = windowsBatteryCapabilities ?? new WindowsBatteryCapabilitiesReport();
 		}
 
 		public string ToDisplayText()
@@ -60,6 +63,8 @@ namespace ATIVBatteryGuard.Core.Models
 			stringBuilder.AppendLine("[Windows 배터리 API / WMI 관측 비교]");
 			stringBuilder.AppendLine(BatteryCrossCheck.Format(Power, batteries));
 			stringBuilder.AppendLine("순차적으로 읽은 값이므로 두 측정 시점은 다를 수 있습니다. 0%는 유효한 값이며 고장이나 충전 제한의 증거로 단정하지 않습니다.");
+			stringBuilder.AppendLine();
+			stringBuilder.Append(WindowsBatteryCapabilities.ToDisplayText());
 			stringBuilder.AppendLine();
 			AppendList(stringBuilder, "Samsung 설정 관련 프로그램 후보", oemPrograms);
 			stringBuilder.AppendLine("프로그램 목록은 HKLM의 32/64비트 제거 목록만 확인했습니다. Microsoft Store 앱·사용자별 앱을 모두 조사한 결과가 아닙니다.");

@@ -21,6 +21,11 @@ namespace ATIVBatteryGuard
             base.OnStartup(e);
             if (e.Args.Length != 0)
             {
+                if (e.Args.Length == 2 && e.Args[0] == BatteryCapabilitiesWorker.Argument)
+                {
+                    Shutdown(BatteryCapabilitiesWorker.Run(e.Args[1]));
+                    return;
+                }
                 if (e.Args.Length == 2 && e.Args[0] == "--self-test")
                 {
                     try { Shutdown(await WindowsSmokeTest.RunAsync(this, e.Args[1])); }
@@ -73,6 +78,7 @@ namespace ATIVBatteryGuard
 
         protected override void OnExit(ExitEventArgs e)
         {
+            WindowsBatteryCapabilitiesProvider.StopForShutdown();
             if (timer != null)
             {
                 timer.Stop();

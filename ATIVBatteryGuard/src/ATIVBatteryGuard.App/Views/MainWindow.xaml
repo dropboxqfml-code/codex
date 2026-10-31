@@ -113,7 +113,7 @@
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Text="읽기 전용 진단" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="모델·BIOS·Windows 정보와 배터리 및 삼성 인터페이스 정보를 조회합니다. 결과는 로컬에만 저장합니다."
+                    <TextBlock Text="모델·BIOS·Windows 정보, 배터리 드라이버의 요청 지원 여부와 삼성 인터페이스 정의를 읽기 전용으로 조회합니다. 결과는 로컬에만 저장합니다."
                                Style="{StaticResource Detail}" />
                     <WrapPanel>
                         <Button Content="진단 정보 보기(_D)" Command="{Binding ShowDiagnosticsCommand}" />

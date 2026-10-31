@@ -62,7 +62,8 @@ namespace ATIVBatteryGuard.Diagnostics
 				}
 			}, errors);
 			WmiSchemaInspectionReport schema = WmiSchemaInspector.Inspect(new WindowsWmiSchemaSource());
-			return new HardwareProbeReport(device, power, batteries, list, services, classes, errors, schema);
+			var capabilities = new WindowsBatteryCapabilitiesProvider().Collect();
+			return new HardwareProbeReport(device, power, batteries, list, services, classes, errors, schema, capabilities);
 		}
 
 		private static void ReadPrograms(RegistryView view, IList<string> programs, IList<string> errors)

@@ -45,3 +45,7 @@ GitHub의 MicrosoftDocs 공식 원본을 조회했습니다. 장치 제어 코�
 ## 네트워크 적용 상태
 
 사용자는 네트워크 변경 적용을 승인했습니다. 현재 도구와 설치된 Codex CLI의 공개 명령을 확인했으나 환경 게시 기능은 제공되지 않습니다. CLI의 cloud apply도 Git 변경 적용 명령이며 환경 게시 명령이 아닙니다. 저장된 다섯 도메인 초안은 게시·적용되지 않은 상태입니다. 권한 승인과 실제 도구의 실행 가능성을 구분하며, 적용했다고 보고하지 않습니다.
+
+## 후속 구현: 표준 읽기 전용 지원 비트 조회
+
+Microsoft 공식 조회 문서와 공개 SDK 헤더를 추가로 확인하고 Windows 표준 배터리 요청 지원 비트를 읽는 진단을 구현했습니다. Windows SDK의 FILE_DEVICE_BATTERY=0x29, METHOD_BUFFERED=0, FILE_READ_ACCESS=1에 따라 두 조회 코드를 계산했고, 12/36바이트 구조와 GUID를 대조했습니다. 실제 충전 제어는 구현하지 않았습니다. 자세한 실행 경계는 WINDOWS_BATTERY_QUERY.md에 기록했습니다.

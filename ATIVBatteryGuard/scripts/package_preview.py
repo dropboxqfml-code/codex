@@ -59,7 +59,7 @@ def main():
         validate_release(evidence, files, fingerprint)
     info = {
         'schemaVersion': 1, 'application': 'ATIV Battery Guard',
-        'distribution': 'SABI3 X64 PREPARATION AND STATIC IMPORT PREVIEW',
+        'distribution': 'SABI3 X64 ABI CORRECTION AND PASSIVE DRIVER NAME CHECK',
         'target': 'Windows10x64/.NETFramework4.8',
         'reconstructedSources': True,
         'sourceFingerprintSha256': fingerprint,
@@ -92,6 +92,11 @@ def main():
         'maxInspectionResultBytes': 2097152,
         'fileImportFunctionsIncluded': True,
         'sabi3MetadataAssessmentIncluded': True,
+        'sabi3X64BinaryStaticallyReviewed': True,
+        'sabi3CallerPayloadBytes': 11,
+        'samsungFileProtocolVersion': 3,
+        'passiveSabiDriverNameCheck': True,
+        'currentSabiDriverNameWindowsTested': False,
         'previousWindowsFileMetadataObserved': True,
         'wmiClassMetadataOnly': True, 'oemMethodInvocationAllowed': False,
         'oemModuleExecutionAllowed': False, 'actualChargeControlSupported': False,
@@ -100,7 +105,7 @@ def main():
         'windowsReleaseEvidence': evidence,
     }
     files['BUILD-INFO.json'] = json.dumps(info, ensure_ascii=False, indent=2).encode('utf-8')
-    instructions = '''ATIV Battery Guard — Sabi3 x64 연동 준비 및 함수 참조 분석판
+    instructions = '''ATIV Battery Guard — Sabi3 규약 수정·SABI 연결 확인판
 
 1. ZIP 파일을 새 폴더에 모두 압축 해제하세요.
 2. ATIVBatteryGuard.exe를 실행하세요. 관리자 권한은 필요하지 않습니다.
@@ -113,6 +118,10 @@ Windows 보안이 차단하면 실행을 보류하세요. 예외 등록이나 �
 Sabi3.dll, wsabi.dll, BatteryToast.exe, PowerAudit.exe만 대상이며 제한된 하위 폴더도 확인합니다.
 버전·회사/설명·PE 구조·SHA-256·정적 DLL 참조와 함수 이름·내보낸 함수를 표시합니다.
 Sabi3 x64 후보를 해시로 구분하고 공개 함수 이름 일치 여부를 표시합니다.
+이번에 제공받은 x64 DLL을 실행 없이 정적으로 분석해 실제 버퍼 길이 11바이트를 확인하고 코드를 수정했습니다.
+현재 Windows의 SABI 연결 이름은 QueryDosDevice로 조회합니다. 장치 핸들을 열거나 IOCTL을 실행하지 않습니다.
+TXT의 ‘SABI 장치 연결 이름’ 항목이 이번 단계에서 확인할 새 정보입니다.
+연결 이름이 있어도 장치 접근·펌웨어 지원이 확인된 것은 아닙니다. 없더라도 배터리 기능 전체의 부재로 판단하지 않습니다.
 드라이버·파일·동적 로드 관련 함수 이름의 참조를 별도로 표시합니다. 실제 실행됐다는 뜻은 아닙니다.
 서명은 로컬 캐시로만 확인합니다. 온라인 폐기 확인·카탈로그 서명 검증은 하지 않습니다.
 확인할 수 없는 서명은 별도로 표시하며 서명 불일치와 구분합니다.
@@ -132,12 +141,12 @@ Sabi3 x64 후보를 해시로 구분하고 공개 함수 이름 일치 여부를
 실행 대상은 Windows 10 x64 및 .NET Framework 4.8입니다.
 이전 조회판은 사용자 노트북에서 정상 조회가 확인됐습니다. 결과 0x80000000에는 표준 충전·방전 요청 지원 비트가 없습니다.
 이 사실을 삼성 OEM 기능 전체의 불가능으로 해석하지 않습니다.
-이전 파일 정보판은 사용자 노트북에서 실행 결과를 받았습니다. 이번 함수 참조 분석 기능의 Windows 실행은 아직 미검증입니다.
+이전 함수 참조판은 사용자 노트북에서 실행 결과를 받았습니다. 이번 SABI 이름 조회의 Windows 실행은 아직 미검증입니다.
 이전의 배터리 diagnostics TXT를 다시 수집할 필요는 없습니다.
 '''
     files['먼저 읽어주세요.txt'] = instructions.replace('\n', '\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(sha(data) + '  ' + name + '\n' for name, data in sorted(files.items())).encode('utf-8')
-    binary_zip = output / 'ATIVBatteryGuard-SABI3-PREPARATION.zip'
+    binary_zip = output / 'ATIVBatteryGuard-SABI-LINK-CHECK.zip'
     with zipfile.ZipFile(binary_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

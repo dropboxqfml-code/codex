@@ -2,14 +2,14 @@ using ATIVBatteryGuard.Core.Models;
 
 namespace ATIVBatteryGuard.Core.Services
 {
-    // The public wrapper expects a four-byte BLE response. This decoder does
-    // not load a DLL, initialize an interface, or authorize a device request.
+    // The inspected x64 3.2.0.0 DLL reads/writes eleven caller bytes. Public
+    // four-byte examples are insufficient. No DLL or device is invoked here.
     public static class Sabi3ReplyDecoder
     {
         public static Sabi3ReplyInterpretation Decode(int apiReturnCode, byte[] response)
         {
             if (apiReturnCode != 0) return Result(Sabi3ReplyState.ApiError);
-            if (response == null || response.Length != 4) return Result(Sabi3ReplyState.InvalidResponse);
+            if (response == null || response.Length != Sabi3X64Abi.PayloadBytes) return Result(Sabi3ReplyState.InvalidResponse);
             switch (response[0])
             {
                 case 0: return Result(Sabi3ReplyState.ProtectionDisabled);

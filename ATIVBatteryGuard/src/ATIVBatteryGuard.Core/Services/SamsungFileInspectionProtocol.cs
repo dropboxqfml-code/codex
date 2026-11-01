@@ -20,6 +20,7 @@ namespace ATIVBatteryGuard.Core.Services
             [DataMember(IsRequired = true)] public int Version;
             [DataMember(IsRequired = true)] public int Status;
             [DataMember(IsRequired = true)] public bool Limited;
+            [DataMember(IsRequired = true)] public int DriverLink;
             [DataMember(IsRequired = true)] public Entry[] Entries;
         }
 
@@ -79,7 +80,7 @@ namespace ATIVBatteryGuard.Core.Services
             }
             using (var output = new MemoryStream())
             {
-                Serializer().WriteObject(output, new Packet { Version = 2, Status = (int)report.Status, Limited = report.Limited, Entries = entries });
+                Serializer().WriteObject(output, new Packet { Version = 3, Status = (int)report.Status, Limited = report.Limited, DriverLink = (int)report.DriverLink, Entries = entries });
                 if (output.Length > MaximumBytes) throw new SerializationException("Result exceeds the size limit.");
                 return output.ToArray();
             }
@@ -101,7 +102,7 @@ namespace ATIVBatteryGuard.Core.Services
                     packet = (Packet)Serializer().ReadObject(reader);
                     while (reader.Read()) if (reader.NodeType != XmlNodeType.Whitespace) return Invalid();
                 }
-                if (packet == null || packet.Version != 2 || !Enum.IsDefined(typeof(SamsungFileInspectionStatus), packet.Status) ||
+                if (packet == null || packet.Version != 3 || !Enum.IsDefined(typeof(SabiDriverLinkStatus), packet.DriverLink) || !Enum.IsDefined(typeof(SamsungFileInspectionStatus), packet.Status) ||
                     packet.Entries == null || packet.Entries.Length > SamsungFileInspectionReport.MaximumEntries) return Invalid();
                 var entries = new SamsungFileInspectionEntry[packet.Entries.Length];
                 for (int i = 0; i < entries.Length; i++)
@@ -113,7 +114,7 @@ namespace ATIVBatteryGuard.Core.Services
                         new PeModuleInfo(wire.PeValid, wire.PeManaged, wire.PeArchitecture, wire.Imports, wire.Exports,
                             wire.PeLimited ? "표시 또는 분석 범위가 제한됐습니다." : string.Empty, FromWire(wire.Functions)), (OfflineSignatureStatus)wire.Signature);
                 }
-                return new SamsungFileInspectionReport((SamsungFileInspectionStatus)packet.Status, entries, packet.Limited);
+                return new SamsungFileInspectionReport((SamsungFileInspectionStatus)packet.Status, entries, packet.Limited, (SabiDriverLinkStatus)packet.DriverLink);
             }
             catch (Exception exception) when (exception is SerializationException || exception is XmlException ||
                 exception is ArgumentException || exception is InvalidOperationException || exception is FormatException || exception is OverflowException)

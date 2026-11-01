@@ -10,6 +10,24 @@ internal static partial class Program
 {
     private static void RegisterSamsungFileInspectionTests()
     {
+        Add("SABI name presence is typed metadata and never device or firmware access", () =>
+        {
+            foreach(SabiDriverLinkStatus status in Enum.GetValues(typeof(SabiDriverLinkStatus)))
+            {
+                var report=new SamsungFileInspectionReport(SamsungFileInspectionStatus.Complete,new[]{InspectionEntry()},driverLink:status);
+                var decoded=SamsungFileInspectionProtocol.Decode(SamsungFileInspectionProtocol.Encode(report));
+                Equal(status,decoded.DriverLink);
+                Check(!decoded.HardwareWriteAllowed && !Sabi3PreparationAssessment.Evaluate(decoded).CanReadHardware,"name presence enabled hardware access");
+                Check(decoded.ToDisplayText().Contains(SamsungFileInspectionReport.DriverLinkText(status)),"name state omitted");
+            }
+            Equal(SabiDriverLinkStatus.Unavailable,new SamsungFileInspectionReport(driverLink:(SabiDriverLinkStatus)999).DriverLink);
+        });
+        Add("SABI name result rejects unknown missing and old IPC states", () =>
+        {
+            AssertInvalidInspectionPacket(MutateInspectionPacket(root=>root.Remove("DriverLink")));
+            AssertInvalidInspectionPacket(MutateInspectionPacket(root=>root["DriverLink"]=999));
+            AssertInvalidInspectionPacket(MutateInspectionPacket(root=>root["Version"]=2));
+        });
         Add("observed x64 Sabi3 metadata prepares architecture without promoting hardware access", () =>
         {
             var pe64 = new PeModuleInfo(true, false, "x64", new[] { "MSVCR90.dll" }, InspectionPe().ExportedNames);

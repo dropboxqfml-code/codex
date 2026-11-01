@@ -19,6 +19,11 @@ namespace ATIVBatteryGuard.Core.Models
         NotChecked, ValidOffline, Unsigned, Invalid, Inconclusive
     }
 
+    public enum SabiDriverLinkStatus
+    {
+        NotChecked, Present, NotFound, AccessDenied, Unavailable, UnsupportedPlatform
+    }
+
     public sealed class SamsungFileInspectionEntry
     {
         public string FileName { get; }
@@ -98,11 +103,14 @@ namespace ATIVBatteryGuard.Core.Models
         public SamsungFileInspectionStatus Status { get; }
         public SamsungFileInspectionEntry[] Entries => (SamsungFileInspectionEntry[])entries.Clone();
         public bool Limited { get; }
+        public SabiDriverLinkStatus DriverLink { get; }
         public bool HardwareWriteAllowed => false;
 
         public SamsungFileInspectionReport(SamsungFileInspectionStatus status = SamsungFileInspectionStatus.NotCollected,
-            IEnumerable<SamsungFileInspectionEntry> entries = null, bool limited = false)
+            IEnumerable<SamsungFileInspectionEntry> entries = null, bool limited = false,
+            SabiDriverLinkStatus driverLink = SabiDriverLinkStatus.NotChecked)
         {
+            DriverLink = Enum.IsDefined(typeof(SabiDriverLinkStatus), driverLink) ? driverLink : SabiDriverLinkStatus.Unavailable;
             Status = Enum.IsDefined(typeof(SamsungFileInspectionStatus), status) ? status : SamsungFileInspectionStatus.InvalidResponse;
             var copy = new List<SamsungFileInspectionEntry>();
             if (entries != null && (Status == SamsungFileInspectionStatus.Complete || Status == SamsungFileInspectionStatus.Partial))
@@ -128,6 +136,8 @@ namespace ATIVBatteryGuard.Core.Models
             text.AppendLine("ATIV Battery Guard — 삼성 파일의 읽기 전용 식별 보고서");
             text.AppendLine("조회 결과: " + StatusText(Status));
             text.AppendLine("대상: Sabi3.dll / wsabi.dll / BatteryToast.exe / PowerAudit.exe");
+            text.AppendLine("SABI 장치 연결 이름: " + DriverLinkText(DriverLink));
+            text.AppendLine("장치 이름 조회만 수행합니다. 연결 이름의 존재는 장치 접근·드라이버 규약·배터리 기능 지원의 증거가 아닙니다.");
             text.AppendLine(ATIVBatteryGuard.Core.Services.Sabi3PreparationAssessment.Evaluate(this).ToDisplayText());
             text.AppendLine("Setting·Settings의 고정 범위에서 대상 파일의 정보만 읽습니다. 원본 파일은 복사·로드·실행하지 않습니다.");
             foreach (var entry in entries)
@@ -152,6 +162,9 @@ namespace ATIVBatteryGuard.Core.Models
                 text.AppendLine("이름으로 내보낸 함수: " + Join(entry.Pe.ExportedNames));
                 if (!string.IsNullOrEmpty(entry.Pe.Error)) text.AppendLine("PE 이름 목록은 표시 또는 분석 범위가 제한됐습니다.");
                 if (entry.FileName == "Sabi3.dll") AppendSabiFunctions(text, entry.Pe.ExportedNames);
+                if (entry.FileName == "Sabi3.dll" && entry.Pe.Architecture == "x64" && !entry.Pe.IsManaged &&
+                    entry.Sha256 == ATIVBatteryGuard.Core.Services.Sabi3X64Abi.AnalyzedSha256)
+                    text.AppendLine("정적 분석 대상과 같은 x64 DLL입니다. 관측된 호출자 버퍼는 11바이트이며 공개 4바이트 예제를 그대로 사용하지 않습니다. 실제 함수 호출은 하지 않았습니다.");
             }
             if (Limited) text.AppendLine("조회 범위 또는 표시 한도에 도달했습니다. 누락 항목을 부재로 판단하지 않습니다.");
             text.AppendLine();
@@ -177,6 +190,19 @@ namespace ATIVBatteryGuard.Core.Models
         }
 
         private static string Display(string value) => string.IsNullOrEmpty(value) ? "제공되지 않음 또는 표시 제외" : value;
+
+        public static string DriverLinkText(SabiDriverLinkStatus status)
+        {
+            switch (status)
+            {
+                case SabiDriverLinkStatus.Present: return "현재 이름 조회에서 SABI 연결 발견 (장치를 열지 않음)";
+                case SabiDriverLinkStatus.NotFound: return "현재 이름 조회에서 SABI 연결을 찾지 못함 (펌웨어 기능 부재 판정 아님)";
+                case SabiDriverLinkStatus.AccessDenied: return "이름 조회 권한 없음";
+                case SabiDriverLinkStatus.Unavailable: return "이름 조회 결과를 확인할 수 없음";
+                case SabiDriverLinkStatus.UnsupportedPlatform: return "Windows에서만 이름 조회 가능";
+                default: return "이름 조회를 수행하지 않음";
+            }
+        }
         private static string Join(string[] values) => values.Length == 0 ? "표시된 이름 없음" : string.Join(", ", values);
 
         public static string StatusText(SamsungFileInspectionStatus status)

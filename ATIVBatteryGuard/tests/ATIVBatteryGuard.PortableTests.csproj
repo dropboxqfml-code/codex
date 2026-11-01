@@ -18,5 +18,6 @@
     <Compile Include="SamsungFileInspectionTests.cs" />
     <Compile Include="SamsungFileInspectionViewModelTests.cs" />
     <Compile Include="PeImportedFunctionTests.cs" />
+    <Compile Include="Sabi3ReplyDecoderTests.cs" />
   </ItemGroup>
 </Project>

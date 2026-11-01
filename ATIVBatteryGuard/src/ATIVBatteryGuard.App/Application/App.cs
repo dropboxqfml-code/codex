@@ -26,6 +26,11 @@ namespace ATIVBatteryGuard
                     Shutdown(BatteryCapabilitiesWorker.Run(e.Args[1]));
                     return;
                 }
+                if (e.Args.Length == 2 && e.Args[0] == SamsungFileInspectionWorker.Argument)
+                {
+                    Shutdown(SamsungFileInspectionWorker.Run(e.Args[1]));
+                    return;
+                }
                 if (e.Args.Length == 2 && e.Args[0] == "--self-test")
                 {
                     try { Shutdown(await WindowsSmokeTest.RunAsync(this, e.Args[1])); }
@@ -45,7 +50,7 @@ namespace ATIVBatteryGuard
                 var interaction = new LocalUserInteraction(directory, log);
                 viewModel = new MainViewModel(
                     new WindowsBatteryStatusProvider(), store, log, interaction,
-                    new HardwareDiagnosticsCollector());
+                    new HardwareDiagnosticsCollector(), samsungFiles: new WindowsSamsungFileInspectionProvider());
                 var window = new MainWindow { DataContext = viewModel };
                 MainWindow = window;
                 if (viewModel.InitialWindowState == "Maximized")
@@ -79,6 +84,7 @@ namespace ATIVBatteryGuard
         protected override void OnExit(ExitEventArgs e)
         {
             WindowsBatteryCapabilitiesProvider.StopForShutdown();
+            WindowsSamsungFileInspectionProvider.StopForShutdown();
             if (timer != null)
             {
                 timer.Stop();

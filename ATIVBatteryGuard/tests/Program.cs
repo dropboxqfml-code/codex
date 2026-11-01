@@ -380,6 +380,8 @@ internal static partial class Program
         RegisterSchemaTests();
         RegisterSettingsPolicyTests();
         RegisterBatteryCapabilitiesTests();
+        RegisterSamsungFileInspectionTests();
+        RegisterSamsungFileInspectionViewModelTests();
     }
 
     private static void Add(string name, Action action) { Tests.Add(new KeyValuePair<string, Func<Task>>(name, () => { action(); return Task.CompletedTask; })); }
@@ -415,8 +417,9 @@ internal static partial class Program
         public readonly FakeInteraction Interaction = new FakeInteraction();
         public readonly FakeHardware Hardware = new FakeHardware();
         public readonly FakeBundle Bundle = new FakeBundle();
+        public readonly FakeFileInspection Files = new FakeFileInspection();
         public Fixture() { Directory.CreateDirectory(DirectoryPath); Store = new SettingsStore(DirectoryPath); Store.Load(); }
-        public MainViewModel ViewModel(Func<bool> confirm = null) { return new MainViewModel(new FakeBattery(), Store, new LocalLog(DirectoryPath), Interaction, Hardware, Bundle, confirm); }
+        public MainViewModel ViewModel(Func<bool> confirm = null) { return new MainViewModel(new FakeBattery(), Store, new LocalLog(DirectoryPath), Interaction, Hardware, Bundle, confirm, Files); }
         public void Dispose() { Directory.Delete(DirectoryPath, true); }
     }
     private sealed class FakeBattery : IBatteryStatusProvider { public BatterySnapshot Read() { return new NativePowerReading(true, 1, 6, 0).ToSnapshot(); } }
@@ -427,16 +430,26 @@ internal static partial class Program
         public int Copies;
         public string LastCopiedText;
         public Func<string, string> Saver;
+        public int FileInspectionSaves;
+        public Func<string, string> FileInspectionSaver;
+        public string LastFileInspection;
         public DeviceDiagnosticsResult ReadDiagnostics() { return Reader(); }
         public void OpenSettingsFolder() { }
         public void ShowLog() { }
         public void CopyDiagnostics(string text) { Copies++; LastCopiedText = text; }
         public string SaveDiagnostics(string text) { Saves++; return Saver == null ? "saved" : Saver(text); }
+        public string SaveSamsungFileInspection(string text) { FileInspectionSaves++; LastFileInspection = text; return FileInspectionSaver == null ? "saved" : FileInspectionSaver(text); }
     }
     private sealed class FakeHardware : IHardwareDiagnosticsProvider
     {
         public Func<HardwareProbeReport> Reader = () => new HardwareProbeReport();
         public HardwareProbeReport Collect() { return Reader(); }
+    }
+    private sealed class FakeFileInspection : ISamsungFileInspectionProvider
+    {
+        public int Calls;
+        public Func<SamsungFileInspectionReport> Reader = () => new SamsungFileInspectionReport(SamsungFileInspectionStatus.Unavailable);
+        public SamsungFileInspectionReport Collect() { Interlocked.Increment(ref Calls); return Reader(); }
     }
     private sealed class FakeBundle : ISamsungAnalysisBundleService
     {

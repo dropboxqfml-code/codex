@@ -22,6 +22,14 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private readonly IHardwareDiagnosticsProvider hardwareDiagnostics;
 
+		private readonly ISamsungFileInspectionProvider samsungFiles;
+
+		private bool samsungFileInspectionBusy;
+
+		private string samsungFileInspectionText = "‘삼성 파일 정보 만들기’를 누르면 설치된 파일의 정보만 읽습니다.";
+
+		private string samsungFileInspectionStatus = "파일을 실행하거나 충전 설정을 변경하지 않습니다.";
+
 		private readonly ISamsungAnalysisBundleService samsungAnalysis;
 
 		private readonly Func<bool> confirmSamsungAnalysis;
@@ -86,6 +94,22 @@ namespace ATIVBatteryGuard.ViewModels
 		public RelayCommand SaveDiagnosticsCommand { get; }
 
 		public RelayCommand CreateHardwareReportCommand { get; }
+
+		public RelayCommand InspectSamsungFilesCommand { get; }
+
+		public bool SamsungFileInspectionBusy => samsungFileInspectionBusy;
+
+		public string SamsungFileInspectionText
+		{
+			get { return samsungFileInspectionText; }
+			private set { samsungFileInspectionText = value; Changed(); }
+		}
+
+		public string SamsungFileInspectionStatus
+		{
+			get { return samsungFileInspectionStatus; }
+			private set { samsungFileInspectionStatus = value; Changed(); }
+		}
 
 		public RelayCommand CreateSamsungBundleCommand { get; }
 
@@ -412,7 +436,7 @@ namespace ATIVBatteryGuard.ViewModels
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public MainViewModel(IBatteryStatusProvider battery, SettingsStore store, LocalLog log, IUserInteraction interaction, IHardwareDiagnosticsProvider hardwareDiagnostics = null, ISamsungAnalysisBundleService samsungAnalysis = null, Func<bool> confirmSamsungAnalysis = null)
+		public MainViewModel(IBatteryStatusProvider battery, SettingsStore store, LocalLog log, IUserInteraction interaction, IHardwareDiagnosticsProvider hardwareDiagnostics = null, ISamsungAnalysisBundleService samsungAnalysis = null, Func<bool> confirmSamsungAnalysis = null, ISamsungFileInspectionProvider samsungFiles = null)
 		{
 			MainViewModel mainViewModel = this;
 			this.battery = battery;
@@ -420,6 +444,7 @@ namespace ATIVBatteryGuard.ViewModels
 			this.log = log;
 			this.interaction = interaction;
 			this.hardwareDiagnostics = hardwareDiagnostics;
+			this.samsungFiles = samsungFiles;
 			this.samsungAnalysis = samsungAnalysis;
 			this.confirmSamsungAnalysis = confirmSamsungAnalysis;
 			if (samsungAnalysis == null || confirmSamsungAnalysis == null)
@@ -481,6 +506,10 @@ namespace ATIVBatteryGuard.ViewModels
 			{
 				await mainViewModel.CreateSamsungBundleAsync();
 			}, () => !mainViewModel.disposed && !mainViewModel.samsungBundleBusy && mainViewModel.samsungAnalysis != null && mainViewModel.confirmSamsungAnalysis != null);
+			InspectSamsungFilesCommand = new RelayCommand(async delegate
+			{
+				await mainViewModel.InspectSamsungFilesAsync();
+			}, () => !mainViewModel.disposed && !mainViewModel.samsungFileInspectionBusy && mainViewModel.samsungFiles != null);
 			log.Write("APP_STARTED");
 			log.Write(string.IsNullOrEmpty(settingsLoadResult.Warning) ? "SETTINGS_LOADED" : "SETTINGS_RECOVERED");
 			RefreshBattery();
@@ -653,6 +682,51 @@ namespace ATIVBatteryGuard.ViewModels
 			}
 		}
 
+		public async Task InspectSamsungFilesAsync()
+		{
+			if (disposed || samsungFileInspectionBusy || samsungFiles == null) return;
+			samsungFileInspectionBusy = true;
+			SamsungFileInspectionText = "설치된 삼성 파일 정보를 읽고 있습니다…";
+			SamsungFileInspectionStatus = "조회 중입니다. 이전 결과를 사용하지 않습니다.";
+			Changed("SamsungFileInspectionBusy");
+			InspectSamsungFilesCommand.Refresh();
+			log.Write("SAMSUNG_FILE_INSPECTION_STARTED");
+			bool collected = false;
+			try
+			{
+				SamsungFileInspectionReport report = await Task.Run(() => samsungFiles.Collect());
+				if (disposed) return;
+				if (report == null) throw new InvalidOperationException();
+				SamsungFileInspectionText = report.ToDisplayText();
+				collected = true;
+				interaction.SaveSamsungFileInspection(SamsungFileInspectionText);
+				SamsungFileInspectionStatus = "결과를 새 samsung-files TXT에 저장했습니다. ‘정보 파일 위치 열기’에서 확인하세요. 파일별 조회 상태도 함께 확인할 수 있습니다.";
+				StatusMessage = SamsungFileInspectionStatus;
+				log.Write("SAMSUNG_FILE_INSPECTION_SAVED");
+			}
+			catch
+			{
+				if (!disposed)
+				{
+					if (!collected) SamsungFileInspectionText = new SamsungFileInspectionReport(ATIVBatteryGuard.Core.Models.SamsungFileInspectionStatus.Unavailable).ToDisplayText();
+					SamsungFileInspectionStatus = collected
+						? "조회 결과는 화면에 있지만 TXT를 저장하지 못했습니다. 저장 위치와 권한을 확인하세요."
+						: "삼성 파일 정보를 확인하지 못했습니다. 실제 충전 제어는 차단되어 있습니다.";
+					StatusMessage = SamsungFileInspectionStatus;
+					log.Write("SAMSUNG_FILE_INSPECTION_FAILED");
+				}
+			}
+			finally
+			{
+				samsungFileInspectionBusy = false;
+				if (!disposed)
+				{
+					Changed("SamsungFileInspectionBusy");
+					InspectSamsungFilesCommand.Refresh();
+				}
+			}
+		}
+
 		public async Task CreateSamsungBundleAsync()
 		{
 			if (disposed || samsungBundleBusy || samsungAnalysis == null || confirmSamsungAnalysis == null)
@@ -762,6 +836,7 @@ namespace ATIVBatteryGuard.ViewModels
 				OpenLogCommand.Refresh();
 				CreateHardwareReportCommand.Refresh();
 				CreateSamsungBundleCommand.Refresh();
+				InspectSamsungFilesCommand.Refresh();
 				log.Write("APP_STOPPED");
 			}
 		}

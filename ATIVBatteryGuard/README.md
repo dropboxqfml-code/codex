@@ -1,5 +1,9 @@
 # ATIV Battery Guard
 
+현재 개발판은 **삼성 파일 정보 만들기**로 두 DLL과 두 EXE의 버전·구조·오프라인 서명·정적 참조·함수 이름을 로컬 TXT에 저장합니다. [범위·사용법·검증 한계](SAMSUNG_FILE_INSPECTION.md)를 참고하세요. 삼성 코드를 실행하지 않으며 실제 충전 제어는 계속 미지원입니다.
+
+이번 변경의 공유 소스 테스트는 158개 통과·실패 0개·건너뜀 0개이며 실제 WPF 빌드는 경고·오류 0개입니다. 새 파일 정보 기능의 Windows 실기 실행은 아직 미검증입니다.
+
 [최신 공개 제어 규약 조사](PUBLIC_CONTROL_PROTOCOL_REVIEW.md): 구형 Windows SABI3 명령 후보와 Galaxy Book ACPI 규약을 찾았으나 현재 ATIV의 DLL 없는 Windows 제어 경로는 미검증입니다. 실제 충전 제어는 계속 미지원입니다.
 
 [설치 폴더에서 확인할 DLL 후보](SAMSUNG_DLL_CANDIDATES.md): 사용자 제공 `Setting` 경로를 참고용으로 기록하고 `Sabi3.dll`·`wsabi.dll`의 근거와 추가 검색 패턴을 구분했습니다. 실제 폴더 목록을 클라우드에서 열람한 결과는 아닙니다.

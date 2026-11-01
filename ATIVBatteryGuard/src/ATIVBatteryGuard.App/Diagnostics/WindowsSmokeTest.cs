@@ -61,8 +61,14 @@ namespace ATIVBatteryGuard.Diagnostics
 			}
 
 			public void OpenSettingsFolder()
+
 			{
 				throw new SmokeFailure("UNEXPECTED_SHELL_ACTION");
+			}
+
+			public string SaveSamsungFileInspection(string text)
+			{
+				throw new SmokeFailure("UNEXPECTED_FILE_INSPECTION");
 			}
 
 			public void ShowLog()

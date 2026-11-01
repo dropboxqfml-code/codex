@@ -13,5 +13,7 @@ namespace ATIVBatteryGuard.Services
 		void CopyDiagnostics(string text);
 
 		string SaveDiagnostics(string text);
+
+		string SaveSamsungFileInspection(string text);
 	}
 }

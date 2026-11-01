@@ -151,9 +151,19 @@
 
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Text="삼성 파일 추출 기능 제외" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="Samsung Settings의 실행 파일·DLL을 수집하거나 별도로 불러오지 않습니다. 실제 충전 제어는 계속 미지원입니다."
+                    <TextBlock Text="삼성 파일 정보 확인" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="Sabi3.dll, wsabi.dll, BatteryToast.exe, PowerAudit.exe의 버전·구조·서명·참조 정보를 읽습니다. 원본 파일을 복사하거나 실행하지 않습니다."
                                Style="{StaticResource Detail}" />
+                    <TextBlock Text="확인 위치: Program Files (x86)의 Samsung\Setting 또는 Samsung\Settings와 제한된 하위 폴더. 결과는 로컬 TXT로 저장합니다."
+                               Style="{StaticResource Detail}" />
+                    <WrapPanel>
+                        <Button x:Name="InspectSamsungFilesButton" Content="삼성 파일 정보 만들기(_F)" Command="{Binding InspectSamsungFilesCommand}" />
+                        <Button Content="정보 파일 위치 열기(_O)" Command="{Binding OpenSettingsFolderCommand}" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding SamsungFileInspectionStatus}" AutomationProperties.LiveSetting="Polite" />
+                    <TextBox Text="{Binding SamsungFileInspectionText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                             MaxHeight="320" VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,8,0,0"
+                             AutomationProperties.Name="삼성 파일 정보 결과" />
                 </StackPanel>
             </Border>
         </StackPanel>

@@ -82,8 +82,20 @@ namespace ATIVBatteryGuard.Services
 
 		public string SaveDiagnostics(string text)
 		{
+			SaveLocalText("diagnostics-", text);
+			return "진단을 설정 폴더의 새 diagnostics 파일에 저장했습니다. 업로드하지 않았습니다.";
+		}
+
+		public string SaveSamsungFileInspection(string text)
+		{
+			SaveLocalText("samsung-files-", text);
+			return "삼성 파일 정보를 새 samsung-files TXT에 저장했습니다.";
+		}
+
+		private void SaveLocalText(string prefix, string text)
+		{
 			EnsureLocalDirectory();
-			string path = "diagnostics-" + DateTime.UtcNow.ToString("yyyyMMddTHHmmss") + "-" + Guid.NewGuid().ToString("N") + ".txt";
+			string path = prefix + DateTime.UtcNow.ToString("yyyyMMddTHHmmss") + "-" + Guid.NewGuid().ToString("N") + ".txt";
 			using (FileStream stream = new FileStream(Path.Combine(directory, path), FileMode.CreateNew, FileAccess.Write, FileShare.None))
 			{
 				using (StreamWriter streamWriter = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
@@ -91,7 +103,6 @@ namespace ATIVBatteryGuard.Services
 					streamWriter.Write(text);
 				}
 			}
-			return "진단을 설정 폴더의 새 diagnostics 파일에 저장했습니다. 업로드하지 않았습니다.";
 		}
 
 		private void EnsureLocalDirectory()

@@ -15,5 +15,7 @@
     <Compile Include="WmiSchemaTests.cs" />
     <Compile Include="SettingsPolicyTests.cs" />
     <Compile Include="BatteryCapabilitiesTests.cs" />
+    <Compile Include="SamsungFileInspectionTests.cs" />
+    <Compile Include="SamsungFileInspectionViewModelTests.cs" />
   </ItemGroup>
 </Project>

@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import zipfile
+from release_validation import validate_release
 
 
 def sha(data):
@@ -14,7 +15,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test-report', type=Path, required=True)
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--source-only', action='store_true')
+    parser.add_argument('--windows-release-report', type=Path)
     args = parser.parse_args()
+    if not args.source_only and args.windows_release_report is None:
+        parser.error('Executable distribution is blocked: signed-build Windows Defender evidence is required. Use --source-only for review.')
     root = Path(__file__).resolve().parents[1]
     output = args.output or root / 'reports'
     output.mkdir(parents=True, exist_ok=True)
@@ -23,7 +28,6 @@ def main():
         raise ValueError('A successful nonempty test report is required.')
     build = root / 'src/ATIVBatteryGuard.App/bin/Release/net48'
     names = ['ATIVBatteryGuard.exe', 'ATIVBatteryGuard.Core.dll', 'ATIVBatteryGuard.exe.config']
-    files = {name: (build / name).read_bytes() for name in names}
 
     # An explicit source allowlist prevents inclusion of OEM binaries, local logs,
     # build outputs, Git internals, or user diagnostics in a source backup.
@@ -44,6 +48,12 @@ def main():
     with zipfile.ZipFile(source_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name, data in sources:
             archive.writestr('ATIVBatteryGuard/' + name, data)
+    if args.source_only:
+        print(json.dumps({'file': str(source_zip), 'bytes': source_zip.stat().st_size, 'sha256': sha(source_zip.read_bytes()), 'sourceFingerprintSha256': fingerprint, 'executableDistribution': False}))
+        return
+    files = {name: (build / name).read_bytes() for name in names}
+    evidence = json.loads(args.windows_release_report.read_text(encoding='utf-8-sig'))
+    validate_release(evidence, files, fingerprint)
     info = {
         'schemaVersion': 1, 'application': 'ATIV Battery Guard',
         'distribution': 'READ ONLY SAMSUNG FILE METADATA PREVIEW',
@@ -80,13 +90,15 @@ def main():
         'wmiClassMetadataOnly': True, 'oemMethodInvocationAllowed': False,
         'oemModuleExecutionAllowed': False, 'actualChargeControlSupported': False,
         'containsOriginalVendorBinaries': False, 'containsUserUploads': False,
-        'automaticUpload': False, 'digitallySigned': False,
+        'automaticUpload': False, 'digitallySigned': True,
+        'windowsReleaseEvidence': evidence,
     }
     files['BUILD-INFO.json'] = json.dumps(info, ensure_ascii=False, indent=2).encode('utf-8')
     instructions = '''ATIV Battery Guard — 삼성 파일 정보 확인판
 
 1. ZIP 파일을 새 폴더에 모두 압축 해제하세요.
 2. ATIVBatteryGuard.exe를 실행하세요. 관리자 권한은 필요하지 않습니다.
+Windows 보안이 차단하면 실행을 보류하세요. 예외 등록이나 보안 기능 해제를 하지 않습니다.
 3. 창 아래쪽 ‘삼성 파일 정보 확인’에서 ‘삼성 파일 정보 만들기’를 누르세요.
 4. ‘정보 파일 위치 열기’를 누르면 samsung-files-로 시작하는 새 TXT를 확인할 수 있습니다.
 5. 결과를 전달할 때는 그 TXT만 사용합니다. 삼성 DLL·EXE 또는 폴더 전체는 필요하지 않습니다.

@@ -426,11 +426,12 @@ internal static partial class Program
         public int Saves;
         public int Copies;
         public string LastCopiedText;
+        public Func<string, string> Saver;
         public DeviceDiagnosticsResult ReadDiagnostics() { return Reader(); }
         public void OpenSettingsFolder() { }
         public void ShowLog() { }
         public void CopyDiagnostics(string text) { Copies++; LastCopiedText = text; }
-        public string SaveDiagnostics(string text) { Saves++; return "saved"; }
+        public string SaveDiagnostics(string text) { Saves++; return Saver == null ? "saved" : Saver(text); }
     }
     private sealed class FakeHardware : IHardwareDiagnosticsProvider
     {

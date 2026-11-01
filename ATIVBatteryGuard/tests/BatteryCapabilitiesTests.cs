@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using ATIVBatteryGuard.Core.Models;
 using ATIVBatteryGuard.Core.Services;
 
@@ -10,6 +11,113 @@ internal static partial class Program
 {
     private static void RegisterBatteryCapabilitiesTests()
     {
+        Add("actual laptop flags exclude standard requests without ruling out OEM support", () =>
+        {
+            var report = SystemBatteryReport(0x80000000);
+            Equal(BatteryRequestAssessment.NoSupportAdvertised, report.RequestAssessment);
+            Equal<bool?>(false, report.Entries[0].ChargeRequestSupported);
+            Equal<bool?>(false, report.Entries[0].DischargeRequestSupported);
+            Check(report.AssessmentText.Contains("이 경로를 제어에 사용하지 않습니다") &&
+                report.AssessmentText.Contains("삼성 충전 상한 지원은 별도 미검증"), "OEM support confused with standard request flags");
+            Check(report.ToDisplayText().Contains("결과 해석: " + report.AssessmentText), "diagnostic interpretation missing");
+        });
+        Add("either advertised request remains separate from percent limit support", () =>
+        {
+            foreach (uint flags in new[] { 0x80000001u, 0x80000002u, 0x80000003u, 0xc0000003u })
+            {
+                var report = SystemBatteryReport(flags);
+                Equal(BatteryRequestAssessment.SupportAdvertised, report.RequestAssessment);
+                Check(!report.HardwareWriteAllowed && report.AssessmentText.Contains("실제 제어는 활성화하지 않습니다"), "advertised request promotes control");
+            }
+        });
+        Add("non system and short term batteries cannot establish laptop request support", () =>
+        {
+            foreach (uint flags in new[] { 0u, 3u, 0x20000003u, 0xa0000003u, uint.MaxValue })
+                Equal(BatteryRequestAssessment.Inconclusive, SystemBatteryReport(flags).RequestAssessment);
+            var laptopWithUps = new WindowsBatteryCapabilitiesReport(BatteryProbeStatus.Complete, new[] {
+                new BatteryCapabilityEntry(1, BatteryProbeStatus.Complete, 0x80000000),
+                new BatteryCapabilityEntry(2, BatteryProbeStatus.Complete, 0xa0000003) });
+            Equal(BatteryRequestAssessment.NoSupportAdvertised, laptopWithUps.RequestAssessment);
+            var twoLaptops = new WindowsBatteryCapabilitiesReport(BatteryProbeStatus.Complete, new[] {
+                new BatteryCapabilityEntry(1, BatteryProbeStatus.Complete, 0x80000000),
+                new BatteryCapabilityEntry(2, BatteryProbeStatus.Complete, 0x80000002) });
+            Equal(BatteryRequestAssessment.SupportAdvertised, twoLaptops.RequestAssessment);
+        });
+        Add("incomplete and failed queries never establish absence of standard requests", () =>
+        {
+            foreach (BatteryProbeStatus status in Enum.GetValues(typeof(BatteryProbeStatus)))
+            {
+                if (status == BatteryProbeStatus.Complete || status == BatteryProbeStatus.NotCollected) continue;
+                var report = new WindowsBatteryCapabilitiesReport(status, new[] {
+                    new BatteryCapabilityEntry(1, BatteryProbeStatus.Complete, 0x80000000) });
+                Equal(BatteryRequestAssessment.Inconclusive, report.RequestAssessment);
+            }
+            foreach (uint flags in new[] { 0x80000000u, 0x80000003u })
+            {
+                var limited = new WindowsBatteryCapabilitiesReport(BatteryProbeStatus.Complete, new[] {
+                    new BatteryCapabilityEntry(1, BatteryProbeStatus.Complete, flags) }, limited: true);
+                Equal(BatteryRequestAssessment.Inconclusive, limited.RequestAssessment);
+            }
+            Equal(BatteryRequestAssessment.NotCollected, new WindowsBatteryCapabilitiesReport().RequestAssessment);
+        });
+        AddAsync("detailed diagnosis updates visible interpretation without enabling control", async () =>
+        {
+            using (var f = new Fixture()) using (var vm = f.ViewModel())
+            {
+                int calls = 0;
+                f.Hardware.Reader = () => { calls++; return new HardwareProbeReport(windowsBatteryCapabilities: SystemBatteryReport(0x80000000)); };
+                Equal(0, calls);
+                int changes = 0;
+                vm.PropertyChanged += (sender, args) => { if (args.PropertyName == "StandardBatteryRequestText") changes++; };
+                await vm.CreateHardwareReportAsync();
+                Equal(1, calls); Equal(1, f.Interaction.Saves);
+                Equal(SystemBatteryReport(0x80000000).AssessmentText, vm.StandardBatteryRequestText);
+                Check(changes >= 2 && !vm.CanApply && vm.ActualModeText.Contains("미지원"), "result missing or control enabled");
+                f.Hardware.Reader = () => new HardwareProbeReport(windowsBatteryCapabilities: SystemBatteryReport(0x80000003));
+                await vm.CreateHardwareReportAsync();
+                Check(!vm.CanApply && !vm.ApplyCommand.CanExecute(null), "positive flags enable real control");
+            }
+        });
+        AddAsync("refresh hides previous request result and failure keeps it unknown", async () =>
+        {
+            using (var f = new Fixture()) using (var vm = f.ViewModel()) using (var gate = new Gate())
+            {
+                f.Hardware.Reader = () => new HardwareProbeReport(windowsBatteryCapabilities: SystemBatteryReport(0x80000000));
+                await vm.CreateHardwareReportAsync();
+                string prior = vm.StandardBatteryRequestText;
+                f.Hardware.Reader = () => { gate.Enter(); throw new InvalidOperationException("private exception"); };
+                Task pending = vm.CreateHardwareReportAsync(); await gate.WaitEntered();
+                Check(vm.StandardBatteryRequestText != prior && vm.HardwareReportBusy, "stale result visible during refresh");
+                gate.Release(); await pending;
+                Equal(new WindowsBatteryCapabilitiesReport(BatteryProbeStatus.Unavailable).AssessmentText, vm.StandardBatteryRequestText);
+                Equal(string.Empty, vm.HardwareReportText);
+                Check(!vm.CanApply && !vm.StandardBatteryRequestText.Contains("private exception"), "failed result enables writes or exposes exception");
+            }
+        });
+        AddAsync("diagnostic save failure preserves successfully observed request result", async () =>
+        {
+            using (var f = new Fixture()) using (var vm = f.ViewModel())
+            {
+                f.Hardware.Reader = () => new HardwareProbeReport(windowsBatteryCapabilities: SystemBatteryReport(0x80000000));
+                f.Interaction.Saver = text => { throw new InvalidOperationException("private path"); };
+                await vm.CreateHardwareReportAsync();
+                Equal(SystemBatteryReport(0x80000000).AssessmentText, vm.StandardBatteryRequestText);
+                Check(vm.HardwareReportText.Length > 0 && vm.HardwareReportStatus.Contains("저장하지 못했습니다"), "save failure erases successful observation");
+                Check(!vm.HardwareReportStatus.Contains("private path") && !vm.CanApply, "save exception leaks or enables control");
+            }
+        });
+        AddAsync("disposed diagnosis cannot publish a late request interpretation", async () =>
+        {
+            using (var f = new Fixture()) using (var gate = new Gate())
+            {
+                f.Hardware.Reader = () => { gate.Enter(); return new HardwareProbeReport(windowsBatteryCapabilities: SystemBatteryReport(0x80000003)); };
+                var vm = f.ViewModel(); Task pending = vm.CreateHardwareReportAsync(); await gate.WaitEntered();
+                vm.Dispose(); string text = vm.StandardBatteryRequestText;
+                int changes = 0; vm.PropertyChanged += (sender, args) => changes++;
+                gate.Release(); await pending;
+                Equal(text, vm.StandardBatteryRequestText); Equal(0, changes); Equal(0, f.Interaction.Saves);
+            }
+        });
         Add("standard battery query allowlist has only buffered read access", () =>
         {
             Equal(2, Enum.GetValues(typeof(ReadOnlyBatteryQuery)).Length);
@@ -235,6 +343,12 @@ internal static partial class Program
         try { action(); }
         catch (TException) { return; }
         throw new Exception("expected " + typeof(TException).Name);
+    }
+
+    private static WindowsBatteryCapabilitiesReport SystemBatteryReport(uint flags)
+    {
+        return new WindowsBatteryCapabilitiesReport(BatteryProbeStatus.Complete, new[] {
+            new BatteryCapabilityEntry(1, BatteryProbeStatus.Complete, flags) });
     }
 
     private static IEnumerable<BatteryCapabilityEntry> BoundedBatteryEntries(Action visit)

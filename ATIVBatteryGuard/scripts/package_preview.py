@@ -46,7 +46,7 @@ def main():
             archive.writestr('ATIVBatteryGuard/' + name, data)
     info = {
         'schemaVersion': 1, 'application': 'ATIV Battery Guard',
-        'distribution': 'READ ONLY WINDOWS BATTERY CAPABILITIES PREVIEW',
+        'distribution': 'READ ONLY BATTERY DIAGNOSTIC ASSESSMENT PREVIEW',
         'target': 'Windows10x64/.NETFramework4.8',
         'reconstructedSources': True,
         'sourceFingerprintSha256': fingerprint,
@@ -65,19 +65,24 @@ def main():
         'windowsBatteryQueryIoctls': ['QUERY_TAG', 'QUERY_INFORMATION_BatteryInformation'],
         'batteryProbeWorkerTimeoutMs': 10000,
         'currentWindowsBatteryQueryTested': False,
+        'previousWindowsBatteryQueryTested': True,
+        'previousWindowsBatteryQueryObservation': 'Complete; one system battery; Capabilities=0x80000000',
+        'batteryRequestAssessmentIncluded': True,
+        'currentWindowsAssessmentUiTested': False,
         'wmiClassMetadataOnly': True, 'oemMethodInvocationAllowed': False,
         'oemModuleExecutionAllowed': False, 'actualChargeControlSupported': False,
         'containsOriginalVendorBinaries': False, 'containsUserUploads': False,
         'automaticUpload': False, 'digitallySigned': False,
     }
     files['BUILD-INFO.json'] = json.dumps(info, ensure_ascii=False, indent=2).encode('utf-8')
-    instructions = '''ATIV Battery Guard — Windows 배터리 읽기 전용 조회판
+    instructions = '''ATIV Battery Guard — 배터리 진단 결과 해석판
 
 1. ZIP 파일을 새 폴더에 모두 압축 해제하세요.
 2. ATIVBatteryGuard.exe를 실행하세요. 관리자 권한은 필요하지 않습니다.
 3. ‘읽기 전용 진단’의 ‘진단 파일 만들기’를 선택하면 새 조회 결과가 로컬 TXT에 포함됩니다.
 4. ‘진단 파일 위치 열기’에서 diagnostics-로 시작하는 최신 TXT를 확인할 수 있습니다.
-5. ‘Windows 표준 배터리 드라이버의 요청 지원 여부’ 섹션에 지원 비트 또는 조회 실패 이유가 표시됩니다.
+5. 메인 화면의 ‘표준 Windows 요청 지원’과 TXT의 ‘결과 해석’에서 조회의 의미를 확인할 수 있습니다.
+6. 조회 결과는 이번 실행에서만 표시하며, 다시 조회할 때는 이전 결과를 지웁니다.
 
 삼성 EXE/DLL 추출이나 추가 분석 ZIP은 필요하지 않습니다.
 새 조회는 기본 배터리 정보만 읽으며 시리얼번호·고유 ID·장치 경로·태그는 보고하지 않습니다.
@@ -89,11 +94,14 @@ def main():
 공식 지원 여부와 Samsung Settings 사용권 조건은 아직 확인 중입니다.
 자동 업로드, 드라이버 설치, 서비스 등록, 충전 설정 변경은 하지 않습니다.
 실행 대상은 Windows 10 x64 및 .NET Framework 4.8입니다.
-클라우드에서 빌드와 자동 회귀 테스트를 확인했으며, 이 새 Windows 배터리 조회 기능의 실기 실행은 아직 검증하지 않았습니다.
+이전 조회판은 사용자 노트북에서 정상 조회가 확인됐습니다. 결과 0x80000000에는 표준 충전·방전 요청 지원 비트가 없습니다.
+이 사실을 삼성 OEM 기능 전체의 불가능으로 해석하지 않습니다.
+이번 해석 기능은 클라우드 빌드·자동 회귀 테스트를 확인했으며, 새 화면의 Windows 실행은 아직 미검증입니다.
+이미 전달한 진단 파일은 다시 보낼 필요가 없습니다.
 '''
     files['먼저 읽어주세요.txt'] = instructions.replace('\n', '\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(sha(data) + '  ' + name + '\n' for name, data in sorted(files.items())).encode('utf-8')
-    binary_zip = output / 'ATIVBatteryGuard-WINDOWS-BATTERY-QUERY.zip'
+    binary_zip = output / 'ATIVBatteryGuard-DIAGNOSTIC-ASSESSMENT.zip'
     with zipfile.ZipFile(binary_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

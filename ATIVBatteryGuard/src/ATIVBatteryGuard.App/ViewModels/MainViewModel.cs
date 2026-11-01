@@ -54,6 +54,8 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private string hardwareReportText = string.Empty;
 
+		private string standardBatteryRequestText = new WindowsBatteryCapabilitiesReport().AssessmentText;
+
 		private string hardwareReportStatus = "‘진단 파일 만들기’를 누르면 배터리와 삼성 프로그램 정보를 읽어 로컬 파일로 저장합니다.";
 
 		private bool samsungBundleBusy;
@@ -116,6 +118,16 @@ namespace ATIVBatteryGuard.ViewModels
 		}
 
 		public bool HardwareReportBusy => hardwareReportBusy;
+
+		public string StandardBatteryRequestText
+		{
+			get { return standardBatteryRequestText; }
+			private set
+			{
+				standardBatteryRequestText = value;
+				Changed("StandardBatteryRequestText");
+			}
+		}
 
 		public string HardwareReportText
 		{
@@ -594,10 +606,12 @@ namespace ATIVBatteryGuard.ViewModels
 			}
 			hardwareReportBusy = true;
 			HardwareReportText = string.Empty;
+			StandardBatteryRequestText = "읽기 전용 조회 중입니다. 이전 결과는 사용하지 않습니다…";
 			HardwareReportStatus = "배터리와 삼성 프로그램 정보를 읽고 있습니다. 충전 설정은 변경하지 않습니다…";
 			Changed("HardwareReportBusy");
 			CreateHardwareReportCommand.Refresh();
 			log.Write("HARDWARE_PROBE_STARTED");
+			bool collected = false;
 			try
 			{
 				HardwareProbeReport hardwareProbeReport = await Task.Run(() => hardwareDiagnostics.Collect());
@@ -608,6 +622,8 @@ namespace ATIVBatteryGuard.ViewModels
 						throw new InvalidOperationException();
 					}
 					HardwareReportText = hardwareProbeReport.ToDisplayText();
+					StandardBatteryRequestText = hardwareProbeReport.WindowsBatteryCapabilities.AssessmentText;
+					collected = true;
 					interaction.SaveDiagnostics(HardwareReportText);
 					HardwareReportStatus = "진단 파일을 만들었습니다. ‘진단 파일 위치 열기’에서 새 diagnostics 파일을 확인하세요.";
 					StatusMessage = HardwareReportStatus;
@@ -618,7 +634,10 @@ namespace ATIVBatteryGuard.ViewModels
 			{
 				if (!disposed)
 				{
-					HardwareReportStatus = "진단 파일을 만들지 못했습니다. 저장 위치와 권한을 확인한 뒤 다시 시도하세요.";
+					if (!collected) StandardBatteryRequestText = new WindowsBatteryCapabilitiesReport(BatteryProbeStatus.Unavailable).AssessmentText;
+					HardwareReportStatus = collected
+						? "읽기 전용 조회는 완료했지만 진단 파일을 저장하지 못했습니다. 조회 결과는 화면에서 확인할 수 있습니다."
+						: "진단 정보를 조회하지 못했습니다. 이전 결과를 사용하지 않으며 실제 제어는 차단되어 있습니다.";
 					StatusMessage = HardwareReportStatus;
 					log.Write("HARDWARE_PROBE_FAILED");
 				}

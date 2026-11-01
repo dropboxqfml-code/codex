@@ -10,6 +10,11 @@ namespace ATIVBatteryGuard.Core.Models
         Unavailable, InvalidResponse, UnsupportedPlatform, Partial
     }
 
+    public enum BatteryRequestAssessment
+    {
+        NotCollected, Inconclusive, NoSupportAdvertised, SupportAdvertised
+    }
+
     public sealed class BatteryCapabilityEntry
     {
         public int Index { get; }
@@ -38,6 +43,45 @@ namespace ATIVBatteryGuard.Core.Models
         public bool Limited { get; }
         public bool HardwareWriteAllowed => false;
 
+        public BatteryRequestAssessment RequestAssessment
+        {
+            get
+            {
+                if (Status == BatteryProbeStatus.NotCollected) return BatteryRequestAssessment.NotCollected;
+                if (Status != BatteryProbeStatus.Complete || Limited) return BatteryRequestAssessment.Inconclusive;
+                bool foundSystemBattery = false;
+                bool supportAdvertised = false;
+                foreach (var entry in entries)
+                {
+                    uint flags = entry.Capabilities.Value;
+                    // A short-term battery (for example a UPS) is not the laptop battery target.
+                    if ((flags & 0x80000000u) == 0 || (flags & 0x20000000u) != 0) continue;
+                    foundSystemBattery = true;
+                    supportAdvertised |= (flags & 3u) != 0;
+                }
+                if (!foundSystemBattery) return BatteryRequestAssessment.Inconclusive;
+                return supportAdvertised ? BatteryRequestAssessment.SupportAdvertised : BatteryRequestAssessment.NoSupportAdvertised;
+            }
+        }
+
+        public string AssessmentText
+        {
+            get
+            {
+                switch (RequestAssessment)
+                {
+                    case BatteryRequestAssessment.NoSupportAdvertised:
+                        return "현재 Windows 배터리 드라이버는 표준 충전·방전 요청 지원을 표시하지 않습니다. 이 경로를 제어에 사용하지 않습니다. 삼성 충전 상한 지원은 별도 미검증입니다.";
+                    case BatteryRequestAssessment.SupportAdvertised:
+                        return "표준 충전·방전 요청 중 지원 표시가 있습니다. 80%/100% 충전 상한 지원을 뜻하지 않으며 실제 제어는 활성화하지 않습니다.";
+                    case BatteryRequestAssessment.Inconclusive:
+                        return "일반 시스템 배터리의 표준 요청 지원 여부를 확정할 수 없습니다. " + StatusText(Status) + (Limited ? " · 조회 범위 제한" : string.Empty) + ". 조회 누락을 미지원으로 판단하지 않습니다.";
+                    default:
+                        return "아직 조회하지 않았습니다. ‘진단 파일 만들기’로 읽기 전용 결과를 확인할 수 있습니다.";
+                }
+            }
+        }
+
         public WindowsBatteryCapabilitiesReport(BatteryProbeStatus status = BatteryProbeStatus.NotCollected,
             IEnumerable<BatteryCapabilityEntry> entries = null, bool limited = false)
         {
@@ -65,6 +109,7 @@ namespace ATIVBatteryGuard.Core.Models
             var text = new StringBuilder();
             text.AppendLine("[Windows 표준 배터리 드라이버의 요청 지원 여부]");
             text.AppendLine("조회 결과: " + StatusText(Status));
+            text.AppendLine("결과 해석: " + AssessmentText);
             foreach (var entry in entries)
             {
                 text.AppendLine("배터리 인터페이스 " + entry.Index + ": " + StatusText(entry.Status));

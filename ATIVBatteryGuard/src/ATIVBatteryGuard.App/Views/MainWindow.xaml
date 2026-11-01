@@ -71,6 +71,10 @@
                         <TextBlock Text="{Binding DeviceBiosText}" />
                     </WrapPanel>
                     <TextBlock Text="{Binding DeviceAssessmentText}" Style="{StaticResource Detail}" />
+                    <TextBlock Text="표준 Windows 요청 지원 · 이번 실행의 최근 상세 진단"
+                               FontWeight="SemiBold" Margin="0,8,0,6" />
+                    <TextBlock x:Name="StandardBatteryRequestSummary" Text="{Binding StandardBatteryRequestText}"
+                               Style="{StaticResource Detail}" AutomationProperties.LiveSetting="Polite" />
                     <TextBlock Text="저장된 사용자 선택값과 시뮬레이션 상태를 실제 장치 설정으로 표시하지 않습니다." />
                 </StackPanel>
             </Border>

@@ -5,6 +5,9 @@ namespace ATIVBatteryGuard.Core.Models
 {
 	public sealed class PeModuleInfo
 	{
+		public const int MaximumImportedFunctions = 256;
+
+		private readonly PeImportedFunction[] importedFunctions;
 		private readonly string[] importedModules;
 
 		private readonly string[] exportedNames;
@@ -19,16 +22,38 @@ namespace ATIVBatteryGuard.Core.Models
 
 		public string[] ExportedNames => (string[])exportedNames.Clone();
 
+		public PeImportedFunction[] ImportedFunctions => (PeImportedFunction[])importedFunctions.Clone();
+
 		public string Error { get; private set; }
 
-		public PeModuleInfo(bool isValid, bool isManaged, string architecture, IEnumerable<string> importedModules = null, IEnumerable<string> exportedNames = null, string error = null)
+		public PeModuleInfo(bool isValid, bool isManaged, string architecture, IEnumerable<string> importedModules = null, IEnumerable<string> exportedNames = null, string error = null, IEnumerable<PeImportedFunction> importedFunctions = null)
 		{
 			IsValid = isValid;
 			IsManaged = isValid && isManaged;
 			Architecture = ((isValid && (architecture == "x86" || architecture == "x64")) ? architecture : "Unknown");
 			this.importedModules = (isValid ? CopyNames(importedModules, 64, module: true) : new string[0]);
 			this.exportedNames = (isValid ? CopyNames(exportedNames, 128, module: false) : new string[0]);
+			this.importedFunctions = isValid ? CopyFunctions(importedFunctions) : new PeImportedFunction[0];
 			Error = error ?? string.Empty;
+		}
+
+		private static PeImportedFunction[] CopyFunctions(IEnumerable<PeImportedFunction> values)
+		{
+			var copy = new List<PeImportedFunction>();
+			var seen = new HashSet<string>(StringComparer.Ordinal);
+			if (values != null)
+			{
+				int visited = 0;
+				foreach (var item in values)
+				{
+					if (++visited > 4096) break;
+					if (item == null) continue;
+					string key = item.ModuleName.ToUpperInvariant() + "!" + (item.Ordinal.HasValue ? "#" + item.Ordinal.Value : item.FunctionName);
+					if (seen.Add(key)) copy.Add(item);
+					if (copy.Count == MaximumImportedFunctions) break;
+				}
+			}
+			return copy.ToArray();
 		}
 
 		internal static bool IsSafeName(string name, bool module)

@@ -52,7 +52,7 @@ class ReleaseValidationTests(unittest.TestCase):
     def test_cli_without_evidence_creates_no_distribution(self):
         script = Path(__file__).with_name('package_preview.py')
         with tempfile.TemporaryDirectory() as directory:
-            result = subprocess.run([sys.executable, str(script), '--test-report', 'not-needed.json', '--output', directory], capture_output=True)
+            result = subprocess.run([sys.executable, str(script), '--require-windows-release', '--test-report', 'not-needed.json', '--output', directory], capture_output=True)
             self.assertEqual(2, result.returncode)
             self.assertIn(b'Executable distribution is blocked', result.stderr)
             self.assertEqual([], list(Path(directory).iterdir()))

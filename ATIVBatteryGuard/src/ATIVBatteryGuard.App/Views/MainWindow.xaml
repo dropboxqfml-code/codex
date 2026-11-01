@@ -152,7 +152,7 @@
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Text="삼성 파일 정보 확인" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="Sabi3.dll, wsabi.dll, BatteryToast.exe, PowerAudit.exe의 버전·구조·서명·참조 정보를 읽습니다. 원본 파일을 복사하거나 실행하지 않습니다."
+                    <TextBlock Text="Sabi3.dll, wsabi.dll, BatteryToast.exe, PowerAudit.exe의 버전·구조와 실제 참조 함수 이름을 읽고 x64 연동 후보를 구분합니다. 원본 파일을 복사하거나 실행하지 않습니다."
                                Style="{StaticResource Detail}" />
                     <TextBlock Text="확인 위치: Program Files (x86)의 Samsung\Setting 또는 Samsung\Settings와 제한된 하위 폴더. 결과는 로컬 TXT로 저장합니다."
                                Style="{StaticResource Detail}" />

@@ -17,5 +17,6 @@
     <Compile Include="BatteryCapabilitiesTests.cs" />
     <Compile Include="SamsungFileInspectionTests.cs" />
     <Compile Include="SamsungFileInspectionViewModelTests.cs" />
+    <Compile Include="PeImportedFunctionTests.cs" />
   </ItemGroup>
 </Project>

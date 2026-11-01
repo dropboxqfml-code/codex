@@ -49,6 +49,12 @@ namespace ATIVBatteryGuard.Core.Services
 
 			private bool limited;
 
+			private int importThunksVisited;
+
+			private readonly List<PeImportedFunction> importedFunctions = new List<PeImportedFunction>();
+
+			private readonly HashSet<string> importedFunctionKeys = new HashSet<string>(StringComparer.Ordinal);
+
 			public Reader(byte[] bytes)
 			{
 				data = bytes;
@@ -170,7 +176,7 @@ namespace ATIVBatteryGuard.Core.Services
 				string[] importedModules = ReadImports();
 				string[] exportedNames = ReadExports();
 				bool isManaged = ReadManaged();
-				return new PeModuleInfo(isValid: true, isManaged, is64 ? "x64" : "x86", importedModules, exportedNames, limited ? "표시 한도에 따라 일부 이름만 포함했습니다." : string.Empty);
+				return new PeModuleInfo(isValid: true, isManaged, is64 ? "x64" : "x86", importedModules, exportedNames, limited ? "표시 또는 분석 한도에 따라 일부 이름만 포함했습니다." : string.Empty, importedFunctions);
 			}
 
 			private string[] ReadImports()
@@ -214,6 +220,13 @@ namespace ATIVBatteryGuard.Core.Services
 						Rva(num4, (ulong)(is64 ? 8 : 4));
 					}
 					string item = Name(num7, module: true);
+					if (num4 == 0 && num5 != 0)
+					{
+						// Without an original lookup table, a bound IAT contains VAs,
+						// not IMAGE_IMPORT_BY_NAME RVAs. Preserve the module only.
+						limited = true;
+					}
+					else ReadImportFunctions(item, num4 != 0 ? num4 : num8);
 					if (hashSet.Add(item))
 					{
 						if (list.Count < 64)
@@ -228,6 +241,39 @@ namespace ATIVBatteryGuard.Core.Services
 				}
 				Fail("지원하는 PE 메타데이터 분석 한도를 초과했습니다.");
 				return list.ToArray();
+			}
+
+			private void ReadImportFunctions(string module, uint tableAddress)
+			{
+				int width = is64 ? 8 : 4;
+				for (int index = 0; ; index++)
+				{
+					if (++importThunksVisited > 4096) Fail("지원하는 PE 메타데이터 분석 한도를 초과했습니다.");
+					ulong address = (ulong)tableAddress + (ulong)index * (uint)width;
+					if (address > uint.MaxValue) Fail("PE 헤더 또는 이름 표의 범위가 올바르지 않습니다.");
+					long offset = Rva((uint)address, (uint)width);
+					ulong thunk = is64 ? U64(offset) : U32(offset);
+					if (thunk == 0) return;
+					ulong ordinalFlag = is64 ? 0x8000000000000000UL : 0x80000000UL;
+					PeImportedFunction function;
+					if ((thunk & ordinalFlag) != 0)
+					{
+						if ((thunk & ~(ordinalFlag | 0xffffUL)) != 0) Fail("PE 헤더 또는 이름 표의 범위가 올바르지 않습니다.");
+						function = new PeImportedFunction(module, null, (int)(thunk & 0xffffUL));
+					}
+					else
+					{
+						if (thunk > uint.MaxValue - 2u) Fail("PE 헤더 또는 이름 표의 범위가 올바르지 않습니다.");
+						// The 16-bit hint is not a function name. Validate it, then
+						// parse a bounded ASCII name using the existing safe alphabet.
+						Rva((uint)thunk, 2);
+						function = new PeImportedFunction(module, Name((uint)thunk + 2, false));
+					}
+					string key = function.ModuleName.ToUpperInvariant() + "!" + (function.Ordinal.HasValue ? "#" + function.Ordinal.Value : function.FunctionName);
+					if (!importedFunctionKeys.Add(key)) continue;
+					if (importedFunctions.Count < PeModuleInfo.MaximumImportedFunctions) importedFunctions.Add(function);
+					else limited = true;
+				}
 			}
 
 			private string[] ReadExports()
@@ -404,6 +450,11 @@ namespace ATIVBatteryGuard.Core.Services
 				Range(offset, 4L);
 				int num = (int)offset;
 				return (uint)(data[num] | (data[num + 1] << 8) | (data[num + 2] << 16) | (data[num + 3] << 24));
+			}
+
+			private ulong U64(long offset)
+			{
+				return (ulong)U32(offset) | ((ulong)U32(offset + 4) << 32);
 			}
 
 			private void Range(long offset, long count)

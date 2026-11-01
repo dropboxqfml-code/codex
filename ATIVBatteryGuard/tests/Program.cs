@@ -382,6 +382,7 @@ internal static partial class Program
         RegisterBatteryCapabilitiesTests();
         RegisterSamsungFileInspectionTests();
         RegisterSamsungFileInspectionViewModelTests();
+        RegisterPeImportedFunctionTests();
     }
 
     private static void Add(string name, Action action) { Tests.Add(new KeyValuePair<string, Func<Task>>(name, () => { action(); return Task.CompletedTask; })); }

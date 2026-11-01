@@ -10,6 +10,63 @@ internal static partial class Program
 {
     private static void RegisterSamsungFileInspectionTests()
     {
+        Add("observed x64 Sabi3 metadata prepares architecture without promoting hardware access", () =>
+        {
+            var pe64 = new PeModuleInfo(true, false, "x64", new[] { "MSVCR90.dll" }, InspectionPe().ExportedNames);
+            var a = InspectionEntry(hash: "09a9714f0e11734872d60f2966edf8590ca721f0c05b2ca852a0bf20d6c006ae", pe: pe64);
+            var b = InspectionEntry(hash: "d8ac306fa192d1d41591d0c846f1b0dfdfd4c2465752a671797ace2e6d824d3a", pe: InspectionPe());
+            var report = new SamsungFileInspectionReport(SamsungFileInspectionStatus.Partial, new[] { a, b, a }, limited: true);
+            var result = Sabi3PreparationAssessment.Evaluate(report);
+            Equal(1, result.NativeX64Candidates); Equal(1, result.NativeX86Candidates);
+            Equal(1, result.X64CandidatesWithExpectedNames);
+            Check(result.SearchIncomplete && !result.CanReadHardware && !result.CanWriteHardware, "candidate enables device access");
+            Check(report.ToDisplayText().Contains("초기화 부작용") && report.ToDisplayText().Contains("실제 충전 제어: 미지원"), "metadata confused with readback");
+        });
+        Add("managed and conflicting Sabi3 metadata cannot silently choose a native implementation", () =>
+        {
+            var managed = InspectionEntry(pe: new PeModuleInfo(true, true, "x64", exportedNames: InspectionPe().ExportedNames));
+            Equal(0, Sabi3PreparationAssessment.Evaluate(new SamsungFileInspectionReport(SamsungFileInspectionStatus.Complete, new[] { managed })).NativeX64Candidates);
+            var a = InspectionEntry(hash: new string('a',64), pe: new PeModuleInfo(true, false,"x64", exportedNames: InspectionPe().ExportedNames));
+            var b = InspectionEntry(hash: new string('b',64), pe: new PeModuleInfo(true, false,"x64", exportedNames: new[] { "CallBIOSInterface" }));
+            var result = Sabi3PreparationAssessment.Evaluate(new SamsungFileInspectionReport(SamsungFileInspectionStatus.Complete, new[] { a, b }));
+            Equal(2, result.NativeX64Candidates); Equal(1, result.X64CandidatesWithExpectedNames);
+            Check(result.ToDisplayText().Contains("첫 번째 파일") && !result.CanReadHardware, "ambiguous files selected automatically");
+        });
+        Add("function imports survive immutable inspection snapshot and typed IPC", () =>
+        {
+            var functions = new[] { new PeImportedFunction("KERNEL32.dll", "DeviceIoControl"), new PeImportedFunction("MSVCR90.dll", null, 17) };
+            var pe = new PeModuleInfo(true, false, "x64", importedFunctions: functions);
+            var entry = InspectionEntry(pe: pe); functions[0] = null; pe.ImportedFunctions[0] = null;
+            var result = SamsungFileInspectionProtocol.Decode(SamsungFileInspectionProtocol.Encode(new SamsungFileInspectionReport(SamsungFileInspectionStatus.Complete, new[] { entry })));
+            Equal(2, result.Entries[0].Pe.ImportedFunctions.Length);
+            Equal("DeviceIoControl", result.Entries[0].Pe.ImportedFunctions[0].FunctionName);
+            Equal<int?>(17, result.Entries[0].Pe.ImportedFunctions[1].Ordinal);
+            Check(result.ToDisplayText().Contains("실행됐다는 증거가 아닙니다") && !result.HardwareWriteAllowed, "static import promoted to behavior");
+        });
+        Add("function IPC rejects paths invalid ordinals duplicates and oversized lists", () =>
+        {
+            foreach (var f in new[] {
+                new JsonObject { ["ModuleName"]="C:\\private.dll",["FunctionName"]="ReadFile",["Ordinal"]=null },
+                new JsonObject { ["ModuleName"]="KERNEL32.dll",["FunctionName"]="ReadFile",["Ordinal"]=1 },
+                new JsonObject { ["ModuleName"]="KERNEL32.dll",["FunctionName"]="",["Ordinal"]=65536 },
+                new JsonObject { ["ModuleName"]="KERNEL32.dll",["FunctionName"]="ReadFile" } })
+                AssertInvalidInspectionPacket(MutateInspectionPacket(root => root["Entries"][0]["Functions"] = new JsonArray(f.DeepClone())));
+            var valid = new JsonObject { ["ModuleName"]="KERNEL32.dll",["FunctionName"]="ReadFile",["Ordinal"]=null };
+            foreach (int count in new[] { 2, 257 })
+                AssertInvalidInspectionPacket(MutateInspectionPacket(root => root["Entries"][0]["Functions"] = new JsonArray(Enumerable.Range(0,count).Select(i => valid.DeepClone()).ToArray())));
+        });
+        Add("maximum function metadata fits bounded version two protocol", () =>
+        {
+            var functions = Enumerable.Range(0,256).Select(i => new PeImportedFunction(new string('m',124)+".dll", "F"+i.ToString("D3")+new string('x',124))).ToArray();
+            var pe = new PeModuleInfo(true, false, "x64", Enumerable.Range(0,64).Select(i=>"m"+i+".dll"),
+                Enumerable.Range(0,128).Select(i=>"f"+i+new string('x',120)), importedFunctions:functions);
+            var entry = InspectionEntry(pe:pe, description:new string('한',120));
+            var report = new SamsungFileInspectionReport(SamsungFileInspectionStatus.Complete, Enumerable.Repeat(entry,16));
+            byte[] bytes = SamsungFileInspectionProtocol.Encode(report);
+            Check(bytes.Length > 524288 && bytes.Length <= SamsungFileInspectionProtocol.MaximumBytes, "function quota not exercised");
+            var result = SamsungFileInspectionProtocol.Decode(bytes);
+            Equal(16,result.Entries.Length); Equal(256,result.Entries[15].Pe.ImportedFunctions.Length);
+        });
         Add("file inspection parses actual PE import and export tables before reporting metadata", () =>
         {
             byte[] bytes = InspectionPeBytes();
@@ -178,9 +235,9 @@ internal static partial class Program
         Add("file inspection IPC rejects missing fields unsupported targets and invalid typed facts", () =>
         {
             AssertInvalidInspectionPacket(MutateInspectionPacket(root => root.Remove("Version")));
-            foreach (string field in new[] { "FileName", "Length", "FileVersion", "Sha256", "Signature", "PeValid", "Imports", "Exports" })
+            foreach (string field in new[] { "FileName", "Length", "FileVersion", "Sha256", "Signature", "PeValid", "Imports", "Exports", "Functions" })
                 AssertInvalidInspectionPacket(MutateInspectionPacket(root => ((JsonObject)root["Entries"][0]).Remove(field)));
-            AssertInvalidInspectionPacket(MutateInspectionPacket(root => root["Version"] = 2));
+            AssertInvalidInspectionPacket(MutateInspectionPacket(root => root["Version"] = 1));
             AssertInvalidInspectionPacket(MutateInspectionPacket(root => root["Status"] = 999));
             foreach (var mutation in new Action<JsonObject>[] {
                 entry => entry["FileName"] = "Other.dll", entry => entry["LocationLabel"] = @"C:\Users\PrivateName",

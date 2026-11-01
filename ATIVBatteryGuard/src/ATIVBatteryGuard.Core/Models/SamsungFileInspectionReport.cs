@@ -55,7 +55,7 @@ namespace ATIVBatteryGuard.Core.Models
             Sha256 = inspected ? sha256.ToLowerInvariant() : string.Empty;
             // Snapshot the PE result and keep only fixed parser diagnostics, not arbitrary error text.
             Pe = inspected ? new PeModuleInfo(true, pe.IsManaged, pe.Architecture, pe.ImportedModules, pe.ExportedNames,
-                string.IsNullOrEmpty(pe.Error) ? string.Empty : "표시 또는 분석 범위가 제한됐습니다.")
+                string.IsNullOrEmpty(pe.Error) ? string.Empty : "표시 또는 분석 범위가 제한됐습니다.", pe.ImportedFunctions)
                 : new PeModuleInfo(false, false, "Unknown");
             Signature = inspected && Enum.IsDefined(typeof(OfflineSignatureStatus), signature) ? signature : OfflineSignatureStatus.NotChecked;
         }
@@ -128,6 +128,7 @@ namespace ATIVBatteryGuard.Core.Models
             text.AppendLine("ATIV Battery Guard — 삼성 파일의 읽기 전용 식별 보고서");
             text.AppendLine("조회 결과: " + StatusText(Status));
             text.AppendLine("대상: Sabi3.dll / wsabi.dll / BatteryToast.exe / PowerAudit.exe");
+            text.AppendLine(ATIVBatteryGuard.Core.Services.Sabi3PreparationAssessment.Evaluate(this).ToDisplayText());
             text.AppendLine("Setting·Settings의 고정 범위에서 대상 파일의 정보만 읽습니다. 원본 파일은 복사·로드·실행하지 않습니다.");
             foreach (var entry in entries)
             {
@@ -144,6 +145,10 @@ namespace ATIVBatteryGuard.Core.Models
                 text.AppendLine("PE 구조: " + entry.Pe.Architecture + (entry.Pe.IsManaged ? " · 관리 코드 (실제 실행 비트 수는 이 표시만으로 확정하지 않음)" : " · 네이티브 코드"));
                 text.AppendLine("서명: " + SignatureText(entry.Signature));
                 text.AppendLine("정적 DLL 참조: " + Join(entry.Pe.ImportedModules));
+                text.AppendLine("정적 import 함수 (이름 또는 ordinal):");
+                foreach (var function in entry.Pe.ImportedFunctions) text.AppendLine("  " + function.DisplayName);
+                if (entry.Pe.ImportedFunctions.Length == 0) text.AppendLine("  표시된 함수 없음");
+                text.AppendLine(ATIVBatteryGuard.Core.Services.Sabi3PreparationAssessment.DescribeObservedImports(entry.Pe));
                 text.AppendLine("이름으로 내보낸 함수: " + Join(entry.Pe.ExportedNames));
                 if (!string.IsNullOrEmpty(entry.Pe.Error)) text.AppendLine("PE 이름 목록은 표시 또는 분석 범위가 제한됐습니다.");
                 if (entry.FileName == "Sabi3.dll") AppendSabiFunctions(text, entry.Pe.ExportedNames);

@@ -17,8 +17,9 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--source-only', action='store_true')
     parser.add_argument('--windows-release-report', type=Path)
+    parser.add_argument('--require-windows-release', action='store_true')
     args = parser.parse_args()
-    if not args.source_only and args.windows_release_report is None:
+    if not args.source_only and args.require_windows_release and args.windows_release_report is None:
         parser.error('Executable distribution is blocked: signed-build Windows Defender evidence is required. Use --source-only for review.')
     root = Path(__file__).resolve().parents[1]
     output = args.output or root / 'reports'
@@ -52,11 +53,13 @@ def main():
         print(json.dumps({'file': str(source_zip), 'bytes': source_zip.stat().st_size, 'sha256': sha(source_zip.read_bytes()), 'sourceFingerprintSha256': fingerprint, 'executableDistribution': False}))
         return
     files = {name: (build / name).read_bytes() for name in names}
-    evidence = json.loads(args.windows_release_report.read_text(encoding='utf-8-sig'))
-    validate_release(evidence, files, fingerprint)
+    evidence = None
+    if args.windows_release_report is not None:
+        evidence = json.loads(args.windows_release_report.read_text(encoding='utf-8-sig'))
+        validate_release(evidence, files, fingerprint)
     info = {
         'schemaVersion': 1, 'application': 'ATIV Battery Guard',
-        'distribution': 'READ ONLY SAMSUNG FILE METADATA PREVIEW',
+        'distribution': 'SABI3 X64 PREPARATION AND STATIC IMPORT PREVIEW',
         'target': 'Windows10x64/.NETFramework4.8',
         'reconstructedSources': True,
         'sourceFingerprintSha256': fingerprint,
@@ -86,15 +89,18 @@ def main():
         'offlineAuthenticodeOnly': True, 'catalogSignatureChecked': False,
         'currentWindowsFileInspectionTested': False,
         'fileInspectionWorkerTimeoutMs': 10000,
-        'maxInspectionResultBytes': 524288,
+        'maxInspectionResultBytes': 2097152,
+        'fileImportFunctionsIncluded': True,
+        'sabi3MetadataAssessmentIncluded': True,
+        'previousWindowsFileMetadataObserved': True,
         'wmiClassMetadataOnly': True, 'oemMethodInvocationAllowed': False,
         'oemModuleExecutionAllowed': False, 'actualChargeControlSupported': False,
         'containsOriginalVendorBinaries': False, 'containsUserUploads': False,
-        'automaticUpload': False, 'digitallySigned': True,
+        'automaticUpload': False, 'digitallySigned': evidence is not None,
         'windowsReleaseEvidence': evidence,
     }
     files['BUILD-INFO.json'] = json.dumps(info, ensure_ascii=False, indent=2).encode('utf-8')
-    instructions = '''ATIV Battery Guard — 삼성 파일 정보 확인판
+    instructions = '''ATIV Battery Guard — Sabi3 x64 연동 준비 및 함수 참조 분석판
 
 1. ZIP 파일을 새 폴더에 모두 압축 해제하세요.
 2. ATIVBatteryGuard.exe를 실행하세요. 관리자 권한은 필요하지 않습니다.
@@ -105,7 +111,9 @@ Windows 보안이 차단하면 실행을 보류하세요. 예외 등록이나 �
 
 이번 기능은 Program Files (x86)의 Samsung\\Setting 또는 Samsung\\Settings에 설치된 네 파일의 정보를 읽습니다.
 Sabi3.dll, wsabi.dll, BatteryToast.exe, PowerAudit.exe만 대상이며 제한된 하위 폴더도 확인합니다.
-버전·회사/설명·PE 구조·SHA-256·정적 DLL 참조·이름으로 내보낸 함수를 표시합니다.
+버전·회사/설명·PE 구조·SHA-256·정적 DLL 참조와 함수 이름·내보낸 함수를 표시합니다.
+Sabi3 x64 후보를 해시로 구분하고 공개 함수 이름 일치 여부를 표시합니다.
+드라이버·파일·동적 로드 관련 함수 이름의 참조를 별도로 표시합니다. 실제 실행됐다는 뜻은 아닙니다.
 서명은 로컬 캐시로만 확인합니다. 온라인 폐기 확인·카탈로그 서명 검증은 하지 않습니다.
 확인할 수 없는 서명은 별도로 표시하며 서명 불일치와 구분합니다.
 관리 코드의 실제 실행 비트 수와 간접·지연 로드 등은 정적 PE 표시만으로 확정할 수 없습니다.
@@ -124,12 +132,12 @@ Sabi3.dll, wsabi.dll, BatteryToast.exe, PowerAudit.exe만 대상이며 제한된
 실행 대상은 Windows 10 x64 및 .NET Framework 4.8입니다.
 이전 조회판은 사용자 노트북에서 정상 조회가 확인됐습니다. 결과 0x80000000에는 표준 충전·방전 요청 지원 비트가 없습니다.
 이 사실을 삼성 OEM 기능 전체의 불가능으로 해석하지 않습니다.
-이번 파일 정보 기능은 클라우드 빌드·자동 회귀 테스트를 확인했으며, Windows 노트북에서의 실제 조회는 아직 미검증입니다.
+이전 파일 정보판은 사용자 노트북에서 실행 결과를 받았습니다. 이번 함수 참조 분석 기능의 Windows 실행은 아직 미검증입니다.
 이전의 배터리 diagnostics TXT를 다시 수집할 필요는 없습니다.
 '''
     files['먼저 읽어주세요.txt'] = instructions.replace('\n', '\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(sha(data) + '  ' + name + '\n' for name, data in sorted(files.items())).encode('utf-8')
-    binary_zip = output / 'ATIVBatteryGuard-SAMSUNG-FILE-INFO.zip'
+    binary_zip = output / 'ATIVBatteryGuard-SABI3-PREPARATION.zip'
     with zipfile.ZipFile(binary_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

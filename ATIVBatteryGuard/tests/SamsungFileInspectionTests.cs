@@ -40,6 +40,58 @@ internal static partial class Program
             Check(result.SearchIncomplete && !result.CanReadHardware && !result.CanWriteHardware, "candidate enables device access");
             Check(report.ToDisplayText().Contains("초기화 부작용") && report.ToDisplayText().Contains("실제 충전 제어: 미지원"), "metadata confused with readback");
         });
+        Add("analyzed x64 Sabi3 exports cannot override a missing observed device path", () =>
+        {
+            var file = InspectionEntry(hash: Sabi3X64Abi.AnalyzedSha256,
+                pe: new PeModuleInfo(true, false, "x64", exportedNames: InspectionPe().ExportedNames));
+            var report = new SamsungFileInspectionReport(SamsungFileInspectionStatus.Partial, new[] { file },
+                limited: true, driverLink: SabiDriverLinkStatus.NotFound);
+            var decoded = SamsungFileInspectionProtocol.Decode(SamsungFileInspectionProtocol.Encode(report));
+            var result = Sabi3PreparationAssessment.Evaluate(decoded);
+            Equal(1, result.NativeX64Candidates); Equal(1, result.X64CandidatesWithExpectedNames);
+            string text = result.ToDisplayText();
+            Check(text.Contains("필요한 SABI 경로를 확인하지 못했습니다") &&
+                text.Contains("초기화 가능으로 판정하지 않습니다"), "exports obscured the missing observed path");
+            Check(text.Contains("드라이버 미설치나 펌웨어 기능 부재를 확정하지 않습니다"), "name absence became a hardware impossibility claim");
+            Check(!result.CanReadHardware && !result.CanWriteHardware && !decoded.HardwareWriteAllowed, "missing path enabled hardware access");
+        });
+        Add("analyzed x64 Sabi3 distinguishes observed names failures and unperformed lookup", () =>
+        {
+            var file = InspectionEntry(hash: Sabi3X64Abi.AnalyzedSha256,
+                pe: new PeModuleInfo(true, false, "x64", exportedNames: InspectionPe().ExportedNames));
+            var expected = new Dictionary<SabiDriverLinkStatus, string>
+            {
+                { SabiDriverLinkStatus.Present, "장치 접근·초기화·배터리 기능 지원은 미검증" },
+                { SabiDriverLinkStatus.AccessDenied, "이름 조회 권한이 없어" },
+                { SabiDriverLinkStatus.Unavailable, "이름 조회 결과를 확인하지 못해" },
+                { SabiDriverLinkStatus.UnsupportedPlatform, "이 플랫폼에서는 Windows SABI 이름 조회를 지원하지 않아" },
+                { SabiDriverLinkStatus.NotChecked, "SABI 이름 조회를 수행하지 않아" }
+            };
+            foreach (var state in expected)
+            {
+                var result = Sabi3PreparationAssessment.Evaluate(new SamsungFileInspectionReport(
+                    SamsungFileInspectionStatus.Complete, new[] { file }, driverLink: state.Key));
+                string text = result.ToDisplayText();
+                Check(text.Contains(state.Value), "lookup state was lost: " + state.Key);
+                Check(!text.Contains("현재 이름 조회에서는 필요한 SABI 경로를 확인하지 못했습니다"), "lookup failure was converted to absence");
+                Check(!result.CanReadHardware && !result.CanWriteHardware, "lookup state enabled hardware access");
+            }
+        });
+        Add("device path contract is not attributed to other hashes architectures or managed files", () =>
+        {
+            foreach (var file in new[]
+            {
+                InspectionEntry(hash: new string('b', 64), pe: new PeModuleInfo(true, false, "x64", exportedNames: InspectionPe().ExportedNames)),
+                InspectionEntry(hash: Sabi3X64Abi.AnalyzedSha256, pe: InspectionPe()),
+                InspectionEntry(hash: Sabi3X64Abi.AnalyzedSha256, pe: new PeModuleInfo(true, true, "x64", exportedNames: InspectionPe().ExportedNames))
+            })
+            {
+                var result = Sabi3PreparationAssessment.Evaluate(new SamsungFileInspectionReport(
+                    SamsungFileInspectionStatus.Complete, new[] { file }, driverLink: SabiDriverLinkStatus.NotFound));
+                Check(!result.ToDisplayText().Contains("정적 분석된 x64 DLL의 초기화에는"), "unreviewed file inherited the analyzed device contract");
+                Check(!result.CanReadHardware && !result.CanWriteHardware, "unreviewed file enabled hardware access");
+            }
+        });
         Add("managed and conflicting Sabi3 metadata cannot silently choose a native implementation", () =>
         {
             var managed = InspectionEntry(pe: new PeModuleInfo(true, true, "x64", exportedNames: InspectionPe().ExportedNames));

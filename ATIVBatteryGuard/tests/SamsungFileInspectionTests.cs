@@ -27,6 +27,7 @@ internal static partial class Program
             AssertInvalidInspectionPacket(MutateInspectionPacket(root=>root.Remove("DriverLink")));
             AssertInvalidInspectionPacket(MutateInspectionPacket(root=>root["DriverLink"]=999));
             AssertInvalidInspectionPacket(MutateInspectionPacket(root=>root["Version"]=2));
+            AssertInvalidInspectionPacket(MutateInspectionPacket(root=>root["Version"]=3));
         });
         Add("observed x64 Sabi3 metadata prepares architecture without promoting hardware access", () =>
         {

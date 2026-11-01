@@ -59,7 +59,7 @@ def main():
         validate_release(evidence, files, fingerprint)
     info = {
         'schemaVersion': 1, 'application': 'ATIV Battery Guard',
-        'distribution': 'SABI3 X64 ABI CORRECTION AND PASSIVE DRIVER NAME CHECK',
+        'distribution': 'READ-ONLY SAMSUNG/SABI KERNEL DRIVER STATUS CHECK',
         'target': 'Windows10x64/.NETFramework4.8',
         'reconstructedSources': True,
         'sourceFingerprintSha256': fingerprint,
@@ -94,59 +94,84 @@ def main():
         'sabi3MetadataAssessmentIncluded': True,
         'sabi3X64BinaryStaticallyReviewed': True,
         'sabi3CallerPayloadBytes': 11,
-        'samsungFileProtocolVersion': 3,
+        'samsungFileProtocolVersion': 4,
         'passiveSabiDriverNameCheck': True,
         'currentSabiDriverNameWindowsTested': False,
+        'previousSabiDriverNameWindowsObserved': True,
+        'previousSabiDriverNameObservation': 'NotFound; absence is not proof of uninstalled driver or unsupported firmware',
+        'samsungKernelDriverInventoryReadOnly': True,
+        'samsungKernelDriverQueryNamespace': 'ROOT\\CIMV2',
+        'samsungKernelDriverQueryClass': 'Win32_SystemDriver',
+        'samsungKernelDriverQueryFields': ['Name', 'DisplayName', 'State', 'StartMode', 'ServiceType'],
+        'samsungKernelDriverServiceTypeFilter': 'Kernel Driver',
+        'samsungKernelDriverCandidateCategories': ['SabiName', 'SamsungName'],
+        'samsungKernelDriverExportsOriginalNames': False,
+        'samsungKernelDriverMaximumRows': 1024,
+        'samsungKernelDriverMaximumEntries': 32,
+        'samsungKernelDriverWmiTimeoutMs': 2000,
+        'samsungKernelDriverCooperativeBudgetMs': 3000,
+        'currentWindowsKernelDriverInventoryTested': False,
+        'driverServiceModificationAllowed': False,
+        'driverStateEnablesChargeControl': False,
         'previousWindowsFileMetadataObserved': True,
-        'wmiClassMetadataOnly': True, 'oemMethodInvocationAllowed': False,
+        'wmiClassMetadataOnly': False, 'oemWmiClassMetadataOnly': True,
+        'oemMethodInvocationAllowed': False,
         'oemModuleExecutionAllowed': False, 'actualChargeControlSupported': False,
         'containsOriginalVendorBinaries': False, 'containsUserUploads': False,
         'automaticUpload': False, 'digitallySigned': evidence is not None,
         'windowsReleaseEvidence': evidence,
     }
     files['BUILD-INFO.json'] = json.dumps(info, ensure_ascii=False, indent=2).encode('utf-8')
-    instructions = '''ATIV Battery Guard — Sabi3 규약 수정·SABI 연결 확인판
+    instructions = '''ATIV Battery Guard — 삼성/SABI 커널 드라이버 상태 확인판
 
 1. ZIP 파일을 새 폴더에 모두 압축 해제하세요.
 2. ATIVBatteryGuard.exe를 실행하세요. 관리자 권한은 필요하지 않습니다.
 Windows 보안이 차단하면 실행을 보류하세요. 예외 등록이나 보안 기능 해제를 하지 않습니다.
-3. 창 아래쪽 ‘삼성 파일 정보 확인’에서 ‘삼성 파일 정보 만들기’를 누르세요.
-4. ‘정보 파일 위치 열기’를 누르면 samsung-files-로 시작하는 새 TXT를 확인할 수 있습니다.
-5. 결과를 전달할 때는 그 TXT만 사용합니다. 삼성 DLL·EXE 또는 폴더 전체는 필요하지 않습니다.
+3. 새 드라이버 항목을 로컬에서 확인하려면 창 아래쪽 ‘삼성 파일 정보 확인’에서 ‘삼성 파일 정보 만들기’를 선택하세요.
+4. 화면과 ‘정보 파일 위치 열기’의 samsung-files TXT에서 ‘삼성/SABI 관련 커널 드라이버’ 항목을 확인할 수 있습니다.
+이는 새 기능을 선택적으로 확인하는 절차입니다. 같은 진단·기존 TXT·삼성 DLL·EXE를 다시 제출할 필요는 없습니다.
 
-이번 기능은 Program Files (x86)의 Samsung\\Setting 또는 Samsung\\Settings에 설치된 네 파일의 정보를 읽습니다.
+기존 파일 식별은 Program Files (x86)의 Samsung\\Setting 또는 Samsung\\Settings에 설치된 네 파일의 정보를 읽습니다.
 Sabi3.dll, wsabi.dll, BatteryToast.exe, PowerAudit.exe만 대상이며 제한된 하위 폴더도 확인합니다.
 버전·회사/설명·PE 구조·SHA-256·정적 DLL 참조와 함수 이름·내보낸 함수를 표시합니다.
 Sabi3 x64 후보를 해시로 구분하고 공개 함수 이름 일치 여부를 표시합니다.
-이번에 제공받은 x64 DLL을 실행 없이 정적으로 분석해 실제 버퍼 길이 11바이트를 확인하고 코드를 수정했습니다.
+이미 제공받은 x64 DLL의 정적 분석 기록을 사용하며 동일 DLL을 다시 요구하지 않습니다.
 현재 Windows의 SABI 연결 이름은 QueryDosDevice로 조회합니다. 장치 핸들을 열거나 IOCTL을 실행하지 않습니다.
-TXT의 ‘SABI 장치 연결 이름’ 항목이 이번 단계에서 확인할 새 정보입니다.
-연결 이름이 있어도 장치 접근·펌웨어 지원이 확인된 것은 아닙니다. 없더라도 배터리 기능 전체의 부재로 판단하지 않습니다.
+
+새 드라이버 항목은 로컬 Windows의 커널 드라이버 등록에서 이름 또는 표시 이름에 SABI/Samsung이 포함된 후보를 읽습니다.
+결과는 고정된 이름 일치 범주, 등록 관측, 실행 상태, 시작 방식으로 표시합니다. 원래 서비스 이름은 보고하지 않습니다.
+실행 상태는 실행 중·중지·전환 대기·알 수 없음 등을 구분하고 시작 방식은 부팅·시스템·자동·수동·사용 안 함 등을 구분합니다.
+이름 조건만으로 삼성 제조사, 해당 모델의 SABI 연결 제공 여부, 배터리 기능을 확인한 것은 아닙니다.
+정상 조회에서 후보 미관측과 권한 거부·조회 오류·시간 초과·일부 관측은 별도로 표시합니다.
+미관측은 드라이버 미설치나 배터리 보호 기능 부재 판정이 아닙니다. 불완전한 조회에서 누락을 부재로 해석하지 않습니다.
+기존 ‘SABI 장치 연결 이름’ 결과와 함께 비교합니다. 드라이버가 관측돼도 SABI 이름이 없을 수 있으며 두 조회의 범위는 다릅니다.
+연결 이름이 있어도 장치 접근·초기화·펌웨어 지원이 확인된 것은 아닙니다. 드라이버가 실행 중이어도 충전 제어를 활성화하지 않습니다.
+커널 드라이버 등록 조회는 최대 1,024행·후보 32개로 제한하며 WMI 제한과 별도 조회 프로세스의 10초 제한을 적용합니다.
+
 드라이버·파일·동적 로드 관련 함수 이름의 참조를 별도로 표시합니다. 실제 실행됐다는 뜻은 아닙니다.
 서명은 로컬 캐시로만 확인합니다. 온라인 폐기 확인·카탈로그 서명 검증은 하지 않습니다.
 확인할 수 없는 서명은 별도로 표시하며 서명 불일치와 구분합니다.
 관리 코드의 실제 실행 비트 수와 간접·지연 로드 등은 정적 PE 표시만으로 확정할 수 없습니다.
 
-삼성 EXE/DLL 추출이나 추가 분석 ZIP은 필요하지 않습니다.
+삼성 원본 DLL·EXE와 사용자 업로드 파일은 이 ZIP에 포함하지 않습니다. 추가 추출이나 분석 ZIP은 필요하지 않습니다.
 삼성 파일을 복사·로드·실행하거나 DLL의 초기화 함수를 호출하지 않습니다.
 정보 확인은 이 버튼을 선택했을 때만 실행하며 앱 시작·주기적 배터리 조회에서는 실행하지 않습니다.
 10초 제한 초과 시 자체 조회 프로세스에 종료를 요청합니다. 결과를 장치 미지원으로 바꾸지 않습니다.
-전체 설치 경로·사용자 이름·시리얼번호·예외 원문은 보고하지 않습니다.
+전체 설치 경로·사용자 이름·시리얼번호·고유 식별자·드라이버 원래 이름·예외 원문은 보고하지 않습니다.
 파일명·함수 이름·서명 성공은 배터리 제어 지원의 증거가 아닙니다.
 배터리 잔량은 0%를 포함한 Windows의 유효한 현재 측정값을 그대로 표시합니다.
 실제 80%/100% 충전 제한은 아직 지원하지 않습니다.
-삼성 파일이나 제어 메서드를 실행하지 않습니다. 기존 원본 파일 수집기와 위치 탐색기는 컴파일에서 제외했습니다.
+삼성 DLL 초기화·OEM 명령·제어 메서드·펌웨어 쓰기를 실행하지 않습니다. 기존 원본 파일 수집기와 위치 탐색기는 컴파일에서 제외했습니다.
 공식 지원 여부와 Samsung Settings 사용권 조건은 아직 확인 중입니다.
-자동 업로드, 드라이버 설치, 서비스 등록, 충전 설정 변경은 하지 않습니다.
+자동 업로드, 드라이버 설치, 서비스 등록·시작·중지·시작 방식 변경, 충전 설정 변경은 하지 않습니다.
 실행 대상은 Windows 10 x64 및 .NET Framework 4.8입니다.
 이전 조회판은 사용자 노트북에서 정상 조회가 확인됐습니다. 결과 0x80000000에는 표준 충전·방전 요청 지원 비트가 없습니다.
 이 사실을 삼성 OEM 기능 전체의 불가능으로 해석하지 않습니다.
-이전 함수 참조판은 사용자 노트북에서 실행 결과를 받았습니다. 이번 SABI 이름 조회의 Windows 실행은 아직 미검증입니다.
-이전의 배터리 diagnostics TXT를 다시 수집할 필요는 없습니다.
+이전 SABI 연결 이름 조회에서 NotFound를 확인했습니다. 이번 드라이버 조회와 새 빌드의 Windows 실기 동작은 아직 미검증입니다.
 '''
     files['먼저 읽어주세요.txt'] = instructions.replace('\n', '\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(sha(data) + '  ' + name + '\n' for name, data in sorted(files.items())).encode('utf-8')
-    binary_zip = output / 'ATIVBatteryGuard-SABI-LINK-CHECK.zip'
+    binary_zip = output / 'ATIVBatteryGuard-DRIVER-STATUS-CHECK.zip'
     with zipfile.ZipFile(binary_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

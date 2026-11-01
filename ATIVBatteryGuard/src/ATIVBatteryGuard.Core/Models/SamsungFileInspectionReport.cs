@@ -104,13 +104,15 @@ namespace ATIVBatteryGuard.Core.Models
         public SamsungFileInspectionEntry[] Entries => (SamsungFileInspectionEntry[])entries.Clone();
         public bool Limited { get; }
         public SabiDriverLinkStatus DriverLink { get; }
+        public SamsungKernelDriverReport KernelDrivers { get; }
         public bool HardwareWriteAllowed => false;
 
         public SamsungFileInspectionReport(SamsungFileInspectionStatus status = SamsungFileInspectionStatus.NotCollected,
             IEnumerable<SamsungFileInspectionEntry> entries = null, bool limited = false,
-            SabiDriverLinkStatus driverLink = SabiDriverLinkStatus.NotChecked)
+            SabiDriverLinkStatus driverLink = SabiDriverLinkStatus.NotChecked, SamsungKernelDriverReport kernelDrivers = null)
         {
             DriverLink = Enum.IsDefined(typeof(SabiDriverLinkStatus), driverLink) ? driverLink : SabiDriverLinkStatus.Unavailable;
+            KernelDrivers = kernelDrivers ?? new SamsungKernelDriverReport();
             Status = Enum.IsDefined(typeof(SamsungFileInspectionStatus), status) ? status : SamsungFileInspectionStatus.InvalidResponse;
             var copy = new List<SamsungFileInspectionEntry>();
             if (entries != null && (Status == SamsungFileInspectionStatus.Complete || Status == SamsungFileInspectionStatus.Partial))
@@ -138,6 +140,7 @@ namespace ATIVBatteryGuard.Core.Models
             text.AppendLine("대상: Sabi3.dll / wsabi.dll / BatteryToast.exe / PowerAudit.exe");
             text.AppendLine("SABI 장치 연결 이름: " + DriverLinkText(DriverLink));
             text.AppendLine("장치 이름 조회만 수행합니다. 연결 이름의 존재는 장치 접근·드라이버 규약·배터리 기능 지원의 증거가 아닙니다.");
+            text.AppendLine(KernelDrivers.ToDisplayText(DriverLink));
             text.AppendLine(ATIVBatteryGuard.Core.Services.Sabi3PreparationAssessment.Evaluate(this).ToDisplayText());
             text.AppendLine("Setting·Settings의 고정 범위에서 대상 파일의 정보만 읽습니다. 원본 파일은 복사·로드·실행하지 않습니다.");
             foreach (var entry in entries)

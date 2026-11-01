@@ -1,5 +1,35 @@
 # Settings 앱 분석판 검증 기록
 
+## 삼성/SABI 커널 드라이버 상태 조회 — 2026-11-02 한국 시간
+
+현재 대화의 새 실행 환경에서 지정 브랜치의 `4492bbaa6f9cb87a9fb7c24969c6f1efcf6b6bd9`를 확인하고 개발했습니다. 기존 작업 브랜치를 보존했으며 이전 고장 환경의 게시 완료를 기다리거나 새로 게시하지 않았습니다.
+
+- 전체 공유 Core·ViewModel 테스트: **204개 통과, 실패 0개, 건너뜀 0개**. `reports/portable-tests.json`과 `reports/portable-tests.log`는 이번 실행의 결과입니다. 이전 191개 기록을 현재 검증으로 재사용하지 않았습니다.
+- .NET Framework 4.8 x64 WPF/XAML 빌드: **경고 0개, 오류 0개**. `reports/wpf-build.log`에 현재 빌드 결과를 보관합니다.
+- 기존 Python 배포 검증 테스트: **6개 통과**. 앱 테스트 수에는 합산하지 않았습니다. 개발 미리보기의 프로토콜 4·읽기 전용 드라이버 조회·Windows 미검증 표기도 갱신했습니다.
+- 새 13개 그룹은 후보 분류·상태/시작 방식의 모든 값·부분/오류 시 부재 판정 금지·결과 복사와 제한·SABI 결과 비교·IPC 필수 필드/잘못된 enum/개수/실패+관측 모순·개인정보 제거·기존 UI/저장과 시간 초과 후 이전 결과 제거를 검사합니다.
+- Windows WMI 제공자 열거, Windows GUI·노트북 실기 실행은 **미실행**입니다. 삼성 DLL 초기화·OEM 메서드·드라이버 변경·실제 충전 제한도 실행하지 않았습니다.
+
+공식 릴리스 메타데이터의 SHA-512로 검증한 .NET SDK 8.0.427 Linux 배포본과 같은 버전 WindowsDesktop SDK 도구를 `/workspace/.dotnet`에 준비했습니다. NuGet에서 공식 net48 참조 어셈블리 1.0.3을 복원했습니다. 최초 WPF 빌드는 Windows용 ReadyToRun 도구의 형식 오류로 실패했고, 관리 IL을 사용하도록 `DOTNET_ReadyToRun=0`을 적용한 뒤 실제 XAML 빌드를 성공시켰습니다. 체크섬·TLS 검증이나 앱의 대상 플랫폼을 바꾸지 않았습니다.
+
+이 환경의 재현 명령입니다.
+
+```sh
+cd /workspace/codex/ATIVBatteryGuard
+export DOTNET_ROOT=/workspace/.dotnet
+export DOTNET_CLI_HOME=/workspace/.cache/dotnet
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+export NUGET_PACKAGES=/workspace/.cache/nuget
+export PATH="$DOTNET_ROOT:$PATH"
+dotnet restore ATIVBatteryGuard.sln --disable-parallel
+dotnet restore tests/ATIVBatteryGuard.PortableTests.csproj
+DOTNET_ReadyToRun=0 dotnet build ATIVBatteryGuard.sln -c Release --no-restore -p:UseSharedCompilation=false -m:1
+dotnet run --project tests/ATIVBatteryGuard.PortableTests.csproj -c Release --no-restore -p:UseSharedCompilation=false -- --report reports/portable-tests.json
+```
+
+네트워크 복원은 지원되는 명령 실행 권한과 기존 HTTPS 프록시를 사용했습니다. SDK·캐시 경로는 이 환경에 준비한 로컬 도구이며, 설정 초안을 다시 적용하거나 게시한 기록이 아닙니다. [구현과 노트북 확인 항목](SAMSUNG_KERNEL_DRIVER_INSPECTION.md)에 범위와 한계를 기록했습니다.
+
 ## SABI 이름 결과 수신·WMI 응답 검증
 
 후속 `samsung-files-20261101T132149`에서 SABI 이름 조회의 실제 Windows NotFound 경로를 확인했습니다. 동일 x64 DLL 해시와 기존 파일 항목들의 해시·버전 일치도 확인했습니다. 이름 부재를 드라이버 미설치나 펌웨어 기능 부재로 판정하지 않습니다.

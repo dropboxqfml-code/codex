@@ -115,6 +115,18 @@ namespace ATIVBatteryGuard.Diagnostics
             try { execution.Process.Dispose(); } catch { }
         }
 
-        private static SamsungFileInspectionReport Result(SamsungFileInspectionStatus status) => new SamsungFileInspectionReport(status);
+        private static SamsungFileInspectionReport Result(SamsungFileInspectionStatus status)
+        {
+            // A failed/terminated worker supplies no completed observations. Do not
+            // turn missing IPC data into a successful empty driver enumeration.
+            var queryStatus = status == SamsungFileInspectionStatus.TimedOut ? SamsungDriverQueryStatus.TimedOut
+                : status == SamsungFileInspectionStatus.UnsupportedPlatform ? SamsungDriverQueryStatus.UnsupportedPlatform
+                : status == SamsungFileInspectionStatus.InvalidResponse ? SamsungDriverQueryStatus.InvalidResponse
+                : SamsungDriverQueryStatus.Unavailable;
+            var link = status == SamsungFileInspectionStatus.UnsupportedPlatform
+                ? SabiDriverLinkStatus.UnsupportedPlatform : SabiDriverLinkStatus.Unavailable;
+            return new SamsungFileInspectionReport(status, driverLink: link,
+                kernelDrivers: new SamsungKernelDriverReport(queryStatus));
+        }
     }
 }

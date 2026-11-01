@@ -16,6 +16,7 @@
     <Compile Include="SettingsPolicyTests.cs" />
     <Compile Include="BatteryCapabilitiesTests.cs" />
     <Compile Include="SamsungFileInspectionTests.cs" />
+    <Compile Include="SamsungKernelDriverTests.cs" />
     <Compile Include="SamsungFileInspectionViewModelTests.cs" />
     <Compile Include="PeImportedFunctionTests.cs" />
     <Compile Include="Sabi3ReplyDecoderTests.cs" />

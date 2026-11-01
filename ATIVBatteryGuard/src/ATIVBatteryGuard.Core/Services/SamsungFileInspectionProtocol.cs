@@ -21,7 +21,23 @@ namespace ATIVBatteryGuard.Core.Services
             [DataMember(IsRequired = true)] public int Status;
             [DataMember(IsRequired = true)] public bool Limited;
             [DataMember(IsRequired = true)] public int DriverLink;
+            [DataMember(IsRequired = true)] public DriverPacket KernelDrivers;
             [DataMember(IsRequired = true)] public Entry[] Entries;
+        }
+
+        [DataContract]
+        private sealed class DriverPacket
+        {
+            [DataMember(IsRequired = true)] public int Status;
+            [DataMember(IsRequired = true)] public DriverEntry[] Entries;
+        }
+
+        [DataContract]
+        private sealed class DriverEntry
+        {
+            [DataMember(IsRequired = true)] public int Category;
+            [DataMember(IsRequired = true)] public int State;
+            [DataMember(IsRequired = true)] public int StartMode;
         }
 
         [DataContract]
@@ -80,7 +96,8 @@ namespace ATIVBatteryGuard.Core.Services
             }
             using (var output = new MemoryStream())
             {
-                Serializer().WriteObject(output, new Packet { Version = 3, Status = (int)report.Status, Limited = report.Limited, DriverLink = (int)report.DriverLink, Entries = entries });
+                Serializer().WriteObject(output, new Packet { Version = 4, Status = (int)report.Status, Limited = report.Limited, DriverLink = (int)report.DriverLink,
+                    KernelDrivers = ToWire(report.KernelDrivers), Entries = entries });
                 if (output.Length > MaximumBytes) throw new SerializationException("Result exceeds the size limit.");
                 return output.ToArray();
             }
@@ -102,8 +119,8 @@ namespace ATIVBatteryGuard.Core.Services
                     packet = (Packet)Serializer().ReadObject(reader);
                     while (reader.Read()) if (reader.NodeType != XmlNodeType.Whitespace) return Invalid();
                 }
-                if (packet == null || packet.Version != 3 || !Enum.IsDefined(typeof(SabiDriverLinkStatus), packet.DriverLink) || !Enum.IsDefined(typeof(SamsungFileInspectionStatus), packet.Status) ||
-                    packet.Entries == null || packet.Entries.Length > SamsungFileInspectionReport.MaximumEntries) return Invalid();
+                if (packet == null || packet.Version != 4 || !Enum.IsDefined(typeof(SabiDriverLinkStatus), packet.DriverLink) || !Enum.IsDefined(typeof(SamsungFileInspectionStatus), packet.Status) ||
+                    packet.Entries == null || packet.Entries.Length > SamsungFileInspectionReport.MaximumEntries || !Valid(packet.KernelDrivers)) return Invalid();
                 var entries = new SamsungFileInspectionEntry[packet.Entries.Length];
                 for (int i = 0; i < entries.Length; i++)
                 {
@@ -114,13 +131,42 @@ namespace ATIVBatteryGuard.Core.Services
                         new PeModuleInfo(wire.PeValid, wire.PeManaged, wire.PeArchitecture, wire.Imports, wire.Exports,
                             wire.PeLimited ? "표시 또는 분석 범위가 제한됐습니다." : string.Empty, FromWire(wire.Functions)), (OfflineSignatureStatus)wire.Signature);
                 }
-                return new SamsungFileInspectionReport((SamsungFileInspectionStatus)packet.Status, entries, packet.Limited, (SabiDriverLinkStatus)packet.DriverLink);
+                return new SamsungFileInspectionReport((SamsungFileInspectionStatus)packet.Status, entries, packet.Limited, (SabiDriverLinkStatus)packet.DriverLink,
+                    FromWire(packet.KernelDrivers));
             }
             catch (Exception exception) when (exception is SerializationException || exception is XmlException ||
                 exception is ArgumentException || exception is InvalidOperationException || exception is FormatException || exception is OverflowException)
             {
                 return Invalid();
             }
+        }
+
+        private static DriverPacket ToWire(SamsungKernelDriverReport report)
+        {
+            var source = report.Entries;
+            var entries = new DriverEntry[source.Length];
+            for (int i = 0; i < source.Length; i++) entries[i] = new DriverEntry {
+                Category = (int)source[i].Category, State = (int)source[i].State, StartMode = (int)source[i].StartMode };
+            return new DriverPacket { Status = (int)report.Status, Entries = entries };
+        }
+
+        private static SamsungKernelDriverReport FromWire(DriverPacket packet)
+        {
+            var entries = new SamsungKernelDriverEntry[packet.Entries.Length];
+            for (int i = 0; i < entries.Length; i++) entries[i] = new SamsungKernelDriverEntry(
+                (SamsungDriverCategory)packet.Entries[i].Category, (SamsungDriverState)packet.Entries[i].State, (SamsungDriverStartMode)packet.Entries[i].StartMode);
+            return new SamsungKernelDriverReport((SamsungDriverQueryStatus)packet.Status, entries);
+        }
+
+        private static bool Valid(DriverPacket packet)
+        {
+            if (packet == null || !Enum.IsDefined(typeof(SamsungDriverQueryStatus), packet.Status) || packet.Entries == null ||
+                packet.Entries.Length > SamsungKernelDriverReport.MaximumEntries) return false;
+            if (packet.Status != (int)SamsungDriverQueryStatus.Complete && packet.Status != (int)SamsungDriverQueryStatus.Partial && packet.Entries.Length != 0) return false;
+            foreach (var entry in packet.Entries)
+                if (entry == null || !Enum.IsDefined(typeof(SamsungDriverCategory), entry.Category) ||
+                    !Enum.IsDefined(typeof(SamsungDriverState), entry.State) || !Enum.IsDefined(typeof(SamsungDriverStartMode), entry.StartMode)) return false;
+            return true;
         }
 
         private static bool Valid(Entry entry)
@@ -191,7 +237,8 @@ namespace ATIVBatteryGuard.Core.Services
             return true;
         }
 
-        private static SamsungFileInspectionReport Invalid() => new SamsungFileInspectionReport(SamsungFileInspectionStatus.InvalidResponse);
+        private static SamsungFileInspectionReport Invalid() => new SamsungFileInspectionReport(SamsungFileInspectionStatus.InvalidResponse,
+            kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.InvalidResponse));
 
         // The JSON reader alone can accept the first object and ignore trailing JSON.
         private static bool HasSingleObjectEnvelope(byte[] bytes)

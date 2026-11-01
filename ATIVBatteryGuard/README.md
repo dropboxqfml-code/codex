@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+[최신 공개 제어 규약 조사](PUBLIC_CONTROL_PROTOCOL_REVIEW.md): 구형 Windows SABI3 명령 후보와 Galaxy Book ACPI 규약을 찾았으나 현재 ATIV의 DLL 없는 Windows 제어 경로는 미검증입니다. 실제 충전 제어는 계속 미지원입니다.
+
 ## 현재 배터리 진단 결과 해석판
 
 삼성 DLL 추출 없이 표준 Windows 배터리 드라이버의 요청 지원 여부를 읽는 진단을 추가했습니다. **진단 파일 만들기**로 생성되는 TXT의 ‘Windows 표준 배터리 드라이버의 요청 지원 여부’ 섹션에서 볼 수 있습니다. BatteryCharge/BatteryDischarge 지원 비트는 80% 충전 상한 지원의 증거가 아니며, 결과가 있어도 실제 제어는 미지원으로 유지합니다.

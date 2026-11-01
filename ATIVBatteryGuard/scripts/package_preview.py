@@ -59,7 +59,7 @@ def main():
         validate_release(evidence, files, fingerprint)
     info = {
         'schemaVersion': 1, 'application': 'ATIV Battery Guard',
-        'distribution': 'READ-ONLY SAMSUNG/SABI KERNEL DRIVER STATUS CHECK',
+        'distribution': 'PASSIVE SAMSUNG WMI INSTANCE VERSION AND ACTIVE CHECK',
         'target': 'Windows10x64/.NETFramework4.8',
         'reconstructedSources': True,
         'sourceFingerprintSha256': fingerprint,
@@ -94,7 +94,7 @@ def main():
         'sabi3MetadataAssessmentIncluded': True,
         'sabi3X64BinaryStaticallyReviewed': True,
         'sabi3CallerPayloadBytes': 11,
-        'samsungFileProtocolVersion': 4,
+        'samsungFileProtocolVersion': 5,
         'passiveSabiDriverNameCheck': True,
         'currentSabiDriverNameWindowsTested': False,
         'previousSabiDriverNameWindowsObserved': True,
@@ -114,7 +114,18 @@ def main():
         'driverServiceModificationAllowed': False,
         'driverStateEnablesChargeControl': False,
         'previousWindowsFileMetadataObserved': True,
-        'wmiClassMetadataOnly': False, 'oemWmiClassMetadataOnly': True,
+        'wmiClassMetadataOnly': False, 'oemWmiClassMetadataOnly': False,
+        'samsungWmiInstancePropertiesReadOnly': True,
+        'samsungWmiInstanceNamespace': r'ROOT\WMI',
+        'samsungWmiInstanceQueries': ['SELECT Active,version FROM WmiAcpiVersion', 'SELECT Active FROM WmiAcpiMethod'],
+        'samsungWmiInstanceMaximumEntriesPerClass': 8,
+        'samsungWmiInstanceQueryTimeoutMs': 2000,
+        'samsungWmiInstanceCooperativeBudgetMs': 4000,
+        'samsungWmiInstanceExportsKeysOrPaths': False,
+        'currentWindowsWmiInstanceQueryTested': False,
+        'previousDriverBuildLaunchedOnLaptop': True,
+        'previousDriverBuildSamsungTxtCreated': True,
+        'previousDriverInventoryContentsReviewed': False,
         'oemMethodInvocationAllowed': False,
         'oemModuleExecutionAllowed': False, 'actualChargeControlSupported': False,
         'containsOriginalVendorBinaries': False, 'containsUserUploads': False,
@@ -122,13 +133,13 @@ def main():
         'windowsReleaseEvidence': evidence,
     }
     files['BUILD-INFO.json'] = json.dumps(info, ensure_ascii=False, indent=2).encode('utf-8')
-    instructions = '''ATIV Battery Guard — 삼성/SABI 커널 드라이버 상태 확인판
+    instructions = '''ATIV Battery Guard — 삼성 WMI 인스턴스·버전·활성 속성 확인판
 
 1. ZIP 파일을 새 폴더에 모두 압축 해제하세요.
 2. ATIVBatteryGuard.exe를 실행하세요. 관리자 권한은 필요하지 않습니다.
 Windows 보안이 차단하면 실행을 보류하세요. 예외 등록이나 보안 기능 해제를 하지 않습니다.
-3. 새 드라이버 항목을 로컬에서 확인하려면 창 아래쪽 ‘삼성 파일 정보 확인’에서 ‘삼성 파일 정보 만들기’를 선택하세요.
-4. 화면과 ‘정보 파일 위치 열기’의 samsung-files TXT에서 ‘삼성/SABI 관련 커널 드라이버’ 항목을 확인할 수 있습니다.
+3. 새 WMI 항목을 로컬에서 확인하려면 창 아래쪽 ‘삼성 파일 정보 확인’에서 ‘삼성 파일 정보 만들기’를 선택하세요.
+4. 화면과 ‘정보 파일 위치 열기’의 samsung-files TXT에서 ‘삼성 WMI 인스턴스’ 항목을 확인할 수 있습니다.
 이는 새 기능을 선택적으로 확인하는 절차입니다. 같은 진단·기존 TXT·삼성 DLL·EXE를 다시 제출할 필요는 없습니다.
 
 기존 파일 식별은 Program Files (x86)의 Samsung\\Setting 또는 Samsung\\Settings에 설치된 네 파일의 정보를 읽습니다.
@@ -147,6 +158,14 @@ Sabi3 x64 후보를 해시로 구분하고 공개 함수 이름 일치 여부를
 기존 ‘SABI 장치 연결 이름’ 결과와 함께 비교합니다. 드라이버가 관측돼도 SABI 이름이 없을 수 있으며 두 조회의 범위는 다릅니다.
 연결 이름이 있어도 장치 접근·초기화·펌웨어 지원이 확인된 것은 아닙니다. 드라이버가 실행 중이어도 충전 제어를 활성화하지 않습니다.
 커널 드라이버 등록 조회는 최대 1,024행·후보 32개로 제한하며 WMI 제한과 별도 조회 프로세스의 10초 제한을 적용합니다.
+
+새 WMI 항목은 로컬 ROOT\\WMI에서 WmiAcpiVersion의 Active·version과 WmiAcpiMethod의 Active만 읽습니다.
+클래스 정의만 있는지와 실제 인스턴스가 있는지를 구분하며 클래스별 결과를 독립적으로 표시합니다.
+Active는 제공자의 활성 속성이지 배터리 보호 ON/OFF가 아닙니다. 버전 값의 모델별 의미도 미검증입니다.
+인스턴스가 여러 개면 하나를 자동 선택하거나 서로 다른 클래스의 행을 연결하지 않습니다.
+InstanceName·개체 경로·고유 식별자는 조회하거나 기록하지 않습니다. DataBuffer 값이나 CallSabiFunction은 실행하지 않습니다.
+클래스별 최대 8개, 조회별 2초와 두 클래스 합계의 협력적 4초 제한 및 기존 전체 작업자 10초 제한을 적용합니다.
+클래스 부재·정상 0개·일부 조회·형식 불일치·권한 거부·시간 초과를 미지원 기능으로 단정하지 않습니다.
 
 드라이버·파일·동적 로드 관련 함수 이름의 참조를 별도로 표시합니다. 실제 실행됐다는 뜻은 아닙니다.
 서명은 로컬 캐시로만 확인합니다. 온라인 폐기 확인·카탈로그 서명 검증은 하지 않습니다.
@@ -167,11 +186,12 @@ Sabi3 x64 후보를 해시로 구분하고 공개 함수 이름 일치 여부를
 실행 대상은 Windows 10 x64 및 .NET Framework 4.8입니다.
 이전 조회판은 사용자 노트북에서 정상 조회가 확인됐습니다. 결과 0x80000000에는 표준 충전·방전 요청 지원 비트가 없습니다.
 이 사실을 삼성 OEM 기능 전체의 불가능으로 해석하지 않습니다.
-이전 SABI 연결 이름 조회에서 NotFound를 확인했습니다. 이번 드라이버 조회와 새 빌드의 Windows 실기 동작은 아직 미검증입니다.
+이전 드라이버 확인판은 실제 노트북에서 실행과 TXT 생성이 확인됐습니다. TXT의 드라이버 상태 내용은 전달받지 않았습니다.
+이번 WMI 인스턴스 조회와 새 빌드의 Windows 실기 동작은 아직 미검증입니다.
 '''
     files['먼저 읽어주세요.txt'] = instructions.replace('\n', '\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(sha(data) + '  ' + name + '\n' for name, data in sorted(files.items())).encode('utf-8')
-    binary_zip = output / 'ATIVBatteryGuard-DRIVER-STATUS-CHECK.zip'
+    binary_zip = output / 'ATIVBatteryGuard-WMI-INSTANCE-CHECK.zip'
     with zipfile.ZipFile(binary_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

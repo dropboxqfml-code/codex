@@ -8,6 +8,33 @@ internal static partial class Program
 {
     private static void RegisterSamsungFileInspectionViewModelTests()
     {
+        AddAsync("WMI instance observations share the explicit report and cannot enable control", async () =>
+        {
+            using (var f = new Fixture()) using (var vm = f.ViewModel())
+            {
+                var wmi = new SamsungWmiInstanceReport(
+                    new SamsungWmiClassObservation(SamsungWmiClass.Version, SamsungWmiQueryStatus.Complete,
+                        new[] { new SamsungWmiInstanceEntry(true, 0x12345678) }),
+                    new SamsungWmiClassObservation(SamsungWmiClass.Method, SamsungWmiQueryStatus.Complete,
+                        new[] { new SamsungWmiInstanceEntry(true) }));
+                var report = new SamsungFileInspectionReport(SamsungFileInspectionStatus.DirectoryNotFound,
+                    driverLink: SabiDriverLinkStatus.NotFound, wmiInstances: wmi);
+                f.Files.Reader = () => report;
+                vm.RefreshBattery(); Equal(0, f.Files.Calls);
+                await vm.InspectSamsungFilesAsync();
+                Equal(report.ToDisplayText(), vm.SamsungFileInspectionText);
+                Equal(report.ToDisplayText(), f.Interaction.LastFileInspection);
+                Equal(1, f.Interaction.FileInspectionSaves);
+                Check(vm.SamsungFileInspectionText.Contains("WmiAcpiVersion") && vm.SamsungFileInspectionText.Contains("WmiAcpiMethod"), "class observations missing");
+                Check(!vm.CanApply && vm.ActualModeText.Contains("미지원"), "Active enabled control");
+                f.Files.Reader = () => new SamsungFileInspectionReport(SamsungFileInspectionStatus.TimedOut,
+                    wmiInstances: SamsungWmiInstanceReport.Failure(SamsungWmiQueryStatus.TimedOut));
+                await vm.InspectSamsungFilesAsync();
+                Check(!vm.SamsungFileInspectionText.Contains("12345678"), "timed out WMI result retained old version");
+                Equal(vm.SamsungFileInspectionText, f.Interaction.LastFileInspection);
+                Check(!vm.CanApply, "timeout enabled control");
+            }
+        });
         AddAsync("file inspection missing provider cannot run", async () =>
         {
             using (var f = new Fixture())
@@ -57,7 +84,8 @@ internal static partial class Program
                 await vm.InspectSamsungFilesAsync();
                 Equal(new SamsungFileInspectionReport(SamsungFileInspectionStatus.Unavailable,
                     driverLink: SabiDriverLinkStatus.Unavailable,
-                    kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.Unavailable)).ToDisplayText(), vm.SamsungFileInspectionText);
+                    kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.Unavailable),
+                    wmiInstances: SamsungWmiInstanceReport.Failure(SamsungWmiQueryStatus.Unavailable)).ToDisplayText(), vm.SamsungFileInspectionText);
                 Equal(1, f.Interaction.FileInspectionSaves);
                 Check(!vm.SamsungFileInspectionText.Contains("PrivateName") && !vm.SamsungFileInspectionStatus.Contains("PrivateName"), "exception exposed");
                 f.Files.Reader = () => null; await vm.InspectSamsungFilesAsync();

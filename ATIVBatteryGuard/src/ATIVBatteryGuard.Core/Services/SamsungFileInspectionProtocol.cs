@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -22,7 +23,30 @@ namespace ATIVBatteryGuard.Core.Services
             [DataMember(IsRequired = true)] public bool Limited;
             [DataMember(IsRequired = true)] public int DriverLink;
             [DataMember(IsRequired = true)] public DriverPacket KernelDrivers;
+            [DataMember(IsRequired = true)] public WmiPacket WmiInstances;
             [DataMember(IsRequired = true)] public Entry[] Entries;
+        }
+
+        [DataContract]
+        private sealed class WmiPacket
+        {
+            [DataMember(IsRequired = true)] public WmiClassPacket VersionClass;
+            [DataMember(IsRequired = true)] public WmiClassPacket MethodClass;
+        }
+
+        [DataContract]
+        private sealed class WmiClassPacket
+        {
+            [DataMember(IsRequired = true)] public int Kind;
+            [DataMember(IsRequired = true)] public int Status;
+            [DataMember(IsRequired = true)] public WmiEntry[] Entries;
+        }
+
+        [DataContract]
+        private sealed class WmiEntry
+        {
+            [DataMember(IsRequired = true)] public bool? Active;
+            [DataMember(IsRequired = true)] public uint? Version;
         }
 
         [DataContract]
@@ -96,8 +120,8 @@ namespace ATIVBatteryGuard.Core.Services
             }
             using (var output = new MemoryStream())
             {
-                Serializer().WriteObject(output, new Packet { Version = 4, Status = (int)report.Status, Limited = report.Limited, DriverLink = (int)report.DriverLink,
-                    KernelDrivers = ToWire(report.KernelDrivers), Entries = entries });
+                Serializer().WriteObject(output, new Packet { Version = 5, Status = (int)report.Status, Limited = report.Limited, DriverLink = (int)report.DriverLink,
+                    KernelDrivers = ToWire(report.KernelDrivers), WmiInstances = ToWire(report.WmiInstances), Entries = entries });
                 if (output.Length > MaximumBytes) throw new SerializationException("Result exceeds the size limit.");
                 return output.ToArray();
             }
@@ -108,7 +132,7 @@ namespace ATIVBatteryGuard.Core.Services
             if (bytes == null || bytes.Length == 0 || bytes.Length > MaximumBytes) return Invalid();
             try
             {
-                if (!HasSingleObjectEnvelope(bytes)) return Invalid();
+                if (!HasSingleObjectEnvelope(bytes) || !HasStrictWmiValueTypes(bytes)) return Invalid();
                 Packet packet;
                 using (var reader = JsonReaderWriterFactory.CreateJsonReader(bytes, new XmlDictionaryReaderQuotas
                 {
@@ -119,8 +143,8 @@ namespace ATIVBatteryGuard.Core.Services
                     packet = (Packet)Serializer().ReadObject(reader);
                     while (reader.Read()) if (reader.NodeType != XmlNodeType.Whitespace) return Invalid();
                 }
-                if (packet == null || packet.Version != 4 || !Enum.IsDefined(typeof(SabiDriverLinkStatus), packet.DriverLink) || !Enum.IsDefined(typeof(SamsungFileInspectionStatus), packet.Status) ||
-                    packet.Entries == null || packet.Entries.Length > SamsungFileInspectionReport.MaximumEntries || !Valid(packet.KernelDrivers)) return Invalid();
+                if (packet == null || packet.Version != 5 || !Enum.IsDefined(typeof(SabiDriverLinkStatus), packet.DriverLink) || !Enum.IsDefined(typeof(SamsungFileInspectionStatus), packet.Status) ||
+                    packet.Entries == null || packet.Entries.Length > SamsungFileInspectionReport.MaximumEntries || !Valid(packet.KernelDrivers) || !Valid(packet.WmiInstances)) return Invalid();
                 var entries = new SamsungFileInspectionEntry[packet.Entries.Length];
                 for (int i = 0; i < entries.Length; i++)
                 {
@@ -132,13 +156,88 @@ namespace ATIVBatteryGuard.Core.Services
                             wire.PeLimited ? "표시 또는 분석 범위가 제한됐습니다." : string.Empty, FromWire(wire.Functions)), (OfflineSignatureStatus)wire.Signature);
                 }
                 return new SamsungFileInspectionReport((SamsungFileInspectionStatus)packet.Status, entries, packet.Limited, (SabiDriverLinkStatus)packet.DriverLink,
-                    FromWire(packet.KernelDrivers));
+                    FromWire(packet.KernelDrivers), FromWire(packet.WmiInstances));
             }
             catch (Exception exception) when (exception is SerializationException || exception is XmlException ||
                 exception is ArgumentException || exception is InvalidOperationException || exception is FormatException || exception is OverflowException)
             {
                 return Invalid();
             }
+        }
+
+        // DataContractJsonSerializer accepts coercible strings for primitive values.
+        // Require the projected WMI values to retain their actual JSON types.
+        private static bool HasStrictWmiValueTypes(byte[] bytes)
+        {
+            using (var reader = JsonReaderWriterFactory.CreateJsonReader(bytes, new XmlDictionaryReaderQuotas
+            {
+                MaxDepth = 16, MaxStringContentLength = 128, MaxArrayLength = 256,
+                MaxNameTableCharCount = 2048, MaxBytesPerRead = MaximumBytes
+            }))
+            {
+                var path = new string[16];
+                while (reader.Read())
+                {
+                    if (reader.NodeType != XmlNodeType.Element) continue;
+                    int depth = reader.Depth;
+                    if (depth >= path.Length) return false;
+                    path[depth] = reader.LocalName;
+                    if (depth != 5 || path[0] != "root" || path[1] != "WmiInstances" ||
+                        (path[2] != "VersionClass" && path[2] != "MethodClass") ||
+                        path[3] != "Entries" || path[4] != "item") continue;
+                    string type = reader.GetAttribute("type");
+                    if (path[5] == "Active" && type != "boolean" && type != "null") return false;
+                    if (path[5] == "Version")
+                    {
+                        if (type == "null") continue;
+                        if (type != "number") return false;
+                        using (var value = reader.ReadSubtree())
+                        {
+                            value.Read();
+                            uint parsed;
+                            if (!uint.TryParse(value.ReadElementContentAsString(), NumberStyles.None,
+                                CultureInfo.InvariantCulture, out parsed)) return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        private static WmiPacket ToWire(SamsungWmiInstanceReport report)
+        {
+            return new WmiPacket { VersionClass = ToWire(report.VersionClass), MethodClass = ToWire(report.MethodClass) };
+        }
+
+        private static WmiClassPacket ToWire(SamsungWmiClassObservation observation)
+        {
+            var source = observation.Entries;
+            var entries = new WmiEntry[source.Length];
+            for (int i = 0; i < source.Length; i++) entries[i] = new WmiEntry { Active = source[i].Active, Version = source[i].Version };
+            return new WmiClassPacket { Kind = (int)observation.Kind, Status = (int)observation.Status, Entries = entries };
+        }
+
+        private static SamsungWmiInstanceReport FromWire(WmiPacket packet)
+            => new SamsungWmiInstanceReport(FromWire(packet.VersionClass), FromWire(packet.MethodClass));
+
+        private static SamsungWmiClassObservation FromWire(WmiClassPacket packet)
+        {
+            var entries = new SamsungWmiInstanceEntry[packet.Entries.Length];
+            for (int i = 0; i < entries.Length; i++) entries[i] = new SamsungWmiInstanceEntry(packet.Entries[i].Active, packet.Entries[i].Version);
+            return new SamsungWmiClassObservation((SamsungWmiClass)packet.Kind, (SamsungWmiQueryStatus)packet.Status, entries);
+        }
+
+        private static bool Valid(WmiPacket packet) => packet != null && Valid(packet.VersionClass, SamsungWmiClass.Version) && Valid(packet.MethodClass, SamsungWmiClass.Method);
+
+        private static bool Valid(WmiClassPacket packet, SamsungWmiClass expected)
+        {
+            if (packet == null || packet.Kind != (int)expected || !Enum.IsDefined(typeof(SamsungWmiQueryStatus), packet.Status) ||
+                packet.Entries == null || packet.Entries.Length > SamsungWmiClassObservation.MaximumEntries) return false;
+            if (packet.Status != (int)SamsungWmiQueryStatus.Complete && packet.Status != (int)SamsungWmiQueryStatus.Partial && packet.Entries.Length != 0) return false;
+            foreach (var entry in packet.Entries)
+                if (entry == null || (expected == SamsungWmiClass.Method && entry.Version.HasValue) ||
+                    (packet.Status == (int)SamsungWmiQueryStatus.Complete && (!entry.Active.HasValue || (expected == SamsungWmiClass.Version && !entry.Version.HasValue)))) return false;
+            return true;
         }
 
         private static DriverPacket ToWire(SamsungKernelDriverReport report)
@@ -238,7 +337,8 @@ namespace ATIVBatteryGuard.Core.Services
         }
 
         private static SamsungFileInspectionReport Invalid() => new SamsungFileInspectionReport(SamsungFileInspectionStatus.InvalidResponse,
-            kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.InvalidResponse));
+            kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.InvalidResponse),
+            wmiInstances: SamsungWmiInstanceReport.Failure(SamsungWmiQueryStatus.InvalidResponse));
 
         // The JSON reader alone can accept the first object and ignore trailing JSON.
         private static bool HasSingleObjectEnvelope(byte[] bytes)

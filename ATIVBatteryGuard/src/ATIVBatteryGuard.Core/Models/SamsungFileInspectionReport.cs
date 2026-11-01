@@ -105,14 +105,17 @@ namespace ATIVBatteryGuard.Core.Models
         public bool Limited { get; }
         public SabiDriverLinkStatus DriverLink { get; }
         public SamsungKernelDriverReport KernelDrivers { get; }
+        public SamsungWmiInstanceReport WmiInstances { get; }
         public bool HardwareWriteAllowed => false;
 
         public SamsungFileInspectionReport(SamsungFileInspectionStatus status = SamsungFileInspectionStatus.NotCollected,
             IEnumerable<SamsungFileInspectionEntry> entries = null, bool limited = false,
-            SabiDriverLinkStatus driverLink = SabiDriverLinkStatus.NotChecked, SamsungKernelDriverReport kernelDrivers = null)
+            SabiDriverLinkStatus driverLink = SabiDriverLinkStatus.NotChecked, SamsungKernelDriverReport kernelDrivers = null,
+            SamsungWmiInstanceReport wmiInstances = null)
         {
             DriverLink = Enum.IsDefined(typeof(SabiDriverLinkStatus), driverLink) ? driverLink : SabiDriverLinkStatus.Unavailable;
             KernelDrivers = kernelDrivers ?? new SamsungKernelDriverReport();
+            WmiInstances = wmiInstances ?? new SamsungWmiInstanceReport();
             Status = Enum.IsDefined(typeof(SamsungFileInspectionStatus), status) ? status : SamsungFileInspectionStatus.InvalidResponse;
             var copy = new List<SamsungFileInspectionEntry>();
             if (entries != null && (Status == SamsungFileInspectionStatus.Complete || Status == SamsungFileInspectionStatus.Partial))
@@ -141,6 +144,7 @@ namespace ATIVBatteryGuard.Core.Models
             text.AppendLine("SABI 장치 연결 이름: " + DriverLinkText(DriverLink));
             text.AppendLine("장치 이름 조회만 수행합니다. 연결 이름의 존재는 장치 접근·드라이버 규약·배터리 기능 지원의 증거가 아닙니다.");
             text.AppendLine(KernelDrivers.ToDisplayText(DriverLink));
+            text.AppendLine(WmiInstances.ToDisplayText());
             text.AppendLine(ATIVBatteryGuard.Core.Services.Sabi3PreparationAssessment.Evaluate(this).ToDisplayText());
             text.AppendLine("Setting·Settings의 고정 범위에서 대상 파일의 정보만 읽습니다. 원본 파일은 복사·로드·실행하지 않습니다.");
             foreach (var entry in entries)

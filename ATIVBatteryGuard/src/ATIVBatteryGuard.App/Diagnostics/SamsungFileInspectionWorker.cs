@@ -26,7 +26,8 @@ namespace ATIVBatteryGuard.Diagnostics
                 try { report = SamsungFileInspector.Collect(); }
                 catch { report = new SamsungFileInspectionReport(SamsungFileInspectionStatus.Unavailable,
                     driverLink: SabiDriverLinkStatus.Unavailable,
-                    kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.Unavailable)); }
+                    kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.Unavailable),
+                    wmiInstances: SamsungWmiInstanceReport.Failure(SamsungWmiQueryStatus.Unavailable)); }
                 byte[] bytes = SamsungFileInspectionProtocol.Encode(report);
                 using (var output = new FileStream(full, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {

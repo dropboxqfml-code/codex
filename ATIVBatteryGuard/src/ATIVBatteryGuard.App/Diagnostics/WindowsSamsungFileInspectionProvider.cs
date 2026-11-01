@@ -125,8 +125,13 @@ namespace ATIVBatteryGuard.Diagnostics
                 : SamsungDriverQueryStatus.Unavailable;
             var link = status == SamsungFileInspectionStatus.UnsupportedPlatform
                 ? SabiDriverLinkStatus.UnsupportedPlatform : SabiDriverLinkStatus.Unavailable;
+            var wmiStatus = status == SamsungFileInspectionStatus.TimedOut ? SamsungWmiQueryStatus.TimedOut
+                : status == SamsungFileInspectionStatus.UnsupportedPlatform ? SamsungWmiQueryStatus.UnsupportedPlatform
+                : status == SamsungFileInspectionStatus.InvalidResponse ? SamsungWmiQueryStatus.InvalidResponse
+                : SamsungWmiQueryStatus.Unavailable;
             return new SamsungFileInspectionReport(status, driverLink: link,
-                kernelDrivers: new SamsungKernelDriverReport(queryStatus));
+                kernelDrivers: new SamsungKernelDriverReport(queryStatus),
+                wmiInstances: SamsungWmiInstanceReport.Failure(wmiStatus));
         }
     }
 }

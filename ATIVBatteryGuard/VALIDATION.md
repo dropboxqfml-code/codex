@@ -1,5 +1,19 @@
 # Settings 앱 분석판 검증 기록
 
+## WMI 인스턴스·버전·활성 속성 — 2026-11-02 한국 시간
+
+이전 커널 드라이버 확인판의 실제 노트북 실행과 TXT 생성은 사용자 확인을 받았습니다. TXT 내용은 전달받지 않아 드라이버 조회 상태·SABI 결과는 추가 확인하지 않았습니다. 이번 변경은 다음 준비 단계의 로컬 WMI 속성 읽기이며 실제 충전 상태 조회·제어는 아닙니다.
+
+- 전체 공유 Core·ViewModel suite: **217 passed, 0 failed, 0 skipped (217 registered)**. 이번 실행 결과는 reports/wmi-instance-tests.json 및 reports/wmi-instance-tests.log입니다. 이전 204개 기록을 현재 결과로 재사용하지 않았습니다.
+- x64 net48 WPF/XAML 빌드: **경고 0개·오류 0개**, reports/wmi-instance-build.log에 보관합니다.
+- 기존 Python 배포 검증: **6개 통과**. 앱 suite 수와 별도입니다.
+- 추가 13개 그룹: 고정 속성 범위, 엄격한 Boolean/UInt32 해석, 클래스별 독립 상태, 정상 0개와 오류 구분, 부분·실패·한도, 다중 인스턴스, IPC v5 필수 필드/오래된 버전/모순/primitive 형식, 개인정보 제거, 화면·저장과 Unsupported 유지.
+- 최초 새 suite는 **215 passed, 1 failed**였습니다. JSON 문자열이 Boolean/숫자로 자동 변환되는 경로를 발견해 IPC의 원래 JSON 형식을 엄격히 확인한 뒤 최종 217개 전체 통과를 확인했습니다. 필수 속성 미확인은 Partial로 남기고 Complete와 구분합니다.
+- 현재 환경에서 새 WMI 제공자 조회와 Windows GUI는 **미실행**입니다. 실제 OEM 메서드·삼성 DLL·드라이버 변경·충전 제어도 실행하지 않았습니다.
+
+기존에 준비한 .NET SDK 8.0.427, 공식 net48 참조 어셈블리, WindowsDesktop SDK와 DOTNET_ReadyToRun=0으로 빌드했습니다. 재현 환경 변수와 빌드 명령은 아래 이전 절을 참고하고, 테스트 보고서 경로는 위의 새 이름을 사용합니다. 환경 초안 재적용이나 게시는 하지 않았습니다. [구현·한계·노트북 확인 범위](SAMSUNG_WMI_INSTANCE_INSPECTION.md)를 참고하세요.
+
+
 ## 삼성/SABI 커널 드라이버 상태 조회 — 2026-11-02 한국 시간
 
 현재 대화의 새 실행 환경에서 지정 브랜치의 `4492bbaa6f9cb87a9fb7c24969c6f1efcf6b6bd9`를 확인하고 개발했습니다. 기존 작업 브랜치를 보존했으며 이전 고장 환경의 게시 완료를 기다리거나 새로 게시하지 않았습니다.

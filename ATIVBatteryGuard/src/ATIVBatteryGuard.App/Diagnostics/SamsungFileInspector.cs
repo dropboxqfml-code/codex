@@ -83,15 +83,18 @@ namespace ATIVBatteryGuard.Diagnostics
             if (Environment.OSVersion.Platform != PlatformID.Win32NT)
                 return new SamsungFileInspectionReport(SamsungFileInspectionStatus.UnsupportedPlatform,
                     driverLink: SabiDriverLinkStatus.UnsupportedPlatform,
-                    kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.UnsupportedPlatform));
+                    kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.UnsupportedPlatform),
+                    wmiInstances: SamsungWmiInstanceReport.Failure(SamsungWmiQueryStatus.UnsupportedPlatform));
             var driverLink = (SabiDriverLinkStatus)SabiDriverLinkProbe.CollectCode();
             var kernelDrivers = SamsungKernelDriverProbe.Collect();
+            var wmiInstances = SamsungWmiInstanceProbe.Collect();
             try
             {
                 string programFiles = LocalPathPolicy.NormalizeDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86));
                 string drive = Path.GetPathRoot(programFiles);
                 if (string.IsNullOrEmpty(drive) || new DriveInfo(drive).DriveType != DriveType.Fixed)
-                    return new SamsungFileInspectionReport(SamsungFileInspectionStatus.Unavailable, driverLink: driverLink, kernelDrivers: kernelDrivers);
+                    return new SamsungFileInspectionReport(SamsungFileInspectionStatus.Unavailable,
+                        driverLink: driverLink, kernelDrivers: kernelDrivers, wmiInstances: wmiInstances);
                 var scan = new Scan();
                 foreach (string name in new[] { "Setting", "Settings" })
                 {
@@ -102,9 +105,10 @@ namespace ATIVBatteryGuard.Diagnostics
                 var status = !scan.FoundRoot && scan.Entries.Count == 0
                     ? SamsungFileInspectionStatus.DirectoryNotFound
                     : scan.Partial || scan.Limited ? SamsungFileInspectionStatus.Partial : SamsungFileInspectionStatus.Complete;
-                return new SamsungFileInspectionReport(status, scan.Entries, scan.Limited, driverLink, kernelDrivers);
+                return new SamsungFileInspectionReport(status, scan.Entries, scan.Limited, driverLink, kernelDrivers, wmiInstances);
             }
-            catch { return new SamsungFileInspectionReport(SamsungFileInspectionStatus.Unavailable, driverLink: driverLink, kernelDrivers: kernelDrivers); }
+            catch { return new SamsungFileInspectionReport(SamsungFileInspectionStatus.Unavailable,
+                driverLink: driverLink, kernelDrivers: kernelDrivers, wmiInstances: wmiInstances); }
         }
 
         private static void InspectRoot(string root, string label, Scan scan)

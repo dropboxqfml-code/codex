@@ -382,6 +382,7 @@ internal static partial class Program
         RegisterBatteryCapabilitiesTests();
         RegisterSamsungFileInspectionTests();
         RegisterSamsungKernelDriverTests();
+        RegisterWmiInstanceTests();
         RegisterSamsungFileInspectionViewModelTests();
         RegisterPeImportedFunctionTests();
         RegisterSabi3ReplyDecoderTests();

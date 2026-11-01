@@ -686,7 +686,7 @@ namespace ATIVBatteryGuard.ViewModels
 		{
 			if (disposed || samsungFileInspectionBusy || samsungFiles == null) return;
 			samsungFileInspectionBusy = true;
-			SamsungFileInspectionText = "삼성 파일 정보와 SABI 연결 이름·커널 드라이버 후보의 상태를 읽고 있습니다…";
+			SamsungFileInspectionText = "삼성 파일·SABI 연결·커널 드라이버 후보·WMI 인스턴스의 읽기 전용 정보를 확인하고 있습니다…";
 			SamsungFileInspectionStatus = "조회 중입니다. 이전 결과를 사용하지 않습니다.";
 			Changed("SamsungFileInspectionBusy");
 			InspectSamsungFilesCommand.Refresh();
@@ -711,7 +711,8 @@ namespace ATIVBatteryGuard.ViewModels
 					if (!collected) SamsungFileInspectionText = new SamsungFileInspectionReport(
 						ATIVBatteryGuard.Core.Models.SamsungFileInspectionStatus.Unavailable,
 						driverLink: SabiDriverLinkStatus.Unavailable,
-						kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.Unavailable)).ToDisplayText();
+						kernelDrivers: new SamsungKernelDriverReport(SamsungDriverQueryStatus.Unavailable),
+						wmiInstances: SamsungWmiInstanceReport.Failure(SamsungWmiQueryStatus.Unavailable)).ToDisplayText();
 					SamsungFileInspectionStatus = collected
 						? "조회 결과는 화면에 있지만 TXT를 저장하지 못했습니다. 저장 위치와 권한을 확인하세요."
 						: "삼성 파일 정보를 확인하지 못했습니다. 실제 충전 제어는 차단되어 있습니다.";

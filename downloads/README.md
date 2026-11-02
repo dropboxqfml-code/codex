@@ -1,5 +1,8 @@
 # 별도 WMI 권한 비교 도구 — 검토 준비판
 
+**비교 결과 수신 완료:** 일반 토큰은 버전 속성(Active=True/version16)을 읽고 메서드 클래스 열거에서 0x80041003으로 거부됐습니다. 상승 토큰은 두 클래스의 속성을 읽었습니다. [결과와 해석 범위](../ATIVBatteryGuard/WMI_PERMISSION_COMPARISON_RESULT.md)에 기록했으며 같은 비교를 다시 요청하지 않습니다. 실제 충전 제어는 계속 미지원입니다. 기존 ZIP은 그 관측에 사용한 파일로 보존합니다.
+
+
 **2026-11-03 승인 반영:** 사용자가 같은 Windows 계정에서 고정된 두 WMI 속성의 일반 권한/한 번의 관리자 권한 읽기 비교를 승인했습니다. [실행 순서](../ATIVBatteryGuard/WMI_PERMISSION_COMPARISON_RUN.md)를 따릅니다. 기존 ZIP을 그대로 사용하며 ZIP 내부의 승인 대기 표시는 패키징 시점의 기록입니다. 실제 결과는 아직 받지 않았습니다. 아래 보류 설명은 승인 전 이력입니다.
 
 [별도 도구 ZIP](ATIVBatteryGuard-WMI-PERMISSION-REVIEW.zip) · [같은 버전 소스](ATIVBatteryGuard-WMI-PERMISSION-SOURCE.zip) · [범위·승인 조건](../ATIVBatteryGuard/WMI_PERMISSION_COMPARISON_REVIEW.md)

@@ -6,6 +6,40 @@ internal static partial class Program
 {
     private static void RegisterWmiAccessTraceTests()
     {
+        Add("observed normal and elevated WMI pair preserves selective enumeration denial without granting OEM access", () =>
+        {
+            var version = new SamsungWmiClassObservation(SamsungWmiClass.Version, SamsungWmiQueryStatus.Complete,
+                new[] { new SamsungWmiInstanceEntry(true, 16u) });
+            var completedVersion = new SamsungWmiAccessTrace(SamsungWmiClass.Version,
+                SamsungWmiAccessStage.Completed, SamsungWmiAccessCode.None);
+            var normal = new SamsungWmiAccessProbeResult(new SamsungWmiInstanceReport(version,
+                new SamsungWmiClassObservation(SamsungWmiClass.Method, SamsungWmiQueryStatus.AccessDenied)),
+                completedVersion, new SamsungWmiAccessTrace(SamsungWmiClass.Method,
+                    SamsungWmiAccessStage.Enumerate, SamsungWmiAccessCode.WmiAccessDenied));
+            var elevated = new SamsungWmiAccessProbeResult(new SamsungWmiInstanceReport(version,
+                new SamsungWmiClassObservation(SamsungWmiClass.Method, SamsungWmiQueryStatus.Complete,
+                    new[] { new SamsungWmiInstanceEntry(true) })),
+                completedVersion, new SamsungWmiAccessTrace(SamsungWmiClass.Method,
+                    SamsungWmiAccessStage.Completed, SamsungWmiAccessCode.None));
+            Equal(SamsungWmiQueryStatus.AccessDenied, normal.Observation.MethodClass.Status);
+            Equal(0, normal.Observation.MethodClass.Entries.Length);
+            Equal(SamsungWmiQueryStatus.Complete, normal.Observation.VersionClass.Status);
+            Equal<uint?>(16u, normal.Observation.VersionClass.Entries[0].Version);
+            Equal<uint?>(16u, elevated.Observation.VersionClass.Entries[0].Version);
+            Equal(1, elevated.Observation.MethodClass.Entries.Length);
+            string normalText = normal.ToDisplayText(ProcessElevationState.NotElevated);
+            string elevatedText = elevated.ToDisplayText(ProcessElevationState.Elevated);
+            Check(normalText.Contains("Enumerate") && normalText.Contains("0x80041003") &&
+                normalText.Contains("16 (0x00000010)"), "observed normal facts lost");
+            Check(elevatedText.Contains("Active=True") && elevatedText.Contains("Completed") &&
+                elevatedText.Contains("모델·명령 호환성을 해석하지 않습니다"), "opaque version interpreted as protocol support");
+            Check(!normal.CanReadHardware && !elevated.CanReadHardware &&
+                !elevated.CanWriteHardware && !elevated.CanInvokeMethods, "metadata access enabled hardware commands");
+            var assessment = ATIVBatteryGuard.Core.Services.SamsungTransportAssessment.Evaluate(
+                new SamsungFileInspectionReport(wmiInstances: normal.Observation));
+            Check(assessment.HasWmiAccessDenied && assessment.Summary.Contains("WMI 버전: 정상 조회 완료") &&
+                assessment.Summary.Contains("WMI 메서드 인스턴스: 조회 권한 없음"), "selective denial collapsed into whole-namespace failure");
+        });
         Add("access trace null input is unavailable and unknown rather than non-elevated success", () =>
         {
             var result = new SamsungWmiAccessProbeResult(null, null, null);

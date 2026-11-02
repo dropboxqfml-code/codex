@@ -1,5 +1,18 @@
 # Settings 앱 분석판 검증 기록
 
+## 실제 일반·관리자 비교 결과 반영 — 2026-11-03 한국 시간
+
+사용자 제공 두 콘솔 출력에서 일반 토큰의 버전 클래스 Complete(Active=True, version16), 메서드 클래스 Enumerate/0x80041003 거부와 상승 토큰의 두 클래스 Complete(활성 행1개씩, version16)를 확인했습니다. 기존237개 도구의 이 고정 속성 읽기와 토큰 표시 경로가 실제 Windows에서 실행된 결과입니다. OEM 메서드·실제 충전 제어를 시험한 결과가 아닙니다.
+
+- 현재 전체 suite **238 passed, 0 failed, 0 skipped (238 registered)**. reports/wmi-observed-comparison-tests.json 및 .log에 이번 결과를 보관합니다.
+- Core·WPF·비교 도구 x64 net48 빌드 **경고0개·오류0개**, reports/wmi-observed-comparison-build.log에 기록합니다.
+- 실제 두 결과를 개인정보 없는 합성 회귀 사례1개로 추가해 선택적 열거 거부, 관리자 속성 성공, 버전16 원값, 독립 상태 및 OEM/제어 차단을 검사했습니다.
+- 단일 보고서의 관리자 실행 관련 표현을 단일 관측에 한정하도록 수정했습니다. 현재 소스의 이 표현 변경은 Windows에서 재실행하지 않았으며, 새 장치 호출·OEM 코드·진단 배포 ZIP은 추가하지 않았습니다.
+- 기존237개 테스트·빌드 기록과 이번238개 실행을 구분합니다. 이번에는 배포 코드가 바뀌지 않아 기존 Python 배포 suite를 다시 실행하지 않았습니다.
+
+[구체적인 관측 행렬과 명령 계약의 남은 조건](WMI_PERMISSION_COMPARISON_RESULT.md)을 기록했습니다. 원본 두 출력은 저장소·배포물에 넣지 않았습니다. 승인된 한 번의 비교는 결과 수신으로 완료됐으며 상시 관리자·자동 상승·OEM 호출로 확대하지 않습니다.
+
+
 ## 권한 거부 지속·별도 비교 도구 준비 — 2026-11-03 한국 시간
 
 사용자 TXT samsung-files-20261102T154749에서 PacketPrivacy 적용 빌드의 두 클래스 AccessDenied 지속을 확인했습니다. SABI NotFound와 이름 후보 7개 Stopped/Manual도 유지됐습니다. 관리자 비교 실행은 아직 승인·수행하지 않았습니다.

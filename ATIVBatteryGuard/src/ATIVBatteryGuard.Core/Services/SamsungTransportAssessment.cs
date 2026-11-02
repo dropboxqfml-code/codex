@@ -49,7 +49,7 @@ namespace ATIVBatteryGuard.Core.Services
             if (link == SabiDriverLinkStatus.NotFound)
                 text.AppendLine("SABI 이름은 현재 조회에서 미관측입니다. 분석한 x64 DLL의 연결 선행 조건을 확인하지 못했지만 드라이버 미설치나 펌웨어 기능 부재는 확정하지 않습니다.");
             if (HasWmiAccessDenied)
-                text.AppendLine("WMI 속성 조회가 권한 거부됐습니다. 해당 클래스의 Active·version을 알 수 없으며 비활성·미지원·클래스 부재로 바꾸지 않습니다. 거부 지점·원인은 이 결과만으로 특정할 수 없고 관리자 실행이 해결한다는 근거도 없습니다.");
+                text.AppendLine("WMI 속성 조회가 권한 거부됐습니다. 해당 클래스의 Active·version을 알 수 없으며 비활성·미지원·클래스 부재로 바꾸지 않습니다. 단일 조회 결과만으로 거부 원인이나 관리자 실행에서의 결과를 확정하지 않습니다.");
             if (DriverCandidates > 0)
             {
                 text.AppendLine("관측한 이름 후보 " + DriverCandidates + "개 중 중지·수동 시작 조합은 " + StoppedManualCandidates + "개입니다.");

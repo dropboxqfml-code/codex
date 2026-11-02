@@ -16,7 +16,7 @@ internal static partial class Program
             Check(result.DriverInventoryComplete && result.HasWmiAccessDenied, "observed results lost");
             string text = result.ToDisplayText();
             Check(text.Contains("권한 거부") && text.Contains("미관측") && text.Contains("중지·수동 시작 조합은 7개"), "facts missing");
-            Check(text.Contains("관리자 실행이 해결한다는 근거도 없습니다") && text.Contains("원인으로 단정하지 않습니다"), "unsupported escalation or causal claim");
+            Check(text.Contains("단일 조회 결과만으로 거부 원인이나 관리자 실행에서의 결과를 확정하지 않습니다") && text.Contains("원인으로 단정하지 않습니다"), "unsupported escalation or causal claim");
             Check(!result.CanReadHardware && !result.CanWriteHardware && !result.CanInvokeMethods, "observation authorized transport");
             var decoded = SamsungFileInspectionProtocol.Decode(SamsungFileInspectionProtocol.Encode(report));
             Equal(result.Summary, SamsungTransportAssessment.Evaluate(decoded).Summary);

@@ -1,5 +1,20 @@
 # Settings 앱 분석판 검증 기록
 
+## 권한 거부 지속·별도 비교 도구 준비 — 2026-11-03 한국 시간
+
+사용자 TXT samsung-files-20261102T154749에서 PacketPrivacy 적용 빌드의 두 클래스 AccessDenied 지속을 확인했습니다. SABI NotFound와 이름 후보 7개 Stopped/Manual도 유지됐습니다. 관리자 비교 실행은 아직 승인·수행하지 않았습니다.
+
+- 전체 portable suite: **237 passed, 0 failed, 0 skipped (237 registered)**. 이번 reports/wmi-permission-tests.json 및 .log 결과입니다.
+- Core·WPF·별도 asInvoker WmiAccessCheck를 포함한 x64 net48 솔루션 빌드: **경고 0개·오류 0개**, reports/wmi-permission-build.log에 보관합니다.
+- 기존 Python 배포 검증: **6개 통과**, 앱 suite 수와 별도입니다.
+- 새 9개 테스트 그룹: 토큰 상승 상태·조회 단계·고정 오류 분류·독립 관측·실패/잘못된 enum/클래스·불변 복사·정보 보호·출력 길이 경계·짧은 읽기와 오류 채널을 검증합니다.
+- 최초 새 helper 빌드는 참조 복원 미완료로 실패했습니다. 공식 참조와 취약점 메타데이터를 다시 복원한 뒤 최종 전체 빌드를 통과했습니다. 검증을 끄거나 다른 대상 프레임워크로 바꾸지 않았습니다.
+- 별도 도구는 asInvoker이며 메인 앱의 실행/UAC 연결이 없습니다. 자체 자식 조회만 감시하고 임의 파일 경로·서버·쿼리·명령은 입력받지 않습니다. 출력은 콘솔뿐입니다.
+- 새 도구의 Windows 실행·실제 토큰 API·실패 단계·관리자 비교는 **미실행**입니다. 소스 검토 중 TokenIsElevated의 zero/nonzero 의미를 수정했고, 부모의 10초 제한은 인수 없는 일반 실행 경로에 적용된다고 명시했습니다.
+
+기존 .NET SDK 8.0.427·공식 net48 참조·WindowsDesktop SDK·DOTNET_ReadyToRun=0을 사용했습니다. [완성된 검토 도구·허용 범위·승인 조건](WMI_PERMISSION_COMPARISON_REVIEW.md)에 상세히 기록했습니다. 원본 TXT·삼성 원본 파일은 복사하지 않았으며 환경 게시는 하지 않았습니다.
+
+
 ## WMI 권한 해석·암호화 연결·요청 프레임 — 2026-11-03 한국 시간
 
 이번 사용자 TXT에서 삼성 이름 후보 7개 모두 Stopped/Manual, SABI 이름 NotFound, WmiAcpiVersion/WmiAcpiMethod AccessDenied를 확인했습니다. 앱 실행과 TXT 생성은 확인됐지만 Active/version·실제 충전 제어는 확인되지 않았습니다.

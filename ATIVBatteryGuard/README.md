@@ -1,5 +1,9 @@
 # ATIV Battery Guard
 
+[최신: WMI 권한 거부 지속과 별도 비교 도구](WMI_PERMISSION_COMPARISON_REVIEW.md): PacketPrivacy 적용 후에도 두 클래스 AccessDenied가 유지된 실제 결과를 확인했습니다. 자동 권한 상승 없이 현재 토큰과 실패 단계를 읽는 별도 asInvoker 도구를 준비했습니다. 관리자 비교는 아직 승인·실행하지 않았으며 메인 앱과 충전 제어는 그대로 일반 권한·미지원입니다.
+
+이번 전체 테스트 237개 통과, WPF·Core·별도 비교 도구 빌드 경고·오류 0개입니다. 새 도구의 Windows 실기 실행은 미검증입니다. 아래는 이전 작업 이력입니다.
+
 [최신 WMI 권한 결과와 다음 구현](WMI_ACCESS_RESULT_AND_TRANSPORT_REVIEW.md): 실제 TXT에서 SABI 이름 미관측, Samsung 이름 후보 7개 Stopped/Manual, 두 WMI 클래스 AccessDenied를 확인했습니다. 일반 사용자 권한을 유지한 암호화 WMI 연결을 명시하고 저장 성공과 조회 결과를 구분하는 화면 요약을 추가했습니다. 실제 거부 원인·해결 여부는 아직 미검증입니다.
 
 기존 서비스 wsabi 규약의 순수 요청 인코더도 준비했으나 실제 호출 경로에는 연결하지 않았습니다. 이번 테스트 228개 및 배포 검증 6개 통과, WPF/XAML 빌드 경고·오류 0개입니다. 실제 설정 읽기·충전 제어는 계속 미검증·미지원이며 아래 설명은 이전 단계 이력입니다.

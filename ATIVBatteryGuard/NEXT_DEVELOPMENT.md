@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## PacketPrivacy 적용 후에도 권한 거부 지속
+
+사용자 TXT samsung-files-20261102T154749에서도 두 WMI 클래스가 AccessDenied입니다. SABI NotFound와 Samsung 후보 7개 Stopped/Manual도 같습니다. 암호화 명시만으로 해결되지 않았음을 기록하고 같은 파일 목록·기존 TXT·삼성 원본을 다시 요청하지 않습니다.
+
+[별도 asInvoker 권한 비교 도구](WMI_PERMISSION_COMPARISON_REVIEW.md)를 소스·실행 파일·테스트까지 준비했습니다. 현재 토큰 상승 여부와 고정 읽기의 Connect/Query/Enumerate/ReadProperties 단계를 확인하지만 UAC·runas·ACL 변경·임의 쿼리·파일 쓰기는 없습니다. 메인 앱에서 실행하지 않으며 관리자 비교 실행은 아직 승인받거나 수행하지 않았습니다.
+
+다음 필요한 결정은 이 한정된 별도 도구로 일반 권한과 한 번의 관리자 권한에서 같은 두 속성을 읽어 비교할지입니다. 프로젝트 AGENTS.md의 명시적 승인 조건을 따릅니다. 비교 성공을 보장하지 않으며, 충전 명령·삼성 DLL·서비스/드라이버 변경은 범위 밖입니다. 이번 테스트237개 및 전체 솔루션 빌드 경고·오류 0개이며 Windows 실기는 미검증입니다.
+
 ## 실제 WMI 권한 결과 반영 후
 
 사용자 TXT samsung-files-20261102T152127에서 SABI NotFound, Samsung 후보 7개 모두 Stopped/Manual, 두 WMI 클래스 AccessDenied를 확인했습니다. 앱 실행·TXT 생성 성공을 인스턴스 조회 성공으로 바꾸지 않습니다. 같은 자료나 삼성 DLL/EXE를 다시 요청하지 않습니다.

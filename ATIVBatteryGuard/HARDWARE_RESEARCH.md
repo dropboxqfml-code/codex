@@ -1,5 +1,9 @@
 # 하드웨어 조사
 
+## PacketPrivacy로 해소되지 않은 WMI 거부
+
+후속 TXT에서 암호화 인증 안내가 있는 빌드에서도 두 클래스 AccessDenied가 유지됨을 확인했습니다. 이로써 암호화 명시만으로 현재 문제가 해결되지 않았음을 확인했지만 현재 토큰 상승 여부·거부 단계·ACL/제공자 원인은 여전히 미확인입니다. [별도 제한된 비교 도구](WMI_PERMISSION_COMPARISON_REVIEW.md)를 준비했으며 관리자 비교는 아직 승인·실행하지 않았습니다. 실제 충전 제어는 계속 미지원입니다.
+
 ## 새 실제 관측: WMI 인스턴스 접근 거부
 
 사용자 TXT에서 커널 드라이버 이름 후보 7개 모두 중지·수동 시작, SABI 이름 NotFound, WmiAcpiVersion/WmiAcpiMethod 모두 AccessDenied를 확인했습니다. 후보의 실제 용도나 WMI 거부 원인은 미확정입니다. Active·version은 관측되지 않았습니다. [분석·공식 근거·구현](WMI_ACCESS_RESULT_AND_TRANSPORT_REVIEW.md)에 일반 권한 암호화 인증 설정과 순수 프레임 준비를 기록했습니다. 접근 거부가 암호화 요구 때문이라는 것은 가설이며 실제 확인한 사실과 구분합니다. 관리자 실행·드라이버 시작·충전 지원 결론으로 바꾸지 않습니다.

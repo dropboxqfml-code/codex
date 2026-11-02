@@ -383,6 +383,8 @@ internal static partial class Program
         RegisterSamsungFileInspectionTests();
         RegisterSamsungKernelDriverTests();
         RegisterWmiInstanceTests();
+        RegisterWmiAccessTraceTests();
+        RegisterWmiAccessCheckCaptureTests();
         RegisterSamsungTransportAssessmentTests();
         RegisterSamsungFileInspectionViewModelTests();
         RegisterPeImportedFunctionTests();

@@ -18,6 +18,9 @@
     <Compile Include="SamsungFileInspectionTests.cs" />
     <Compile Include="SamsungKernelDriverTests.cs" />
     <Compile Include="WmiInstanceTests.cs" />
+    <Compile Include="WmiAccessTraceTests.cs" />
+    <Compile Include="WmiAccessCheckCaptureTests.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.WmiAccessCheck/BoundedTextCapture.cs" Link="BoundedTextCapture.cs" />
     <Compile Include="SamsungTransportAssessmentTests.cs" />
     <Compile Include="SamsungFileInspectionViewModelTests.cs" />
     <Compile Include="PeImportedFunctionTests.cs" />

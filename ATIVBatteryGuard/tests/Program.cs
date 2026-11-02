@@ -390,6 +390,7 @@ internal static partial class Program
         RegisterPeImportedFunctionTests();
         RegisterSabi3ReplyDecoderTests();
         RegisterWsabiWmiReplyValidatorTests();
+        RegisterWsabiWmiReplyDecoderTests();
         RegisterWsabiWmiRequestEncoderTests();
     }
 

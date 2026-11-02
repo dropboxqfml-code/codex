@@ -26,6 +26,7 @@
     <Compile Include="PeImportedFunctionTests.cs" />
     <Compile Include="Sabi3ReplyDecoderTests.cs" />
     <Compile Include="WsabiWmiReplyValidatorTests.cs" />
+    <Compile Include="WsabiWmiReplyDecoderTests.cs" />
     <Compile Include="WsabiWmiRequestEncoderTests.cs" />
   </ItemGroup>
 </Project>

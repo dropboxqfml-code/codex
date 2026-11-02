@@ -1,5 +1,17 @@
 # Settings 앱 분석판 검증 기록
 
+## 구조적 WMI 응답 디코더 — 2026-11-03 한국 시간
+
+- 현재 전체 suite **244 passed, 0 failed, 0 skipped (244 registered)**. reports/wmi-reply-decoder-tests.json 및 .log는 이번 실행입니다.
+- Core·WPF·별도 비교 도구 x64 net48 빌드 **경고0개·오류0개**, reports/wmi-reply-decoder-build.log에 기록합니다.
+- 추가6개 그룹은 API 우선순위·S_FALSE, 요소 형식/차원/시작 인덱스, 길이0..64 및 큰 버퍼, 전체ACK256값, 입력/결과/호출자 복사본 독립성, payload 비해석과 bool API 호환을 검사합니다.
+- 기존 bool validator가 새 typed decoder에 위임해도 수락 조건 S_OK·정확한byte[]·1차원·0기반·21바이트·ACK0xAA는 유지됩니다. 실패 데이터는 보관하지 않고 제어·하드웨어 관측으로 승격하지 않습니다.
+- 추가 공개 Linux WMI 원문 두 개를 고정 커밋에서 정적으로 대조했습니다. 외부 코드·unlock·OEM·드라이버 호출은 실행하지 않았고 제품에 코드를 복사하지 않았습니다.
+- 새 실제 Windows 호출·응답·충전 제어는 **미실행**입니다. 현재 모델 배터리 조회 명령·실제 응답 계약을 확보했다는 결과가 아닙니다. 실제 실행 경로와 패키징 코드는 바꾸지 않아 Python 배포 suite를 불필요하게 반복 실행하지 않았습니다.
+
+[구현·공개 근거·검증 한계](WMI_REPLY_DECODER_AND_PUBLIC_EVIDENCE.md)를 기록했습니다. 기존 공식 .NET SDK8.0.427·net48 참조·WindowsDesktop SDK·DOTNET_ReadyToRun=0을 사용했습니다.
+
+
 ## 실제 일반·관리자 비교 결과 반영 — 2026-11-03 한국 시간
 
 사용자 제공 두 콘솔 출력에서 일반 토큰의 버전 클래스 Complete(Active=True, version16), 메서드 클래스 Enumerate/0x80041003 거부와 상승 토큰의 두 클래스 Complete(활성 행1개씩, version16)를 확인했습니다. 기존237개 도구의 이 고정 속성 읽기와 토큰 표시 경로가 실제 Windows에서 실행된 결과입니다. OEM 메서드·실제 충전 제어를 시험한 결과가 아닙니다.

@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 구조적 WMI 응답 디코더 구현 후
+
+[추가 공개 근거와 코드](WMI_REPLY_DECODER_AND_PUBLIC_EVIDENCE.md): gh2o/samsung-wmi와 djpohly/samsung-wmi의 고정 원문에서 21바이트 프레임·payload16 구조를 독립 확인했습니다. 현재 모델, Windows 클래스·메서드와의 동일성, 배터리 조회0x65, version16 의미를 입증하는 자료는 아니므로 새 호출 대상이나 명령으로 사용하지 않았습니다.
+
+순수 WsabiWmiReplyDecoder와 불변 결과 객체를 구현하고 기존 bool 검증기를 호환 위임으로 바꿨습니다. API 미완료·없음·형식·차원·길이·ACK를 구분하며 payload0/1/FF를 배터리 상태로 해석하지 않습니다. 정확한21바이트만 지원하는 기존 범위와 Sabi3 x64 ABI 분리를 유지합니다.
+
+전체244개 통과·빌드 경고/오류0개입니다. 이번에는 소스 구현과 정적 연구를 전달하며 새 OEM 실행 파일이나 반복 노트북 진단은 요구하지 않습니다. 다음 실제 배터리 읽기의 미검증 조건은 여전히 모델별 명령 의미·안전성·정확한 응답 계약입니다. 이전 한정 관리자 비교 승인을 OEM 호출로 확대하지 않습니다.
+
 ## 일반·관리자 비교 결과 수신 — 비교 완료
 
 [두 실행의 실제 결과](WMI_PERMISSION_COMPARISON_RESULT.md)를 확인했습니다. 일반 토큰은 WmiAcpiVersion Active=True/version=16을 읽고 WmiAcpiMethod를 Enumerate에서 0x80041003으로 거부받았습니다. 상승 토큰은 두 클래스 모두 Complete이고 각각 활성 행 1개, version=16입니다. 이번 승인은 한정된 속성 비교였으며 결과 수신으로 완료됐습니다.

@@ -18,16 +18,9 @@ namespace ATIVBatteryGuard.Core.Services
 
         public static bool TryExtractPayload(int apiReturnCode, object bytes, out byte[] payload)
         {
-            payload = new byte[0];
-            // Require S_OK. S_FALSE can mean enumeration ended with no instance
-            // and no copied response, even though it is a nonnegative HRESULT.
-            if (apiReturnCode != 0 || bytes == null || bytes.GetType() != typeof(byte[])) return false;
-            var response = (byte[])bytes;
-            if (response.Rank != 1 || response.GetLowerBound(0) != 0 ||
-                response.Length != AcceptedReplyBytes || response[4] != 0xaa) return false;
-            payload = new byte[PayloadBytes];
-            System.Array.Copy(response, 5, payload, 0, PayloadBytes);
-            return true;
+            var result = WsabiWmiReplyDecoder.Decode(apiReturnCode, bytes);
+            payload = result.Payload;
+            return result.IsValidFrame;
         }
     }
 }

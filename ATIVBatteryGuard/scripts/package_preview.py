@@ -59,7 +59,7 @@ def main():
         validate_release(evidence, files, fingerprint)
     info = {
         'schemaVersion': 1, 'application': 'ATIV Battery Guard',
-        'distribution': 'PASSIVE SAMSUNG WMI INSTANCE VERSION AND ACTIVE CHECK',
+        'distribution': 'ENCRYPTED LOCAL WMI ACCESS AND TRANSPORT OBSERVATION REVIEW',
         'target': 'Windows10x64/.NETFramework4.8',
         'reconstructedSources': True,
         'sourceFingerprintSha256': fingerprint,
@@ -123,9 +123,23 @@ def main():
         'samsungWmiInstanceCooperativeBudgetMs': 4000,
         'samsungWmiInstanceExportsKeysOrPaths': False,
         'currentWindowsWmiInstanceQueryTested': False,
+        'previousWindowsWmiInstanceQueryObserved': True,
+        'previousWindowsWmiInstanceObservation': 'AccessDenied for both classes; Active/version not observed',
+        'previousKernelDriverInventoryObserved': True,
+        'previousKernelDriverCandidateCount': 7,
+        'previousKernelDriverCandidatesAllStoppedManual': True,
+        'samsungWmiAuthentication': 'PacketPrivacy',
+        'samsungWmiImpersonation': 'Impersonate',
+        'samsungWmiEnablePrivileges': False,
+        'automaticallyElevatesOrModifiesAcl': False,
+        'currentWindowsEncryptedWmiAccessTested': False,
+        'currentWindowsWmiAccessDenialResolved': False,
+        'transportObservationSummaryIncluded': True,
+        'wsabiWmiRequestEncoderOfflineOnly': True,
+        'wsabiWmiRequestEncoderSendsRequests': False,
         'previousDriverBuildLaunchedOnLaptop': True,
         'previousDriverBuildSamsungTxtCreated': True,
-        'previousDriverInventoryContentsReviewed': False,
+        'previousDriverInventoryContentsReviewed': True,
         'oemMethodInvocationAllowed': False,
         'oemModuleExecutionAllowed': False, 'actualChargeControlSupported': False,
         'containsOriginalVendorBinaries': False, 'containsUserUploads': False,
@@ -133,13 +147,13 @@ def main():
         'windowsReleaseEvidence': evidence,
     }
     files['BUILD-INFO.json'] = json.dumps(info, ensure_ascii=False, indent=2).encode('utf-8')
-    instructions = '''ATIV Battery Guard — 삼성 WMI 인스턴스·버전·활성 속성 확인판
+    instructions = '''ATIV Battery Guard — WMI 암호화 연결·전송 경로 해석판
 
 1. ZIP 파일을 새 폴더에 모두 압축 해제하세요.
 2. ATIVBatteryGuard.exe를 실행하세요. 관리자 권한은 필요하지 않습니다.
 Windows 보안이 차단하면 실행을 보류하세요. 예외 등록이나 보안 기능 해제를 하지 않습니다.
-3. 새 WMI 항목을 로컬에서 확인하려면 창 아래쪽 ‘삼성 파일 정보 확인’에서 ‘삼성 파일 정보 만들기’를 선택하세요.
-4. 화면과 ‘정보 파일 위치 열기’의 samsung-files TXT에서 ‘삼성 WMI 인스턴스’ 항목을 확인할 수 있습니다.
+3. 새 연결 설정과 전송 경로 요약을 로컬에서 확인하려면 창 아래쪽 ‘삼성 파일 정보 확인’에서 ‘삼성 파일 정보 만들기’를 선택하세요.
+4. 화면과 ‘정보 파일 위치 열기’의 samsung-files TXT에서 화면 요약과 TXT의 ‘삼성 전송 경로 관측 요약’·‘삼성 WMI 인스턴스’를 확인할 수 있습니다.
 이는 새 기능을 선택적으로 확인하는 절차입니다. 같은 진단·기존 TXT·삼성 DLL·EXE를 다시 제출할 필요는 없습니다.
 
 기존 파일 식별은 Program Files (x86)의 Samsung\\Setting 또는 Samsung\\Settings에 설치된 네 파일의 정보를 읽습니다.
@@ -158,6 +172,12 @@ Sabi3 x64 후보를 해시로 구분하고 공개 함수 이름 일치 여부를
 기존 ‘SABI 장치 연결 이름’ 결과와 함께 비교합니다. 드라이버가 관측돼도 SABI 이름이 없을 수 있으며 두 조회의 범위는 다릅니다.
 연결 이름이 있어도 장치 접근·초기화·펌웨어 지원이 확인된 것은 아닙니다. 드라이버가 실행 중이어도 충전 제어를 활성화하지 않습니다.
 커널 드라이버 등록 조회는 최대 1,024행·후보 32개로 제한하며 WMI 제한과 별도 조회 프로세스의 10초 제한을 적용합니다.
+
+첨부된 이전 결과에서 Samsung 이름 후보 7개가 모두 중지·수동 시작, SABI 이름 미관측, 두 WMI 클래스 권한 거부를 확인했습니다.
+후보를 SABI 드라이버로 확정하거나 임의로 시작하지 않습니다. 권한 거부를 클래스 부재나 비활성으로 바꾸지 않습니다.
+이번 연결은 PacketPrivacy 암호화 인증을 명시합니다. 현재 사용자의 권한을 유지하며 관리자 권한·ACL 수정은 추가하지 않습니다.
+암호화 요구가 원인이면 동작이 달라질 수 있으나 실제 노트북의 거부 원인이나 해결 여부는 아직 미검증입니다.
+순수 wsabi WMI 요청 바이트 인코더도 준비했지만 실행 경로에 연결하지 않았으며 아무 명령도 전송하지 않습니다.
 
 새 WMI 항목은 로컬 ROOT\\WMI에서 WmiAcpiVersion의 Active·version과 WmiAcpiMethod의 Active만 읽습니다.
 클래스 정의만 있는지와 실제 인스턴스가 있는지를 구분하며 클래스별 결과를 독립적으로 표시합니다.
@@ -186,12 +206,12 @@ InstanceName·개체 경로·고유 식별자는 조회하거나 기록하지 �
 실행 대상은 Windows 10 x64 및 .NET Framework 4.8입니다.
 이전 조회판은 사용자 노트북에서 정상 조회가 확인됐습니다. 결과 0x80000000에는 표준 충전·방전 요청 지원 비트가 없습니다.
 이 사실을 삼성 OEM 기능 전체의 불가능으로 해석하지 않습니다.
-이전 드라이버 확인판은 실제 노트북에서 실행과 TXT 생성이 확인됐습니다. TXT의 드라이버 상태 내용은 전달받지 않았습니다.
-이번 WMI 인스턴스 조회와 새 빌드의 Windows 실기 동작은 아직 미검증입니다.
+이전 드라이버 확인판은 실제 노트북에서 실행과 TXT 생성이 확인됐습니다. 후속 TXT에서 이름 후보 7개 모두 중지·수동 시작인 결과를 확인했습니다.
+이후 TXT에서 WMI 두 클래스의 AccessDenied를 확인했습니다. 이번 암호화 연결과 새 화면의 Windows 실기 동작은 아직 미검증입니다.
 '''
     files['먼저 읽어주세요.txt'] = instructions.replace('\n', '\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(sha(data) + '  ' + name + '\n' for name, data in sorted(files.items())).encode('utf-8')
-    binary_zip = output / 'ATIVBatteryGuard-WMI-INSTANCE-CHECK.zip'
+    binary_zip = output / 'ATIVBatteryGuard-WMI-ACCESS-REVIEW.zip'
     with zipfile.ZipFile(binary_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

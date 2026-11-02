@@ -383,10 +383,12 @@ internal static partial class Program
         RegisterSamsungFileInspectionTests();
         RegisterSamsungKernelDriverTests();
         RegisterWmiInstanceTests();
+        RegisterSamsungTransportAssessmentTests();
         RegisterSamsungFileInspectionViewModelTests();
         RegisterPeImportedFunctionTests();
         RegisterSabi3ReplyDecoderTests();
         RegisterWsabiWmiReplyValidatorTests();
+        RegisterWsabiWmiRequestEncoderTests();
     }
 
     private static void Add(string name, Action action) { Tests.Add(new KeyValuePair<string, Func<Task>>(name, () => { action(); return Task.CompletedTask; })); }

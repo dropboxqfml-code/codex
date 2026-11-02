@@ -141,6 +141,7 @@ namespace ATIVBatteryGuard.Core.Models
             text.AppendLine("ATIV Battery Guard — 삼성 파일의 읽기 전용 식별 보고서");
             text.AppendLine("조회 결과: " + StatusText(Status));
             text.AppendLine("대상: Sabi3.dll / wsabi.dll / BatteryToast.exe / PowerAudit.exe");
+            text.AppendLine(ATIVBatteryGuard.Core.Services.SamsungTransportAssessment.Evaluate(this).ToDisplayText());
             text.AppendLine("SABI 장치 연결 이름: " + DriverLinkText(DriverLink));
             text.AppendLine("장치 이름 조회만 수행합니다. 연결 이름의 존재는 장치 접근·드라이버 규약·배터리 기능 지원의 증거가 아닙니다.");
             text.AppendLine(KernelDrivers.ToDisplayText(DriverLink));

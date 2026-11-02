@@ -1,5 +1,9 @@
 # 하드웨어 조사
 
+## 새 실제 관측: WMI 인스턴스 접근 거부
+
+사용자 TXT에서 커널 드라이버 이름 후보 7개 모두 중지·수동 시작, SABI 이름 NotFound, WmiAcpiVersion/WmiAcpiMethod 모두 AccessDenied를 확인했습니다. 후보의 실제 용도나 WMI 거부 원인은 미확정입니다. Active·version은 관측되지 않았습니다. [분석·공식 근거·구현](WMI_ACCESS_RESULT_AND_TRANSPORT_REVIEW.md)에 일반 권한 암호화 인증 설정과 순수 프레임 준비를 기록했습니다. 접근 거부가 암호화 요구 때문이라는 것은 가설이며 실제 확인한 사실과 구분합니다. 관리자 실행·드라이버 시작·충전 지원 결론으로 바꾸지 않습니다.
+
 ## WMI 인스턴스 속성 확인 단계
 
 사용자는 커널 드라이버 확인판의 실제 노트북 실행과 TXT 생성을 확인했습니다. TXT 내부의 드라이버 결과는 아직 전달받지 않았으므로 별도 미검증입니다. 기존 스키마에서 확인한 WmiAcpiVersion.Active/version과 WmiAcpiMethod.Active를 읽는 [새 기능](SAMSUNG_WMI_INSTANCE_INSPECTION.md)을 구현했습니다. 속성 읽기는 제공자를 사용하며 클래스 메타데이터 검사와 구분합니다. 새 조회의 노트북 결과·버전 의미·명령 호환성은 아직 미검증입니다. Active나 인스턴스 발견은 실제 보호 상태 또는 제어 지원 근거가 아닙니다.

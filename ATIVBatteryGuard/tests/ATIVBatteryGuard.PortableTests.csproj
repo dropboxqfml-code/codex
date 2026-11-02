@@ -18,9 +18,11 @@
     <Compile Include="SamsungFileInspectionTests.cs" />
     <Compile Include="SamsungKernelDriverTests.cs" />
     <Compile Include="WmiInstanceTests.cs" />
+    <Compile Include="SamsungTransportAssessmentTests.cs" />
     <Compile Include="SamsungFileInspectionViewModelTests.cs" />
     <Compile Include="PeImportedFunctionTests.cs" />
     <Compile Include="Sabi3ReplyDecoderTests.cs" />
     <Compile Include="WsabiWmiReplyValidatorTests.cs" />
+    <Compile Include="WsabiWmiRequestEncoderTests.cs" />
   </ItemGroup>
 </Project>

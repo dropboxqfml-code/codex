@@ -1,5 +1,9 @@
 # ATIV Battery Guard
 
+[최신 WMI 권한 결과와 다음 구현](WMI_ACCESS_RESULT_AND_TRANSPORT_REVIEW.md): 실제 TXT에서 SABI 이름 미관측, Samsung 이름 후보 7개 Stopped/Manual, 두 WMI 클래스 AccessDenied를 확인했습니다. 일반 사용자 권한을 유지한 암호화 WMI 연결을 명시하고 저장 성공과 조회 결과를 구분하는 화면 요약을 추가했습니다. 실제 거부 원인·해결 여부는 아직 미검증입니다.
+
+기존 서비스 wsabi 규약의 순수 요청 인코더도 준비했으나 실제 호출 경로에는 연결하지 않았습니다. 이번 테스트 228개 및 배포 검증 6개 통과, WPF/XAML 빌드 경고·오류 0개입니다. 실제 설정 읽기·충전 제어는 계속 미검증·미지원이며 아래 설명은 이전 단계 이력입니다.
+
 [다음 단계: 삼성 WMI 인스턴스·버전·활성 속성 확인](SAMSUNG_WMI_INSTANCE_INSPECTION.md)을 구현했습니다. 기존 삼성 파일 보고서에 로컬 WmiAcpiVersion의 Active/version과 WmiAcpiMethod의 Active를 클래스별로 표시합니다. 인스턴스 이름·장치 식별자는 읽지 않으며 OEM 메서드는 실행하지 않습니다. Active를 배터리 보호 상태로 해석하지 않고 실제 충전 제어는 계속 미지원입니다.
 
 이전 드라이버 확인판의 노트북 실행·TXT 생성은 사용자가 확인했습니다. TXT 내부의 조회 결과는 아직 전달받지 않았습니다. 이번 공유 소스 테스트는 **217개 통과**, 별도 배포 검증 **6개 통과**, WPF/XAML 빌드는 **경고·오류 0개**입니다. 새 WMI 값 조회의 실제 Windows 동작은 아직 미검증이며 아래 기록은 이전 단계 이력입니다.

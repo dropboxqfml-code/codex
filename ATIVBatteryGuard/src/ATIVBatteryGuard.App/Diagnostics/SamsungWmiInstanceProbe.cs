@@ -33,7 +33,15 @@ namespace ATIVBatteryGuard.Diagnostics
             try
             {
                 var scope = new ManagementScope(@"\\.\" + SamsungWmiInstancePolicy.LocalNamespace,
-                    new ConnectionOptions { Timeout = timeout, EnablePrivileges = false });
+                    new ConnectionOptions
+                    {
+                        Timeout = timeout, EnablePrivileges = false,
+                        // Encrypted WMI/DCOM authentication can be required by a
+                        // namespace. This keeps the caller's ordinary token and
+                        // never repairs ACLs, enables privileges or retries weaker.
+                        Authentication = AuthenticationLevel.PacketPrivacy,
+                        Impersonation = ImpersonationLevel.Impersonate
+                    });
                 var entries = new List<SamsungWmiInstanceEntry>();
                 bool partial = false;
                 using (var searcher = new ManagementObjectSearcher(scope,

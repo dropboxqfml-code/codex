@@ -149,9 +149,11 @@ internal static partial class Program
                 f.Files.Reader = () => { gate.Enter(); return InspectedFiles(); };
                 var vm = f.ViewModel(); Task pending = vm.InspectSamsungFilesAsync(); await gate.WaitEntered();
                 vm.Dispose(); string prior = vm.SamsungFileInspectionText;
+                string priorSummary = vm.SamsungTransportSummary;
                 int changes = 0; vm.PropertyChanged += (sender, args) => changes++;
                 gate.Release(); await pending;
                 Equal(prior, vm.SamsungFileInspectionText); Equal(0, changes); Equal(0, f.Interaction.FileInspectionSaves);
+                Equal(priorSummary, vm.SamsungTransportSummary);
                 Check(!vm.InspectSamsungFilesCommand.CanExecute(null), "disposed command enabled");
                 await vm.InspectSamsungFilesAsync(); Equal(1, f.Files.Calls);
             }

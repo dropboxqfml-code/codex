@@ -163,6 +163,8 @@
                         <Button Content="정보 파일 위치 열기(_O)" Command="{Binding OpenSettingsFolderCommand}" />
                     </WrapPanel>
                     <TextBlock Text="{Binding SamsungFileInspectionStatus}" AutomationProperties.LiveSetting="Polite" />
+                    <TextBlock Text="{Binding SamsungTransportSummary}" TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite" Margin="0,6,0,0" />
                     <TextBox Text="{Binding SamsungFileInspectionText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
                              MaxHeight="320" VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,8,0,0"
                              AutomationProperties.Name="삼성 파일 정보 결과" />

@@ -1,5 +1,20 @@
 # Settings 앱 분석판 검증 기록
 
+## WMI 권한 해석·암호화 연결·요청 프레임 — 2026-11-03 한국 시간
+
+이번 사용자 TXT에서 삼성 이름 후보 7개 모두 Stopped/Manual, SABI 이름 NotFound, WmiAcpiVersion/WmiAcpiMethod AccessDenied를 확인했습니다. 앱 실행과 TXT 생성은 확인됐지만 Active/version·실제 충전 제어는 확인되지 않았습니다.
+
+- 현재 전체 suite **228 passed, 0 failed, 0 skipped (228 registered)**. reports/transport-review-tests.json 및 같은 이름의 .log는 이번 실행 결과입니다.
+- x64 net48 WPF/XAML 빌드 **경고 0개·오류 0개**, reports/transport-review-build.log에 보관합니다.
+- Python 배포 검증 **6개 통과**. 앱 suite 수와 별도입니다.
+- 신규 11개 그룹은 wsabi 요청의 정확한 21바이트·little-endian·명령 범위·배열 형식/길이·복사/실패 초기화와 독립 관측 요약·인과 추론/제어 차단·저장 성공/실패/재조회/공급자 오류를 검사합니다. 기존 종료 후 늦은 완료 시험도 새 요약 값의 비변경을 확인하도록 확장했습니다.
+- 기존 서비스 wsabi의 정적 계약만 순수 바이트 인코더로 구현했으며 WMI/OEM/장치로 전송하는 연결은 없습니다. 실제 하드웨어 어댑터와 쓰기 차단은 유지했습니다.
+- 새 연결은 PacketPrivacy·Impersonate·EnablePrivileges=false입니다. 공식 문서의 암호화 네임스페이스 요구를 근거로 설정했으며 관리자 권한·ACL 변경이 아닙니다. 노트북에서 이번 설정으로 AccessDenied가 해소됐는지는 **미검증**입니다.
+- 새 화면·암호화 WMI의 Windows 실기 동작은 **미실행**입니다. 이전 TXT는 이전 빌드의 권한 거부 관측이며 새 빌드 검증으로 재사용하지 않았습니다.
+
+기존 공식 .NET SDK 8.0.427과 net48 참조·WindowsDesktop SDK, DOTNET_ReadyToRun=0을 사용했습니다. [이번 분석과 수정 파일의 역할](WMI_ACCESS_RESULT_AND_TRANSPORT_REVIEW.md)에 근거·제한을 기록했습니다. 원본 TXT·삼성 바이너리를 소스나 배포물에 복사하지 않았고, 환경 초안 재적용·게시는 하지 않았습니다.
+
+
 ## WMI 인스턴스·버전·활성 속성 — 2026-11-02 한국 시간
 
 이전 커널 드라이버 확인판의 실제 노트북 실행과 TXT 생성은 사용자 확인을 받았습니다. TXT 내용은 전달받지 않아 드라이버 조회 상태·SABI 결과는 추가 확인하지 않았습니다. 이번 변경은 다음 준비 단계의 로컬 WMI 속성 읽기이며 실제 충전 상태 조회·제어는 아닙니다.

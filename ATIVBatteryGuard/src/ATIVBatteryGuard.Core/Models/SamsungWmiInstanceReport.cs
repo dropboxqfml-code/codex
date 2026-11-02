@@ -85,6 +85,7 @@ namespace ATIVBatteryGuard.Core.Models
             var text = new StringBuilder();
             text.AppendLine("삼성 WMI 인스턴스 — 읽기 전용 버전·활성 상태");
             text.AppendLine(@"조회 범위: 로컬 ROOT\WMI의 WmiAcpiVersion.Active/version 및 WmiAcpiMethod.Active 속성만 읽습니다.");
+            text.AppendLine("연결은 현재 사용자 권한으로 암호화 인증(PacketPrivacy)을 요청합니다. 조회 실패 시 권한 상승이나 보안 설정 변경으로 전환하지 않습니다.");
             AppendClass(text, VersionClass);
             AppendClass(text, MethodClass);
             text.AppendLine("Active=True는 WMI 인스턴스가 보고한 활성 값이며 배터리 보호가 켜졌다는 뜻이 아닙니다. 버전 값은 관측한 UInt32 원값이며 모델·명령 호환성을 해석하지 않습니다.");

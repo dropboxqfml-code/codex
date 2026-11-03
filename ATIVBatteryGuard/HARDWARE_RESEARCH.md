@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 메모리 전송 경계 연결과 공개 포크 후속 조사
+
+[이번 통합 경로와 공개 근거](WMI_BOUND_CHANNEL_AND_PIPELINE.md): 요청 인코더·비동기 조정기·메서드 바인더·응답 디코더를 가짜 snapshot transport로 연결했습니다. 실제 WMI/OEM 구현은 추가하지 않았으며 클래스 일치나 내부 프레임 유효성을 하드웨어 지원으로 승격하지 않습니다.
+
+새로 읽은 jesperol 포크는 기존 gh2o 고정 원문과 바이트가 같고, djpohly Kconfig는 battery parking만 설명합니다. 확인한 공개 포크·이슈 범위에서 현재 모델의 배터리 명령 의미·안전성·실제 응답 계약을 새로 확보하지 못했습니다. 다른 곳의 자료 부재나 하드웨어 기능 부재를 뜻하지 않습니다. 실제 충전 제어는 계속 Unsupported입니다.
+
 ## 실제 WMI 형식 일치 확인 완료
 
 [판독기2 결과와 오프라인 바인더](WMI_MATCHED_BINDING_AND_OFFLINE_ENVELOPE.md): GUID 후보·메서드 존재·입출력 CIMTYPE의 DataBuffer·Bytes UInt8[]를 모두 확인했습니다. 두 클래스Complete·WindowsMethodId1이며 기존 입출력Unknown을 해소했습니다. 클래스 규약 진단은 완료됐고 같은 자료를 다시 요청하지 않습니다.

@@ -1,4 +1,18 @@
-# WMI 형식 확인 완료·메모리용 바인더 개발 소스
+# WMI 메모리 채널·통합 경로 개발 소스
+
+[최신 개발 소스 ZIP](ATIVBatteryGuard-WMI-PIPELINE-SOURCE.zip) · [구현·검증·남은 조건](../ATIVBatteryGuard/WMI_BOUND_CHANNEL_AND_PIPELINE.md) · [기존 실기 확인 프로그램](ATIVBatteryGuard-WMI-PARAMETER-CHECK.zip)
+
+요청 인코더·비동기 조정기·메서드 바인더·응답 검증기를 명시적으로 주입한 메모리 snapshot 경계로 연결했습니다. 잘못된 요청의 무호출, 중첩 필드 오류/byte 오류 구분, 취소·시간 초과 뒤 실제 작업 종료 전 Busy와 늦은 응답 처리를 통합 검증했습니다. 기존 byte decoder와 bool validator의 동작을 유지합니다.
+
+전체297개 테스트 통과·실패/건너뜀0개, 4개 프로젝트 빌드 경고·오류0개입니다. 가짜 transport만 사용했으며 실제 WMI/native/OEM 구현·인스턴스 자동 선택·앱 등록은 없습니다. 이번에는 개발 소스를 제공하고 노트북에서 새로 실행·제출할 항목은 없습니다. 기존 실행판은 그대로 보존합니다.
+
+현재 모델의 배터리 명령 의미·읽기 안전성·실제 응답 계약은 여전히 미확정이고 실제 보호 상태 조회·충전 제어는 미구현·Unsupported입니다. 공개 포크·이슈 후속 조사에서도 새 근거는 확보하지 못했습니다. 소스 ZIP에는 자체 소스·문서만 있으며 원본 삼성 바이너리·사용자 TXT·외부 코드·빌드 출력은 없습니다.
+
+소스 ZIP SHA-256: 366d08d2f96634630c5af72c0cdbe0179993533e4e2a273980fd7c4a1bd8c0fa
+
+아래는 이전 프로그램과 개발 이력입니다.
+
+## 이전 WMI 형식 확인 완료·메모리용 바인더 개발 소스
 
 [최신 개발 소스 ZIP](ATIVBatteryGuard-WMI-BINDING-SOURCE.zip) · [실제 결과·구현·남은 조건](../ATIVBatteryGuard/WMI_MATCHED_BINDING_AND_OFFLINE_ENVELOPE.md) · [노트북에서 확인한 판독기2 프로그램](ATIVBatteryGuard-WMI-PARAMETER-CHECK.zip)
 

@@ -67,6 +67,7 @@ internal static partial class Program
                 response[4] = (byte)marker;
                 var result = WsabiWmiReplyDecoder.Decode(0, response);
                 Equal(marker == 0xaa ? WsabiWmiReplyStatus.ValidFrame : WsabiWmiReplyStatus.InvalidAcknowledgement, result.Status);
+                Equal<WsabiWmiMethodReplyStatus?>(null, result.MethodReplyStatus);
                 Equal(marker == 0xaa, result.IsValidFrame);
                 byte[] legacy;
                 Equal(result.IsValidFrame, WsabiWmiReplyValidator.TryExtractPayload(0, response, out legacy));
@@ -81,6 +82,7 @@ internal static partial class Program
             var first = WsabiWmiReplyDecoder.Decode(0, response);
             var second = WsabiWmiReplyDecoder.Decode(0, response);
             Equal(WsabiWmiReplyStatus.ValidFrame, first.Status);
+            Equal<WsabiWmiMethodReplyStatus?>(null, first.MethodReplyStatus);
             byte[] copy = first.Payload;
             Equal(16, copy.Length);
             for (int i = 0; i < copy.Length; i++) Equal((byte)(i * 13 + 3), copy[i]);
@@ -117,6 +119,7 @@ internal static partial class Program
 
     private static void AssertWsabiTypedFailure(WsabiWmiReplyResult result, int code, object response)
     {
+        Equal<WsabiWmiMethodReplyStatus?>(null, result.MethodReplyStatus);
         Check(!result.IsValidFrame && !result.IsHardwareObservation && !result.CanReadHardware && !result.CanWriteHardware, "failed frame promoted to observation");
         Equal(0, result.Payload.Length);
         byte[] legacy = { 42 };

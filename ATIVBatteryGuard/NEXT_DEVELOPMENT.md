@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 메모리 채널 연결·통합 검증 후
+
+[이번 채널·전체 경로·연구 한계](WMI_BOUND_CHANNEL_AND_PIPELINE.md)를 먼저 읽습니다. 바인더와 명시 snapshot transport를 연결하는 BoundFrameChannel을 추가했으며 기존 FrameExchange를 그대로 사용합니다. TryWrapFrame은21/magic/예약0을 복사 후 검증합니다. MethodReplyStatus와 InvalidEnvelope로 중첩 오류를 보존하고 기존byte decoder 상세는null·bool수락조건은 그대로 유지합니다. 이미 결합한 응답의 재포장은 거부합니다.
+
+실제 Windows/native/OEM 구현·기본 transport·인스턴스 선택·앱 등록은 없습니다. 취소token을 전달하고 늦은 snapshot을 성공 게시하지 않으며 실제 작업 완료까지 기존 조정기의 Busy를 유지합니다. 이는 인스턴스별 협조적 제한이고 공유 transport 전역 잠금이나 native 강제 종료가 아닙니다.
+
+노트북에서 새로 실행·제출할 항목은 없습니다. 클래스 형식 확인은 완료됐고 내부 경로가 모의 통합 검증으로 연결됐습니다. 다음 개발 우선순위는 현재 모델 배터리 명령 의미·읽기 안전성·실제 응답 계약 근거입니다. 공개 포크/이슈 후속 조사에서도 새 근거는 확보하지 못했습니다. Windows1/Linux0/firmwareopcode를 치환하지 않고 실제 읽기·쓰기는 Unsupported를 유지합니다.
+
+전체297개 통과·실패/건너뜀0개, 4개 프로젝트 빌드 경고/오류0개입니다. Python배포suite는이번에반복하지않았고 이전6개는이전기록입니다. 새소스ZIP을별도검증합니다. 아래는 이전 개발 이력입니다.
+
 ## 형식 일치 실기 결과 수신·오프라인 메서드 바인더 구현 후
 
 [이번 실제 관측·코드·남은 조건](WMI_MATCHED_BINDING_AND_OFFLINE_ENVELOPE.md)을 먼저 읽습니다. 판독기2에서 두 클래스Complete, GUID후보일치, CallSabiFunction존재, WindowsMethodId1, in/out ScalarObject+CIMTYPE DataBuffer, BytesUInt8[]=True를 확인했습니다. EmbeddedInstance는 미관측/없음으로 보존하고 권한 수준은 새로 단정하지 않습니다. 이전 Unknown이 해소됐으므로 같은 메타데이터·파일 목록·관리자 비교를 반복 요청하지 않습니다.

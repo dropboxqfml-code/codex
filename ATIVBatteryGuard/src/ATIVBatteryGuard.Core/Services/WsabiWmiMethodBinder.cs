@@ -59,6 +59,23 @@ namespace ATIVBatteryGuard.Core.Services
             return true;
         }
 
+        public bool TryWrapFrame(object frame, out WsabiWmiMethodRequest request)
+        {
+            request = null;
+            if (frame == null || frame.GetType() != typeof(byte[])) return false;
+            var bytes = (byte[])frame;
+            if (bytes.Length != WsabiWmiRequestEncoder.FrameBytes) return false;
+            // Own a bounded copy before validation. The envelope is prepared
+            // from this copy even if the caller later changes its array.
+            var snapshot = (byte[])bytes.Clone();
+            if (snapshot[0] != (byte)(WsabiWmiRequestEncoder.HeaderMagic & 0xff) ||
+                snapshot[1] != (byte)(WsabiWmiRequestEncoder.HeaderMagic >> 8) || snapshot[4] != 0) return false;
+            int command = snapshot[2] | (snapshot[3] << 8);
+            var payload = new byte[WsabiWmiRequestEncoder.PayloadBytes];
+            System.Array.Copy(snapshot, 5, payload, 0, payload.Length);
+            return TryPrepareRequest(command, payload, out request);
+        }
+
         public WsabiWmiMethodReplyResult DecodeOutput(int apiResult, object output)
         {
             // S_FALSE and failed HRESULTs take priority over every output

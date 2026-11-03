@@ -1,5 +1,16 @@
 # Settings 앱 분석판 검증 기록
 
+## 메모리 채널·전체 경로 통합 — 2026-11-03
+
+- 현재 전체 suite **297 passed, 0 failed, 0 skipped (297 registered)**. reports/wmi-pipeline-tests.json 및 .log에 기록합니다.
+- Core·WPF·두 별도 도구 전체 x64 net48 빌드 **경고0개·오류0개**, reports/wmi-pipeline-build.log에 기록합니다.
+- 신규11개 그룹은 고정 바인더/명시 transport, 요청 프레임 형식/길이/magic/예약0의 무호출, encoder→coordinator→channel→가짜 snapshot→binder→decoder 전체 연결, 배열 독립성·번호 분리, 중첩 오류/byte 오류, 결합 결과의 재포장 거부, API 실패의 무조회, transport 예외/null과 Output=null 구분, token 전파·취소·시간 초과 뒤 실제 완료 전 Busy·늦은 fault 관찰·회복을 검사합니다.
+- 기존 byte decoder 테스트에 MethodReplyStatus=null 호환 검사를 추가했습니다. 기존 bool validator와 바이트 수락 경계·기존 enum 번호는 유지하고 새 InvalidEnvelope는 끝에 추가했습니다. 기존 coordinator는 수정하지 않았습니다.
+- 신규 transport는 가짜 메모리 자료만 사용하며 실제 WMI/native/OEM 구현·객체 생성·앱 등록이 없습니다. 실제 메서드 응답·배터리 보호 설정·충전 제어는 **미실행·미구현**입니다.
+- 배포 스크립트 변경이 없어 Python suite는 반복 실행하지 않았습니다. 이전6개 통과는 이전 기록이며 소스 ZIP의 허용 파일·현재 내용 일치·체크섬·CRC는 별도 확인합니다.
+
+[통합 계층·추가 공개 포크 조사·현재 한계](WMI_BOUND_CHANNEL_AND_PIPELINE.md)를 기록했습니다. 같은 노트북 진단을 요청하지 않고 원본 삼성 바이너리·사용자 보고서·외부 코드는 포함하지 않습니다. 환경 설정 게시는 하지 않았습니다. 아래는 이전 기록입니다.
+
 ## 형식 일치 관측·메모리용 메서드 바인더 — 2026-11-03
 
 - 판독기2의 사용자 출력에서 두 클래스Complete, GUID후보일치, MethodId1, in/out의 단일Object+CIMTYPE DataBuffer, Bytes UInt8[]를 확인했습니다. 수정 판독기2의 이 클래스 조회 경로는 실기 확인됐습니다. EmbeddedInstance는 미관측/없음이며 토큰·OEM 실행·실제 응답·배터리 상태는 관측하지 않았습니다.

@@ -1,4 +1,14 @@
-# WMI 메모리 채널·통합 경로 개발 소스
+# 다음 실제 단계 검토서 — OEM 조회 후보 실험 미승인
+
+[후보·입력·중단 조건·위험 검토서](../ATIVBatteryGuard/WMI_ONE_SHOT_QUERY_REVIEW.md) · [현재 검증된 개발 소스 ZIP](ATIVBatteryGuard-WMI-PIPELINE-SOURCE.zip)
+
+추가 공개자료를 조사했지만 현재 모델의 Windows WMI 배터리 명령 계약은 확정하지 못했습니다. 다음 실제 단계로 미검증 조회후보0x65를 별도 도구·같은 계정의 수동 관리자 실행으로 최대1회 시험할지 검토하는 문서를 준비했습니다. 이 제안은 기존 OEM 실행 제외 범위를 바꾸는 것이므로 명시적 승인 전에는 구현·실행하지 않습니다.
+
+실제 OEM 코드·새 EXE·실기 시도는 아직 없습니다. 기존 프로그램과 소스 ZIP은 그대로 보존하며 새 실행이나 이전 TXT/DLL/권한 비교 재제출은 요청하지 않습니다. 후보 의미가 검증되지 않아 예상하지 못한 펌웨어 동작 가능성을 배제할 수 없습니다. 실제 충전 제어는 계속 Unsupported입니다.
+
+이번 변경은 조사·검토 문서입니다. 아래297개 테스트·빌드0은 이전 코드의 검증 기록이며 이번에 다시 실행한 결과가 아닙니다.
+
+## 이전 WMI 메모리 채널·통합 경로 개발 소스
 
 [최신 개발 소스 ZIP](ATIVBatteryGuard-WMI-PIPELINE-SOURCE.zip) · [구현·검증·남은 조건](../ATIVBatteryGuard/WMI_BOUND_CHANNEL_AND_PIPELINE.md) · [기존 실기 확인 프로그램](ATIVBatteryGuard-WMI-PARAMETER-CHECK.zip)
 

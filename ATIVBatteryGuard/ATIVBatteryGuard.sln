@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ATIVBatteryGuard.WmiAccessC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ATIVBatteryGuard.WmiContractCheck", "src\ATIVBatteryGuard.WmiContractCheck\ATIVBatteryGuard.WmiContractCheck.csproj", "{AA350337-9498-4DCC-A9A1-853D3425D811}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ATIVBatteryGuard.WmiOneShotQuery", "src\ATIVBatteryGuard.WmiOneShotQuery\ATIVBatteryGuard.WmiOneShotQuery.csproj", "{0E1E6E17-9594-4FB6-A065-2F6C03D38F66}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,9 +36,14 @@ Global
 		{AA350337-9498-4DCC-A9A1-853D3425D811}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AA350337-9498-4DCC-A9A1-853D3425D811}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AA350337-9498-4DCC-A9A1-853D3425D811}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E1E6E17-9594-4FB6-A065-2F6C03D38F66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E1E6E17-9594-4FB6-A065-2F6C03D38F66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E1E6E17-9594-4FB6-A065-2F6C03D38F66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E1E6E17-9594-4FB6-A065-2F6C03D38F66}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E0CEB533-418B-46A1-A7C2-BC8038D2BD6E} = {4EB66F9F-4A54-45C0-98AB-02608849F377}
 		{AA350337-9498-4DCC-A9A1-853D3425D811} = {4EB66F9F-4A54-45C0-98AB-02608849F377}
+		{0E1E6E17-9594-4FB6-A065-2F6C03D38F66} = {4EB66F9F-4A54-45C0-98AB-02608849F377}
 	EndGlobalSection
 EndGlobal

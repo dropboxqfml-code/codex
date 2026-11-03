@@ -1,5 +1,16 @@
 # Settings 앱 분석판 검증 기록
 
+## 승인된 단1회 조회 후보 도구 — 2026-11-03 한국 시간
+
+- 사용자가 검토서의 미검증0x65 후보 한정1회 실험을 명시적으로 승인했습니다. [승인·정확한 범위](WMI_ONE_SHOT_QUERY_APPROVAL.md)에 원문과 구현 제한을 기록했으며 같은 범위를 다시 승인받지 않습니다.
+- 현재 전체 suite **322 passed, 0 failed, 0 skipped (322 registered)**. reports/wmi-one-shot-tests.json 및 .log는 이번 최종 실행입니다.
+- 새25개 그룹: Core 실험 gate/고정 요청/한번·재진입/예약 실패/후보 비해석12개, 원자적 영속 예약/재실행/경로6개, SDK와 분리한 콜백 collector의 완료0·단1개·중복/늦은 도착·cancel/읽기오류·정리/reentrancy7개. 실제 Windows 제공자는 사용하지 않습니다.
+- Core·WPF·WmiAccessCheck·WmiContractCheck·WmiOneShotQuery 전체5개 프로젝트 x64 net48 빌드 **경고0개·오류0개**. reports/wmi-one-shot-build.log와 test-build.log에 기록합니다.
+- 기존 Python 배포 검증 **6개 통과**. 새 실행 ZIP은 고정 파일·x64/asInvoker·SDK 호출 지점1개·부모/작업자 독립10초·일치 소스·SHA-256·CRC를 별도 확인합니다.
+- 독립 읽기 전용 코드 검토에서 차단 문제를 발견하지 않았습니다. 명시적 model/BIOS·token·schema·정확히1Active·입력준비·영속claim 뒤에만 고정 후보를 요청합니다. metadata 일치를 실제 후보 안전성으로 해석하지 않습니다.
+- 새로운 환경의 기본 체크아웃은 다른 작업 상태여서 수정하지 않았습니다. 체크섬 검증된 이전 소스 캐시에서 별도 폴더로 시작했고, 원격 검토 기준8f98ba8을 별도 게시 준비 폴더로 확보해 기존 이력을 보존했습니다. 공식 SDK/net48 참조 캐시로 offline restore했으며 단일 MSBuild node·서버 비사용·DOTNET_ReadyToRun=0을 사용했습니다.
+- 클라우드에서 새 EXE·Windows 토큰/WMI 제공자·OEM 명령·펌웨어 응답을 **실행하지 않았습니다**. Windows 실기는 사용자 승인1회 시험으로 남아 있으며 실제 충전 제어는 계속 Unsupported입니다. 환경 설정 게시는 하지 않았습니다.
+
 ## 다음 OEM 후보 단계 검토서 — 2026-11-03
 
 추가 공개자료의 고정소스·callsite를 정적으로 대조하고 [한정 후보 실험의 범위·바이트·중단조건·위험](WMI_ONE_SHOT_QUERY_REVIEW.md)을 문서로 만들었습니다. 실제실행코드·테스트·빌드의 변경은 없으며 같은suite를 다시 실행하지 않았습니다. 아래297개 통과·경고오류0은 이전코드의 검증기록입니다.

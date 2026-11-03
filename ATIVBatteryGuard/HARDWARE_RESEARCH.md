@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 승인된 조회 후보 한정 실험 도구
+
+[승인과 구현 범위](WMI_ONE_SHOT_QUERY_APPROVAL.md): 사용자가 미검증0x65 후보의 한정1회 실험을 승인했습니다. 별도도구에서 고정모델/BIOS·token·schema·단일Active대상·영속예약을 확인해야요청하며 삼성DLL·쓰기명령·driver/service/ACL·포트IO·자동상승은 구현하지않습니다. 비동기완료상태0과정확히1개출력후에만고정Bytes를읽고후보표식만분류합니다.
+
+새 도구는 아직 Windows에서 실행하지않았습니다. 후보의모델별의미·입력padding·실제응답계약·예상하지못한펌웨어부작용은여전히미검증입니다. 어떤표식도실제보호설정/지원/80%성공으로승격하지않으며 현재제어는Unsupported입니다.
+
 ## 추가 공개자료 대조와 다음 실제 단계의 경계
 
 [이번 근거·후보 실험 검토서](WMI_ONE_SHOT_QUERY_REVIEW.md): voria의Linux도구와hotkeys추가callsite/이슈를 정적으로읽었지만현재940/930·P05ACJ의WindowsWMI배터리계약은확정하지못했습니다. hotkeys는FF와OFF를같은false로접으므로그대로재사용하지않고 미사용0x0B주석도 새조회근거로사용하지않습니다.

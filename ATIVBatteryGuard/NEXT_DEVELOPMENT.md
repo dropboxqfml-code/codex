@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 한정 OEM 후보 실험 명시 승인·도구 구현 후
+
+사용자가 “그래 이번 테스트를 위해서 승인할게. 반드시 필요한 작업만 수행하도록해. 노트북의 보안을 위해서 하드웨어 안전 규칙을 꼭 지켜야해.”라고 검토서 범위를 승인했습니다. [승인 기록·구현·실행 안내](WMI_ONE_SHOT_QUERY_APPROVAL.md)를 먼저 읽습니다. 같은 승인 재요청 없이 이 한정 실험의 구현/검증/프로그램 공유를 완료합니다. 후보가 안전하거나 모델 적합성이 입증됐다는 결과는 아닙니다.
+
+새 WmiOneShotQuery는 별도 asInvoker·같은 계정 수동 관리자·fixed0x65 payload80+15zero·최대1회입니다. 모델Product.Name/BIOS exact·token·상세metadata/id1·전체완료1rowActiveTrue·입력준비·영속CreateNew예약이 모두 맞아야 요청합니다. 원래 앱은 연결하지 않고 0x66/다른명령·DLLinit·driver/service/ACL/보안변경·포트IO·자동상승은 없습니다.
+
+Native는 managed async InvokeMethod 한 지점만 있고 Completed.Status0+정확히1개일 때만 고정output을읽습니다. 이 상태는 즉시ExecMethod HR을 확보했다는 뜻이 아닙니다. generic콜백collector를portable로검증하고 늦은/중복/실패/cancel/정리경합을닫습니다. 부모와내부worker각10s감시·6s사전검증예산이있고native종료/복구를보장하지않습니다. 예약표식을삭제/리셋/우회하지않습니다.
+
+새 도구의 Windows 실기 결과는 아직없으며 다음은 승인된1회출력만받는 단계입니다. 이전TXT/DLL/파일목록/권한비교재제출은필요없습니다. 어떤후보표식도 actualMode/ONOFF/충전상한지원으로바꾸지않고 Unsupported를 유지합니다.
+
+현재전체322개+Python6개통과,5개프로젝트빌드경고/오류0개입니다. 실제OEM/Windows실기미실행입니다. 소스와미서명실험ZIP만검증해공유합니다. 승인된1회결과를받기전다른명령/추가실험/예약표식초기화를추가하지않습니다. 아래는 이전 개발 이력입니다.
+
 ## 다음 실제 단계의 범위 변경 검토서 준비
 
 [한정 OEM 조회 후보 실험 검토서](WMI_ONE_SHOT_QUERY_REVIEW.md)를 먼저 읽습니다. 내부 메모리 통합은 완료됐고 추가voria/hotkeys callsite조사에서도 현재모델WMI 배터리명령 의미·안전성·응답계약은확정하지못했습니다. 새로운일반추상화/반복진단을추가하지않았습니다.

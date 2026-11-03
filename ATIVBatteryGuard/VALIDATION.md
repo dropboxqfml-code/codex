@@ -1,5 +1,17 @@
 # Settings 앱 분석판 검증 기록
 
+## 형식 일치 관측·메모리용 메서드 바인더 — 2026-11-03
+
+- 판독기2의 사용자 출력에서 두 클래스Complete, GUID후보일치, MethodId1, in/out의 단일Object+CIMTYPE DataBuffer, Bytes UInt8[]를 확인했습니다. 수정 판독기2의 이 클래스 조회 경로는 실기 확인됐습니다. EmbeddedInstance는 미관측/없음이며 토큰·OEM 실행·실제 응답·배터리 상태는 관측하지 않았습니다.
+- 현재 전체 suite **286 passed, 0 failed, 0 skipped (286 registered)**. reports/wmi-method-binder-tests.json 및 .log에 기록합니다.
+- Core·WPF·두 별도 도구 전체 x64 net48 빌드 **경고0개·오류0개**, reports/wmi-method-binder-build.log에 기록합니다.
+- 신규12개 그룹은 실제 완전 일치 관측 합성과 상세 메타데이터 필수·기존 Partial/호환bool 거부, 고정 입출력 포장/추출, Windows번호/firmware명령 분리, 깊은 복사와 읽기 전용 map, API 실패의 무조회, 중첩 필드/예외 분류, 불필요한 멤버 무조회·기존 디코더 오류 보존·payload 비해석을 검사합니다.
+- 독립 Core 코드 검토에서 추가 결함을 발견하지 않았습니다. 새 바인더는 메모리용 snapshot API이고 WMI/native 호출·CreateInstance·전송 채널·앱 등록이 없습니다. 테스트는 합성 자료만 사용했습니다.
+- 배포 스크립트 변경이 없어 Python suite는 다시 실행하지 않았습니다. 이전6개 통과는 이전 기록입니다. 새 소스 ZIP의 파일 허용 목록·현재 파일 일치·SHA-256·CRC는 별도 확인합니다.
+- 현재 모델의 실제 보호 상태 읽기·OEM 명령·충전 제어는 **미실행·미구현**입니다. 반복 노트북 규약 진단은 요청하지 않습니다.
+
+[실제 관측·구현·추가 공개 ACPI 조사 범위](WMI_MATCHED_BINDING_AND_OFFLINE_ENVELOPE.md)를 기록했습니다. 원본 사용자 TXT·삼성 바이너리·외부 코드/문서는 배포하지 않으며 환경 설정을 게시하지 않습니다. 아래는 이전 이력입니다.
+
 ## 실제 규약 관측·CIMTYPE 판독 보완 — 2026-11-03
 
 - 사용자 콘솔 출력에서 GUID 후보 일치·메서드 존재·WmiMethodId1·DataBuffer UInt8[] 및 입출력 Unknown을 확인했습니다. 이전 도구의 메타데이터 조회 실기 관측이며 수정 도구의 실행이나 OEM 호출 결과는 아닙니다. 토큰 상태는 미관측입니다.

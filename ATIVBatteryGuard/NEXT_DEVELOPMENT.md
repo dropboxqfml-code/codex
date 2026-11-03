@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 형식 일치 실기 결과 수신·오프라인 메서드 바인더 구현 후
+
+[이번 실제 관측·코드·남은 조건](WMI_MATCHED_BINDING_AND_OFFLINE_ENVELOPE.md)을 먼저 읽습니다. 판독기2에서 두 클래스Complete, GUID후보일치, CallSabiFunction존재, WindowsMethodId1, in/out ScalarObject+CIMTYPE DataBuffer, BytesUInt8[]=True를 확인했습니다. EmbeddedInstance는 미관측/없음으로 보존하고 권한 수준은 새로 단정하지 않습니다. 이전 Unknown이 해소됐으므로 같은 메타데이터·파일 목록·관리자 비교를 반복 요청하지 않습니다.
+
+WsabiWmiMethodBinder는 상세 근거가 모두 있는 Complete 보고서에서만 만들어지고 bool만 true인 호환 보고서는 거부합니다. 고정 inData/Bytes 요청 포장과 outData/Bytes 추출을 기존 codec에 연결하지만 메모리 snapshot만 다룹니다. HRESULT 우선, 실패 시 데이터 제거, 깊은 복사·읽기 전용 map과 false capability를 유지합니다. CreateInstance/InvokeMethod/liveWMI/OEM채널/앱등록은 없습니다.
+
+이번에는 내부 계층의 검증된 소스를 전달하며 새 노트북 실행 항목은 없습니다. 저장 기록과 공개 ACPI 인덱스 조사에서도 현재 모델 배터리 명령의 의미·읽기 안전성·실제 응답 계약은 추가 확보하지 못했습니다. Windows1을 Linux0/펌웨어opcode로 치환하거나 Sabi3후보를 WMI에 대입하지 않습니다. 실제 읽기·쓰기는 미구현이며 Unsupported를 유지합니다.
+
+이번 전체286개 통과·실패/건너뜀0개, 4개 프로젝트 빌드 경고/오류0개입니다. 이전Python6개는 이번에 반복 실행하지 않았으며 소스ZIP만 별도로 검증합니다. 아래는 이전 단계 이력입니다.
+
 ## 실제 규약 결과 반영·CIMTYPE 보완 후
 
 [이번 실제 관측과 수정](WMI_PARAMETER_RESULT_AND_CIMTYPE_REVIEW.md)을 먼저 읽습니다. 공개 GUID 후보 일치, CallSabiFunction 존재, Windows WmiMethodId=1, DataBuffer.Bytes UInt8[]=True를 확인했습니다. in/out Unknown이므로 입력/출력의 구체 클래스는 미확정입니다. 도구에 토큰 표시가 없어 이번 권한 수준도 새로 단정하지 않습니다. 원본 TXT는 저장소·배포물에 넣지 않습니다.

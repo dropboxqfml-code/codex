@@ -29,6 +29,7 @@
     <Compile Include="WsabiWmiReplyDecoderTests.cs" />
     <Compile Include="WsabiWmiContractMetadataTests.cs" />
     <Compile Include="WsabiWmiParameterMetadataTests.cs" />
+    <Compile Include="WsabiWmiMethodBinderTests.cs" />
     <Compile Include="WsabiWmiRequestEncoderTests.cs" />
     <Compile Include="WsabiWmiFrameExchangeTests.cs" />
   </ItemGroup>

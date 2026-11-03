@@ -124,6 +124,29 @@ internal static partial class Program
             Check(!report.CanInvokeMethods && !report.CanReadHardware && !report.CanWriteHardware,
                 "observed metadata enabled OEM calls");
         });
+        Add("observed reader two resolves both DataBuffer classes through CIMTYPE without enabling calls", () =>
+        {
+            // Normalized observations only. The earlier Partial observation
+            // remains an independent historical result, never rewritten.
+            var input = WsabiWmiContractMetadataPolicy.InspectParameter(true, true, null, "object:DataBuffer");
+            var output = WsabiWmiContractMetadataPolicy.InspectParameter(true, true, null, "object:DataBuffer");
+            var report = new WsabiWmiContractMetadataReport(WsabiWmiContractMethodMetadata.FromParameters(
+                WsabiWmiMetadataStatus.Complete, WsabiWmiGuidMatch.MatchesPublicCandidate, 1, true,
+                input, output), new WsabiWmiContractBufferMetadata(WsabiWmiMetadataStatus.Complete, true));
+            Equal(WsabiWmiMetadataStatus.Complete, report.MethodMetadata.Status);
+            Equal(WsabiWmiMetadataStatus.Complete, report.BufferMetadata.Status);
+            Equal(WsabiWmiContractBindingStatus.MetadataShapeMatched, report.BindingStatus);
+            Equal<uint?>(1, report.MethodMetadata.MethodId);
+            foreach (var parameter in new[] { report.MethodMetadata.InputParameter, report.MethodMetadata.OutputParameter })
+            {
+                Equal(WsabiWmiParameterShape.ScalarObject, parameter.Shape);
+                Equal(WsabiWmiQualifierMatch.Missing, parameter.EmbeddedInstanceMatch);
+                Equal(WsabiWmiQualifierMatch.MatchesDataBuffer, parameter.CimTypeMatch);
+                Equal<bool?>(true, parameter.IsDataBuffer);
+            }
+            Check(!report.CanInvokeMethods && !report.CanReadHardware && !report.CanWriteHardware,
+                "owner's shape match enabled firmware or hardware access");
+        });
         Add("metadata binding accepts CIMTYPE evidence without choosing an OS dispatch mapping", () =>
         {
             var input = WsabiWmiContractMetadataPolicy.InspectParameter(true, true, null, "object:DataBuffer");

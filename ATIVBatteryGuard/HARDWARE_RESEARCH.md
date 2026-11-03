@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 실제 WMI 형식 일치 확인 완료
+
+[판독기2 결과와 오프라인 바인더](WMI_MATCHED_BINDING_AND_OFFLINE_ENVELOPE.md): GUID 후보·메서드 존재·입출력 CIMTYPE의 DataBuffer·Bytes UInt8[]를 모두 확인했습니다. 두 클래스Complete·WindowsMethodId1이며 기존 입출력Unknown을 해소했습니다. 클래스 규약 진단은 완료됐고 같은 자료를 다시 요청하지 않습니다.
+
+상세 메타데이터에서만 메모리용 중첩 입출력 바인더를 생성하도록 구현했으며 실제 OEM 전송은 없습니다. 공개linuxhw/ACPI의 고정 커밋 인덱스·삼성 디렉터리에서는 현재 모델/BIOS 자료를 찾지 못했습니다. 조사 범위 밖의 자료 부재나 기능 부재를 뜻하지 않습니다. 현재 모델 배터리 명령의 의미·안전성·실제 응답 계약은 여전히 미확정이고 실제 제어는 Unsupported입니다.
+
 ## 실제 WMI 클래스 관측과 미확정 입출력
 
 [사용자 결과와 표준 CIMTYPE 근거](WMI_PARAMETER_RESULT_AND_CIMTYPE_REVIEW.md): 공개 GUID 후보 일치·CallSabiFunction 존재·Windows WmiMethodId1·DataBuffer.Bytes UInt8[]를 확인했습니다. 입력/출력은 Unknown이며 이전 도구는 CIMTYPE를 읽지 않았습니다. Microsoft 공식 정의의 object:EmbedClass 표기를 지원하도록 판독기를 수정했지만 현재 노트북에서 그 값이 제공되는지는 미관측입니다.

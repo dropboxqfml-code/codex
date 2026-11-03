@@ -1,4 +1,18 @@
-# WMI 입출력 형식 판독 보완판 — 판독기 2
+# WMI 형식 확인 완료·메모리용 바인더 개발 소스
+
+[최신 개발 소스 ZIP](ATIVBatteryGuard-WMI-BINDING-SOURCE.zip) · [실제 결과·구현·남은 조건](../ATIVBatteryGuard/WMI_MATCHED_BINDING_AND_OFFLINE_ENVELOPE.md) · [노트북에서 확인한 판독기2 프로그램](ATIVBatteryGuard-WMI-PARAMETER-CHECK.zip)
+
+판독기2의 실제 결과로 GUID 후보·메서드·입출력 DataBuffer·Bytes UInt8[]의 형식 일치를 확인했습니다. 기존 Unknown은 해소됐고 같은 규약 진단·파일 목록·관리자 비교는 다시 필요하지 않습니다. WindowsMethodId1은 관측값 그대로 유지합니다.
+
+최신 내부 코드는 상세 메타데이터를 바탕으로 inData/Bytes 요청 포장과 outData/Bytes 응답 추출을 기존 프레임 인코더·검증기에 연결합니다. 분리된 메모리 snapshot만 처리하며 WMI/native 객체 생성·OEM 호출·실제 전송 채널은 없습니다. 이번에는 소스 ZIP을 제공하고 새 노트북 실행을 요청하지 않습니다. 기존 프로그램 ZIP은 실기 확인에 사용한 판독기2로 보존하며 이번 코드가 들어간 새 실행판으로 표시하지 않습니다.
+
+전체286개 테스트 통과·실패/건너뜀0개, Core·WPF·두 별도 도구 빌드 경고·오류0개입니다. 현재 모델의 실제 배터리 명령 의미·읽기 안전성·응답 계약은 여전히 미확정이고 실제 충전 제어는 Unsupported입니다. 소스 ZIP에는 자체 소스·문서만 있으며 삼성 바이너리·사용자 원문 TXT·외부 코드·실행 파일은 없습니다.
+
+소스 ZIP SHA-256: 22739035c1aaee8e3a53fa4ffd05fb136f2d878580fadf70f8783bb288192f78
+
+아래는 이전 프로그램과 관측 이력입니다.
+
+## 이전 WMI 입출력 형식 판독 보완판 — 판독기 2
 
 [새 프로그램 ZIP 다운로드](ATIVBatteryGuard-WMI-PARAMETER-CHECK.zip) · [같은 버전 소스 ZIP](ATIVBatteryGuard-WMI-PARAMETER-SOURCE.zip) · [실제 결과·공식 근거·수정 범위](../ATIVBatteryGuard/WMI_PARAMETER_RESULT_AND_CIMTYPE_REVIEW.md)
 

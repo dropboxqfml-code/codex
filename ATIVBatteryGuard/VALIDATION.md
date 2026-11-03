@@ -1,5 +1,16 @@
 # Settings 앱 분석판 검증 기록
 
+## 실제 규약 관측·CIMTYPE 판독 보완 — 2026-11-03
+
+- 사용자 콘솔 출력에서 GUID 후보 일치·메서드 존재·WmiMethodId1·DataBuffer UInt8[] 및 입출력 Unknown을 확인했습니다. 이전 도구의 메타데이터 조회 실기 관측이며 수정 도구의 실행이나 OEM 호출 결과는 아닙니다. 토큰 상태는 미관측입니다.
+- 현재 전체 suite **274 passed, 0 failed, 0 skipped (274 registered)**. reports/wmi-parameter-tests.json 및 .log에 기록합니다.
+- Core·WPF·두 별도 도구 전체 x64 net48 빌드 **경고0개·오류0개**, reports/wmi-parameter-build.log에 기록합니다.
+- 신규12개 그룹은 CIMTYPE/EmbeddedInstance 독립 정규화, 누락·다른 정의·충돌·잘못된 형식, 길이/식별자/shape 조건, 불변·원문 미보관, 실제 부분 관측 보존, 번호 비치환과 실패 시 상세 정보 제거를 검사합니다. 기존262개 테스트도 포함합니다.
+- 기존 Python 배포 검증 **6개 통과**. 고정 파일·asInvoker·SHA-256·ZIP CRC·소스 대응은 패키징 때 별도 검증합니다.
+- 새 판독기2의 Windows 제공자 실행·CIMTYPE 실제값·배터리 설정 읽기·OEM 호출·충전 제어는 **미검증/미실행**입니다. 표준 표현 지원을 노트북의 실제 qualifier 값으로 기록하지 않습니다.
+
+[공식 원문과 구현 범위](WMI_PARAMETER_RESULT_AND_CIMTYPE_REVIEW.md)를 기록했습니다. 원본 사용자 TXT·삼성 파일·외부 문서 원문을 복사하지 않고 환경 설정 게시는 하지 않습니다. 아래는 이전 검증 이력입니다.
+
 ## 비동기 교환·정적 클래스 규약 도구 — 2026-11-03 한국 시간
 
 - 현재 전체 suite **262 passed, 0 failed, 0 skipped (262 registered)**. reports/wmi-exchange-contract-tests.json 및 .log는 이번 실행입니다.

@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 실제 WMI 클래스 관측과 미확정 입출력
+
+[사용자 결과와 표준 CIMTYPE 근거](WMI_PARAMETER_RESULT_AND_CIMTYPE_REVIEW.md): 공개 GUID 후보 일치·CallSabiFunction 존재·Windows WmiMethodId1·DataBuffer.Bytes UInt8[]를 확인했습니다. 입력/출력은 Unknown이며 이전 도구는 CIMTYPE를 읽지 않았습니다. Microsoft 공식 정의의 object:EmbedClass 표기를 지원하도록 판독기를 수정했지만 현재 노트북에서 그 값이 제공되는지는 미관측입니다.
+
+Windows 번호1을 공개 Linux0으로 매핑하거나 번호 차이로 비호환을 단정하지 않습니다. 이번 출력의 권한 수준도 미관측입니다. 클래스 정의의 연결 근거가 늘었지만 실제 명령 실행 권한·인스턴스 연계·배터리 명령 의미·안전성·실제 응답 계약은 확인되지 않았습니다. 실제 충전 제어는 계속 Unsupported이며 반복 파일/관리자 진단을 요구하지 않습니다.
+
 ## Windows 클래스와 공개 전송의 연결 확인 준비
 
 [새 정적 메타데이터 도구와 추가 자료3건](WMI_EXCHANGE_AND_BINDING_CHECK.md)을 기록했습니다. 일반 권한으로 고정 WmiAcpiMethod/DataBuffer 정의만 읽고 공개 GUID 후보 일치·WmiMethodId·입출력 형식을 확인합니다. 새 노트북 출력은 아직 없습니다. WmiMethodId는 배터리 명령 번호가 아니며 정의 일치는 메서드 실행 권한·실제 응답 길이·현재 모델의 배터리 안전성을 입증하지 않습니다.

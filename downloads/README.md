@@ -1,4 +1,21 @@
-# WMI 정적 클래스 규약 확인 도구
+# WMI 입출력 형식 판독 보완판 — 판독기 2
+
+[새 프로그램 ZIP 다운로드](ATIVBatteryGuard-WMI-PARAMETER-CHECK.zip) · [같은 버전 소스 ZIP](ATIVBatteryGuard-WMI-PARAMETER-SOURCE.zip) · [실제 결과·공식 근거·수정 범위](../ATIVBatteryGuard/WMI_PARAMETER_RESULT_AND_CIMTYPE_REVIEW.md)
+
+사용자 결과에서 공개 GUID 후보 일치·메서드 존재·Windows 메서드 번호1·Bytes UInt8[]를 확인했습니다. 입출력 Unknown은 미확정으로 보존합니다. 기존 도구에서 누락한 표준 CIMTYPE 표기를 읽도록 고쳤으며 실제 노트북 CIMTYPE와 이번 실행의 권한 수준은 아직 미관측입니다. 번호1을 Linux0이나 배터리 명령으로 치환하지 않습니다.
+
+ZIP 전체를 메인 앱과 다른 새 로컬 폴더에 풀고 **ATIVBatteryGuard.WmiContractCheck.exe**를 일반적으로 실행합니다. 상단의 **메타데이터 판독기: 2 (CIMTYPE 포함)**과 inData/outData의 **CIMTYPE·판정**이 새 확인 대상입니다. 고정 정의의 qualifier 누락·다른 정의·잘못된 형식·충돌을 독립 표시하며 원문 클래스명은 내보내지 않습니다. 이전 TXT·삼성 DLL·권한 비교는 다시 필요하지 않습니다. 관리자 실행은 요청하지 않습니다.
+
+전체274개 테스트와 Python6개 통과, 4개 프로젝트 빌드 경고·오류0개입니다. 이전 도구의 클래스 조회는 이번 사용자 출력으로 실기 확인됐지만 수정 판독기2의 Windows 실행은 미검증입니다. 실제 OEM 호출·배터리 보호 설정 조회·충전 제어는 미구현이며 Unsupported를 유지합니다. 삼성 원본 바이너리·사용자 원문 출력은 포함하지 않습니다.
+
+SHA-256:
+
+- 실행 ZIP: 49e410aa46ee55423ad44d4f9213ea7a4e1c34d64fcddae448b65997af9a608a
+- 소스 ZIP: b4f555baae75802ec3914c48e835acd7bc4069513183f3e1ce6e71b9b56c4723
+
+아래 이전 프로그램과 관측 이력은 그대로 보존합니다.
+
+## 이전 WMI 정적 클래스 규약 확인 도구
 
 [새 도구 ZIP 다운로드](ATIVBatteryGuard-WMI-CONTRACT-CHECK.zip) · [같은 버전 소스 ZIP](ATIVBatteryGuard-WMI-CONTRACT-SOURCE.zip) · [구현·확인 항목·한계](../ATIVBatteryGuard/WMI_EXCHANGE_AND_BINDING_CHECK.md)
 

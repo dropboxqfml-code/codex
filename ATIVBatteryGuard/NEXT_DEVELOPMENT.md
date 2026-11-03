@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 실제 규약 결과 반영·CIMTYPE 보완 후
+
+[이번 실제 관측과 수정](WMI_PARAMETER_RESULT_AND_CIMTYPE_REVIEW.md)을 먼저 읽습니다. 공개 GUID 후보 일치, CallSabiFunction 존재, Windows WmiMethodId=1, DataBuffer.Bytes UInt8[]=True를 확인했습니다. in/out Unknown이므로 입력/출력의 구체 클래스는 미확정입니다. 도구에 토큰 표시가 없어 이번 권한 수준도 새로 단정하지 않습니다. 원본 TXT는 저장소·배포물에 넣지 않습니다.
+
+단일 Object의 구체 클래스를 EmbeddedInstance만으로 검사했던 한계를 공식 CIMTYPE object:EmbedClass 근거로 보완했습니다. 실제 CIMTYPE는 아직 미관측입니다. 새 판독기2는 두 qualifier의 독립 상태·충돌·형식 오류를 enum으로 보관하고 부분/실패를 일치로 승격하지 않습니다. 메서드 번호1은 그대로 보존하며 Linux0이나 프레임 내부 펌웨어 명령으로 치환하지 않습니다. 모든 상태에서 호출·하드웨어 기능은 차단합니다.
+
+274개 및 Python6개 통과, 4개 프로젝트 빌드 경고/오류0개입니다. 수정 도구의 Windows 실기는 미검증입니다. 새 확인은 in/out CIMTYPE·판정이며 기존 진단·DLL·권한 비교 재요청이나 관리자 실행을 하지 않습니다. 실제 배터리 명령의 모델 적합성·읽기 안전성·응답 계약은 아직 미확보이며 OEM 채널 미연결과 Unsupported를 유지합니다. 아래는 이전 이력입니다.
+
 ## 비동기 프레임 처리와 정적 클래스 규약 도구 구현 후
 
 [이번 코드·규약·새 실기 확인 항목](WMI_EXCHANGE_AND_BINDING_CHECK.md)을 먼저 읽습니다. 비동기 조정기는 가짜 채널만으로 검증했으며 실제 WMI/OEM 채널이나 앱 등록 경로는 없습니다. 시간 초과·취소 후 실제 작업 완료까지 Busy를 유지합니다. 협조적 제한을 native 강제 종료로 해석하지 않습니다.

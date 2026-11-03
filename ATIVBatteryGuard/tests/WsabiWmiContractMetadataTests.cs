@@ -110,5 +110,87 @@ internal static partial class Program
             foreach (var property in typeof(WsabiWmiContractBufferMetadata).GetProperties())
                 Check(!property.CanWrite, "buffer metadata publicly mutable");
         });
+        Add("observed GUID method one and byte array preserve unresolved input output bindings", () =>
+        {
+            // Normalized facts from the owner's output; no raw report or GUID.
+            var report = new WsabiWmiContractMetadataReport(new WsabiWmiContractMethodMetadata(
+                WsabiWmiMetadataStatus.Partial, WsabiWmiGuidMatch.MatchesPublicCandidate, 1,
+                null, null, true), new WsabiWmiContractBufferMetadata(WsabiWmiMetadataStatus.Complete, true));
+            Equal<uint?>(1, report.MethodMetadata.MethodId);
+            Equal<bool?>(null, report.MethodMetadata.InputIsDataBuffer);
+            Equal<bool?>(null, report.MethodMetadata.OutputIsDataBuffer);
+            Equal(WsabiWmiParameterShape.NotChecked, report.MethodMetadata.InputParameter.Shape);
+            Equal(WsabiWmiContractBindingStatus.GuidMethodMatchedParametersUnresolved, report.BindingStatus);
+            Check(!report.CanInvokeMethods && !report.CanReadHardware && !report.CanWriteHardware,
+                "observed metadata enabled OEM calls");
+        });
+        Add("metadata binding accepts CIMTYPE evidence without choosing an OS dispatch mapping", () =>
+        {
+            var input = WsabiWmiContractMetadataPolicy.InspectParameter(true, true, null, "object:DataBuffer");
+            var output = WsabiWmiContractMetadataPolicy.InspectParameter(true, true, "DataBuffer", "object");
+            foreach (uint id in new uint[] { 0, 1, 65, uint.MaxValue })
+            {
+                var report = new WsabiWmiContractMetadataReport(WsabiWmiContractMethodMetadata.FromParameters(
+                    WsabiWmiMetadataStatus.Complete, WsabiWmiGuidMatch.MatchesPublicCandidate, id, true,
+                    input, output), new WsabiWmiContractBufferMetadata(WsabiWmiMetadataStatus.Complete, true));
+                Equal<uint?>(id, report.MethodMetadata.MethodId);
+                Equal(WsabiWmiMetadataStatus.Complete, report.MethodMetadata.Status);
+                Equal(WsabiWmiContractBindingStatus.MetadataShapeMatched, report.BindingStatus);
+                Equal(WsabiWmiQualifierMatch.Missing, report.MethodMetadata.InputParameter.EmbeddedInstanceMatch);
+                Equal(WsabiWmiQualifierMatch.UnspecifiedObject, report.MethodMetadata.OutputParameter.CimTypeMatch);
+                Check(!report.CanInvokeMethods && !report.CanReadHardware && !report.CanWriteHardware,
+                    "shape match or dispatch number enabled hardware");
+            }
+        });
+        Add("metadata conflicts partial outcomes and missing dispatch cannot establish full shape binding", () =>
+        {
+            var match = WsabiWmiContractMetadataPolicy.InspectParameter(true, true, null, "object:DataBuffer");
+            var conflict = WsabiWmiContractMetadataPolicy.InspectParameter(true, true, "OtherBuffer", "object:DataBuffer");
+            var method = WsabiWmiContractMethodMetadata.FromParameters(WsabiWmiMetadataStatus.Complete,
+                WsabiWmiGuidMatch.MatchesPublicCandidate, 1, true, match, conflict);
+            var report = new WsabiWmiContractMetadataReport(method,
+                new WsabiWmiContractBufferMetadata(WsabiWmiMetadataStatus.Complete, true));
+            Equal(WsabiWmiMetadataStatus.Partial, method.Status);
+            Equal<bool?>(null, method.OutputIsDataBuffer);
+            Equal(WsabiWmiContractBindingStatus.GuidMethodMatchedParametersUnresolved, report.BindingStatus);
+            Check(report.ToDisplayText().Contains("두 qualifier 충돌") && !report.ToDisplayText().Contains("OtherBuffer"),
+                "conflict lost or raw class exposed");
+            foreach (var status in new[] { WsabiWmiMetadataStatus.Partial, WsabiWmiMetadataStatus.AccessDenied,
+                WsabiWmiMetadataStatus.TimedOut, WsabiWmiMetadataStatus.ClassNotFound })
+            {
+                var partialBuffer = new WsabiWmiContractMetadataReport(WsabiWmiContractMethodMetadata.FromParameters(
+                    WsabiWmiMetadataStatus.Complete, WsabiWmiGuidMatch.MatchesPublicCandidate, 1, true,
+                    match, match), new WsabiWmiContractBufferMetadata(status, true));
+                Equal(WsabiWmiContractBindingStatus.GuidMethodMatchedParametersUnresolved, partialBuffer.BindingStatus);
+            }
+            var noId = new WsabiWmiContractMetadataReport(WsabiWmiContractMethodMetadata.FromParameters(
+                WsabiWmiMetadataStatus.Complete, WsabiWmiGuidMatch.MatchesPublicCandidate, null, true, match, match),
+                new WsabiWmiContractBufferMetadata(WsabiWmiMetadataStatus.Complete, true));
+            Equal(WsabiWmiContractBindingStatus.Unknown, noId.BindingStatus);
+        });
+        Add("failed or absent method metadata clears detailed qualifier facts without hiding independent buffer", () =>
+        {
+            var match = WsabiWmiContractMetadataPolicy.InspectParameter(true, true, "DataBuffer", "object:DataBuffer");
+            foreach (WsabiWmiMetadataStatus status in Enum.GetValues(typeof(WsabiWmiMetadataStatus)))
+            {
+                if (status == WsabiWmiMetadataStatus.Complete || status == WsabiWmiMetadataStatus.Partial) continue;
+                var method = WsabiWmiContractMethodMetadata.FromParameters(status,
+                    WsabiWmiGuidMatch.MatchesPublicCandidate, 1, true, match, match);
+                Equal(WsabiWmiParameterShape.NotChecked, method.InputParameter.Shape);
+                Equal(WsabiWmiParameterShape.NotChecked, method.OutputParameter.Shape);
+                Equal<uint?>(null, method.MethodId);
+                Equal<bool?>(null, method.InputIsDataBuffer);
+                var report = new WsabiWmiContractMetadataReport(method,
+                    new WsabiWmiContractBufferMetadata(WsabiWmiMetadataStatus.Complete, true));
+                Equal(WsabiWmiContractBindingStatus.Unknown, report.BindingStatus);
+                Equal<bool?>(true, report.BufferMetadata.BytesIsUInt8Array);
+            }
+            var missingMethod = WsabiWmiContractMethodMetadata.FromParameters(WsabiWmiMetadataStatus.Complete,
+                WsabiWmiGuidMatch.MatchesPublicCandidate, 1, false, match, match);
+            Equal(WsabiWmiParameterShape.NotChecked, missingMethod.InputParameter.Shape);
+            var missing = new WsabiWmiContractMetadataReport(missingMethod);
+            Equal(WsabiWmiContractBindingStatus.ObservedDefinitionMismatch, missing.BindingStatus);
+            Check(!missing.CanInvokeMethods && !missing.CanWriteHardware, "mismatch enabled control");
+        });
     }
 }

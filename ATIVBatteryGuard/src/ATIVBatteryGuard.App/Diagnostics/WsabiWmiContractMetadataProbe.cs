@@ -43,12 +43,12 @@ namespace ATIVBatteryGuard.Diagnostics
                             WsabiWmiMetadataStatus.Partial, guidMatch: guid, methodFound: false);
                         uint? id = WsabiWmiContractMetadataPolicy.NormalizeMethodId(ReadQualifier(method.Qualifiers, "WmiMethodId"));
                         if (elapsed.Elapsed >= TotalBudget) return new WsabiWmiContractMethodMetadata(WsabiWmiMetadataStatus.TimedOut);
-                        bool? input, output;
-                        using (var definition = method.InParameters) input = ParameterIsDataBuffer(definition, "inData");
+                        WsabiWmiParameterMetadata input, output;
+                        using (var definition = method.InParameters) input = ReadParameter(definition, "inData");
                         if (elapsed.Elapsed >= TotalBudget) return new WsabiWmiContractMethodMetadata(WsabiWmiMetadataStatus.TimedOut);
-                        using (var definition = method.OutParameters) output = ParameterIsDataBuffer(definition, "outData");
+                        using (var definition = method.OutParameters) output = ReadParameter(definition, "outData");
                         if (elapsed.Elapsed >= TotalBudget) return new WsabiWmiContractMethodMetadata(WsabiWmiMetadataStatus.TimedOut);
-                        return new WsabiWmiContractMethodMetadata(WsabiWmiMetadataStatus.Complete, guid, id, input, output, true);
+                        return WsabiWmiContractMethodMetadata.FromParameters(WsabiWmiMetadataStatus.Complete, guid, id, true, input, output);
                     }
                     catch (ManagementException exception) when (exception.ErrorCode == ManagementStatus.NotFound ||
                         exception.ErrorCode == ManagementStatus.InvalidMethod)
@@ -102,7 +102,7 @@ namespace ATIVBatteryGuard.Diagnostics
             try
             {
                 QualifierData qualifier = qualifiers[name];
-                // Only Guid, WmiMethodId or EmbeddedInstance reaches this function.
+                // Only Guid, WmiMethodId, EmbeddedInstance or CIMTYPE reaches this function.
                 return qualifier == null ? null : qualifier.Value;
             }
             catch (ManagementException exception) when (exception.ErrorCode == ManagementStatus.NotFound) { return null; }
@@ -115,12 +115,15 @@ namespace ATIVBatteryGuard.Diagnostics
             catch (ManagementException exception) when (exception.ErrorCode == ManagementStatus.NotFound) { return null; }
         }
 
-        private static bool? ParameterIsDataBuffer(ManagementBaseObject definition, string name)
+        private static WsabiWmiParameterMetadata ReadParameter(ManagementBaseObject definition, string name)
         {
             PropertyData property = ReadProperty(definition, name);
-            if (property == null || property.Type != CimType.Object || property.IsArray) return false;
+            if (property == null) return WsabiWmiContractMetadataPolicy.InspectParameter(false, false, null, null);
+            if (property.Type != CimType.Object || property.IsArray)
+                return WsabiWmiContractMetadataPolicy.InspectParameter(true, false, null, null);
             // Property.Value is deliberately never read: this is a definition, not a request.
-            return WsabiWmiContractMetadataPolicy.NormalizeEmbeddedClass(ReadQualifier(property.Qualifiers, "EmbeddedInstance"));
+            return WsabiWmiContractMetadataPolicy.InspectParameter(true, true,
+                ReadQualifier(property.Qualifiers, "EmbeddedInstance"), ReadQualifier(property.Qualifiers, "CIMTYPE"));
         }
 
         private static WsabiWmiMetadataStatus Classify(Exception exception)

@@ -43,6 +43,7 @@ def main():
             raise ValueError("Source cannot contain original binaries or TXT reports.")
     info = {
         "application": "ATIV Battery Guard WMI Contract Check",
+        "contractMetadataRevision": 2,
         "target": "Windows10x64/.NETFramework4.8",
         "requestedExecutionLevel": "asInvoker",
         "requestsUacOrElevation": False,
@@ -54,7 +55,10 @@ def main():
         "namespace": r"ROOT\WMI",
         "fixedClasses": ["WmiAcpiMethod", "DataBuffer"],
         "fixedMethodDefinition": "CallSabiFunction",
-        "qualifierAllowlist": ["Guid", "WmiMethodId", "EmbeddedInstance"],
+        "qualifierAllowlist": ["Guid", "WmiMethodId", "EmbeddedInstance", "CIMTYPE"],
+        "parameterEvidence": ["ScalarObject", "EmbeddedInstance", "CIMTYPE"],
+        "conflictingOrInvalidQualifiersResolveToUnknown": True,
+        "dispatchIdMappingApplied": False,
         "fieldDefinitionAllowlist": ["inData", "outData", "Bytes"],
         "printsActualGuid": False,
         "readsInstancesOrInstanceProperties": False,
@@ -71,15 +75,19 @@ def main():
         "matchingSourceZipSha256": sha(args.source_zip.read_bytes()),
     }
     files["BUILD-INFO.json"] = json.dumps(info, ensure_ascii=False, indent=2).encode("utf-8")
-    instructions = """ATIV Battery Guard — WMI 정적 전송 규약 확인 도구
+    instructions = """ATIV Battery Guard — WMI 입출력 형식 판독 보완판 (판독기 2)
 
 1. ZIP 전체를 메인 앱과 다른 로컬 폴더에 압축 해제합니다.
 2. ATIVBatteryGuard.WmiContractCheck.exe를 일반적으로 더블클릭합니다. 관리자 실행은 요청하지 않습니다.
-3. 클래스 GUID의 공개 후보 일치 여부, WmiMethodId, 입출력 정의와 DataBuffer.Bytes 정의가 표시됩니다.
-4. 출력 내용을 복사한 뒤 Enter로 닫습니다. 기존 배터리 진단·삼성 파일 목록·DLL은 다시 필요하지 않습니다.
+3. 상단의 '메타데이터 판독기: 2 (CIMTYPE 포함)'을 확인합니다.
+4. inData/outData의 형식·EmbeddedInstance·CIMTYPE·판정이 각각 표시됩니다. 출력 내용을 복사한 뒤 Enter로 닫습니다.
+기존 배터리 진단·삼성 파일 목록·DLL·이전 버전 도구 결과는 다시 필요하지 않습니다.
 
 이 도구는 로컬 ROOT\\WMI의 WmiAcpiMethod와 DataBuffer 클래스 정의만 읽습니다.
-Guid·WmiMethodId·EmbeddedInstance qualifier와 고정 필드의 형식만 조회합니다.
+Guid·WmiMethodId·EmbeddedInstance·CIMTYPE qualifier와 고정 필드의 형식만 조회합니다.
+이전 Unknown을 일치로 추정하지 않고 표준 object:DataBuffer 정의를 독립 확인합니다.
+누락·다른 정의·잘못된 형식·두 qualifier의 충돌을 구분하며 원문 클래스명은 출력하지 않습니다.
+WmiMethodId는 관측값 그대로 보존하며 Linux 예제 번호로 치환하거나 펌웨어 명령 번호로 사용하지 않습니다.
 실제 GUID 값·인스턴스 이름·사용자 이름·SID·경로·예외 원문은 표시하지 않습니다.
 인스턴스나 Active/version 값, 토큰 상승 여부, ACL은 읽지 않습니다.
 CallSabiFunction은 정의만 읽으며 실행하지 않습니다. DataBuffer 내용도 읽지 않습니다.

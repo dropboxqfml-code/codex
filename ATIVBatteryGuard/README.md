@@ -1,5 +1,9 @@
 # ATIV Battery Guard
 
+현재는 [실제 WMI 규약 결과 반영과 CIMTYPE 판독 보완](WMI_PARAMETER_RESULT_AND_CIMTYPE_REVIEW.md) 단계입니다. 사용자 출력에서 공개 GUID 후보 일치·CallSabiFunction 존재·Windows 메서드 번호1·Bytes UInt8[]를 확인했으며 입출력 클래스는 Unknown입니다. 이전 도구의 불완전한 EmbeddedInstance 단독 판정을 표준 CIMTYPE와 함께 읽도록 수정했습니다. 실제 노트북 CIMTYPE 값은 아직 미관측입니다.
+
+[입출력 형식 판독 보완판 다운로드](../downloads/README.md): 기존과 같은 ATIVBatteryGuard.WmiContractCheck.exe를 일반적으로 실행하며 상단에 판독기2가 표시됩니다. 고정 메타데이터만 읽고 qualifier 누락·불일치·충돌·형식 오류를 구분합니다. 기존 자료·관리자 비교는 다시 필요하지 않습니다. 전체274개 테스트와 Python6개 통과, 전체 빌드 경고·오류0개입니다. 수정 도구의 Windows 실기는 미검증이며 실제 배터리 보호 설정 조회·충전 제어는 계속 미구현입니다. 아래는 이전 단계 이력입니다.
+
 현재 개발은 [WMI 비동기 프레임 처리와 클래스 규약 확인](WMI_EXCHANGE_AND_BINDING_CHECK.md)입니다. 취소·시간 초과 후 실제 작업 종료까지 중복을 차단하는 코드를 가짜 채널로 검증했고, 공개 WMI 전송과 Windows 클래스의 연결을 확인하는 별도 일반 권한 도구를 추가했습니다. 실제 OEM 전송 구현은 연결하지 않았습니다.
 
 [새 확인 도구 다운로드](../downloads/README.md): ZIP을 새 폴더에 모두 풀고 ATIVBatteryGuard.WmiContractCheck.exe를 일반적으로 더블클릭합니다. 새 GUID 후보 일치 여부·메서드 번호·입출력 정의만 확인합니다. 이전 TXT·DLL·일반/관리자 비교는 다시 필요하지 않습니다. 관리자 실행은 요청하지 않습니다.

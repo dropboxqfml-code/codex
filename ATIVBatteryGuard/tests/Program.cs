@@ -392,6 +392,7 @@ internal static partial class Program
         RegisterWsabiWmiReplyValidatorTests();
         RegisterWsabiWmiReplyDecoderTests();
         RegisterWsabiWmiContractMetadataTests();
+        RegisterWsabiWmiParameterMetadataTests();
         RegisterWsabiWmiRequestEncoderTests();
         RegisterWsabiWmiFrameExchangeTests();
     }

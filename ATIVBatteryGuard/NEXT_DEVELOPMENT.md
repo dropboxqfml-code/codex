@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 비동기 프레임 처리와 정적 클래스 규약 도구 구현 후
+
+[이번 코드·규약·새 실기 확인 항목](WMI_EXCHANGE_AND_BINDING_CHECK.md)을 먼저 읽습니다. 비동기 조정기는 가짜 채널만으로 검증했으며 실제 WMI/OEM 채널이나 앱 등록 경로는 없습니다. 시간 초과·취소 후 실제 작업 완료까지 Busy를 유지합니다. 협조적 제한을 native 강제 종료로 해석하지 않습니다.
+
+별도 asInvoker WmiContractCheck는 WmiAcpiMethod/DataBuffer 클래스 정의만 읽습니다. 공개 GUID 후보 일치, CallSabiFunction의 WmiMethodId, inData/outData EmbeddedInstance와 Bytes의 UInt8[] 정의를 확인합니다. 실제 GUID 원문·인스턴스·토큰·보안 설명자는 수집하지 않습니다. 메서드 ID는 펌웨어 배터리 명령이 아니며 형식 일치도 실제 배열 길이·ACK·호출 안전성·배터리 지원을 입증하지 않습니다.
+
+전체262개 및 Python6개 통과·4개 프로젝트 빌드 경고/오류0개입니다. 새 도구의 Windows 결과는 아직 받지 않았습니다. 다음 사용자 확인은 새 정적 필드의 일반 실행 출력뿐이며 기존 진단·원본 DLL·한 번의 관리자 비교를 반복 요청하지 않습니다. 새 도구도 관리자 실행을 요청하지 않습니다. 권한 거부·시간 초과는 그대로 보존합니다.
+
+추가 공개 모델 자료3건도 현재 모델의 Windows 배터리 조회 계약을 확정하지 못했습니다. 실제 배터리 읽기는 모델별 명령 의미·읽기 안전성·응답 계약이 남아 있으며 Unsupported와 기존 쓰기 차단을 유지합니다. 이전 한정 비교 승인은 완료됐고 OEM·권한 상승·드라이버/서비스/ACL 변경으로 확장하지 않습니다. 아래는 이전 개발 이력입니다.
+
 ## 구조적 WMI 응답 디코더 구현 후
 
 [추가 공개 근거와 코드](WMI_REPLY_DECODER_AND_PUBLIC_EVIDENCE.md): gh2o/samsung-wmi와 djpohly/samsung-wmi의 고정 원문에서 21바이트 프레임·payload16 구조를 독립 확인했습니다. 현재 모델, Windows 클래스·메서드와의 동일성, 배터리 조회0x65, version16 의미를 입증하는 자료는 아니므로 새 호출 대상이나 명령으로 사용하지 않았습니다.

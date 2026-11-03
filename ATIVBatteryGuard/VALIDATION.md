@@ -1,5 +1,16 @@
 # Settings 앱 분석판 검증 기록
 
+## 비동기 교환·정적 클래스 규약 도구 — 2026-11-03 한국 시간
+
+- 현재 전체 suite **262 passed, 0 failed, 0 skipped (262 registered)**. reports/wmi-exchange-contract-tests.json 및 .log는 이번 실행입니다.
+- Core·WPF·WmiAccessCheck·WmiContractCheck의 x64 net48 빌드 **경고0개·오류0개**, reports/wmi-exchange-contract-build.log에 기록합니다.
+- 신규 비동기12개 그룹은 인코더/가짜 채널/디코더 연계, 잘못된 입력·사전 취소의 무호출, 예외·null 응답, Busy, 취소·시간 초과 후 지연 완료/예외, 취소 콜백과 동기 시작, 독립된 조정기를 검사합니다.
+- 신규 메타데이터6개 그룹은 고정 후보 비교, 형식·대소문자 정규화, 클래스별 실패/누락/불일치, 불변 상태와 정보 보호, 모든 호출/하드웨어 기능 차단을 검사합니다. 실제 WMI 제공자 실행 테스트는 아닙니다.
+- Python 기존 배포 검증 **6개 통과**. 새 도구의 패키징은 허용 파일·내장 asInvoker manifest·일치 소스·SHA-256·ZIP CRC를 별도 확인합니다.
+- 독립 코드 검토에서 추가 결함을 발견하지 않았습니다. 새 도구의 Windows 실행·제공자 메타데이터·OEM 메서드·실제 충전 제어는 **미실행**입니다.
+
+공식 net48 참조로 새 프로젝트를 복원했으며 기존 .NET SDK8.0.427·WindowsDesktop SDK·DOTNET_ReadyToRun=0을 사용했습니다. [구현·공개 자료·실기 확인 범위](WMI_EXCHANGE_AND_BINDING_CHECK.md)를 기록했습니다. 원본 삼성 파일·사용자 보고서는 포함하지 않고 환경 설정을 게시하지 않았습니다. 아래는 이전 이력입니다.
+
 ## 구조적 WMI 응답 디코더 — 2026-11-03 한국 시간
 
 - 현재 전체 suite **244 passed, 0 failed, 0 skipped (244 registered)**. reports/wmi-reply-decoder-tests.json 및 .log는 이번 실행입니다.

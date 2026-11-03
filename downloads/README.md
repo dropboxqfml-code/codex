@@ -1,4 +1,21 @@
-# WMI 응답 디코더 개발 소스
+# WMI 정적 클래스 규약 확인 도구
+
+[새 도구 ZIP 다운로드](ATIVBatteryGuard-WMI-CONTRACT-CHECK.zip) · [같은 버전 소스 ZIP](ATIVBatteryGuard-WMI-CONTRACT-SOURCE.zip) · [구현·확인 항목·한계](../ATIVBatteryGuard/WMI_EXCHANGE_AND_BINDING_CHECK.md)
+
+ZIP 전체를 메인 앱과 다른 새 로컬 폴더에 풀고 **ATIVBatteryGuard.WmiContractCheck.exe**를 일반적으로 더블클릭합니다. 새 WmiAcpiMethod/DataBuffer 클래스 정의의 조회 상태·공개 GUID 후보 일치·WmiMethodId·입출력/Bytes 형식만 확인하고 출력 내용을 복사한 뒤 Enter로 닫습니다. 기존 배터리 진단·삼성 파일 TXT·삼성 DLL·일반/관리자 비교를 다시 제출할 필요는 없습니다.
+
+asInvoker 도구이며 관리자 실행을 요청하지 않습니다. 권한 거부·시간 초과가 나오면 그대로 사용합니다. 실제 GUID·인스턴스·토큰·사용자 이름·SID·경로는 출력하지 않습니다. OEM 메서드 실행·삼성 DLL 로드·서비스/드라이버/ACL·펌웨어 변경과 네트워크 통신은 없습니다. 정의 일치는 배터리 명령의 안전성·실제 응답 계약·충전 제어 지원의 증거가 아닙니다.
+
+개발 소스에는 비동기 프레임 처리도 포함했지만 가짜 채널만 검증했고 실제 OEM 채널이나 앱 호출 경로는 없습니다. 전체262개 테스트와 Python6개 통과, Core·WPF·두 별도 도구 빌드 경고·오류0개입니다. 새 도구의 Windows 실기는 미검증인 미서명 개발판이며 실제 충전 제어는 계속 미지원입니다. 삼성 원본 바이너리·사용자 원문 보고서는 포함하지 않습니다.
+
+SHA-256:
+
+- 실행 ZIP: 5fb0dee6779294c21b4c64c5b8000a4672a65c64394795b51099379189c67f3a
+- 소스 ZIP: 3b3cea3677f8181e1625894a2d20a413b77f949534ab4010f72af076c0bb1c13
+
+아래는 이전 실행판과 관측 이력입니다. 새 파일은 별도 이름으로 제공하고 이전 ZIP은 보존합니다.
+
+## 이전 WMI 응답 디코더 개발 소스
 
 [최신 개발 소스 ZIP](ATIVBatteryGuard-WMI-REPLY-SOURCE.zip) · [구현과 추가 공개 근거](../ATIVBatteryGuard/WMI_REPLY_DECODER_AND_PUBLIC_EVIDENCE.md)
 

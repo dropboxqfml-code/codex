@@ -27,6 +27,8 @@
     <Compile Include="Sabi3ReplyDecoderTests.cs" />
     <Compile Include="WsabiWmiReplyValidatorTests.cs" />
     <Compile Include="WsabiWmiReplyDecoderTests.cs" />
+    <Compile Include="WsabiWmiContractMetadataTests.cs" />
     <Compile Include="WsabiWmiRequestEncoderTests.cs" />
+    <Compile Include="WsabiWmiFrameExchangeTests.cs" />
   </ItemGroup>
 </Project>

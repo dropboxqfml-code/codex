@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## Windows 클래스와 공개 전송의 연결 확인 준비
+
+[새 정적 메타데이터 도구와 추가 자료3건](WMI_EXCHANGE_AND_BINDING_CHECK.md)을 기록했습니다. 일반 권한으로 고정 WmiAcpiMethod/DataBuffer 정의만 읽고 공개 GUID 후보 일치·WmiMethodId·입출력 형식을 확인합니다. 새 노트북 출력은 아직 없습니다. WmiMethodId는 배터리 명령 번호가 아니며 정의 일치는 메서드 실행 권한·실제 응답 길이·현재 모델의 배터리 안전성을 입증하지 않습니다.
+
+모델을 명시한 ativ9pctl은 밝기·음량·절전만 다루고, samsung-laptop-tools는 다른 11세대 모델의 Linux sysfs이며, TOOLS의 callSabiFunction은 외부 EXE 래퍼였습니다. 이 조사 범위에서는 현재 모델의 Windows 배터리 조회 계약을 확보하지 못했습니다. 자료의 부재나 기능 부재를 증명한 결과는 아닙니다. 실제 OEM 실행과 충전 제어는 여전히 미구현·미지원입니다.
+
 ## 추가 공개 WMI 프레임 근거
 
 [두 공개 구현의 고정 커밋](WMI_REPLY_DECODER_AND_PUBLIC_EVIDENCE.md)에서 기존 서비스 wsabi와 같은 크기의21바이트 WMI 프레임과 payload16을 확인했습니다. 포인터 크기 또는 상한만 검사하는 원본의 길이 검사는 그대로 따르지 않았습니다. 공개 GUID와 현재 Windows 클래스의 동일성, 현재 모델의 배터리 명령, version16의 의미는 여전히 미검증입니다. 새 코드는 입력 바이트만 해석하며 실제 호출은 없습니다.

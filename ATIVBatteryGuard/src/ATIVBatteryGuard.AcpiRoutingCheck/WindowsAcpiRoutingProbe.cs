@@ -25,7 +25,7 @@ namespace ATIVBatteryGuard.AcpiRoutingCheck
         internal static string Collect(EnumerateTables enumerate, ReadFirmwareTable read, Func<int> getLastError)
         {
             var text = new StringBuilder();
-            text.AppendLine("ATIV Battery Guard — ACPI 정적 WMI 연결 점검 (Acpi-routing-v2)");
+            text.AppendLine("ATIV Battery Guard — ACPI 정적 WMI 연결 점검 (Acpi-routing-v3)");
             text.AppendLine("Windows 내장 ACPI 테이블 읽기만 사용합니다. 관리자 권한은 요구하지 않습니다.");
             try
             {
@@ -87,7 +87,7 @@ namespace ATIVBatteryGuard.AcpiRoutingCheck
         {
             text.AppendLine("DSDT 목록 미관측과 직접 조회 결과는 별개입니다. 미관측을 테이블 부재로 해석하지 않습니다.");
             text.AppendLine("Windows API는 같은 서명의 테이블 중 첫 것만 반환합니다. 모든 SSDT를 확인한 결과가 아닙니다.");
-            text.AppendLine("각 테이블을 따로 해석하며 다른 테이블·호출된 보조 메서드의 동작은 합쳐 추정하지 않습니다.");
+            text.AppendLine("보조 메서드는 같은 테이블의 관측 정의만 제한적으로 읽으며 실행·변수 값·다른 테이블 연결은 추정하지 않습니다.");
             text.AppendLine("제한된 AML 구문만 정적으로 읽습니다. 해석 실패나 미관측은 기능 부재가 아닙니다.");
             text.AppendLine("원본 ACPI·OEM 정보·GUID 원문·메서드 이름·주소·장치 식별자·경로는 출력하거나 저장하지 않습니다.");
             text.AppendLine("OEM 호출·AML 실행·예약 접근·드라이버/서비스/보안 변경·펌웨어 쓰기 없음.");

@@ -13,7 +13,9 @@ class AcpiRoutingPackageTests(unittest.TestCase):
         source = Path(__file__).resolve().parents[1]
         for name in ['src/'+PROJECT+'/Program.cs', 'src/'+PROJECT+'/WindowsAcpiRoutingProbe.cs',
                 'src/'+PROJECT+'/'+PROJECT+'.csproj', 'src/ATIVBatteryGuard.App/ATIVBatteryGuard.App.csproj',
-                'src/ATIVBatteryGuard.Core/Services/AcpiWmiRoutingInspector.cs']:
+                'src/ATIVBatteryGuard.Core/Services/AcpiWmiRoutingInspector.cs',
+                'src/ATIVBatteryGuard.Core/Models/AcpiWmiRoutingReport.cs',
+                'src/ATIVBatteryGuard.Core/Models/AcpiMethodFlowReport.cs']:
             p=self.root/name; p.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(source/name,p)
 
     def test_current_reader_is_read_only_and_separate(self):
@@ -41,12 +43,23 @@ class AcpiRoutingPackageTests(unittest.TestCase):
     def test_direct_dsdt_gate_and_revision_regressions_cannot_package(self):
         p=self.root/'src'/PROJECT/'WindowsAcpiRoutingProbe.cs'; original=p.read_text()
         for old,new in [('if (id == DsdtId)', 'if (id == DsdtId && occurrences != 0)'),
-                        ('Acpi-routing-v2', 'Acpi-routing-v1')]:
+                        ('Acpi-routing-v3', 'Acpi-routing-v2')]:
             with self.subTest(change=old):
                 self.assertIn(old, original)
                 p.write_text(original.replace(old,new))
                 with self.assertRaises(ValueError): inspect_reader_sources(self.root)
         p.write_text(original)
+
+    def test_pure_flow_models_cannot_hide_native_network_or_storage_actions(self):
+        for name in ['AcpiWmiRoutingReport.cs', 'AcpiMethodFlowReport.cs']:
+            p=self.root/'src/ATIVBatteryGuard.Core/Models'/name; original=p.read_text()
+            for extra in ['[DllImport("kernel32.dll")] private static extern int NewNativeCall();',
+                          'private void Save() { File.WriteAllBytes("raw", new byte[1]); }',
+                          'private void Send() { var client = new HttpClient(); }']:
+                with self.subTest(model=name, action=extra):
+                    p.write_text(original+'\n'+extra)
+                    with self.assertRaises(ValueError): inspect_reader_sources(self.root)
+            p.write_text(original)
 
 
 if __name__ == '__main__': unittest.main()

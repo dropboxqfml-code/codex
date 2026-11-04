@@ -1,5 +1,7 @@
 # DSDT 직접 읽기 수정 — Acpi-routing-v2
 
+**실기 결과 수신:** DSDT 본문 Complete·설명자/메서드 각 1개·인수 3개·본문 Parsed를 확인했습니다. 후속 [Acpi-routing-v3](ACPI_METHOD_FLOW_UPDATE.md)는 반환/보조 연결 구문을 요약합니다. 아래는 v2 배포 당시 기록이며 v2 같은 출력의 반복이나 관리자 비교는 필요하지 않습니다.
+
 ## 확인된 원인과 구현 근거
 
 [v1 실기 결과](ACPI_ROUTING_LAPTOP_RESULT.md)는 목록 Complete·DSDT 0·SSDT 4·첫 SSDT Partial이었습니다. v1은 목록에 DSDT가 없으면 본문 조회를 건너뛰었습니다. 이 조건 때문에 직접 읽기 가능성을 확인하지 못한 것이 확인된 구현 한계입니다. DSDT 자체나 배터리 기능의 부재는 확인되지 않았습니다.

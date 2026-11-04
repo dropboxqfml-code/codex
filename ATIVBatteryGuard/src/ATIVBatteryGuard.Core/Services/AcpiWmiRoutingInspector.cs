@@ -11,6 +11,10 @@ namespace ATIVBatteryGuard.Core.Services
     public static class AcpiWmiRoutingInspector
     {
         public const int MaximumTableBytes = 4 * 1024 * 1024;
+        public const int MaximumHelperDepth = 2;
+        public const int MaximumHelperDefinitions = 8;
+        public const int MaximumHelperCallSites = 32;
+        public const int MaximumNamespaceObjects = 8192;
         private static readonly byte[] KnownGuid = new Guid("C16C47BA-50E3-444A-AF3A-B1C348380001").ToByteArray();
 
         public static AcpiWmiRoutingReport Inspect(byte[] table)
@@ -45,13 +49,23 @@ namespace ATIVBatteryGuard.Core.Services
         private sealed class Descriptor { internal string Scope, Suffix; }
         private struct Value
         {
-            internal int Kind; // 1: literal integer, 2: Arg1, 3: Arg2, 4: SizeOf(Arg2)
+            internal int Kind; // 1: integer, 2: Arg1, 3: Arg2, 4: SizeOf(Arg2), 5: known call, 6: unresolved name
             internal ulong Integer;
             internal int BufferStart, BufferLength;
         }
         private sealed class BodyEvidence
         {
             internal bool IdOne, Input21, Ff, Complete = true;
+            internal int CallSites, Arg2CallArguments, ReturnStatements, UnresolvedNames;
+            internal AcpiReturnSyntax Returns;
+            internal readonly List<Method> Calls = new List<Method>();
+        }
+        private sealed class FlowEvidence
+        {
+            internal bool Partial, Limited, Cycle, Ff;
+            internal int Inspected, Parsed, Unsupported, Unresolved, CallSites;
+            internal readonly HashSet<Method> Visited = new HashSet<Method>();
+            internal readonly HashSet<Method> Active = new HashSet<Method>();
         }
 
         private sealed class Reader
@@ -59,6 +73,7 @@ namespace ATIVBatteryGuard.Core.Services
             private readonly byte[] bytes;
             private readonly List<Method> methods = new List<Method>();
             private readonly List<Descriptor> descriptors = new List<Descriptor>();
+            private readonly HashSet<string> objects = new HashSet<string>();
             private bool complete = true;
             private int nodes;
             internal Reader(byte[] data) { bytes = data; }
@@ -71,6 +86,7 @@ namespace ATIVBatteryGuard.Core.Services
                     foreach (var method in methods)
                         if (method.Path == Join(descriptor.Scope, "WM" + descriptor.Suffix)) matches.Add(method);
                 int? args = null; bool? id = null, size = null, ff = null;
+                AcpiMethodFlowReport flow = null;
                 AcpiMethodSyntaxStatus syntax = descriptors.Count > 1 || matches.Count > 1
                     ? AcpiMethodSyntaxStatus.Ambiguous : AcpiMethodSyntaxStatus.NotObserved;
                 if (descriptors.Count == 1 && matches.Count == 1)
@@ -84,10 +100,50 @@ namespace ATIVBatteryGuard.Core.Services
                         catch (ParseException) { evidence.Complete = false; }
                     }
                     if (evidence.Complete)
-                    { syntax = AcpiMethodSyntaxStatus.Parsed; id = evidence.IdOne; size = evidence.Input21; ff = evidence.Ff; }
+                    {
+                        syntax = AcpiMethodSyntaxStatus.Parsed; id = evidence.IdOne; size = evidence.Input21; ff = evidence.Ff;
+                        flow = InspectFlow(method, evidence);
+                    }
                 }
                 return new AcpiWmiRoutingReport(complete ? AcpiRoutingStatus.Complete : AcpiRoutingStatus.Partial,
-                    descriptors.Count, matches.Count, args, id, size, ff, syntax);
+                    descriptors.Count, matches.Count, args, id, size, ff, syntax, flow);
+            }
+
+            private AcpiMethodFlowReport InspectFlow(Method root, BodyEvidence body)
+            {
+                var flow = new FlowEvidence();
+                flow.Visited.Add(root); flow.Active.Add(root);
+                VisitFlow(body, 0, flow);
+                AcpiMethodFlowStatus status = flow.Limited ? AcpiMethodFlowStatus.LimitExceeded :
+                    flow.Partial ? AcpiMethodFlowStatus.Partial : AcpiMethodFlowStatus.ParsedObservedDefinitions;
+                bool? ff = status == AcpiMethodFlowStatus.ParsedObservedDefinitions && flow.Parsed > 0 ? (bool?)flow.Ff : null;
+                return new AcpiMethodFlowReport(status, body.CallSites, body.Arg2CallArguments, body.ReturnStatements,
+                    body.Returns, flow.Inspected, flow.Parsed, flow.Unsupported, flow.Unresolved, flow.Cycle, ff);
+            }
+
+            private void VisitFlow(BodyEvidence body, int depth, FlowEvidence flow)
+            {
+                flow.Unresolved += body.UnresolvedNames;
+                if (body.UnresolvedNames != 0) flow.Partial = true;
+                flow.CallSites += body.CallSites;
+                if (flow.CallSites > MaximumHelperCallSites) { flow.Limited = true; return; }
+                foreach (Method method in body.Calls)
+                {
+                    if (flow.Limited) return;
+                    if (flow.Active.Contains(method)) { flow.Cycle = true; flow.Partial = true; continue; }
+                    if (flow.Visited.Contains(method)) continue;
+                    if (depth >= MaximumHelperDepth || flow.Inspected >= MaximumHelperDefinitions)
+                    { flow.Limited = true; return; }
+                    flow.Visited.Add(method); flow.Inspected++;
+                    var child = new BodyEvidence();
+                    try { ScanBody(method.Start, method.End, Parent(method.Path), child, 0); }
+                    catch (ParseException) { flow.Unsupported++; flow.Partial = true; continue; }
+                    catch (LimitException) { flow.Limited = true; return; }
+                    flow.Parsed++; flow.Ff |= child.Ff;
+                    flow.Active.Add(method);
+                    VisitFlow(child, depth + 1, flow);
+                    flow.Active.Remove(method);
+                }
             }
 
             private void Walk(int start, int end, string scope, int depth)
@@ -102,6 +158,7 @@ namespace ATIVBatteryGuard.Core.Services
                         if (op == 0x08)
                         {
                             string name = Name(ref p, end, scope);
+                            ObjectName(name);
                             Value value = Arg(ref p, end, scope, null, depth + 1);
                             if (Last(name) == "_WDG")
                             {
@@ -113,15 +170,15 @@ namespace ATIVBatteryGuard.Core.Services
                         {
                             byte ext = op == 0x5b ? Get(ref p, end) : (byte)0;
                             if (op == 0x5b && (ext == 1 || ext == 2))
-                            { Name(ref p, end, scope); if (ext == 1) Get(ref p, end); continue; }
+                            { ObjectName(Name(ref p, end, scope)); if (ext == 1) Get(ref p, end); continue; }
                             if (op == 0x5b && ext == 0x80)
                             {
-                                Name(ref p, end, scope); Get(ref p, end);
+                                ObjectName(Name(ref p, end, scope)); Get(ref p, end);
                                 Arg(ref p, end, scope, null, depth + 1); Arg(ref p, end, scope, null, depth + 1); continue;
                             }
                             if (op == 0x5b && ext == 0x88)
                             {
-                                Name(ref p, end, scope);
+                                ObjectName(Name(ref p, end, scope));
                                 for (int i = 0; i < 3; i++) Arg(ref p, end, scope, null, depth + 1);
                                 continue;
                             }
@@ -138,14 +195,15 @@ namespace ATIVBatteryGuard.Core.Services
                             }
                             else
                             {
+                                if (op == 0x5b) ObjectName(name);
                                 if (ext == 0x83) Advance(ref p, finish, 6);
                                 if (ext == 0x84) Advance(ref p, finish, 3);
                                 Walk(p, finish, name, depth + 1);
                             }
                             p = finish;
                         }
-                        else if (op == 0x15) { Name(ref p, end, scope); Advance(ref p, end, 2); }
-                        else if (op == 0x06) { Name(ref p, end, scope); Name(ref p, end, scope); complete = false; }
+                        else if (op == 0x15) { ObjectName(Name(ref p, end, scope)); Advance(ref p, end, 2); }
+                        else if (op == 0x06) { Name(ref p, end, scope); ObjectName(Name(ref p, end, scope)); complete = false; }
                         else if (op == 0xa0 || op == 0xa1 || op == 0xa2)
                         { p = Package(ref p, end); complete = false; }
                         else if (op != 0xa3) throw new ParseException();
@@ -186,6 +244,8 @@ namespace ATIVBatteryGuard.Core.Services
                     else if (op == 0xa4)
                     {
                         p++; Value value = Arg(ref p, end, scope, evidence, depth + 1);
+                        evidence.ReturnStatements++;
+                        evidence.Returns |= ReturnForm(value);
                         if ((value.Kind == 1 && value.Integer == 255) ||
                             (value.BufferLength == 21 && bytes[value.BufferStart + 4] == 0xaa && bytes[value.BufferStart + 5] == 255))
                             evidence.Ff = true;
@@ -198,7 +258,7 @@ namespace ATIVBatteryGuard.Core.Services
                         if (op <= 0x6e || IsNameStart(op))
                         {
                             int probe = p; string path = Name(ref probe, end, scope);
-                            if (FindMethod(path, scope) == null) throw new ParseException();
+                            if (FindMethod(path, scope, NameCharacter(op, true)) == null) throw new ParseException();
                         }
                         Arg(ref p, end, scope, evidence, depth + 1);
                     }
@@ -233,9 +293,21 @@ namespace ATIVBatteryGuard.Core.Services
                 if (IsNameStart(op))
                 {
                     p = original; string path = Name(ref p, end, scope);
-                    Method method = FindMethod(path, scope);
-                    if (method != null) for (int i = 0; i < method.Arguments; i++) Arg(ref p, end, scope, evidence, depth + 1);
-                    return default(Value);
+                    Method method = FindMethod(path, scope, NameCharacter(op, true));
+                    if (method == null)
+                    {
+                        if (evidence != null) evidence.UnresolvedNames++;
+                        return new Value { Kind = 6 };
+                    }
+                    int arg2 = 0;
+                    for (int i = 0; i < method.Arguments; i++)
+                        if (Arg(ref p, end, scope, evidence, depth + 1).Kind == 3) arg2++;
+                    if (evidence != null)
+                    {
+                        evidence.CallSites++; evidence.Arg2CallArguments += arg2;
+                        if (evidence.Calls.Count < MaximumHelperCallSites) evidence.Calls.Add(method);
+                    }
+                    return new Value { Kind = 5 };
                 }
                 if (op == 0x93 || op == 0x94 || op == 0x95)
                 {
@@ -250,18 +322,78 @@ namespace ATIVBatteryGuard.Core.Services
                 }
                 if (op == 0x87)
                 {
-                    Value value = Arg(ref p, end, scope, evidence, depth + 1);
+                    Value value = Reference(ref p, end, scope, evidence, depth + 1, false);
                     return new Value { Kind = value.Kind == 3 ? 4 : 0 };
                 }
                 int arity = Arity(op);
                 if (arity >= 0)
-                { for (int i = 0; i < arity; i++) Arg(ref p, end, scope, evidence, depth + 1); return default(Value); }
+                {
+                    for (int i = 0; i < arity; i++)
+                    {
+                        int reference = ReferenceOperand(op, i);
+                        if (reference != 0) Reference(ref p, end, scope, evidence, depth + 1, reference == 2, reference != 3);
+                        else Arg(ref p, end, scope, evidence, depth + 1);
+                    }
+                    return default(Value);
+                }
                 if (op == 0x8a || op == 0x8b || op == 0x8c || op == 0x8d || op == 0x8f)
                 {
                     Arg(ref p, end, scope, evidence, depth + 1); Arg(ref p, end, scope, evidence, depth + 1);
-                    Name(ref p, end, scope); return default(Value);
+                    string created = Name(ref p, end, scope);
+                    // A runtime-created field could hide a method selected by
+                    // static lookup. Do not evaluate its branch or preserve a
+                    // speculative connection in a body with that collision.
+                    if (evidence != null && FindMethod(created, Parent(created), true) != null) throw new ParseException();
+                    return default(Value);
                 }
                 throw new ParseException();
+            }
+
+            private Value Reference(ref int p, int end, string scope, BodyEvidence evidence, int depth, bool allowNull,
+                bool allowType6 = true)
+            {
+                CheckDepth(depth); Tick(); int original = p; byte op = Get(ref p, end);
+                if (allowNull && op == 0) return default(Value);
+                if (op >= 0x60 && op <= 0x6e)
+                    return new Value { Kind = op == 0x69 ? 2 : op == 0x6a ? 3 : 0 };
+                if (IsNameStart(op))
+                {
+                    p = original; Name(ref p, end, scope);
+                    if (evidence != null) evidence.UnresolvedNames++;
+                    // SuperName/Target names denote references, including when
+                    // their spelling also belongs to a known method. No method
+                    // arguments are consumed and no call site is recorded.
+                    return new Value { Kind = 6 };
+                }
+                if (allowType6 && (op == 0x71 || op == 0x83 || op == 0x88))
+                {
+                    // Supported Type6 syntax. Its own TermArg operands may
+                    // contain real call expressions; the outer reference does
+                    // not itself become a call or a direct Arg2 expression.
+                    p = original; Arg(ref p, end, scope, evidence, depth + 1);
+                    return default(Value);
+                }
+                throw new ParseException();
+            }
+
+            private static int ReferenceOperand(byte op, int index)
+            {
+                // 0: TermArg, 1: SuperName, 2: Target (also accepts NullName), 3: SimpleName.
+                switch (op)
+                {
+                    case 0x70: return index == 1 ? 1 : 0;
+                    case 0x9d: return index == 1 ? 3 : 0;
+                    case 0x71: case 0x8e: return index == 0 ? 3 : 0;
+                    case 0x80: case 0x81: case 0x82:
+                    case 0x96: case 0x97: case 0x98: case 0x99: return index == 1 ? 2 : 0;
+                    case 0x86: case 0x75: case 0x76: case 0x83: return index == 0 ? 1 : 0;
+                    case 0x72: case 0x73: case 0x74: case 0x77: case 0x79: case 0x7a: case 0x7b:
+                    case 0x7c: case 0x7d: case 0x7e: case 0x7f: case 0x84: case 0x85: case 0x88:
+                    case 0x9c: return index == 2 ? 2 : 0;
+                    case 0x78: return index >= 2 ? 2 : 0;
+                    case 0x9e: return index == 3 ? 2 : 0;
+                    default: return 0;
+                }
             }
 
             private static int Arity(byte op)
@@ -281,17 +413,46 @@ namespace ATIVBatteryGuard.Core.Services
                 => (a.Kind == kind && b.Kind == 1 && b.Integer == value) ||
                    (b.Kind == kind && a.Kind == 1 && a.Integer == value);
 
-            private Method FindMethod(string path, string scope)
+            private static AcpiReturnSyntax ReturnForm(Value value)
             {
-                foreach (var method in methods) if (method.Path == path) return method;
-                // Parent lookup is only for relative single-segment names.
-                if (path != Join(scope, Last(path))) return null;
+                if (value.Kind == 1) return AcpiReturnSyntax.IntegerLiteral;
+                if (value.BufferStart != 0) return AcpiReturnSyntax.BufferLiteral;
+                if (value.Kind == 3) return AcpiReturnSyntax.Argument2;
+                if (value.Kind == 5) return AcpiReturnSyntax.KnownMethodCall;
+                if (value.Kind == 6) return AcpiReturnSyntax.UnresolvedName;
+                return AcpiReturnSyntax.Other;
+            }
+
+            private Method FindMethod(string path, string scope, bool parentSearch)
+            {
+                Method match = UniqueMethod(path);
+                if (match != null || objects.Contains(path)) return match;
+                // Only an originally unprefixed single NameSeg may search up.
+                // Explicit root/parent prefixes and dual/multi names stay exact.
+                if (!parentSearch || path != Join(scope, Last(path))) return null;
                 while (scope.Length != 0)
                 {
                     scope = Parent(scope); string candidate = Join(scope, Last(path));
-                    foreach (var method in methods) if (method.Path == candidate) return method;
+                    match = UniqueMethod(candidate);
+                    if (match != null || objects.Contains(candidate)) return match;
                 }
                 return null;
+            }
+            private Method UniqueMethod(string path)
+            {
+                Method found = null;
+                foreach (Method method in methods)
+                {
+                    if (method.Path != path) continue;
+                    if (found != null || objects.Contains(path)) throw new ParseException();
+                    found = method;
+                }
+                return found;
+            }
+            private void ObjectName(string name)
+            {
+                if (objects.Count >= MaximumNamespaceObjects && !objects.Contains(name)) throw new LimitException();
+                objects.Add(name);
             }
             private int Package(ref int p, int end)
             {

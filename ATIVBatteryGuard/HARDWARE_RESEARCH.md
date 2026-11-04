@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 현재 DSDT 정의 관측과 보조 연결 구문
+
+**확인된 사실:** v2 사용자 요약에서 DSDT 직접 본문 읽기·알려진 설명자/대응 메서드 각 1개·인수 3개·본문 Parsed를 관측했습니다. 전체 namespace는 Partial이고 직접 ID1/길이21 비교·상수 FF 반환은 지원 범위에서 미관측입니다. 기존 판독기는 호출된 보조 정의 본문을 따라 읽지 않았으므로 보조 본문에도 해당 처리가 없다고 해석할 수 없습니다.
+
+**새 정적 구현과 미검증:** [v3](ACPI_METHOD_FLOW_UPDATE.md)는 반환 형태·명명 호출·직접 Arg2 인수와 같은 테이블의 보조 정의를 제한적으로 요약합니다. 구문 존재만 다루며 메서드 실행·값/별칭/조건 계산·WMI 원본 입력과 보조 인수 매핑은 하지 않습니다. 실제 FF 발생 위치나 배터리 의미는 아직 미확정이고 새 분석의 실기도 미관측입니다. 수집 범위를 넓히거나 OEM 실험을 반복하지 않으며 실제 제어는 Unsupported입니다. 아래는 이전 조사입니다.
+
 ## DSDT 미열거와 직접 읽기 근거
 
 **확인된 사실:** v1은 실기에서 DSDT 목록 0 때문에 본문 조회를 건너뛰었습니다. ACPICA의 [고정 Windows 수집 구현](https://github.com/acpica/acpica/blob/e85aa3bebaae81ed1e6d163511ac7e1eafe732cf/source/os_specific/service_layers/oswintbl.c#L231)도 DSDT/XSDT 미열거를 설명하고 DSDT를 고정 ID로 직접 읽습니다. 이 근거로 [v2 수정](ACPI_DSDT_DIRECT_READ_UPDATE.md)을 구현했습니다. 실제 실행 코드는 복사하지 않고 기존 Windows 두 읽기 API와 제한된 순수 파서를 사용합니다.

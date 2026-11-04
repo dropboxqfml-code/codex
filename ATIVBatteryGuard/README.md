@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**메서드 연결 구문 요약 — Acpi-routing-v3:** v2 실기에서 DSDT 직접 읽기와 알려진 설명자/메서드 각 1개·인수 3개·본문 Parsed를 확인했습니다. [v3 변경과 실행 안내](ACPI_METHOD_FLOW_UPDATE.md)는 같은 수집 범위를 유지하며 후보의 반환 형태·직접 Arg2 전달·제한된 보조 정의 연결을 정적으로 요약합니다. [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-METHOD-FLOW.zip) 하나만 새 폴더에 풀고 일반 권한으로 실행합니다. 메서드 실행이나 값/실행 분기 추론은 없고 FF 의미·충전 제어는 미확정입니다. 아래는 이전 기록입니다.
+
 **DSDT 직접 읽기 수정본 — Acpi-routing-v2:** 공개 ACPICA 구현에서 Windows 목록에 없는 DSDT를 직접 읽는 근거를 확인해 기존 미열거 gate를 수정했습니다. [변경 근거·범위·실행 안내](ACPI_DSDT_DIRECT_READ_UPDATE.md)와 [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-DSDT-DIRECT.zip)을 따릅니다. 프로그램 ZIP 하나만 새 폴더에 풀고 일반 권한으로 실행합니다. OEM/AML 실행·예약 접근·레지스트리 읽기는 없으며 실제 충전 제어는 Unsupported입니다. 새 직접 읽기 경로의 Windows 실기는 아직 미검증입니다. 아래는 이전 단계 기록입니다.
 
 **ACPI 점검 실기 결과 수신:** [전달된 결과 분석](ACPI_ROUTING_LAPTOP_RESULT.md)에서 목록 조회 Complete·DSDT 0·SSDT 4·첫 SSDT Partial을 확인했습니다. 현재 모델의 WMI 정의와 FF 의미는 확보하지 못했습니다. 같은 점검 도구를 다시 실행하거나 기존 자료를 재제출할 필요는 없습니다. 이번에는 관측과 수집 한계만 기록했고 실행 코드·배포 ZIP은 변경하지 않았습니다. 아래 실행 안내는 이전 단계 기록입니다.

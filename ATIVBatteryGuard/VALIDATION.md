@@ -1,5 +1,15 @@
 # Settings 앱 분석판 검증 기록
 
+## v2 DSDT 실기 관측·반환/보조 정의 구문 요약 v3 — 2026-11-04
+
+- v2 사용자 요약에서 DSDT 직접 본문 읽기 Complete·namespace Partial·알려진 설명자/메서드 각 1개·인수 3개·본문 Parsed를 관측했습니다. 직접 ID1/길이21 비교·상수 FF 반환은 미관측이며 보조 정의나 실제 FF 의미를 판정하지 않습니다. [관측과 구현 범위](ACPI_METHOD_FLOW_UPDATE.md)에 기록했습니다. 사용자 원문은 저장소에 포함하지 않습니다.
+- 현재 전체 **374 passed, 0 failed, 0 skipped (374 registered)**: reports/acpi-flow-tests.json 및 .log. 새 14개 그룹은 반환 형태·직접 Arg2 전달, helper/루트 FF 분리, 미해결 이름·실패 표식 폐기, 순환/공유 DAG, 깊이/정의/전체 호출 합계·이름 객체 상한, 중복/명시 경로/Alias/External/CreateField 가림, 피연산자 참조의 비호출 처리·개인정보/불변성을 검사합니다. 최종 구문 정정 후 실행한 결과입니다.
+- 전체 7개 프로젝트 x64 net48 Release와 테스트 프로젝트 빌드 **경고 0개·오류 0개**: reports/acpi-flow-build.log 및 test-build.log. 새 런타임 종속성이나 네이티브 API는 추가하지 않았습니다.
+- Python 배포 검증 **24개 통과**: reports/acpi-flow-python-tests.log. 기존 고정 native/host·공급자/ID·시간/무호출/소스 검사를 유지하고 새 순수 모델에 native/네트워크/저장 동작을 삽입하면 거부하는 회귀를 추가했습니다. 실행 ZIP은 v3 EXE·새 Flow 모델을 포함한 Core와 결합 소스만 패키징합니다.
+- 고정 ACPICA 피연산자 헤더를 정적으로 대조했습니다. 독립 소스 검토에서 발견한 이름 가림과 SimpleName/SuperName/Target 참조 오인식을 수정하고 회귀 테스트를 통과했습니다. 최종 코드에 추가 차단 문제는 없었습니다.
+- 이전에 확보한 공개 다른 삼성 530U3 DSDT/첫 SSDT를 새 파서의 형식 검증에만 사용했습니다. DSDT에서 관측된 호출 표현식 1개·보조 정의 1개를 읽고 불완전한 연결은 Partial/보조 FF 미확정으로 유지했습니다. reports/acpi-flow-public-sample.jsonl에 기록했으며 현재 사용자 모델의 동작 근거로 쓰지 않았습니다. AML과 Windows/OEM 메서드는 실행하지 않았습니다.
+- v3의 새 연결 구문 분석은 실제 노트북에서 아직 미관측입니다. 수집은 v2와 같은 DSDT/첫 SSDT이고 레지스트리/다른 SSDT 접근은 없습니다. 일반 앱·기존 OEM 요청/응답/예약/제어 경로와 이전 ZIP은 유지하며 실제 충전 제어는 Unsupported입니다.
+
 ## DSDT 직접 읽기 수정 — Acpi-routing-v2 / 2026-11-04
 
 - 전체 **360 passed, 0 failed, 0 skipped (360 registered)**: reports/acpi-dsdt-tests.json 및 .log. 새 7개 그룹은 미열거 DSDT 직접 읽기, SSDT 4항목의 중복 조회 방지, 직접 읽기 오류 구분, 목록/테이블 크기·길이 변화의 중단, 성공/실패/예외 시 원본 버퍼 삭제, 고정 공급자/ID·잘못된 헤더·개인정보 비노출을 검사합니다. 프로브는 테스트의 가짜 콜백만 사용하며 Windows API를 호출하지 않습니다.

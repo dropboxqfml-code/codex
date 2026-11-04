@@ -18,17 +18,19 @@ namespace ATIVBatteryGuard.Core.Models
         public bool? DirectMethodIdOneComparison { get; }
         public bool? DirectInputLength21Comparison { get; }
         public bool? LiteralFfReturn { get; }
+        public AcpiMethodFlowReport Flow { get; }
         public bool CanInvokeMethods => false;
         public bool CanWriteHardware => false;
 
         internal AcpiWmiRoutingReport(AcpiRoutingStatus status, int descriptors = 0, int methods = 0,
             int? arguments = null, bool? idOne = null, bool? input21 = null, bool? ff = null,
-            AcpiMethodSyntaxStatus syntax = AcpiMethodSyntaxStatus.NotObserved)
+            AcpiMethodSyntaxStatus syntax = AcpiMethodSyntaxStatus.NotObserved, AcpiMethodFlowReport flow = null)
         {
             Status = status; MatchingDescriptors = descriptors; MatchingMethods = methods;
             MethodArgumentCount = arguments; DirectMethodIdOneComparison = idOne;
             DirectInputLength21Comparison = input21; LiteralFfReturn = ff;
             MethodSyntax = syntax;
+            Flow = flow ?? new AcpiMethodFlowReport();
         }
 
         public string ToDisplayText()
@@ -45,6 +47,7 @@ namespace ATIVBatteryGuard.Core.Models
             text.AppendLine("구문 관측은 해당 분기의 실행·배터리 명령 지원·FF 의미를 증명하지 않습니다.");
             text.AppendLine("일부 해석·미확정·미관측은 정의나 기능 부재 판정이 아닙니다.");
             text.AppendLine("Complete도 한 테이블의 지원 구문 범위이며 전체 펌웨어 해석이나 대상 유일성 보장이 아닙니다.");
+            text.Append(Flow.ToDisplayText());
             return text.ToString();
         }
 

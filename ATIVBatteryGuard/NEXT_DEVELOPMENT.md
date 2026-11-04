@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## v2 DSDT 관측 수신·연결 구문 요약 v3
+
+[v2 관측과 v3 구현 경계](ACPI_METHOD_FLOW_UPDATE.md)를 먼저 읽습니다. DSDT 본문 Complete·namespace Partial·알려진 설명자 1·대응 메서드 1·인수 3·본문 Parsed를 관측했습니다. 직접 비교/FF 반환 미관측은 보조 본문의 부재가 아닙니다. 수집 확대 대신 후보 Return 형태·알려진 호출 수·직접 Arg2 인수·같은 테이블의 보조 정의를 깊이 2/최대 8개/전체 호출 표현식 32개 안에서 순수 정적으로 요약합니다.
+
+중복/명시 경로/관측 객체의 shadow를 보수적으로 구분하고 unresolved 이름은 객체/무인수 호출을 단정하지 않아 Partial입니다. helper의 형식 인수를 원래 WMI 입력으로 대입하거나 실행 경로·변수 값·배터리 의미를 계산하지 않습니다. 루트 FF와 보조 FF 표식은 별개이며 불완전한 연결에서 보조 FF 여부는 미확정입니다.
+
+새 배포는 ACPI-METHOD-FLOW / Acpi-routing-v3입니다. v2와 동일한 두 읽기 API·DSDT/첫 SSDT를 사용하며 registry/AML eval/OEM/DLL/예약/드라이버/물리 메모리/포트/쓰기/보안 변경은 없습니다. 실제 제어는 Unsupported이고 완료된 1회 실험 표식은 유지합니다. 새 v3 분석의 실기는 미관측입니다. 프로그램 ZIP 하나만 일반 권한으로 실행하며 v2 반복·관리자 비교·과거 자료/원본 ACPI 재제출은 요청하지 않습니다. 아래는 이전 기록입니다.
+
 ## DSDT 직접 읽기 수정본 — Acpi-routing-v2
 
 [수정 근거와 범위](ACPI_DSDT_DIRECT_READ_UPDATE.md)를 먼저 읽습니다. ACPICA 고정 커밋 e85aa3b의 Windows 구현에서 DSDT 미열거를 직접 Get으로 보완하는 근거를 확보했습니다. 기존 두 읽기 API·고정 provider/ID를 유지하고 정상 목록 조회 뒤 DSDT 0이어도 직접 크기/본문을 한 번씩 읽습니다. 목록 관측·본문 읽기·구문 해석은 별도로 보고하며 첫 SSDT만 읽는 한계와 제한된 파서는 그대로입니다.

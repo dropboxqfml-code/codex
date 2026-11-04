@@ -1,4 +1,12 @@
-# DSDT 직접 읽기 수정본 — Acpi-routing-v2
+# ACPI 메서드 연결 구문 요약 — Acpi-routing-v3
+
+[프로그램 ZIP](ATIVBatteryGuard-ACPI-METHOD-FLOW.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-METHOD-FLOW-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-METHOD-FLOW-SHA256SUMS.txt) · [실기 관측·변경·해석 한계](../ATIVBatteryGuard/ACPI_METHOD_FLOW_UPDATE.md)
+
+v2에서 DSDT 직접 읽기와 알려진 설명자/메서드 각 1개·인수 3개·본문 Parsed를 확인했습니다. v3는 **같은 수집 범위에서** 후보의 반환 형태·직접 Arg2 전달·제한된 보조 정의 연결을 정적으로 요약합니다. **프로그램 ZIP 하나만** 새 폴더에 모두 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행해 **Acpi-routing-v3**의 새 요약만 전달합니다. 소스 ZIP은 실행에 필요하지 않습니다. 기존 TXT/DLL/원본 ACPI 재제출이나 v2 반복·관리자 비교는 요청하지 않습니다.
+
+AML/OEM 실행·변수/조건 계산·레지스트리 읽기·원본 저장·예약 접근·하드웨어 쓰기는 없습니다. 구문 존재가 실제 실행 경로/FF 의미/충전 기능을 입증하지 않으며 실제 제어는 Unsupported입니다. 새 v3 분석의 실기는 아직 미관측입니다. 기존 1회 실험 재실행·표식 삭제는 하지 않습니다.
+
+## DSDT 직접 읽기 수정본 v2 — 이전 배포 기록
 
 [프로그램 ZIP](ATIVBatteryGuard-ACPI-DSDT-DIRECT.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-DSDT-DIRECT-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-DSDT-DIRECT-SHA256SUMS.txt) · [변경 근거·범위·실행 안내](../ATIVBatteryGuard/ACPI_DSDT_DIRECT_READ_UPDATE.md)
 

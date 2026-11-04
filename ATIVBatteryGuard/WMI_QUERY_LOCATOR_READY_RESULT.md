@@ -1,5 +1,7 @@
 # 승인된 1회 조회 도구의 경로 정보 수정 — Query65-locator-v2
 
+**결과 수신·실험 완료:** [ResponseReceived·ValidFrame·표식FF](WMI_ONE_SHOT_QUERY_RESULT.md)를 확인했습니다. 기존1회는사용됐고아래실행절차를다시수행하지않습니다. 표식을그대로유지하며현재는일반앱오프라인검토단계입니다. 아래는배포당시기록입니다.
+
 ## 새 실기 결과와 의미
 
 사용자 노트북의 Locator-v2 출력은 **Elevated · Complete · Ready · None**입니다. OEM 호출과 예약 접근은 없습니다. 원본 TXT는 저장소나 배포물에 넣지 않습니다.

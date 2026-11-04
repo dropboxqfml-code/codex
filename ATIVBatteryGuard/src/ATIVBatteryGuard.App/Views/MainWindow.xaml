@@ -81,6 +81,29 @@
 
             <Border Style="{StaticResource Card}">
                 <StackPanel>
+                    <TextBlock Text="과거 WMI 실험 결과 검토" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="이미 받은 콘솔 출력을 붙여넣어 검토합니다. 이 검토를 위해 실험을 다시 실행할 필요는 없습니다."
+                               Style="{StaticResource Detail}" />
+                    <TextBlock Text="추가 장치 조회·OEM 호출·예약 파일 접근 없이 텍스트만 검토하며, 현재 배터리 보호 상태를 확인하는 기능은 아닙니다."
+                               Style="{StaticResource Detail}" />
+                    <TextBox x:Name="ExperimentResultInput" Text="{Binding ExperimentReviewInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True" IsUndoEnabled="False" TextWrapping="Wrap" MinHeight="80" MaxHeight="150"
+                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,10"
+                             AutomationProperties.Name="과거 WMI 실험 콘솔 출력 붙여넣기" />
+                    <WrapPanel>
+                        <Button x:Name="ReviewExperimentResultButton" Content="붙여넣은 결과 검토"
+                                Command="{Binding ReviewExperimentResultCommand}" />
+                        <Button Content="검토 내용 지우기" Command="{Binding ClearExperimentReviewCommand}" />
+                    </WrapPanel>
+                    <TextBox x:Name="ExperimentResultReview" Text="{Binding ExperimentReviewText, Mode=OneWay}"
+                             IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
+                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
+                             AutomationProperties.Name="과거 WMI 실험 결과의 오프라인 검토" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
                     <TextBlock Text="사용자 선택값" Style="{StaticResource SectionTitle}" />
                     <TextBlock Text="실제 충전 설정을 바꾸지 않고, 사용할 희망 모드만 로컬에 기억합니다."
                                Style="{StaticResource Detail}" />

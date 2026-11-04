@@ -32,6 +32,10 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private string samsungTransportSummary = "전송 경로의 관측 요약은 아직 없습니다. 실제 충전 제어는 미지원입니다.";
 
+		private string experimentReviewInput = string.Empty;
+
+		private WsabiWmiExperimentReview experimentReview = WsabiWmiExperimentReview.Empty;
+
 		private readonly ISamsungAnalysisBundleService samsungAnalysis;
 
 		private readonly Func<bool> confirmSamsungAnalysis;
@@ -98,6 +102,40 @@ namespace ATIVBatteryGuard.ViewModels
 		public RelayCommand CreateHardwareReportCommand { get; }
 
 		public RelayCommand InspectSamsungFilesCommand { get; }
+
+		public RelayCommand ReviewExperimentResultCommand { get; }
+
+		public RelayCommand ClearExperimentReviewCommand { get; }
+
+		public string ExperimentReviewInput
+		{
+			get { return experimentReviewInput; }
+			set
+			{
+				if (disposed) return;
+				string input = value ?? string.Empty;
+				if (input == experimentReviewInput) return;
+				if (input.Length > WsabiWmiExperimentReviewParser.MaximumCharacters)
+				{
+					// Reject the complete value rather than turning a truncated
+					// report into apparently valid historical evidence.
+					experimentReviewInput = string.Empty;
+					experimentReview = WsabiWmiExperimentReviewParser.Parse(input);
+				}
+				else
+				{
+					experimentReviewInput = input;
+					experimentReview = WsabiWmiExperimentReview.Empty;
+				}
+				NotifyExperimentReview();
+			}
+		}
+
+		public string ExperimentReviewText => experimentReview.ToDisplayText();
+
+		public WsabiWmiExperimentReviewStatus ExperimentReviewStatus => experimentReview.Status;
+
+		public bool ExperimentReviewHasValidatedFrame => experimentReview.HasValidatedFrame;
 
 		public bool SamsungFileInspectionBusy => samsungFileInspectionBusy;
 
@@ -518,9 +556,41 @@ namespace ATIVBatteryGuard.ViewModels
 			{
 				await mainViewModel.InspectSamsungFilesAsync();
 			}, () => !mainViewModel.disposed && !mainViewModel.samsungFileInspectionBusy && mainViewModel.samsungFiles != null);
+			ReviewExperimentResultCommand = new RelayCommand(ReviewExperimentResult,
+				() => !mainViewModel.disposed && !string.IsNullOrWhiteSpace(mainViewModel.experimentReviewInput));
+			ClearExperimentReviewCommand = new RelayCommand(ClearExperimentReview,
+				() => !mainViewModel.disposed);
 			log.Write("APP_STARTED");
 			log.Write(string.IsNullOrEmpty(settingsLoadResult.Warning) ? "SETTINGS_LOADED" : "SETTINGS_RECOVERED");
 			RefreshBattery();
+		}
+
+		public void ReviewExperimentResult()
+		{
+			if (disposed) return;
+			// Only fixed classifications leave the parser. The source text is
+			// not sent to settings, diagnostics, logs, files or a live provider.
+			experimentReview = WsabiWmiExperimentReviewParser.Parse(experimentReviewInput);
+			experimentReviewInput = string.Empty;
+			NotifyExperimentReview();
+		}
+
+		private void ClearExperimentReview()
+		{
+			if (disposed) return;
+			experimentReviewInput = string.Empty;
+			experimentReview = WsabiWmiExperimentReview.Empty;
+			NotifyExperimentReview();
+		}
+
+		private void NotifyExperimentReview()
+		{
+			Changed("ExperimentReviewInput");
+			Changed("ExperimentReviewText");
+			Changed("ExperimentReviewStatus");
+			Changed("ExperimentReviewHasValidatedFrame");
+			ReviewExperimentResultCommand?.Refresh();
+			ClearExperimentReviewCommand?.Refresh();
 		}
 
 		private void SelectMode(ChargeMode mode)
@@ -844,6 +914,7 @@ namespace ATIVBatteryGuard.ViewModels
 					Save();
 				}
 				disposed = true;
+				experimentReviewInput = string.Empty;
 				ApplyCommand.Refresh();
 				SaveCommand.Refresh();
 				RefreshCommand.Refresh();
@@ -856,6 +927,8 @@ namespace ATIVBatteryGuard.ViewModels
 				CreateHardwareReportCommand.Refresh();
 				CreateSamsungBundleCommand.Refresh();
 				InspectSamsungFilesCommand.Refresh();
+				ReviewExperimentResultCommand.Refresh();
+				ClearExperimentReviewCommand.Refresh();
 				log.Write("APP_STOPPED");
 			}
 		}

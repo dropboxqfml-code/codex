@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 실제 응답 수신·표식FF·1회 완료·일반 앱 오프라인 검토
+
+[이번 결과·정적 대조·프로그램 개발](WMI_ONE_SHOT_QUERY_RESULT.md)을 먼저 읽습니다. 사용자 출력 Query65-locator-v2/Elevated/ResponseReceived/Complete/Ready/requested/FrameChecked/ValidFrame/FF를 확인했습니다. 비동기완료0·출력1개·정확히21바이트/ACKAA 구조는 통과했고 payload첫바이트만FF로분류했습니다. 전체payload/명령echo/배터리의미/보호상태·충전상한은 미확정입니다. FF를OFF/ON/하드웨어미지원으로 변환하지 않습니다.
+
+승인된1회는 소비됐으며 기존v1예약과backend/정책/decoder를그대로보존합니다. 실험재실행·표식삭제/리셋·다른계정/위치우회·추가읽기후보·0x66쓰기는없습니다. 완료기록이있는동안새OEM EXE패키징도닫았습니다. 같은자료/준비점검을다시요청하지않습니다.
+
+이번에는 메인WPF앱에 기존consoleTEXT를user가paste해검토하는오프라인기능을추가했습니다. Core의bounded고정형식parser→고정enumreview만보관하고 원문은검토후비웁니다. 과거텍스트진위/currentdevice일치는검증하지않고 FF/0/1/Other도현재actualmode로쓰지않습니다. VM은설정/모드/로그/하드웨어와분리하고 입력변경·실패·초과·dispose를닫습니다. 새기능은추가WMI/OEM/예약접근없고기존battery/readonly진단만유지합니다.
+
+새 RESULT-REVIEW 일반앱/소스만공유하며 실험EXE/삼성원본은포함하지않습니다. 새노트북실험/자료재제출은필요없고현재실제제어는Unsupported입니다. 다음핵심은현재모델Windows배터리명령의미·응답해석근거이며 공개hotkeys/LinuxFF처리를그대로전이하지않습니다. 아래는이전기록입니다.
+
 ## Locator-v2 Ready 실기 수신·기존 승인 조회 수정본 준비
 
 [이번 결과·변경·실행 범위](WMI_QUERY_LOCATOR_READY_RESULT.md)를 먼저 읽습니다. 사용자 출력은 Locator-v2/Elevated/Complete/Ready/None이며 OEM/예약접근은 없습니다. 이번에 단일 활성 대상·경로와 대상 재읽기·입력CIMTYPE·메모리 버퍼까지 통과했습니다. 같은 준비 점검/자료를 반복 요청하지 않습니다.

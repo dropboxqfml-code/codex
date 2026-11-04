@@ -1,5 +1,9 @@
 # ATIV Battery Guard
 
+[승인된 조회의 실제 결과](WMI_ONE_SHOT_QUERY_RESULT.md)는 ResponseReceived·FrameChecked·ValidFrame·표식FF입니다. WMI 응답 수신과 구조 검증은 성공했지만 배터리 보호 상태와 후보 의미는 미확정입니다. 승인된1회는 완료됐으므로 실험을 재실행하거나 예약 표식을 삭제하지 않습니다.
+
+새 일반 앱의 **과거 WMI 실험 결과 검토**에서 이미 받은 출력을 추가 호출 없이 확인할 수 있습니다. 원문은 검토 후 비우고 저장하지 않으며 과거 텍스트를 현재 장치 상태로 승격하지 않습니다. [RESULT-REVIEW 프로그램·소스](../downloads/README.md)는 관리자 권한 없이 실행하고 실험 EXE·삼성 원본 DLL을 포함하지 않습니다. 실제 충전 제어는 계속 Unsupported입니다. 새 실험/자료 재제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 [Locator-v2 실기 결과와 승인 조회 수정본](WMI_QUERY_LOCATOR_READY_RESULT.md): 사용자 노트북에서 Elevated·Complete·Ready·None을 확인했습니다. OEM 호출과 예약 접근은 없었고 전체 준비 검사는 통과했습니다. 검증된 경로 정보 옵션을 기존 승인 1회 조회 도구에만 반영했습니다.
 
 새 **Query65-locator-v2**는 고정 후보0x65를 최대1회 요청하는 한정 실험입니다. 원래 요청·가드·동일 영속 예약 표식을 유지하며 기존 표식이 있으면 호출하지 않습니다. [새 실행·소스 ZIP과 절차](../downloads/README.md)를 따르고 예약 표식 삭제·재시도·다른 명령 시험은 하지 않습니다. 후보 의미와 부작용은 여전히 미검증이며 실제 충전 제어는 Unsupported입니다. 아래는 이전 기록입니다.

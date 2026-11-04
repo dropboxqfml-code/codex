@@ -98,6 +98,8 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
+    if (root / "WMI_ONE_SHOT_QUERY_RESULT.md").is_file():
+        raise ValueError("The approved one-shot request has been completed. Further OEM executable distribution is closed.")
     tests = json.loads(args.test_report.read_text(encoding="utf-8"))
     for key in ("passed", "failed", "registered"):
         if type(tests.get(key)) is not int:

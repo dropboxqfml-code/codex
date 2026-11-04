@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 실제 후보 응답 수신 — 프레임 검증과 의미 분리
+
+[이번 결과와 정적 대조](WMI_ONE_SHOT_QUERY_RESULT.md): 사용자 노트북에서 승인된0x65 요청의 ResponseReceived/FrameChecked/ValidFrame/FF를 확인했습니다. 비동기 완료0·단일 출력·정확히21바이트/ACKAA를 통과했고 payload첫바이트만FF였습니다. 명령 지원·보호상태·상한·부작용 부재나 전체payload/명령echo는 확인하지 않았습니다.
+
+고정hotkeys와Linux v6.12 소스를 대조했으나 각각Sabi3 DLL/직접SABI 경로의FF를 현재모델WindowsWMI 의미로 전이할 근거는 확보하지 못했습니다. FF를OFF나하드웨어미지원으로 확정하지 않고decoder수락조건도변경하지 않습니다. 승인된1회는사용됐으며추가요청/표식초기화/0x66은없습니다. 이번개발은일반앱의과거결과오프라인검토이며실제제어는Unsupported입니다. 아래는이전기록입니다.
+
 ## 승인된 조회 후보 한정 실험 도구
 
 [승인과 구현 범위](WMI_ONE_SHOT_QUERY_APPROVAL.md): 사용자가 미검증0x65 후보의 한정1회 실험을 승인했습니다. 별도도구에서 고정모델/BIOS·token·schema·단일Active대상·영속예약을 확인해야요청하며 삼성DLL·쓰기명령·driver/service/ACL·포트IO·자동상승은 구현하지않습니다. 비동기완료상태0과정확히1개출력후에만고정Bytes를읽고후보표식만분류합니다.

@@ -1,5 +1,14 @@
 # Settings 앱 분석판 검증 기록
 
+## WMI 후보 응답 수신·오프라인 결과 검토 — 2026-11-04
+
+- 사용자 실제 결과는 ResponseReceived·FrameChecked·ValidFrame·FF입니다. [관측 범위와 공개 소스 대조](WMI_ONE_SHOT_QUERY_RESULT.md)에 WMI 응답/구조 검증 성공과 보호 상태 미확정을 구분했습니다. 승인된1회는사용됐으며 기존 실험/예약/decoder는변경하지 않았습니다.
+- 전체 **342 passed, 0 failed, 0 skipped (342 registered)**: reports/wmi-offline-review-tests.json 및 .log. 새11개 그룹은 Core의 형식/필수 필드·enum·모순·길이·개인정보/불변성7개와 VM의 설정/모드/디스크/하드웨어 무변경·입력/실패/초과·개인정보·clear/dispose4개입니다.
+- 전체6개 프로젝트 x64 net48 Release 빌드 **경고0개·오류0개**: reports/wmi-offline-review-build.log. 테스트 프로젝트도 경고·오류0개입니다. 입력 undo history를 끄는 최종 XAML 변경 뒤 앱을 별도 재빌드해 경고·오류0개를 확인했습니다: reports/wmi-offline-review-ui-build.log.
+- Python 배포 검증 **19개 통과**: reports/wmi-offline-review-python-tests.log. 새4개 그룹은 검토 경로의 장치/저장/제어 연결 거부, 이전 바이너리 혼입과 완료된 OEM 실험 CLI의 배포 차단을 검사합니다.
+- 사용자 제출 텍스트 자체도 임시 .NET8 검증기로 새 파서에 전달했습니다. 결과는 **ValidatedFrameMeaningUnknown / FF**, 모든 하드웨어 capability는 false였습니다: reports/wmi-offline-review-user-text-verification.json. 원문은 테스트 소스·저장소·배포물에 넣지 않았습니다.
+- 독립 소스 검토에서 MaxLength의 긴 붙여넣기 잘림 문제를 확인해 제거하고 VM이 전체 입력을 거부하도록 했습니다. 동일 입력 반향 guard와 입력 undo 비활성화도 반영했습니다. 추가 차단 문제는 발견하지 못했습니다.
+- 새 검토 기능은 추가 장치/WMI/OEM/예약·파일 저장·네트워크 접근 없이 텍스트만 처리합니다. 기존 앱의 Windows 배터리/읽기 전용 진단은 유지합니다. 새 GUI의 Windows 실기는 아직 미검증이며 클라우드에서 Windows/OEM/펌웨어를 실행하지 않았습니다. 실제 충전 제어는 Unsupported입니다.
 ## Locator-v2 Ready 결과 수신·승인 조회 도구 옵션 수정 — 2026-11-04
 
 - 사용자 TXT에서 **Locator-v2 · Elevated · Complete · Ready · None**, OEM 호출/예약 접근 없음을 확인했습니다. [이번 해석과 수정 범위](WMI_QUERY_LOCATOR_READY_RESULT.md)에 전체 준비 통과와 실제 후보 응답 미관측을 구분해 기록했습니다. 원문 TXT는 저장소에 포함하지 않습니다.

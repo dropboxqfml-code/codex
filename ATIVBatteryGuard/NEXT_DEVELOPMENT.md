@@ -1,5 +1,11 @@
 # 다음 개발 재개 메모
 
+## v4 보조 본문 실기 확인·다음 구현 계획
+
+[이번 분석과 계획](ACPI_V4_RESULT_AND_NEXT_PLAN.md)을 먼저 읽습니다. v4는 보조 해석 1/미지원 0/실패 None, Acquire·Release, helper Return 0/None·그 본문 범위의 literal FF 미관측입니다. v4의 구문 지원 목표는 실기 관측됐고 실제 FF 의미/충전 제어는 미확정입니다. root Return UnresolvedName·직접 Arg2 인수 0은 입력 미전달/잘못된 반환이 아닙니다. 미해결 6은 root+성공helper의 참조 횟수이지 객체 6개가 아니며 연결 Partial과 전체 namespace Partial을 구분합니다.
+
+사용자는 이번에 분석·보고·계획을 요청했습니다. 실행 코드/배포물은 바꾸지 않았고 빌드/테스트를 반복하지 않았습니다. 다음 구현 우선순위는 same-table 관측 객체 Buffer/Mutex/Event/Field/OperationRegion의 종류 분류와 Store/Return의 정적 참조 관계입니다. 값/분기/별칭 평가·실제 I/O·주소 출력·OEM 호출은 없습니다. v4 반복/관리자 비교/원본 재제출은 필요하지 않습니다. 구체적인 수용 조건과 안전 경계는 새 계획을 따릅니다. 아래는 이전 기록입니다.
+
 ## v3 보조 본문 미지원 수신·확장 구문 v4
 
 [현재 관측·구현·범위](ACPI_HELPER_SYNTAX_UPDATE.md)를 먼저 읽습니다. v3는 root Parsed·호출 1·직접 Arg2 인수 0·Return 1/UnresolvedName·보조 1/해석 0/미지원 1·미해결 참조 3입니다. 입력 미전달이나 잘못된 반환이 아니며 미해결 3은 root의 관측입니다. 현재 중단 opcode는 미확정이고 특정 Acquire로 단정하지 않습니다.

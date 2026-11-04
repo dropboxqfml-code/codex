@@ -1,5 +1,7 @@
 # ACPI 보조 본문 구문 점검 — Acpi-routing-v4
 
+**실기 결과 수신·추가 실행 불필요:** 보조 본문 해석 1개·미지원 0·실패 None·Acquire/Release를 확인했습니다. [분석과 다음 개발 계획](../ATIVBatteryGuard/ACPI_V4_RESULT_AND_NEXT_PLAN.md)을 기록했고 이번에는 새 프로그램을 배포하지 않습니다. v4 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 아래 ZIP·소스·체크섬은 배포 당시 그대로 보존합니다. 아래는 이전 안내입니다.
+
 [프로그램 ZIP](ATIVBatteryGuard-ACPI-HELPER-SYNTAX.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-HELPER-SYNTAX-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-HELPER-SYNTAX-SHA256SUMS.txt) · [결과·변경·해석 경계](../ATIVBatteryGuard/ACPI_HELPER_SYNTAX_UPDATE.md)
 
 v3의 보조 본문 미지원 결과를 바탕으로 표준 확장 구문의 정적 읽기와 고정된 중단 원인 표시를 추가했습니다. **프로그램 ZIP 하나만** 새 폴더에 모두 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행해 **Acpi-routing-v4**의 새 요약만 전달합니다. 소스 ZIP은 실행에 필요하지 않습니다. 기존 TXT/DLL/원본 ACPI 재제출·v3 반복·관리자 비교는 요청하지 않습니다.

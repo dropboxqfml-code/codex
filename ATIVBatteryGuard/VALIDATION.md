@@ -1,5 +1,11 @@
 # Settings 앱 분석판 검증 기록
 
+## v4 실기 관측 수신·후속 계획
+
+- 사용자 요약에서 DSDT 후보 Parsed·보조 해석 1/미지원 0·후보/보조 실패 None·Acquire/Release를 확인했습니다. v3의 보조 구문 지원 한계가 개선된 경로가 실기 관측됐습니다. [분석과 계획](ACPI_V4_RESULT_AND_NEXT_PLAN.md)에 범위를 기록했습니다.
+- 연결은 Partial이며 미확정 이름 참조 6회, root Return 1/UnresolvedName, 보조 Return 0/None과 해석한 보조 범위의 상수 FF Return 미관측입니다. 고유 객체 수·실제 반환값·FF 발생 위치/의미로 확대하지 않습니다. 첫 SSDT의 NotInspected와 None도 성공으로 확대하지 않습니다.
+- 이번에는 문서만 변경했고 빌드/테스트를 재실행하지 않았습니다. 아래 384개·Python 25개·7개 프로젝트 빌드 0경고/0오류는 직전 코드 검증 기록입니다. 실행 코드·배포 ZIP·요청/응답/예약/제어 정책은 그대로이며 새 실기/OEM/AML 실행은 없습니다.
+
 ## v3 보조 본문 미지원 수신·확장 구문 v4 — 2026-11-04
 
 - v3 사용자 요약은 후보 Parsed·호출 표현식 1·직접 Arg2 인수 0·Return 1/UnresolvedName·보조 정의 1/해석 0/미지원 1·미해결 참조 3입니다. [해석과 v4 구현](ACPI_HELPER_SYNTAX_UPDATE.md)에 원인 미확정과 입력/반환/FF의 의미 비추론을 기록했습니다. 사용자 원문은 저장소에 포함하지 않습니다.

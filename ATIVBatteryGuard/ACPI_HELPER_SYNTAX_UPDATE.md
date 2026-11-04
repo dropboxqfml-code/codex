@@ -1,5 +1,7 @@
 # 보조 본문 확장 구문과 중단 원인 — Acpi-routing-v4
 
+**실기 결과 수신:** 보조 해석 1/미지원 0·실패 None·Acquire/Release를 확인했습니다. [결과와 다음 계획](ACPI_V4_RESULT_AND_NEXT_PLAN.md)을 현재 기록으로 따릅니다. 아래는 배포 당시 안내이며 v4 반복이나 관리자 비교는 필요하지 않습니다.
+
 ## v3에서 관측한 사실
 
 사용자 v3 요약의 DSDT는 본문 읽기 Complete·namespace Partial·설명자/메서드 각 1개·인수 3개·후보 본문 Parsed입니다. 후보에서 알려진 호출 표현식 1개·직접 Arg2 인수 0개·Return 1개/UnresolvedName을 관측했습니다. 보조 정의 1개를 검사했으나 해석 0개·미지원 1개였고 연결 상태는 Partial입니다. 원문 사용자 TXT는 저장소나 배포물에 포함하지 않습니다.

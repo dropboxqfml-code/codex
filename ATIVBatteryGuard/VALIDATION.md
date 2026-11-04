@@ -1,5 +1,14 @@
 # Settings 앱 분석판 검증 기록
 
+## Locator-v2 Ready 결과 수신·승인 조회 도구 옵션 수정 — 2026-11-04
+
+- 사용자 TXT에서 **Locator-v2 · Elevated · Complete · Ready · None**, OEM 호출/예약 접근 없음을 확인했습니다. [이번 해석과 수정 범위](WMI_QUERY_LOCATOR_READY_RESULT.md)에 전체 준비 통과와 실제 후보 응답 미관측을 구분해 기록했습니다. 원문 TXT는 저장소에 포함하지 않습니다.
+- 전체 **331 passed, 0 failed, 0 skipped (331 registered)**: reports/wmi-query-locator-tests.json 및 .log. 새 통합 그룹은 가상 backend와 임시 더미 디렉터리로 준비 실패의 무예약, 요청 전 영속 예약, 성공/오류 뒤 새 객체의 동일 표식 추가 호출 차단을 검사합니다.
+- 전체6개 프로젝트 x64 net48 Release 빌드 **경고0개·오류0개**: reports/wmi-query-locator-build.log. portable 테스트 프로젝트도 경고·오류0개로 빌드했습니다. 새 의존성이나 환경 설정 변경은 없습니다.
+- Python 배포 검증 **15개 통과**: reports/wmi-query-locator-python-tests.log. 신규5개 그룹은 지정 옵션 수락, 적용 범위/명령/횟수/예약 표식/예약 순서/콜백/가드/호스트 제한 변경과 이전 바이너리 혼입 거부를 검사합니다.
+- 독립 소스 검토에서 차단 문제를 발견하지 못했습니다. 기준55f09c6 대비 실행 코드 변경은 메서드 SELECT의 EnsureLocatable 옵션3줄과 부모 수정판 표시2줄뿐입니다. 실제 SDK 호출·콜백·출력 추출·요청 정책·예약 파일·실험 객체·기존 가드는 그대로입니다.
+- 기존 명시 승인 범위의 고정0x65 최대1회이며 같은 v1 예약과 위치를 유지합니다. Ready 보고서를 입력값/승인 토큰으로 사용하지 않고 실행 시 재검증합니다. 새 수정본의 Windows/OEM/펌웨어 실행은 클라우드에서 수행하지 않았고 실제 후보 응답은 아직 미관측입니다. 실제 충전 제어는 Unsupported입니다.
+
 ## 경로 정보 확보 보완판 Locator-v2 — 2026-11-04
 
 - 전체 **330 passed, 0 failed, 0 skipped (330 registered)**: reports/wmi-preflight-locator-tests.json 및 .log. 기존 전체 조합의 준비 조건·개인정보 검사가 새 오류도 포함하며 과거 enum 값/모호한 결과 보존 회귀를 추가했습니다.

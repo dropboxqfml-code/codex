@@ -1,5 +1,9 @@
 # ATIV Battery Guard
 
+[Locator-v2 실기 결과와 승인 조회 수정본](WMI_QUERY_LOCATOR_READY_RESULT.md): 사용자 노트북에서 Elevated·Complete·Ready·None을 확인했습니다. OEM 호출과 예약 접근은 없었고 전체 준비 검사는 통과했습니다. 검증된 경로 정보 옵션을 기존 승인 1회 조회 도구에만 반영했습니다.
+
+새 **Query65-locator-v2**는 고정 후보0x65를 최대1회 요청하는 한정 실험입니다. 원래 요청·가드·동일 영속 예약 표식을 유지하며 기존 표식이 있으면 호출하지 않습니다. [새 실행·소스 ZIP과 절차](../downloads/README.md)를 따르고 예약 표식 삭제·재시도·다른 명령 시험은 하지 않습니다. 후보 의미와 부작용은 여전히 미검증이며 실제 충전 제어는 Unsupported입니다. 아래는 이전 기록입니다.
+
 [경로 정보 확보 보완판 Locator-v2](WMI_PREFLIGHT_LOCATOR_UPDATE.md)를 구현했습니다. OEM 호출 없는 점검 도구의 메서드 대상 쿼리에만 EnsureLocatable을 추가하고 객체·경로 오류와 명시적 Active=false를 구분합니다. 기존 단일 활성 대상/입력 검증과 시간 제한을 유지하며 실제 충전 제어는 계속 Unsupported입니다.
 
 [새 LOCATOR 프로그램·소스](../downloads/README.md)를 새 폴더에 풀고 `ATIVBatteryGuard.WmiPreflightCheck.exe`만 같은 계정에서 수동 관리자 실행해 `(Locator-v2)` 표시가 있는 새 출력만 전달합니다. OEM 호출과 예약 접근은 없으며 이전 실험 EXE 재실행·예약 표식 삭제·과거 자료 재제출은 필요하지 않습니다. 아래는 이전 개발 기록입니다.

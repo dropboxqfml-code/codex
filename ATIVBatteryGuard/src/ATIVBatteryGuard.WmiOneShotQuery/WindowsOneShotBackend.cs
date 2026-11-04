@@ -82,7 +82,7 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
                 bool complete = false;
                 stage = WsabiWmiOneShotPreflightStage.MethodEnumeration;
                 using (var searcher = new ManagementObjectSearcher(scope,
-                    new ObjectQuery("SELECT Active FROM WmiAcpiMethod"), CreateEnumerationOptions()))
+                    new ObjectQuery("SELECT Active FROM WmiAcpiMethod"), CreateEnumerationOptions(ensureLocatable: true)))
                 using (var collection = searcher.Get())
                 using (var rows = collection.GetEnumerator())
                 {
@@ -313,10 +313,10 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
             return scope;
         }
 
-        private EnumerationOptions CreateEnumerationOptions() => new EnumerationOptions
+        private EnumerationOptions CreateEnumerationOptions(bool ensureLocatable = false) => new EnumerationOptions
         {
             Timeout = RemainingTimeout(), BlockSize = 1, Rewindable = false,
-            ReturnImmediately = true, DirectRead = true
+            ReturnImmediately = true, DirectRead = true, EnsureLocatable = ensureLocatable
         };
 
         private TimeSpan RemainingTimeout()

@@ -1,4 +1,14 @@
-# 경로 정보 확보 보완판 — Locator-v2 · OEM 호출 없음
+# 승인된 1회 조회 수정본 — Query65-locator-v2
+
+[새 실험 프로그램 ZIP](ATIVBatteryGuard-WMI-ONE-SHOT-LOCATOR.zip) · [일치 소스 ZIP](ATIVBatteryGuard-WMI-ONE-SHOT-LOCATOR-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-WMI-ONE-SHOT-LOCATOR-SHA256SUMS.txt) · [실기 결과·변경·정확한 실행 범위](../ATIVBatteryGuard/WMI_QUERY_LOCATOR_READY_RESULT.md)
+
+사용자 노트북의 Locator-v2가 Ready까지 통과해, 같은 경로 정보 옵션을 기존 승인 조회 도구에 적용했습니다. **이 수정본은 실제 OEM 조회 후보0x65를 최대1회 요청할 수 있는 한정 실험입니다.** 원래 요청·안전 조건과 같은 WmiQuery65-v1.attempt 예약을 유지하며 표식이 있으면 호출하지 않습니다. 새 폴더/버전은 횟수를 초기화하지 않습니다.
+
+ZIP 전체를 새 로컬 폴더에 풀고 **그 안의 ATIVBatteryGuard.WmiOneShotQuery.exe만 같은 Windows 계정에서 수동 관리자 권한으로 한 번 실행**합니다. **Query65-locator-v2** 표시와 새 출력만 전달한 후 재실행하지 않습니다. 기존 표식이 있다는 결과도 그대로 전달하며 삭제·초기화·다른 계정 우회를 하지 않습니다. 다른 계정의 암호가 필요하거나 보호 기능이 차단하면 중단합니다.
+
+후보 의미와 예상하지 못한 펌웨어 부작용은 아직 미검증이며 새 수정본의 실제 OEM 결과도 미관측입니다. 어떤 표식도 보호 ON/OFF나 충전 제한 성공으로 표시하지 않습니다. 실제 충전 제어는 계속 Unsupported입니다. 삼성 원본 DLL·이전 EXE·원문 보고서는 새 ZIP에 포함하지 않습니다. 같은 무호출 점검·과거 TXT/DLL/EXE·파일 목록·권한 비교는 다시 필요하지 않습니다. 아래는 이전 배포 기록입니다.
+
+## 무호출 경로 정보 점검판 — 이전 배포 기록
 
 [새 프로그램 ZIP](ATIVBatteryGuard-WMI-PREFLIGHT-LOCATOR.zip) · [일치 소스 ZIP](ATIVBatteryGuard-WMI-PREFLIGHT-LOCATOR-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-WMI-PREFLIGHT-LOCATOR-SHA256SUMS.txt) · [변경 내용·결과 해석](../ATIVBatteryGuard/WMI_PREFLIGHT_LOCATOR_UPDATE.md)
 

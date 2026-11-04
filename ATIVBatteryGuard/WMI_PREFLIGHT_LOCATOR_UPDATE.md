@@ -1,5 +1,7 @@
 # WMI 사전 검증 경로 정보 보완 — Locator-v2
 
+**실기 결과 수신:** 사용자 노트북에서 Elevated·Complete·Ready·None, OEM 호출/예약 접근 없음을 확인했습니다. [전체 해석과 기존 승인 조회 수정본](WMI_QUERY_LOCATOR_READY_RESULT.md)에 기록했습니다. 같은 무호출 점검을 반복할 필요는 없습니다. 아래는 최초 배포 기록입니다.
+
 2026-11-04, [직전 실기 분석](WMI_PREFLIGHT_ENUMERATION_RESULT.md)의 다음 수정 범위인 경로 정보 확보 옵션과 오류 분류 세분화를 구현했습니다. 대상은 OEM 호출 없는 별도 WmiPreflightCheck입니다. 이전 실험의 실행 코드·예약·정책과 메인 앱은 그대로 보존합니다.
 
 ## 변경 내용

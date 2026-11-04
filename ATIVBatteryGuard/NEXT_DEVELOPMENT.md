@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## Locator-v2 Ready 실기 수신·기존 승인 조회 수정본 준비
+
+[이번 결과·변경·실행 범위](WMI_QUERY_LOCATOR_READY_RESULT.md)를 먼저 읽습니다. 사용자 출력은 Locator-v2/Elevated/Complete/Ready/None이며 OEM/예약접근은 없습니다. 이번에 단일 활성 대상·경로와 대상 재읽기·입력CIMTYPE·메모리 버퍼까지 통과했습니다. 같은 준비 점검/자료를 반복 요청하지 않습니다.
+
+기존 명시 승인 exact0x65/payload80+15zero/max1은 유지되고 옛 실험은 PreflightFailed로 claim/channel 전에 끝났습니다. 같은 승인을 재요청하지 않고 승인 범위의 실행을 완수하도록 기존 backend의 methodquery에만 EnsureLocatable을 반영합니다. 새 표식이나 횟수를 만들지 않고 원래 v1 예약과 위치를 그대로 사용합니다. 기존 표식이 있거나 안전하게 확보하지 못하면 무호출입니다. Ready TXT를 허가 토큰/선택 대상 근거로 입력받지 않습니다.
+
+기존 실제 호출/콜백/출력해석·정책·예약·가드·worker/시간 제한은 그대로이며 메인 앱 미연결입니다. 새 Query65-locator-v2 판별 표시가 있는 ONE-SHOT-LOCATOR ZIP만 해당 절차로 한 번 확인합니다. 후보의 의미/펌웨어 부작용은 아직 미검증이고 실제 충전 제어는 Unsupported입니다. 호출 요청·시간 초과·결과 불명 뒤 재시도, 표식 삭제/리셋, 다른 계정/경로 우회, 0x66/다른 명령은 없습니다. 아래는 이전 기록입니다.
+
 ## 경로 정보 확보 옵션·고정 오류 분류 구현 후
 
 [Locator-v2 구현과 확인 범위](WMI_PREFLIGHT_LOCATOR_UPDATE.md)를 먼저 읽습니다. 새 무호출 점검판은 MethodEnumeration의 고정 SELECT에만 EnsureLocatable=true를 적용하고 모델/BIOS 조회 옵션은 기존대로 유지합니다. 객체/경로 문제 여섯 종류와 정상 Boolean Active=false를 구분합니다. 과거 enum 값과 모호한 결과는 그대로 남깁니다.

@@ -5,12 +5,62 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ATIVBatteryGuard.Core.Models;
+using ATIVBatteryGuard.Core.Services;
 using ATIVBatteryGuard.Core.Storage;
 
 internal static partial class Program
 {
     private static void RegisterWsabiWmiOneShotReservationTests()
     {
+        Add("repaired preparation retains the original durable attempt across fresh experiment objects and transport outcomes", () => WithDirectory(dir =>
+        {
+            Equal("WmiQuery65-v1.attempt", WsabiWmiOneShotFileReservation.MarkerFileName);
+            foreach (bool transportFault in new[] { false, true })
+            {
+                string local = Path.Combine(dir, transportFault ? "fault-case" : "reply-case");
+                var failedPreparation = new OneShotExperimentBackend
+                {
+                    Preparer = () => new WsabiWmiOneShotPreflight(WsabiWmiMetadataStatus.Unavailable,
+                        null, null, false, 0, null, false, WsabiWmiOneShotPreflightStage.MethodEnumeration)
+                };
+                var initial = new WsabiWmiOneShotExperiment(failedPreparation,
+                    new WsabiWmiOneShotFileReservation(local)).RunAsync().GetAwaiter().GetResult();
+                Equal(WsabiWmiOneShotStatus.PreflightFailed, initial.Status);
+                Check(!initial.InvocationRequested && failedPreparation.Calls == 0,
+                    "failed preparation dispatched a request");
+                Check(!Directory.Exists(local), "failed preparation touched the reservation directory");
+
+                var prepared = new OneShotExperimentBackend
+                {
+                    Handler = (request, token) =>
+                    {
+                        Check(WsabiWmiOneShotPolicy.IsApprovedRequest(request), "candidate request changed");
+                        string marker = Path.Combine(local, WsabiWmiOneShotFileReservation.MarkerFileName);
+                        Check(File.Exists(marker), "dispatch preceded its durable claim");
+                        if (transportFault) throw new InvalidOperationException("synthetic transport failure");
+                        return Task.FromResult(OneShotExperimentSnapshot(0));
+                    }
+                };
+                var requested = new WsabiWmiOneShotExperiment(prepared,
+                    new WsabiWmiOneShotFileReservation(local)).RunAsync().GetAwaiter().GetResult();
+                Equal(transportFault ? WsabiWmiOneShotStatus.TransportFailure : WsabiWmiOneShotStatus.ResponseReceived,
+                    requested.Status);
+                Check(requested.InvocationRequested, "dispatch attempt was not recorded");
+                Equal(1, prepared.Calls);
+                OneShotExperimentAssertNoHardwareMeaning(requested);
+                string claimPath = Path.Combine(local, WsabiWmiOneShotFileReservation.MarkerFileName);
+                byte[] claim = File.ReadAllBytes(claimPath);
+
+                var later = new OneShotExperimentBackend();
+                var blocked = new WsabiWmiOneShotExperiment(later,
+                    new WsabiWmiOneShotFileReservation(local)).RunAsync().GetAwaiter().GetResult();
+                Equal(WsabiWmiOneShotStatus.ReservationAlreadyUsed, blocked.Status);
+                Check(!blocked.InvocationRequested && later.Calls == 0,
+                    "a fresh experiment bypassed the original attempt marker");
+                Check(claim.SequenceEqual(File.ReadAllBytes(claimPath)), "original claim was modified");
+                Equal(1, Directory.GetFiles(local).Length);
+            }
+        }));
         Add("one-shot file reservation durably records only the fixed claim and survives new instances", () => WithDirectory(dir =>
         {
             string local = Path.Combine(dir, "nested", "experiments");

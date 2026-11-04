@@ -19,6 +19,7 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
     {
         private const string WorkerArgument = "--one-shot-query65-worker";
         private const int WorkerTimeoutMilliseconds = 10000;
+        private const string ExperimentRevision = "Query65-locator-v2";
 
         [MTAThread]
         private static int Main(string[] args)
@@ -31,6 +32,7 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
                 return 2;
             }
 
+            Console.WriteLine("수정판: 승인된 단1회 조회 · 경로 정보 확보 보완 (" + ExperimentRevision + ")");
             int result;
             if (!IsSupportedProcess())
             {

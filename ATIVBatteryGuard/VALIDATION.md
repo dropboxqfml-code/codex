@@ -1,5 +1,14 @@
 # Settings 앱 분석판 검증 기록
 
+## 경로 정보 확보 보완판 Locator-v2 — 2026-11-04
+
+- 전체 **330 passed, 0 failed, 0 skipped (330 registered)**: reports/wmi-preflight-locator-tests.json 및 .log. 기존 전체 조합의 준비 조건·개인정보 검사가 새 오류도 포함하며 과거 enum 값/모호한 결과 보존 회귀를 추가했습니다.
+- 전체6개 프로젝트 x64 net48 Release 빌드 **경고0개·오류0개**: reports/wmi-preflight-locator-build.log. portable 테스트 프로젝트도 경고·오류0개로 빌드했습니다.
+- Python 배포 검증 **10개 통과**: reports/wmi-preflight-locator-python-tests.log. 신규4개 그룹은 정상 소스 수락, 경로 옵션 누락/비활성·적용 범위 확대/쿼리 확대 거부, 이전 바이너리 혼입 거부를 확인합니다. 실제 Windows나 OEM 코드는 로드하지 않습니다.
+- [이번 변경](WMI_PREFLIGHT_LOCATOR_UPDATE.md)은 무호출 점검 도구의 메서드 쿼리에만 EnsureLocatable=true를 적용하고 오류 분류를 세분화합니다. 독립 읽기 전용 검토에서 차단 문제를 발견하지 못했습니다. 정상 Boolean false만 TargetInactive로 보고하고 누락·형식 오류를 그대로 구분합니다.
+- 기준352c0d3과 대조해 기존 실험 backend/정책/예약·메인 앱·프로세스 호스트의 변경이 없음을 확인했습니다. 단일 활성 대상·경로/입력 검증·DirectRead·시간 제한은 유지합니다.
+- 새 점검판의 실제 Windows/WMI 제공자 실행은 아직 미검증이며 클라우드에서 Windows/OEM을 실행하지 않았습니다. 경로 정보 누락이 이전 원인이었다거나 해결됐다고 단정하지 않습니다. OEM 호출·예약 접근 없이 실제 충전 제어는 Unsupported입니다.
+
 ## 무호출 점검 실기 결과 분석
 
 - 사용자 TXT에서 Elevated·Complete·MethodEnumeration·InactiveOrInvalidTarget을 확인했습니다. [분기별 해석](WMI_PREFLIGHT_ENUMERATION_RESULT.md)에 따라 모델/BIOS·상세 규약/id1·연결 통과와 TargetRead 이후 미진입을 구분했습니다.

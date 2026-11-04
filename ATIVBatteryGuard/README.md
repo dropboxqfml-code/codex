@@ -1,5 +1,9 @@
 # ATIV Battery Guard
 
+[경로 정보 확보 보완판 Locator-v2](WMI_PREFLIGHT_LOCATOR_UPDATE.md)를 구현했습니다. OEM 호출 없는 점검 도구의 메서드 대상 쿼리에만 EnsureLocatable을 추가하고 객체·경로 오류와 명시적 Active=false를 구분합니다. 기존 단일 활성 대상/입력 검증과 시간 제한을 유지하며 실제 충전 제어는 계속 Unsupported입니다.
+
+[새 LOCATOR 프로그램·소스](../downloads/README.md)를 새 폴더에 풀고 `ATIVBatteryGuard.WmiPreflightCheck.exe`만 같은 계정에서 수동 관리자 실행해 `(Locator-v2)` 표시가 있는 새 출력만 전달합니다. OEM 호출과 예약 접근은 없으며 이전 실험 EXE 재실행·예약 표식 삭제·과거 자료 재제출은 필요하지 않습니다. 아래는 이전 개발 기록입니다.
+
 [새 점검 도구의 실기 결과](WMI_PREFLIGHT_ENUMERATION_RESULT.md)를 분석했습니다. Elevated 상태에서 모델/BIOS·메서드 정의 검사는 통과했으나 MethodEnumeration의 대상 조건에서 중단됐습니다. Active=false와 객체/경로 문제를 아직 구분할 수 없어 경로 정보 확보 옵션과 고정 오류 분류를 다음 수정 대상으로 정리했습니다. OEM 호출·예약 접근은 없었고 같은 도구의 재실행이나 기존 자료 재제출은 필요하지 않습니다. 이번 변경은 분석 문서뿐입니다.
 
 [OEM 호출 없는 사전 검증 점검 도구](WMI_PREFLIGHT_ONLY_CHECK.md)를 추가했습니다. 이전 Elevated 실패 결과에서 빠졌던 준비 단계와 고정 오류 종류를 출력하며, 기존 실험의 조건·쿼리 옵션은 유지합니다. OEM 호출과 예약 표식 접근은 없고 실제 충전 제어는 계속 Unsupported입니다.

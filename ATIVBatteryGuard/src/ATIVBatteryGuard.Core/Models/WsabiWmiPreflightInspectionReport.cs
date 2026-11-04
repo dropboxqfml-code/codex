@@ -11,7 +11,11 @@ namespace ATIVBatteryGuard.Core.Models
         BufferUnavailable, FieldUnavailable, FieldTypeMismatch, InvalidValue,
         AccessDenied, TimedOut, ClassNotFound, NamespaceNotFound, NotFound,
         InvalidParameter, NotSupported, ProviderFailure, ProviderNotCapable,
-        FrameworkNotSupported, OtherError
+        FrameworkNotSupported, OtherError,
+        // Keep the earlier values stable for historical reports. Detailed
+        // locator failures must not be interpreted as an inactive target.
+        RowObjectUnavailable, PathMissing, PathNotInstance, PathClassMismatch,
+        RelativePathMissing, RelativePathTooLong, TargetInactive
     }
 
     // Only fixed classifications cross this boundary. No provider message,
@@ -19,6 +23,7 @@ namespace ATIVBatteryGuard.Core.Models
     public sealed class WsabiWmiPreflightInspectionReport
     {
         public const string ConsoleTitle = "사전검증 전용 · OEM 호출 없음";
+        public const string InspectionVersion = "Locator-v2";
 
         public ProcessElevationState Elevation { get; }
         public WsabiWmiMetadataStatus Status { get; }
@@ -57,6 +62,7 @@ namespace ATIVBatteryGuard.Core.Models
         {
             var text = new StringBuilder();
             text.AppendLine("ATIV Battery Guard — " + ConsoleTitle);
+            text.AppendLine("점검판: 경로 정보 확보 보완판 (" + InspectionVersion + ")");
             text.AppendLine("현재 토큰: " + ElevationText(Elevation) + " (" + Elevation + ")");
             text.AppendLine("사전 검증: " + StatusText(Status) + " (" + Status + ")");
             text.AppendLine("사전 검증 단계: " + StageText(Stage) + " (" + Stage + ")");
@@ -143,6 +149,13 @@ namespace ATIVBatteryGuard.Core.Models
                 case WsabiWmiPreflightIssue.ProviderFailure: return "공급자 실패 분류";
                 case WsabiWmiPreflightIssue.ProviderNotCapable: return "공급자가 작업을 처리할 수 없음";
                 case WsabiWmiPreflightIssue.FrameworkNotSupported: return "현재 프레임워크에서 준비 작업 지원 불가";
+                case WsabiWmiPreflightIssue.RowObjectUnavailable: return "반환 행을 대상 객체로 확인할 수 없음";
+                case WsabiWmiPreflightIssue.PathMissing: return "대상 경로 정보 미관측";
+                case WsabiWmiPreflightIssue.PathNotInstance: return "대상 경로가 인스턴스를 가리키지 않음";
+                case WsabiWmiPreflightIssue.PathClassMismatch: return "대상 경로의 클래스 불일치";
+                case WsabiWmiPreflightIssue.RelativePathMissing: return "대상 상대 경로 정보 미관측";
+                case WsabiWmiPreflightIssue.RelativePathTooLong: return "대상 상대 경로 길이 제한 초과";
+                case WsabiWmiPreflightIssue.TargetInactive: return "대상 Active 속성이 false";
                 default: return "기타 오류 또는 원인 확인 불가";
             }
         }

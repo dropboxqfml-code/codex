@@ -1,4 +1,14 @@
-# 사전 검증 점검 도구 — OEM 호출 없음
+# 경로 정보 확보 보완판 — Locator-v2 · OEM 호출 없음
+
+[새 프로그램 ZIP](ATIVBatteryGuard-WMI-PREFLIGHT-LOCATOR.zip) · [일치 소스 ZIP](ATIVBatteryGuard-WMI-PREFLIGHT-LOCATOR-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-WMI-PREFLIGHT-LOCATOR-SHA256SUMS.txt) · [변경 내용·결과 해석](../ATIVBatteryGuard/WMI_PREFLIGHT_LOCATOR_UPDATE.md)
+
+메서드 대상 쿼리에만 경로 정보 확보 옵션을 추가하고 객체·경로 문제와 명시적 Active=false를 구분한 새 무호출 점검판입니다. 기존 단일 활성 대상과 입력 검증은 유지합니다. **OEM 호출·예약 파일 접근·삼성 DLL 실행은 없고 충전 제어는 미지원**입니다. 새 점검판의 Windows 실기 실행은 아직 미검증입니다.
+
+ZIP 전체를 새 로컬 폴더에 풀고 그 안의 **ATIVBatteryGuard.WmiPreflightCheck.exe만 같은 계정에서 수동 관리자 실행**합니다. `(Locator-v2)` 표시와 단계·원인 분류가 있는 새 출력만 전달하세요. 다른 관리자 계정의 암호가 필요하면 중단합니다. 과거 TXT·삼성 DLL·EXE·파일 목록·권한 비교는 다시 제출할 필요가 없습니다.
+
+이전 **WmiOneShotQuery.exe는 재실행하지 않고 기존 예약 표식도 건드리지 않습니다.** 삼성 원본 DLL과 이전 실험 EXE는 새 ZIP에 포함하지 않습니다. 아래는 이전 배포 기록입니다.
+
+## 최초 사전 검증 점검 도구 — 이전 배포 기록
 
 **실기 결과 수신:** [MethodEnumeration 대상 조건 불일치 분석](../ATIVBatteryGuard/WMI_PREFLIGHT_ENUMERATION_RESULT.md)을 기록했습니다. 이번에는 새 실행 파일을 배포하지 않으며 아래 기존 점검 도구를 반복 실행할 필요가 없습니다. 다음 수정 범위는 오류 분류와 경로 정보 확보 방식입니다. 아래는 해당 배포 당시의 안내입니다.
 

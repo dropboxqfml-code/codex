@@ -10,6 +10,7 @@ import zipfile
 
 
 PROJECT_NAME = "ATIVBatteryGuard.WmiPreflightCheck"
+DIAGNOSTIC_REVISION = "Locator-v2"
 SOURCE_SUFFIXES = {".cs", ".csproj", ".sln", ".xaml", ".md", ".config", ".manifest", ".ps1", ".py"}
 EXCLUDED_PARTS = {"bin", "obj", "reports", "dist", ".git", ".vs", "__pycache__"}
 FORBIDDEN_REFERENCES = {
@@ -155,6 +156,41 @@ def code_only(source):
     return re.sub(literals_and_comments, lambda match: "\n" * match.group().count("\n") + " ", source, flags=re.S)
 
 
+def without_comments(source):
+    # Preserve query literals so the option can be tied to the fixed SELECT,
+    # while a commented-out example cannot satisfy the required call shape.
+    literals_and_comments = r'@"(?:[^"]|"")*"|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*.*?\*/'
+    return re.sub(literals_and_comments,
+                  lambda match: "\n" * match.group().count("\n") + " "
+                  if match.group().startswith(("//", "/*")) else match.group(), source, flags=re.S)
+
+
+def inspect_locator_scope(native):
+    code = code_only(native)
+    calls = re.findall(r'\bCreateEnumerationOptions\s*\(([^()]*)\)', code)
+    expected_calls = [r'\s*ensureLocatable\s*:\s*true\s*', r'\s*',
+                      r'\s*bool\s+ensureLocatable\s*=\s*false\s*']
+    if len(calls) != 3 or any(sum(bool(re.fullmatch(pattern, call)) for call in calls) != 1
+                              for pattern in expected_calls):
+        raise ValueError("Only the fixed method-target query may request locatable information.")
+    query_with_option = (r'\bnew\s+ObjectQuery\s*\(\s*"SELECT Active FROM WmiAcpiMethod"\s*\)\s*,\s*'
+                         r'CreateEnumerationOptions\s*\(\s*ensureLocatable\s*:\s*true\s*\)')
+    scalar_query = r'\bnew\s+ObjectQuery\s*\(\s*query\s*\)\s*,\s*CreateEnumerationOptions\s*\(\s*\)'
+    source = without_comments(native)
+    if not re.search(query_with_option, source) or not re.search(scalar_query, source):
+        raise ValueError("The locator option must apply only to the reviewed method-target SELECT.")
+    if len(re.findall(r'\bEnsureLocatable\b', code)) != 1 or not re.search(
+            r'\bEnsureLocatable\s*=\s*ensureLocatable\b', code):
+        raise ValueError("The locator option must use the reviewed false-by-default parameter.")
+
+
+def inspect_locator_build(executable, core):
+    if b"set_EnsureLocatable\0" not in executable:
+        raise ValueError("The built preflight EXE must contain its locatable-option setter.")
+    if DIAGNOSTIC_REVISION.encode("utf-16-le") not in core:
+        raise ValueError("The built Core DLL must contain the Locator-v2 report marker.")
+
+
 def inspect_sources(root, project):
     level = ET.parse(project / "app.manifest").find(
         ".//{urn:schemas-microsoft-com:asm.v3}requestedExecutionLevel")
@@ -200,6 +236,7 @@ def inspect_sources(root, project):
     actual_queries = set(re.findall(r'"(SELECT\s+[^"\r\n]+)"', native, re.I))
     if actual_queries != fixed_queries or re.search(r'\bSELECT\s+\*', native, re.I):
         raise ValueError("Only the reviewed fixed, read-only queries belong in the probe.")
+    inspect_locator_scope(native)
     if PROJECT_NAME in (root / "src/ATIVBatteryGuard.App/ATIVBatteryGuard.App.csproj").read_text(encoding="utf-8"):
         raise ValueError("The main application must not reference this separate tool.")
 
@@ -252,10 +289,14 @@ def main():
     names = [PROJECT_NAME + ".exe", PROJECT_NAME + ".exe.config", "ATIVBatteryGuard.Core.dll"]
     files = {name: (build / name).read_bytes() for name in names}
     inspect_executable(files[PROJECT_NAME + ".exe"])
+    inspect_locator_build(files[PROJECT_NAME + ".exe"], files["ATIVBatteryGuard.Core.dll"])
     info = {
-        "application": "ATIV Battery Guard WMI Preflight Only",
+        "application": "ATIV Battery Guard WMI Preflight Locator",
         "target": "Windows10x64/.NETFramework4.8",
         "preflightOnly": True,
+        "diagnosticRevision": DIAGNOSTIC_REVISION,
+        "ensuresMethodTargetLocatable": True,
+        "locatorOptionChangesOnlyMethodTargetQuery": True,
         "requestedExecutionLevel": "asInvoker",
         "requiresOwnerManualSameAccountAdministratorRun": True,
         "requestsUacOrElevation": False,
@@ -297,15 +338,18 @@ def main():
     }
     files["BUILD-INFO.json"] = json.dumps(info, ensure_ascii=False, indent=2).encode("utf-8")
     instructions = """ATIV Battery Guard — 사전검증 전용 · OEM 호출 없음
+점검판: 경로 정보 확보 보완판 (Locator-v2)
 
-이번 도구는 이전 결과의 준비 실패 위치와 고정 오류 분류만 확인하는 별도 미서명 개발판입니다.
+이번 도구는 이전 대상 확인 실패를 보완한 별도 미서명 개발판입니다.
+메서드 대상 쿼리에만 경로 정보 확보 옵션을 적용하고 객체·경로 문제와 명시적 비활성을 구분합니다.
+이전 실패의 실제 원인은 아직 미확정이며 이번 수정이 원인을 해결한다고 보장하지 않습니다.
 OEM 메서드를 실행하지 않으며 1회 예약 표식을 읽거나 만들거나 변경하지 않습니다.
 이전 ATIVBatteryGuard.WmiOneShotQuery.exe 실험 도구는 재실행하지 마세요.
 
 1. ZIP 전체를 메인 앱과 이전 실험 도구에서 분리된 새 로컬 폴더에 압축 해제합니다.
 2. 같은 Windows 계정에서 새 ATIVBatteryGuard.WmiPreflightCheck.exe만 오른쪽 클릭하여 수동 관리자 실행합니다.
    다른 관리자 계정의 암호를 요구하면 중단합니다. 자동 UAC·권한 상승 코드는 없습니다.
-3. 창의 '사전검증 전용 · OEM 호출 없음'을 확인하고 출력 전체를 복사해 전달한 뒤 Enter로 닫습니다.
+3. 창의 '사전검증 전용 · OEM 호출 없음'과 'Locator-v2'를 확인하고 새 출력 전체를 복사해 전달한 뒤 Enter로 닫습니다.
    과거 TXT·삼성 DLL·EXE·기존 진단은 다시 제출할 필요가 없습니다.
 4. 기존 1회 예약 표식을 삭제하거나 초기화하지 마세요. 이 도구에는 예약 접근 기능이 없습니다.
 
@@ -324,7 +368,7 @@ OEM 메서드를 실행하지 않으며 1회 예약 표식을 읽거나 만들�
     files["먼저 읽어주세요.txt"] = instructions.replace("\n", "\r\n").encode("utf-8-sig")
     files["SHA256SUMS.txt"] = "".join(sha(data) + "  " + name + "\n" for name, data in sorted(files.items())).encode("utf-8")
     args.output.mkdir(parents=True, exist_ok=True)
-    target = args.output / "ATIVBatteryGuard-WMI-PREFLIGHT-ONLY.zip"
+    target = args.output / "ATIVBatteryGuard-WMI-PREFLIGHT-LOCATOR.zip"
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 경로 정보 확보 옵션·고정 오류 분류 구현 후
+
+[Locator-v2 구현과 확인 범위](WMI_PREFLIGHT_LOCATOR_UPDATE.md)를 먼저 읽습니다. 새 무호출 점검판은 MethodEnumeration의 고정 SELECT에만 EnsureLocatable=true를 적용하고 모델/BIOS 조회 옵션은 기존대로 유지합니다. 객체/경로 문제 여섯 종류와 정상 Boolean Active=false를 구분합니다. 과거 enum 값과 모호한 결과는 그대로 남깁니다.
+
+단일 활성 대상·경로·입력 검증, DirectRead와 6초 예산·부모/작업자 각10초 제한을 유지합니다. 기존 실험 backend/정책/예약/메인 앱은 변경하지 않았습니다. Ready에서도 OEM 호출·예약 접근은 없고 충전 제어는 Unsupported입니다. 새 LOCATOR ZIP을 별도 공유하며 삼성 원본/이전 실험 EXE는 제외합니다.
+
+다음 실기 확인은 새 점검판 `(Locator-v2)`의 단계와 세부 원인 분류뿐입니다. 과거 자료나 같은 이전 실행 결과를 다시 요청하지 않습니다. 기존 실험 EXE 재실행·표식 삭제·추가 OEM 시험으로 이어가지 않습니다. 경로 정보 확보가 실제 이전 실패를 해결했는지는 아직 미확정입니다. 아래는 이전 기록입니다.
+
 ## 무호출 점검 결과 수신 — 메서드 대상 열거 조건 불일치
 
 [이번 결과와 다음 수정 범위](WMI_PREFLIGHT_ENUMERATION_RESULT.md)를 먼저 읽습니다. 사용자 출력은 Elevated·Complete·MethodEnumeration·InactiveOrInvalidTarget입니다. 이번 실행은 고정 모델/BIOS·상세 metadata/binder/id1·ROOT\WMI 연결을 통과했고 TargetRead/입력CIMTYPE/버퍼 준비에는 도달하지 않았습니다. OEM 호출과 예약 접근은 없습니다.

@@ -7,6 +7,38 @@ internal static partial class Program
 {
     private static void RegisterWsabiWmiPreflightInspectionTests()
     {
+        Add("detailed preflight locator issues preserve all historical issue numbers and the unresolved historical result", () =>
+        {
+            WsabiWmiPreflightIssue[] historical = {
+                WsabiWmiPreflightIssue.None, WsabiWmiPreflightIssue.NotElevated,
+                WsabiWmiPreflightIssue.PlatformUnsupported, WsabiWmiPreflightIssue.DeviceMismatch,
+                WsabiWmiPreflightIssue.SchemaMismatch, WsabiWmiPreflightIssue.RowCountMismatch,
+                WsabiWmiPreflightIssue.InactiveOrInvalidTarget, WsabiWmiPreflightIssue.InputShapeMismatch,
+                WsabiWmiPreflightIssue.InputCimTypeMissing, WsabiWmiPreflightIssue.InputCimTypeInvalid,
+                WsabiWmiPreflightIssue.InputCimTypeMismatch, WsabiWmiPreflightIssue.BufferUnavailable,
+                WsabiWmiPreflightIssue.FieldUnavailable, WsabiWmiPreflightIssue.FieldTypeMismatch,
+                WsabiWmiPreflightIssue.InvalidValue, WsabiWmiPreflightIssue.AccessDenied,
+                WsabiWmiPreflightIssue.TimedOut, WsabiWmiPreflightIssue.ClassNotFound,
+                WsabiWmiPreflightIssue.NamespaceNotFound, WsabiWmiPreflightIssue.NotFound,
+                WsabiWmiPreflightIssue.InvalidParameter, WsabiWmiPreflightIssue.NotSupported,
+                WsabiWmiPreflightIssue.ProviderFailure, WsabiWmiPreflightIssue.ProviderNotCapable,
+                WsabiWmiPreflightIssue.FrameworkNotSupported, WsabiWmiPreflightIssue.OtherError };
+            for (int index = 0; index < historical.Length; index++) Equal(index, (int)historical[index]);
+            foreach (WsabiWmiPreflightIssue detail in new[] {
+                WsabiWmiPreflightIssue.RowObjectUnavailable, WsabiWmiPreflightIssue.PathMissing,
+                WsabiWmiPreflightIssue.PathNotInstance, WsabiWmiPreflightIssue.PathClassMismatch,
+                WsabiWmiPreflightIssue.RelativePathMissing, WsabiWmiPreflightIssue.RelativePathTooLong,
+                WsabiWmiPreflightIssue.TargetInactive })
+                Check((int)detail >= historical.Length, "new locator detail reused a historical issue number");
+
+            var unresolved = new WsabiWmiPreflightInspectionReport(ProcessElevationState.Elevated,
+                WsabiWmiMetadataStatus.Complete, WsabiWmiOneShotPreflightStage.MethodEnumeration,
+                WsabiWmiPreflightIssue.InactiveOrInvalidTarget);
+            Equal(WsabiWmiPreflightIssue.InactiveOrInvalidTarget, unresolved.Issue);
+            Check(unresolved.ToDisplayText().Contains("(InactiveOrInvalidTarget)")
+                && !unresolved.ToDisplayText().Contains("(TargetInactive)"),
+                "historical ambiguous failure was relabeled as proven inactivity");
+        });
         Add("preflight inspection classifies only the fixed HRESULT allowlist and treats unknown success codes as errors", () =>
         {
             int[] values = {
@@ -99,11 +131,12 @@ internal static partial class Program
             foreach (var parameter in constructors[0].GetParameters())
                 Check(parameter.ParameterType.IsEnum, "inspection accepts raw values or exception details");
             Equal("사전검증 전용 · OEM 호출 없음", WsabiWmiPreflightInspectionReport.ConsoleTitle);
+            Equal("Locator-v2", WsabiWmiPreflightInspectionReport.InspectionVersion);
             foreach (WsabiWmiPreflightIssue issue in Enum.GetValues(typeof(WsabiWmiPreflightIssue)))
             {
                 string text = new WsabiWmiPreflightInspectionReport(ProcessElevationState.Elevated,
                     WsabiWmiMetadataStatus.Complete, WsabiWmiOneShotPreflightStage.Ready, issue).ToDisplayText();
-                Check(text.Contains("(" + issue + ")") && text.Contains("OEM 호출: 없음")
+                Check(text.Contains("(" + issue + ")") && text.Contains("(Locator-v2)") && text.Contains("OEM 호출: 없음")
                     && text.Contains("1회 예약 표식 접근: 없음")
                     && text.Contains("준비 완료는 OEM 실행이나 충전 제한 성공을 의미하지 않습니다.")
                     && text.Contains("실제 충전 제어: 미지원"), "inspection meaning is ambiguous");

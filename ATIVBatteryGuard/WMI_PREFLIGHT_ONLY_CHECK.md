@@ -1,5 +1,7 @@
 # OEM 호출 없는 사전 검증 점검 도구 — 2026-11-04
 
+**현재 점검판:** [Locator-v2](WMI_PREFLIGHT_LOCATOR_UPDATE.md)는 메서드 대상 쿼리의 경로 정보 확보 옵션과 세부 오류 분류를 보완했습니다. 새 LOCATOR ZIP과 `(Locator-v2)` 출력 표시로 구분합니다. 아래는 최초 배포 기록입니다.
+
 **실기 결과 수신:** [MethodEnumeration 중단 결과](WMI_PREFLIGHT_ENUMERATION_RESULT.md)를 분석했습니다. 이번 도구의 해당 단계까지 실행과 고정 출력은 사용자 노트북에서 확인됐고 TargetRead 이후는 미실시입니다. 아래는 배포 당시 설명이며 같은 실행을 반복할 필요는 없습니다.
 
 ## 이전 결과에서 보완하는 점

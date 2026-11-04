@@ -9,8 +9,8 @@ using ATIVBatteryGuard.Diagnostics;
 
 namespace ATIVBatteryGuard.WmiPreflightCheck
 {
-    // Frozen read-only reproduction of the experiment's preparation checks.
-    // Keep the fixed guards and query options in step with the reviewed source;
+    // Read-only preparation checks retain the experiment's fixed guards.
+    // Only the method query requests locator information for those same guards;
     // a failure category is evidence to review, not a reason to bypass a guard.
     internal static class ReadOnlyPreparationProbe
     {
@@ -70,7 +70,7 @@ namespace ATIVBatteryGuard.WmiPreflightCheck
                     bool complete;
                     stage = WsabiWmiOneShotPreflightStage.MethodEnumeration;
                     using (var searcher = new ManagementObjectSearcher(scope,
-                        new ObjectQuery("SELECT Active FROM WmiAcpiMethod"), CreateEnumerationOptions()))
+                        new ObjectQuery("SELECT Active FROM WmiAcpiMethod"), CreateEnumerationOptions(ensureLocatable: true)))
                     using (var collection = searcher.Get())
                     using (var rows = collection.GetEnumerator())
                     {
@@ -79,18 +79,22 @@ namespace ATIVBatteryGuard.WmiPreflightCheck
                             using (var current = rows.Current)
                             {
                                 var row = current as ManagementObject;
-                                if (row == null) throw Failure(WsabiWmiPreflightIssue.InactiveOrInvalidTarget);
+                                if (row == null) throw Failure(WsabiWmiPreflightIssue.RowObjectUnavailable);
                                 RequirePreflightTime();
                                 count++;
                                 if (count == 2) break;
                                 active = ReadActive(row, out activeIssue);
                                 ManagementPath path = row.Path;
-                                if (path == null || !path.IsInstance || !string.Equals(path.ClassName,
+                                if (path == null) throw Failure(WsabiWmiPreflightIssue.PathMissing);
+                                if (!path.IsInstance) throw Failure(WsabiWmiPreflightIssue.PathNotInstance);
+                                if (!string.Equals(path.ClassName,
                                     WsabiWmiContractMetadataPolicy.MethodClass, StringComparison.OrdinalIgnoreCase))
-                                    throw Failure(WsabiWmiPreflightIssue.InactiveOrInvalidTarget);
+                                    throw Failure(WsabiWmiPreflightIssue.PathClassMismatch);
                                 relativePath = path.RelativePath;
-                                if (string.IsNullOrEmpty(relativePath) || relativePath.Length > 4096)
-                                    throw Failure(WsabiWmiPreflightIssue.InactiveOrInvalidTarget);
+                                if (string.IsNullOrEmpty(relativePath))
+                                    throw Failure(WsabiWmiPreflightIssue.RelativePathMissing);
+                                if (relativePath.Length > 4096)
+                                    throw Failure(WsabiWmiPreflightIssue.RelativePathTooLong);
                             }
                         }
                         complete = count < 2;
@@ -101,7 +105,7 @@ namespace ATIVBatteryGuard.WmiPreflightCheck
                     if (active != true)
                         return Report(WsabiWmiMetadataStatus.Complete,
                             activeIssue == WsabiWmiPreflightIssue.None
-                                ? WsabiWmiPreflightIssue.InactiveOrInvalidTarget : activeIssue);
+                                ? WsabiWmiPreflightIssue.TargetInactive : activeIssue);
 
                     // The observed key remains local and is never returned.
                     // Only the original fixed local class and scope are used.
@@ -113,7 +117,7 @@ namespace ATIVBatteryGuard.WmiPreflightCheck
                         RequirePreflightTime();
                         if (ReadActive(target, out activeIssue) != true)
                             throw Failure(activeIssue == WsabiWmiPreflightIssue.None
-                                ? WsabiWmiPreflightIssue.InactiveOrInvalidTarget : activeIssue);
+                                ? WsabiWmiPreflightIssue.TargetInactive : activeIssue);
                         stage = WsabiWmiOneShotPreflightStage.InputParameters;
                         using (var input = target.GetMethodParameters(WsabiWmiContractMetadataPolicy.MethodName))
                         {
@@ -197,10 +201,10 @@ namespace ATIVBatteryGuard.WmiPreflightCheck
                 return scope;
             }
 
-            private EnumerationOptions CreateEnumerationOptions() => new EnumerationOptions
+            private EnumerationOptions CreateEnumerationOptions(bool ensureLocatable = false) => new EnumerationOptions
             {
                 Timeout = RemainingTimeout(), BlockSize = 1, Rewindable = false,
-                ReturnImmediately = true, DirectRead = true
+                ReturnImmediately = true, DirectRead = true, EnsureLocatable = ensureLocatable
             };
 
             private TimeSpan RemainingTimeout()

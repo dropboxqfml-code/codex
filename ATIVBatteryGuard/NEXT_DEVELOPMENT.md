@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 이름 객체·Store/Return 참조 관계 구현 — v5
+
+[구현 범위와 실행 안내](ACPI_OBJECT_REFERENCE_UPDATE.md)를 먼저 읽습니다. v4에서 관측한 root/helper의 이름 참조를 same-table 선언 종류와 정적 참조 관계로 분류합니다. 새 ObjectReferences는 기존 Flow/UnresolvedNameReferences/FF 의미와 분리합니다. kind 분류가 실제 runtime 형식·값·별칭·동일 데이터·실행 효과를 보장하지 않습니다.
+
+관측 Buffer/단순 Name/Mutex/Event/OperationRegion 및 지원한 단순 FieldList만 읽고 원래 이름/주소/offset/length/rawspaceId는 출력하지 않습니다. 중복/Alias/External/object-vs-method/동적CreateField 가림은 보수적으로 미확정입니다. FieldList 전체 성공 전 typed prefix는 확정하지 않고 byte재검색도 없습니다. 새 본문 고유 참조 상한64는 새보고서LimitExceeded만 만들며 기존 root 구문/Flow/직접 FF를 폐기하지 않습니다.
+
+수집은 같은 두 Windows API·DSDT/첫 SSDT이고 실제 I/O·영역/포트/driver/물리 메모리/registry·OEM/AML·예약·값/분기평가·하드웨어 쓰기는 없습니다. 새 배포 ACPI-OBJECT-REFERENCES/Acpi-routing-v5는 프로그램 ZIP 하나만 일반 권한으로 실행합니다. v4 반복/관리자 비교/기존 자료 재제출은 필요하지 않습니다. 새 v5 분석의 실기는 미관측이고 실제 충전 제어는 Unsupported입니다. 아래는 이전 기록입니다.
+
 ## v4 보조 본문 실기 확인·다음 구현 계획
 
 [이번 분석과 계획](ACPI_V4_RESULT_AND_NEXT_PLAN.md)을 먼저 읽습니다. v4는 보조 해석 1/미지원 0/실패 None, Acquire·Release, helper Return 0/None·그 본문 범위의 literal FF 미관측입니다. v4의 구문 지원 목표는 실기 관측됐고 실제 FF 의미/충전 제어는 미확정입니다. root Return UnresolvedName·직접 Arg2 인수 0은 입력 미전달/잘못된 반환이 아닙니다. 미해결 6은 root+성공helper의 참조 횟수이지 객체 6개가 아니며 연결 Partial과 전체 namespace Partial을 구분합니다.

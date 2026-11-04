@@ -1,5 +1,15 @@
 # Settings 앱 분석판 검증 기록
 
+## 관측 이름 객체·참조 관계 요약 — v5 / 2026-11-04
+
+- [v5 구현 범위](ACPI_OBJECT_REFERENCE_UPDATE.md)는 직전 v4 관측과 계획에 따라 같은 테이블의 선언 종류·Store/Return 대상 참조 관계만 요약합니다. 기존 Flow의 이름 참조 수·Partial 조건과 직접 비교/FF 의미는 유지하고 새 ObjectReferences 상태·수·종류·nullable 관계를 별도로 보고합니다.
+- 현재 전체 **398 passed, 0 failed, 0 skipped (398 registered)**: reports/acpi-objects-tests.json 및 .log. 새 14개 그룹은 선언 종류·기존 Flow 보존, 직접 Arg2 저장/반환/보조 참조 관계, 값/별칭/계산식 비추론, Field 주소 공간·큰 bitlength·경계·실패 prefix 폐기, 중복/가림/명시 경로/동적 생성/미지원 scope의 부모 검색 차단, 64개 상한·반복 참조 횟수, 실패 결과 폐기·개인정보·불변성을 검사합니다. 기존 가짜 Field fixture는 새 경계 검증에 맞춰 Partial을 기대하되 가짜 WMI 정의 미인식 검사는 유지합니다.
+- 전체 7개 프로젝트 x64 net48 Release 및 테스트 프로젝트 빌드 **경고 0개·오류 0개**: reports/acpi-objects-build.log 및 test-build.log. 런타임 의존성·수집 API·대상·권한은 추가하지 않았습니다.
+- Python 배포 검증 **26개 통과**: reports/acpi-objects-python-tests.log. 새 순수 모델을 검사 대상에 포함했고 데이터 enum의 Mutex 종류는 허용하면서 실제 Threading/Mutex 생성·호출은 거부하는 회귀를 추가했습니다. 기존 고정 native/host·PE/x64/asInvoker·무호출/무저장·소스 대응 검사는 유지합니다.
+- 독립 읽기 전용 소스 검토에서 지적한 opaque Field/Index/Bank scope의 부모 Buffer 오연결 위험을 보수적 해소 장벽으로 차단했고 회귀를 통과했습니다. 최신 코드에서 추가 차단 문제를 찾지 못했습니다. FieldList 전체가 지원 범위 안에서 성공하기 전에는 typed Field를 확정하지 않으며 bitlength를 남은 바이트 수와 비교하지 않습니다.
+- 기존 공개 다른 삼성 530U3 자료를 형식 검증에만 사용했습니다. 새 보고서에서 해석된 보조 본문의 Integer/Mutex 선언 참조를 분류했으며 미분류 참조와 관계는 Partial/미확정으로 유지했습니다. reports/acpi-objects-public-sample.jsonl에 기록합니다. 현재 사용자 모델에 종류·관계·포트 의미를 대입하지 않았고 원본 자료는 배포하지 않습니다.
+- v5의 새 객체·참조 분석은 실제 노트북에서 아직 미관측입니다. 모든 자동 입력은 합성 AML·가짜 콜백이고 공개 자료도 byte parser만 사용했습니다. Windows/OEM/AML/영역/드라이버/펌웨어를 실행하지 않았습니다. 일반 앱·기존 실제 요청/응답/예약/제어 정책과 이전 ZIP은 유지하며 실제 충전 제어는 Unsupported입니다.
+
 ## v4 실기 관측 수신·후속 계획
 
 - 사용자 요약에서 DSDT 후보 Parsed·보조 해석 1/미지원 0·후보/보조 실패 None·Acquire/Release를 확인했습니다. v3의 보조 구문 지원 한계가 개선된 경로가 실기 관측됐습니다. [분석과 계획](ACPI_V4_RESULT_AND_NEXT_PLAN.md)에 범위를 기록했습니다.

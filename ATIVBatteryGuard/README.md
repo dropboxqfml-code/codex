@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**객체·참조 관계 요약 — Acpi-routing-v5:** [직전 계획](ACPI_V4_RESULT_AND_NEXT_PLAN.md)에 따라 같은 테이블의 관측 이름 정의 종류와 Store/Return의 참조 관계를 분류합니다. [변경 범위·실행 안내](ACPI_OBJECT_REFERENCE_UPDATE.md)와 [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-OBJECT-REFERENCES.zip)을 따릅니다. 프로그램 ZIP 하나만 새 폴더에 풀어 일반 권한으로 실행합니다. 값·분기·별칭·실제 데이터 전달을 평가하지 않으며 Field/OperationRegion을 실제로 읽거나 쓰지 않습니다. FF 의미와 충전 제어는 미확정이고 새 v5 실기는 아직 미관측입니다. 아래는 이전 기록입니다.
+
 **v4 실기 확인:** 보조 본문 1개 해석·미지원 0·실패 None·Acquire/Release 구문을 관측해 v4의 직접 목표를 확인했습니다. 연결 Partial과 FF 의미 미확정은 유지합니다. [분석 및 다음 개발 계획](ACPI_V4_RESULT_AND_NEXT_PLAN.md)은 이름 객체 종류와 Store/Return의 정적 참조 관계를 우선하며 이번에는 실행 코드/ZIP을 변경하지 않습니다. v4 반복 실행·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 아래는 이전 단계 기록입니다.
 
 **보조 본문 구문 점검 — Acpi-routing-v4:** v3에서 호출 표현식/보조 정의 1개를 관측했으나 보조 본문이 미지원으로 끝났습니다. [v4](ACPI_HELPER_SYNTAX_UPDATE.md)는 수집 범위를 유지하며 표준 확장 구문의 정적 읽기·고정 중단 원인·해석 완료한 보조 본문 범위의 반환 구문을 보고합니다. [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-HELPER-SYNTAX.zip) 하나만 새 폴더에 풀어 일반 권한으로 실행합니다. 실제 대기/동기화/AML/OEM 실행은 없고 FF 의미와 충전 제어는 미확정입니다. 아래는 이전 기록입니다.

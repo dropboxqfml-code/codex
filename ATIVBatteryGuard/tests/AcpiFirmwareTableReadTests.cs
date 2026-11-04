@@ -20,7 +20,7 @@ internal static partial class Program
             Equal(2, fake.EnumerationCalls);
             Check(fake.ReadCalls.Select(c => c.Key).SequenceEqual(new[] { AcpiTestDsdt, AcpiTestDsdt, AcpiTestSsdt, AcpiTestSsdt }), "DSDT skipped or duplicate SSDT entries reread");
             Check(fake.ReadCalls.Select(c => c.Value).SequenceEqual(new[] { 0u, (uint)fake.Dsdt.Length, 0u, (uint)fake.Ssdt.Length }), "table size/data passes changed");
-            Check(text.Contains("Acpi-routing-v4") && text.Contains("DSDT 목록 항목 수: 0") && text.Contains("SSDT 목록 항목 수: 4"), "revision or observed inventory lost");
+            Check(text.Contains("Acpi-routing-v5") && text.Contains("DSDT 목록 항목 수: 0") && text.Contains("SSDT 목록 항목 수: 4"), "revision or observed inventory lost");
             Check(AcpiReadSection(text, "DSDT").Contains("관측한 알려진 SABI WMI 설명자 수: 1"), "the direct DSDT bytes were not inspected");
             Check(text.Contains("모든 SSDT를 확인한 결과가 아닙니다"), "partial table coverage overstated");
             Equal(0, fake.ErrorReads);

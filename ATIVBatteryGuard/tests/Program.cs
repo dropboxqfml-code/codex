@@ -405,6 +405,7 @@ internal static partial class Program
         RegisterAcpiFirmwareTableReadTests();
         RegisterAcpiMethodFlowTests();
         RegisterAcpiExtendedSyntaxTests();
+        RegisterAcpiObjectReferenceTests();
         RegisterWsabiWmiExperimentReviewViewModelTests();
         RegisterWsabiWmiRequestEncoderTests();
         RegisterWsabiWmiFrameExchangeTests();

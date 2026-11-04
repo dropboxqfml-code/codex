@@ -15,6 +15,7 @@ namespace ATIVBatteryGuard.Core.Services
         public const int MaximumHelperDefinitions = 8;
         public const int MaximumHelperCallSites = 32;
         public const int MaximumNamespaceObjects = 8192;
+        public const int MaximumObjectRelationNames = 64;
         private static readonly byte[] KnownGuid = new Guid("C16C47BA-50E3-444A-AF3A-B1C348380001").ToByteArray();
 
         public static AcpiWmiRoutingReport Inspect(byte[] table)
@@ -55,11 +56,47 @@ namespace ATIVBatteryGuard.Core.Services
         private sealed class LimitException : Exception { }
         private sealed class Method { internal string Path; internal int Arguments, Start, End; }
         private sealed class Descriptor { internal string Scope, Suffix; }
+        private sealed class NameReference
+        {
+            internal string Path, Scope;
+            internal bool ParentSearch;
+        }
+        private sealed class NamedDefinition
+        {
+            internal AcpiNamedObjectKinds Kind;
+            internal AcpiAddressSpaceKinds Space;
+            internal NameReference Region;
+            internal bool Ambiguous;
+        }
+        private sealed class NamedUse
+        {
+            internal NameReference Reference;
+            internal int Count;
+            internal bool Returned, Arg2StoreTarget, StoreTarget;
+        }
+        private sealed class ClassifiedName
+        {
+            internal object Identity;
+            internal AcpiNamedObjectKinds Kind;
+            internal AcpiAddressSpaceKinds Space;
+        }
+        private sealed class ReferenceSummary
+        {
+            internal int References, Classified;
+            internal bool Unknown, ReturnUnknown, Arg2Unknown, StoreUnknown;
+            internal AcpiNamedObjectKinds Kinds, ReturnKinds, Arg2Kinds, StoreKinds;
+            internal AcpiAddressSpaceKinds FieldStoreSpaces;
+            internal readonly HashSet<object> All = new HashSet<object>();
+            internal readonly HashSet<object> Returns = new HashSet<object>();
+            internal readonly HashSet<object> Arg2Targets = new HashSet<object>();
+        }
         private struct Value
         {
             internal int Kind; // 1: integer, 2: Arg1, 3: Arg2, 4: SizeOf(Arg2), 5: known call, 6: unresolved name
             internal ulong Integer;
             internal int BufferStart, BufferLength;
+            internal AcpiNamedObjectKinds DeclarationKind;
+            internal NamedUse NamedUse;
         }
         private sealed class BodyEvidence
         {
@@ -68,6 +105,10 @@ namespace ATIVBatteryGuard.Core.Services
             internal AcpiReturnSyntax Returns;
             internal AcpiSyntaxOperation ExtendedSyntax;
             internal readonly List<Method> Calls = new List<Method>();
+            internal int NamedReferenceCount;
+            internal bool ObjectRelationLimit;
+            internal readonly Dictionary<string, NamedUse> NamedUses = new Dictionary<string, NamedUse>();
+            internal readonly HashSet<string> CreatedNames = new HashSet<string>();
         }
         private sealed class FlowEvidence
         {
@@ -79,6 +120,7 @@ namespace ATIVBatteryGuard.Core.Services
             internal AcpiSyntaxFailureKind Failures;
             internal readonly HashSet<Method> Visited = new HashSet<Method>();
             internal readonly HashSet<Method> Active = new HashSet<Method>();
+            internal readonly List<BodyEvidence> ParsedBodies = new List<BodyEvidence>();
         }
 
         private sealed class Reader
@@ -87,6 +129,8 @@ namespace ATIVBatteryGuard.Core.Services
             private readonly List<Method> methods = new List<Method>();
             private readonly List<Descriptor> descriptors = new List<Descriptor>();
             private readonly HashSet<string> objects = new HashSet<string>();
+            private readonly Dictionary<string, NamedDefinition> objectDefinitions = new Dictionary<string, NamedDefinition>();
+            private readonly HashSet<string> opaqueObjectScopes = new HashSet<string>();
             private bool complete = true;
             private int nodes;
             internal Reader(byte[] data) { bytes = data; }
@@ -100,6 +144,7 @@ namespace ATIVBatteryGuard.Core.Services
                         if (method.Path == Join(descriptor.Scope, "WM" + descriptor.Suffix)) matches.Add(method);
                 int? args = null; bool? id = null, size = null, ff = null;
                 AcpiMethodFlowReport flow = null;
+                AcpiObjectReferenceReport objectReferences = null;
                 AcpiMethodSyntaxStatus syntax = descriptors.Count > 1 || matches.Count > 1
                     ? AcpiMethodSyntaxStatus.Ambiguous : AcpiMethodSyntaxStatus.NotObserved;
                 if (descriptors.Count == 1 && matches.Count == 1)
@@ -119,18 +164,21 @@ namespace ATIVBatteryGuard.Core.Services
                     if (evidence.Complete)
                     {
                         syntax = AcpiMethodSyntaxStatus.Parsed; id = evidence.IdOne; size = evidence.Input21; ff = evidence.Ff;
-                        flow = InspectFlow(method, evidence);
+                        List<BodyEvidence> helpers;
+                        flow = InspectFlow(method, evidence, out helpers);
+                        objectReferences = InspectObjectReferences(evidence, helpers, flow);
                     }
                 }
                 return new AcpiWmiRoutingReport(complete ? AcpiRoutingStatus.Complete : AcpiRoutingStatus.Partial,
-                    descriptors.Count, matches.Count, args, id, size, ff, syntax, flow);
+                    descriptors.Count, matches.Count, args, id, size, ff, syntax, flow, objectReferences);
             }
 
-            private AcpiMethodFlowReport InspectFlow(Method root, BodyEvidence body)
+            private AcpiMethodFlowReport InspectFlow(Method root, BodyEvidence body, out List<BodyEvidence> helpers)
             {
                 var flow = new FlowEvidence();
                 flow.Visited.Add(root); flow.Active.Add(root);
                 VisitFlow(body, 0, flow);
+                helpers = flow.ParsedBodies;
                 AcpiMethodFlowStatus status = flow.Limited ? AcpiMethodFlowStatus.LimitExceeded :
                     flow.Partial ? AcpiMethodFlowStatus.Partial : AcpiMethodFlowStatus.ParsedObservedDefinitions;
                 bool? ff = status == AcpiMethodFlowStatus.ParsedObservedDefinitions && flow.Parsed > 0 ? (bool?)flow.Ff : null;
@@ -168,6 +216,7 @@ namespace ATIVBatteryGuard.Core.Services
                     }
                     catch (LimitException) { flow.Limited = true; return; }
                     flow.Parsed++; flow.Ff |= child.Ff;
+                    flow.ParsedBodies.Add(child);
                     flow.ParsedReturnStatements += child.ReturnStatements;
                     flow.ParsedReturns |= child.Returns; flow.ParsedExtendedSyntax |= child.ExtendedSyntax;
                     flow.Active.Add(method);
@@ -188,8 +237,9 @@ namespace ATIVBatteryGuard.Core.Services
                         if (op == 0x08)
                         {
                             string name = Name(ref p, end, scope);
-                            ObjectName(name);
+                            NamedDefinition definition = ObjectName(name);
                             Value value = Arg(ref p, end, scope, null, depth + 1);
+                            CommitDefinition(definition, value.DeclarationKind);
                             if (Last(name) == "_WDG")
                             {
                                 if (value.BufferStart == 0) { complete = false; continue; }
@@ -200,22 +250,38 @@ namespace ATIVBatteryGuard.Core.Services
                         {
                             byte ext = op == 0x5b ? Get(ref p, end) : (byte)0;
                             if (op == 0x5b && (ext == 1 || ext == 2))
-                            { ObjectName(Name(ref p, end, scope)); if (ext == 1) Get(ref p, end); continue; }
+                            {
+                                NamedDefinition definition = ObjectName(Name(ref p, end, scope));
+                                if (ext == 1) Get(ref p, end);
+                                CommitDefinition(definition, ext == 1 ? AcpiNamedObjectKinds.Mutex : AcpiNamedObjectKinds.Event);
+                                continue;
+                            }
                             if (op == 0x5b && ext == 0x80)
                             {
-                                ObjectName(Name(ref p, end, scope)); Get(ref p, end);
-                                Arg(ref p, end, scope, null, depth + 1); Arg(ref p, end, scope, null, depth + 1); continue;
+                                NamedDefinition definition = ObjectName(Name(ref p, end, scope));
+                                AcpiAddressSpaceKinds space = AddressSpace(Get(ref p, end));
+                                Arg(ref p, end, scope, null, depth + 1); Arg(ref p, end, scope, null, depth + 1);
+                                CommitDefinition(definition, AcpiNamedObjectKinds.OperationRegion, space);
+                                continue;
                             }
                             if (op == 0x5b && ext == 0x88)
                             {
-                                ObjectName(Name(ref p, end, scope));
+                                NamedDefinition definition = ObjectName(Name(ref p, end, scope));
                                 for (int i = 0; i < 3; i++) Arg(ref p, end, scope, null, depth + 1);
+                                CommitDefinition(definition, AcpiNamedObjectKinds.Other);
                                 continue;
                             }
                             if (op == 0x5b && ext != 0x81 && ext != 0x82 && ext != 0x83 && ext != 0x84 && ext != 0x85 && ext != 0x86 && ext != 0x87)
                                 throw new ParseException();
                             int finish = Package(ref p, end);
-                            if (op == 0x5b && (ext == 0x81 || ext == 0x86 || ext == 0x87)) { p = finish; continue; }
+                            if (op == 0x5b && ext == 0x81)
+                            {
+                                try { ReadFieldList(p, finish, scope); }
+                                catch (ParseException) { complete = false; OpaqueObjectScope(scope); }
+                                p = finish; continue;
+                            }
+                            if (op == 0x5b && (ext == 0x86 || ext == 0x87))
+                            { complete = false; OpaqueObjectScope(scope); p = finish; continue; }
                             string name = Name(ref p, finish, scope);
                             if (op == 0x14)
                             {
@@ -225,9 +291,10 @@ namespace ATIVBatteryGuard.Core.Services
                             }
                             else
                             {
-                                if (op == 0x5b) ObjectName(name);
+                                NamedDefinition definition = op == 0x5b ? ObjectName(name) : null;
                                 if (ext == 0x83) Advance(ref p, finish, 6);
                                 if (ext == 0x84) Advance(ref p, finish, 3);
+                                if (definition != null) CommitDefinition(definition, AcpiNamedObjectKinds.Other);
                                 Walk(p, finish, name, depth + 1);
                             }
                             p = finish;
@@ -235,11 +302,219 @@ namespace ATIVBatteryGuard.Core.Services
                         else if (op == 0x15) { ObjectName(Name(ref p, end, scope)); Advance(ref p, end, 2); }
                         else if (op == 0x06) { Name(ref p, end, scope); ObjectName(Name(ref p, end, scope)); complete = false; }
                         else if (op == 0xa0 || op == 0xa1 || op == 0xa2)
-                        { p = Package(ref p, end); complete = false; }
+                        { p = Package(ref p, end); complete = false; OpaqueObjectScope(scope); }
                         else if (op != 0xa3) throw new ParseException();
                     }
                 }
-                catch (ParseException) { complete = false; }
+                catch (ParseException) { complete = false; OpaqueObjectScope(scope); }
+            }
+
+            private void ReadFieldList(int start, int end, string scope)
+            {
+                int p = start;
+                NameReference region = ReadNameReference(ref p, end, scope);
+                byte flags = Get(ref p, end);
+                if ((flags & 0x80) != 0 || (flags & 15) > 5 || ((flags >> 5) & 3) == 3) throw new ParseException();
+                var fields = new List<NamedDefinition>();
+                while (p < end)
+                {
+                    Tick(); byte op = bytes[p];
+                    if (op == 0) { p++; FieldBitLength(ref p, end); }
+                    else if (op == 1) { p++; Advance(ref p, end, 2); }
+                    else if (op == 3) { p++; Advance(ref p, end, 3); }
+                    else if (NameCharacter(op, true))
+                    {
+                        var segment = new StringBuilder(4);
+                        for (int i = 0; i < 4; i++)
+                        {
+                            byte value = Get(ref p, end);
+                            if (!NameCharacter(value, i == 0)) throw new ParseException();
+                            segment.Append((char)value);
+                        }
+                        NamedDefinition definition = ObjectName(Join(scope, segment.ToString()));
+                        FieldBitLength(ref p, end);
+                        if (fields.Count >= MaximumNamespaceObjects) throw new LimitException();
+                        fields.Add(definition);
+                    }
+                    else throw new ParseException(); // Includes opaque ConnectField; never resynchronize.
+                }
+                // A failed FieldList leaves only opaque name barriers. No prefix
+                // becomes a typed Field before the entire bounded list parses.
+                foreach (NamedDefinition definition in fields)
+                {
+                    CommitDefinition(definition, AcpiNamedObjectKinds.Field);
+                    if (!definition.Ambiguous) definition.Region = region;
+                }
+            }
+
+            private void FieldBitLength(ref int p, int end)
+            {
+                byte lead = Get(ref p, end); int following = lead >> 6;
+                if (following != 0 && (lead & 0x30) != 0) throw new ParseException();
+                // FieldLength uses PkgLength encoding but describes a bit count,
+                // not a package extent. It may greatly exceed remaining bytes.
+                Advance(ref p, end, following);
+            }
+
+            private static AcpiAddressSpaceKinds AddressSpace(byte value)
+            {
+                switch (value)
+                {
+                    case 0: return AcpiAddressSpaceKinds.SystemMemory;
+                    case 1: return AcpiAddressSpaceKinds.SystemIo;
+                    case 2: return AcpiAddressSpaceKinds.PciConfiguration;
+                    case 3: return AcpiAddressSpaceKinds.EmbeddedControl;
+                    case 4: return AcpiAddressSpaceKinds.SmBus;
+                    default: return AcpiAddressSpaceKinds.Other;
+                }
+            }
+
+            private NameReference ReadNameReference(ref int p, int end, string scope)
+            {
+                if (p >= end) throw new ParseException();
+                bool parentSearch = NameCharacter(bytes[p], true);
+                return new NameReference { Path = Name(ref p, end, scope), Scope = scope, ParentSearch = parentSearch };
+            }
+
+            private static NamedUse RecordReference(BodyEvidence body, string path, string scope, bool parentSearch)
+            {
+                if (body == null) return null;
+                body.NamedReferenceCount++;
+                string key = scope + "|" + path + "|" + (parentSearch ? "1" : "0");
+                NamedUse use;
+                if (body.NamedUses.TryGetValue(key, out use)) { use.Count++; return use; }
+                if (body.NamedUses.Count + body.CreatedNames.Count >= MaximumObjectRelationNames)
+                { body.ObjectRelationLimit = true; return null; }
+                use = new NamedUse
+                {
+                    Reference = new NameReference { Path = path, Scope = scope, ParentSearch = parentSearch },
+                    Count = 1
+                };
+                body.NamedUses.Add(key, use);
+                return use;
+            }
+
+            private AcpiObjectReferenceReport InspectObjectReferences(BodyEvidence root, List<BodyEvidence> helpers,
+                AcpiMethodFlowReport flow)
+            {
+                bool relationLimit = root.ObjectRelationLimit;
+                var created = new HashSet<string>(root.CreatedNames);
+                foreach (BodyEvidence helper in helpers)
+                {
+                    relationLimit |= helper.ObjectRelationLimit;
+                    foreach (string name in helper.CreatedNames) created.Add(name);
+                }
+                bool graphLimit = flow.Status == AcpiMethodFlowStatus.LimitExceeded;
+                if (relationLimit)
+                    return new AcpiObjectReferenceReport(AcpiReferenceAnalysisStatus.LimitExceeded,
+                        rootNamedReferences: root.NamedReferenceCount, parsedHelpers: helpers.Count);
+
+                ReferenceSummary rootSummary = SummarizeReferences(root, created);
+                var helperSummary = new ReferenceSummary();
+                foreach (BodyEvidence helper in helpers) SummarizeReferences(helper, created, helperSummary);
+                bool unknown = rootSummary.Unknown || helperSummary.Unknown || !complete ||
+                    flow.UnsupportedHelpers != 0 || flow.CycleObserved;
+                AcpiReferenceAnalysisStatus status = graphLimit ? AcpiReferenceAnalysisStatus.LimitExceeded :
+                    unknown ? AcpiReferenceAnalysisStatus.Partial : AcpiReferenceAnalysisStatus.ClassifiedObservedSyntax;
+                bool negative = !unknown && !graphLimit;
+                bool? storeReturn = graphLimit ? null : Relation(rootSummary.Arg2Targets, rootSummary.Returns, negative);
+                bool? returnHelper = graphLimit || helpers.Count == 0 ? null : Relation(rootSummary.Returns, helperSummary.All, negative);
+                bool? storeHelper = graphLimit || helpers.Count == 0 ? null : Relation(rootSummary.Arg2Targets, helperSummary.All, negative);
+                AcpiAddressSpaceKinds? helperSpaces = helpers.Count == 0 ? null :
+                    helperSummary.StoreUnknown && helperSummary.FieldStoreSpaces == AcpiAddressSpaceKinds.None ? null :
+                    (AcpiAddressSpaceKinds?)(helperSummary.FieldStoreSpaces |
+                        (helperSummary.StoreUnknown ? AcpiAddressSpaceKinds.Unknown : AcpiAddressSpaceKinds.None));
+                return new AcpiObjectReferenceReport(status, rootSummary.References, rootSummary.Classified,
+                    Kinds(rootSummary.Kinds, rootSummary.Unknown), Kinds(rootSummary.ReturnKinds, rootSummary.ReturnUnknown),
+                    Kinds(rootSummary.Arg2Kinds, rootSummary.Arg2Unknown), helpers.Count,
+                    helpers.Count == 0 ? null : (int?)helperSummary.References,
+                    helpers.Count == 0 ? null : (int?)helperSummary.Classified,
+                    helpers.Count == 0 ? null : Kinds(helperSummary.Kinds, helperSummary.Unknown),
+                    helpers.Count == 0 ? null : Kinds(helperSummary.StoreKinds, helperSummary.StoreUnknown),
+                    helperSpaces, storeReturn, returnHelper, storeHelper);
+            }
+
+            private ReferenceSummary SummarizeReferences(BodyEvidence body, HashSet<string> created,
+                ReferenceSummary summary = null)
+            {
+                if (summary == null) summary = new ReferenceSummary();
+                summary.References += body.NamedReferenceCount;
+                foreach (NamedUse use in body.NamedUses.Values)
+                {
+                    ClassifiedName classified = Classify(use.Reference, created);
+                    if (classified == null)
+                    {
+                        summary.Unknown = true;
+                        summary.ReturnUnknown |= use.Returned; summary.Arg2Unknown |= use.Arg2StoreTarget;
+                        summary.StoreUnknown |= use.StoreTarget;
+                        continue;
+                    }
+                    summary.Classified += use.Count; summary.Kinds |= classified.Kind; summary.All.Add(classified.Identity);
+                    if (use.Returned) { summary.ReturnKinds |= classified.Kind; summary.Returns.Add(classified.Identity); }
+                    if (use.Arg2StoreTarget) { summary.Arg2Kinds |= classified.Kind; summary.Arg2Targets.Add(classified.Identity); }
+                    if (use.StoreTarget)
+                    {
+                        summary.StoreKinds |= classified.Kind;
+                        if (classified.Kind == AcpiNamedObjectKinds.Field) summary.FieldStoreSpaces |= classified.Space;
+                    }
+                    if (classified.Kind == AcpiNamedObjectKinds.Field && classified.Space == AcpiAddressSpaceKinds.Unknown)
+                        summary.Unknown = true;
+                }
+                return summary;
+            }
+
+            private static AcpiNamedObjectKinds? Kinds(AcpiNamedObjectKinds known, bool unknown)
+                => known == AcpiNamedObjectKinds.None && unknown ? null : (AcpiNamedObjectKinds?)known;
+
+            private static bool? Relation(HashSet<object> left, HashSet<object> right, bool negative)
+            {
+                foreach (object identity in left) if (right.Contains(identity)) return true;
+                return negative ? (bool?)false : null;
+            }
+
+            private ClassifiedName Classify(NameReference reference, HashSet<string> created)
+            {
+                ClassifiedName value = ResolveReference(reference, created);
+                if (value == null || value.Kind != AcpiNamedObjectKinds.Field) return value;
+                var field = (NamedDefinition)value.Identity;
+                ClassifiedName region = field.Region == null ? null : ResolveReference(field.Region, created);
+                value.Space = region != null && region.Kind == AcpiNamedObjectKinds.OperationRegion
+                    ? ((NamedDefinition)region.Identity).Space : AcpiAddressSpaceKinds.Unknown;
+                return value;
+            }
+
+            private ClassifiedName ResolveReference(NameReference reference, HashSet<string> created)
+            {
+                bool found;
+                ClassifiedName value = LookupReference(reference.Path, created, out found);
+                if (found) return value;
+                if (!reference.ParentSearch || reference.Path != Join(reference.Scope, Last(reference.Path))) return null;
+                string scope = reference.Scope;
+                while (scope.Length != 0)
+                {
+                    if (opaqueObjectScopes.Contains(scope)) return null;
+                    scope = Parent(scope);
+                    value = LookupReference(Join(scope, Last(reference.Path)), created, out found);
+                    if (found) return value;
+                }
+                return null;
+            }
+
+            private ClassifiedName LookupReference(string path, HashSet<string> created, out bool found)
+            {
+                found = created.Contains(path);
+                if (found) return null;
+                NamedDefinition definition;
+                bool hasObject = objectDefinitions.TryGetValue(path, out definition);
+                Method match = null; int count = 0;
+                foreach (Method method in methods) if (method.Path == path) { match = method; count++; }
+                found = hasObject || count != 0;
+                if (hasObject)
+                {
+                    if (count != 0 || definition.Ambiguous || definition.Kind == AcpiNamedObjectKinds.None) return null;
+                    return new ClassifiedName { Identity = definition, Kind = definition.Kind, Space = definition.Space };
+                }
+                return count == 1 ? new ClassifiedName { Identity = match, Kind = AcpiNamedObjectKinds.MethodReference } : null;
             }
 
             private void Wdg(Value buffer, string scope)
@@ -276,6 +551,7 @@ namespace ATIVBatteryGuard.Core.Services
                         p++; Value value = Arg(ref p, end, scope, evidence, depth + 1);
                         evidence.ReturnStatements++;
                         evidence.Returns |= ReturnForm(value);
+                        if (value.Kind == 6 && value.NamedUse != null) value.NamedUse.Returned = true;
                         if ((value.Kind == 1 && value.Integer == 255) ||
                             (value.BufferLength == 21 && bytes[value.BufferStart + 4] == 0xaa && bytes[value.BufferStart + 5] == 255))
                             evidence.Ff = true;
@@ -307,22 +583,25 @@ namespace ATIVBatteryGuard.Core.Services
             {
                 CheckDepth(depth); Tick(); int original = p; byte op = Get(ref p, end);
                 if (op == 0x5b) return Extended(ref p, end, scope, evidence, depth + 1, false);
-                if (op == 0 || op == 1 || op == 255) return new Value { Kind = 1, Integer = op == 255 ? ulong.MaxValue : op };
+                if (op == 0 || op == 1 || op == 255)
+                    return new Value { Kind = 1, Integer = op == 255 ? ulong.MaxValue : op, DeclarationKind = AcpiNamedObjectKinds.Integer };
                 if (op == 0x0a || op == 0x0b || op == 0x0c || op == 0x0e)
                 {
                     int count = op == 0x0a ? 1 : op == 0x0b ? 2 : op == 0x0c ? 4 : 8;
                     ulong value = 0; for (int i = 0; i < count; i++) value |= (ulong)Get(ref p, end) << (8 * i);
-                    return new Value { Kind = 1, Integer = value };
+                    return new Value { Kind = 1, Integer = value, DeclarationKind = AcpiNamedObjectKinds.Integer };
                 }
-                if (op == 0x0d) { while (Get(ref p, end) != 0) { } return default(Value); }
+                if (op == 0x0d)
+                { while (Get(ref p, end) != 0) { } return new Value { DeclarationKind = AcpiNamedObjectKinds.String }; }
                 if (op == 0x11 || op == 0x12 || op == 0x13)
                 {
-                    int finish = Package(ref p, end); Value result = default(Value);
+                    int finish = Package(ref p, end);
+                    Value result = new Value { DeclarationKind = op == 0x11 ? AcpiNamedObjectKinds.Buffer : AcpiNamedObjectKinds.Package };
                     if (op == 0x11)
                     {
                         Value size = Arg(ref p, finish, scope, null, depth + 1);
                         if (size.Kind == 1 && size.Integer == (ulong)(finish - p))
-                            result = new Value { BufferStart = p, BufferLength = finish - p };
+                            result = new Value { BufferStart = p, BufferLength = finish - p, DeclarationKind = AcpiNamedObjectKinds.Buffer };
                         else if (evidence != null) throw new ParseException(AcpiSyntaxFailureKind.DynamicBuffer);
                     }
                     p = finish; return result;
@@ -336,7 +615,7 @@ namespace ATIVBatteryGuard.Core.Services
                     if (method == null)
                     {
                         if (evidence != null) evidence.UnresolvedNames++;
-                        return new Value { Kind = 6 };
+                        return new Value { Kind = 6, NamedUse = RecordReference(evidence, path, scope, NameCharacter(op, true)) };
                     }
                     int arg2 = 0;
                     for (int i = 0; i < method.Arguments; i++)
@@ -363,6 +642,17 @@ namespace ATIVBatteryGuard.Core.Services
                 {
                     Value value = Reference(ref p, end, scope, evidence, depth + 1, false);
                     return new Value { Kind = value.Kind == 3 ? 4 : 0 };
+                }
+                if (op == 0x70)
+                {
+                    Value source = Arg(ref p, end, scope, evidence, depth + 1);
+                    Value target = Reference(ref p, end, scope, evidence, depth + 1, false);
+                    if (target.NamedUse != null)
+                    {
+                        target.NamedUse.StoreTarget = true;
+                        if (source.Kind == 3) target.NamedUse.Arg2StoreTarget = true;
+                    }
+                    return default(Value);
                 }
                 int arity = Arity(op);
                 if (arity >= 0)
@@ -463,6 +753,12 @@ namespace ATIVBatteryGuard.Core.Services
                 // conservative syntax rejection, never a namespace mutation.
                 if (evidence != null && FindMethod(created, Parent(created), true) != null)
                     throw new ParseException(AcpiSyntaxFailureKind.MethodNameCollision, AcpiSyntaxOperation.CreateField);
+                if (evidence != null && !evidence.CreatedNames.Contains(created))
+                {
+                    if (evidence.CreatedNames.Count + evidence.NamedUses.Count >= MaximumObjectRelationNames)
+                        evidence.ObjectRelationLimit = true;
+                    else evidence.CreatedNames.Add(created);
+                }
             }
 
             private static AcpiSyntaxOperation ExtendedOperation(byte ext)
@@ -512,12 +808,12 @@ namespace ATIVBatteryGuard.Core.Services
                     return new Value { Kind = op == 0x69 ? 2 : op == 0x6a ? 3 : 0 };
                 if (IsNameStart(op))
                 {
-                    p = original; Name(ref p, end, scope);
+                    p = original; string path = Name(ref p, end, scope);
                     if (evidence != null) evidence.UnresolvedNames++;
                     // SuperName/Target names denote references, including when
                     // their spelling also belongs to a known method. No method
                     // arguments are consumed and no call site is recorded.
-                    return new Value { Kind = 6 };
+                    return new Value { Kind = 6, NamedUse = RecordReference(evidence, path, scope, NameCharacter(op, true)) };
                 }
                 if (op == 0x5b)
                 {
@@ -616,10 +912,33 @@ namespace ATIVBatteryGuard.Core.Services
                 }
                 return found;
             }
-            private void ObjectName(string name)
+            private NamedDefinition ObjectName(string name)
             {
                 if (objects.Count >= MaximumNamespaceObjects && !objects.Contains(name)) throw new LimitException();
                 objects.Add(name);
+                NamedDefinition definition;
+                if (objectDefinitions.TryGetValue(name, out definition))
+                {
+                    definition.Ambiguous = true; definition.Kind = AcpiNamedObjectKinds.None;
+                    definition.Region = null; definition.Space = AcpiAddressSpaceKinds.Unknown;
+                }
+                else
+                {
+                    definition = new NamedDefinition();
+                    objectDefinitions.Add(name, definition);
+                }
+                return definition;
+            }
+            private static void CommitDefinition(NamedDefinition definition, AcpiNamedObjectKinds kind,
+                AcpiAddressSpaceKinds space = AcpiAddressSpaceKinds.None)
+            {
+                if (definition.Ambiguous) return;
+                definition.Kind = kind; definition.Space = space;
+            }
+            private void OpaqueObjectScope(string scope)
+            {
+                if (opaqueObjectScopes.Count >= MaximumNamespaceObjects && !opaqueObjectScopes.Contains(scope)) throw new LimitException();
+                opaqueObjectScopes.Add(scope);
             }
             private int Package(ref int p, int end)
             {

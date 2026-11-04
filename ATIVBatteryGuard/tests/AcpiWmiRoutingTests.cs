@@ -23,16 +23,16 @@ internal static partial class Program
             Equal<bool?>(true, result.LiteralFfReturn);
             Check(!result.CanInvokeMethods && !result.CanWriteHardware, "static syntax granted capabilities");
         });
-        Add("static ACPI data buffers packages strings and fields cannot smuggle a fake descriptor or method", () =>
+        Add("static ACPI opaque data and malformed field lists cannot smuggle a fake descriptor or method", () =>
         {
             byte[] fake = AcpiJoin(AcpiWdg(), AcpiMethod("WMAB", 3, AcpiEvidenceBody()));
-            foreach (byte[] data in new[] {
-                AcpiJoin(new byte[] { 0x08 }, AcpiName("DATA"), AcpiBuffer(fake)),
-                AcpiJoin(new byte[] { 0x08 }, AcpiName("PKG0"), AcpiPackage(new byte[] { 0x12 }, AcpiJoin(new byte[] { 1 }, fake))),
-                AcpiPackage(new byte[] { 0x5b, 0x81 }, fake) })
+            foreach (var sample in new[] {
+                Tuple.Create(AcpiJoin(new byte[] { 0x08 }, AcpiName("DATA"), AcpiBuffer(fake)), AcpiRoutingStatus.Complete),
+                Tuple.Create(AcpiJoin(new byte[] { 0x08 }, AcpiName("PKG0"), AcpiPackage(new byte[] { 0x12 }, AcpiJoin(new byte[] { 1 }, fake))), AcpiRoutingStatus.Complete),
+                Tuple.Create(AcpiPackage(new byte[] { 0x5b, 0x81 }, fake), AcpiRoutingStatus.Partial) })
             {
-                var result = AcpiWmiRoutingInspector.Inspect(AcpiTable(data));
-                Equal(AcpiRoutingStatus.Complete, result.Status);
+                var result = AcpiWmiRoutingInspector.Inspect(AcpiTable(sample.Item1));
+                Equal(sample.Item2, result.Status);
                 Equal(0, result.MatchingDescriptors); Equal(0, result.MatchingMethods);
                 Equal<bool?>(null, result.DirectMethodIdOneComparison);
             }

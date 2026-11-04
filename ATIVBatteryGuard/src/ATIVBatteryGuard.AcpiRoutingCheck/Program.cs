@@ -124,7 +124,7 @@ namespace ATIVBatteryGuard.AcpiRoutingCheck
 
         private static void WriteFailure(string category)
         {
-            Console.WriteLine("ATIV Battery Guard — ACPI 정적 WMI 연결 점검 (Acpi-routing-v4)");
+            Console.WriteLine("ATIV Battery Guard — ACPI 정적 WMI 연결 점검 (Acpi-routing-v5)");
             Console.WriteLine("수집 결과: " + category);
             Console.WriteLine("OEM 호출·AML 실행·예약 접근·원문 저장 없음. 실제 충전 제어: 미지원.");
         }

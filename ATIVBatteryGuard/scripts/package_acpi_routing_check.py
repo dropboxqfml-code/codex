@@ -10,8 +10,8 @@ from package_wmi_preflight_check import code_only, inspect_executable, inspect_s
 
 PROJECT = 'ATIVBatteryGuard.AcpiRoutingCheck'
 READ_ONLY_FOOTPRINT = {
-    'WindowsAcpiRoutingProbe.cs': 'd65da39a6067e8ff96f9806940e5ce13171b997b9b548dca739d2778ee8996b7',
-    'Program.cs': '3b21158075fde2ea82104f0552fbcdb91677134693449a87902cf37821e5c835',
+    'WindowsAcpiRoutingProbe.cs': 'd7c9653efccc04ad6c798e3ad10eb4075a1937aa211c3dcbaf301342622aa081',
+    'Program.cs': '0efb632ebc566a2583fd8918a3f5e810cd57643935e05577bf056c75337154df',
 }
 
 
@@ -21,7 +21,7 @@ def inspect_reader_sources(root):
     host = (project / 'Program.cs').read_text(encoding='utf-8')
     parser = (root / 'src/ATIVBatteryGuard.Core/Services/AcpiWmiRoutingInspector.cs').read_text(encoding='utf-8')
     models = [(root / ('src/ATIVBatteryGuard.Core/Models/' + name)).read_text(encoding='utf-8')
-              for name in ['AcpiWmiRoutingReport.cs', 'AcpiMethodFlowReport.cs']]
+              for name in ['AcpiWmiRoutingReport.cs', 'AcpiMethodFlowReport.cs', 'AcpiObjectReferenceReport.cs']]
     forbidden = re.compile(r'\b(?:InvokeMethod|TryClaim|WindowsOneShotBackend|ManagementObject|ManagementClass|'
         r'ManagementScope|WsabiWmiOneShotExperiment|WsabiWmiOneShotFileReservation|LoadLibrary|'
         r'DeviceIoControl|WriteFile|FileStream|StreamWriter|HttpClient|WebClient|Socket|Registry|ServiceController)\b|'
@@ -29,7 +29,10 @@ def inspect_reader_sources(root):
     for source in [native, host, parser] + models:
         if forbidden.search(code_only(source)):
             raise ValueError('Only static table reading and syntax inspection may be packaged.')
-    if any(re.search(r'\b(?:DllImport|Thread|Task|Mutex|WaitHandle|EventWaitHandle|Monitor|Semaphore)\b', code_only(source))
+    # Mutex is also a data-only enum member. Runtime construction, static calls,
+    # threading namespaces and all the other active APIs remain forbidden.
+    if any(re.search(r'\b(?:DllImport|Thread|Task|WaitHandle|EventWaitHandle|Monitor|Semaphore)\b|'
+                     r'\bSystem\s*\.\s*Threading\b|\bnew\s+Mutex\b|\bMutex\s*\.', code_only(source))
            for source in [parser] + models):
         raise ValueError('The pure syntax parser and reports must not introduce native calls or perform waits or synchronization.')
     imports = re.findall(r'\[DllImport\("([^"]+)"[^\]]*\)\]\s*private static extern uint (\w+)\(', native)
@@ -67,13 +70,14 @@ def main():
     build = root / 'src' / PROJECT / 'bin/Release/net48'
     files = {name:(build/name).read_bytes() for name in [PROJECT+'.exe', PROJECT+'.exe.config', 'ATIVBatteryGuard.Core.dll']}
     inspect_executable(files[PROJECT+'.exe'])
-    if ('Acpi-routing-v4'.encode('utf-16le') not in files[PROJECT+'.exe'] or
-            any(('Acpi-routing-v'+str(v)).encode('utf-16le') in files[PROJECT+'.exe'] for v in [1,2,3])):
-        raise ValueError('The v4 executable is required; a previous routing tool must not be distributed as the extended-syntax revision.')
+    if ('Acpi-routing-v5'.encode('utf-16le') not in files[PROJECT+'.exe'] or
+            any(('Acpi-routing-v'+str(v)).encode('utf-16le') in files[PROJECT+'.exe'] for v in [1,2,3,4])):
+        raise ValueError('The v5 executable is required; a previous routing tool must not be distributed as the object-reference revision.')
     if (b'GetSystemFirmwareTable\0' not in files[PROJECT+'.exe'] or b'AcpiWmiRoutingInspector\0' not in files['ATIVBatteryGuard.Core.dll']
-            or b'AcpiMethodFlowReport\0' not in files['ATIVBatteryGuard.Core.dll'] or b'AcpiSyntaxOperation\0' not in files['ATIVBatteryGuard.Core.dll']):
+            or b'AcpiMethodFlowReport\0' not in files['ATIVBatteryGuard.Core.dll'] or b'AcpiSyntaxOperation\0' not in files['ATIVBatteryGuard.Core.dll']
+            or b'AcpiObjectReferenceReport\0' not in files['ATIVBatteryGuard.Core.dll']):
         raise ValueError('The current static reader and parser binaries are required.')
-    info = {'application':PROJECT, 'revision':'Acpi-routing-v4', 'target':'Windows10x64/.NETFramework4.8',
+    info = {'application':PROJECT, 'revision':'Acpi-routing-v5', 'target':'Windows10x64/.NETFramework4.8',
         'requestsElevation':False, 'usesOnlyWindowsAcpiTableReadApis':True,
         'evaluatesAml':False, 'invokesOemMethods':False, 'touchesExperimentReservation':False,
         'savesOrExportsRawFirmware':False, 'exportsDeviceIdentifiersOrPaths':False,
@@ -83,6 +87,11 @@ def main():
         'extendedAmlSyntaxConsumedStatically':True, 'syntaxFailuresUseFixedEnumsOnly':True,
         'executesParsedWaitsSynchronizationFatalOrConversions':False, 'dynamicNamespaceOperationsSupported':False,
         'parsedHelperObservationsAreExplicitlyScoped':True,
+        'namedObjectDeclarationKinds':True, 'storeReturnDefinitionReferencesOnly':True,
+        'maximumObjectRelationNamesPerBody':64, 'readsOperationRegionContents':False,
+        'exportsObjectNamesAddressesOffsetsOrLengths':False, 'evaluatesAliasesValuesOrDataFlow':False,
+        'fieldListSupport':['NamedField','ReservedField','AccessField','ExtendedAccessField'],
+        'completeFieldListLanguageSupported':False, 'legacyMethodFlowSemanticsPreserved':True,
         'maximumHelperDepth':2, 'maximumHelperDefinitions':8, 'maximumHelperCallSites':32,
         'maximumNamespaceObjects':8192,
         'evaluatesVariablesBranchesOrArgumentMapping':False, 'helperSyntaxProvesExecutedRoute':False,
@@ -92,15 +101,19 @@ def main():
         'parentTimeoutMs':10000, 'independentWorkerTimeoutMs':10000,
         'portableTests':tests, 'testsExecuteWindowsOrFirmware':False, 'windowsRuntimeTested':False,
         'previousDsdtDirectReadObserved':True, 'currentMethodFlowWindowsObserved':False,
+        'previousExtendedHelperSyntaxObserved':True, 'currentObjectReferenceWindowsObserved':False,
         'digitallySigned':False, 'containsOriginalVendorBinariesOrUserReports':False,
         'sourceZipSha256':hashlib.sha256(args.source_zip.read_bytes()).hexdigest()}
     files['BUILD-INFO.json'] = json.dumps(info,ensure_ascii=False,indent=2).encode('utf-8')
-    readme = '''ATIV Battery Guard — ACPI 보조 본문 구문 점검 (Acpi-routing-v4)
+    readme = '''ATIV Battery Guard — ACPI 객체·참조 관계 요약 (Acpi-routing-v5)
 
-v3 실기에서 알려진 호출 표현식1개·보조 정의1개를 관측했지만 그 보조 본문은 미지원으로 끝났습니다.
-v4는 표준 확장 AML 구문의 정적 읽기와 고정된 해석 중단 원인 표시를 추가합니다.
-Acquire/Release/Wait/Sleep 등의 이름은 읽은 구문이며, 실제 대기·동기화·변환·Fatal을 실행하지 않습니다.
-현재 노트북의 v3 중단 원인이 특정 opcode였다고 확정한 것은 아닙니다.
+v4 실기에서 보조 본문1개·Acquire/Release 구문 해석과 미지원0개를 확인했습니다.
+v5는 같은 테이블의 Buffer/Mutex/Field 등 관측 정의의 종류와 Store/Return의 참조 관계를 요약합니다.
+같은 정의 참조 구문은 실제 값 전달·실행 순서·동일한 데이터 반환이나 하드웨어 효과를 증명하지 않습니다.
+OperationRegion은 선언된 주소 공간 종류만 읽고 실제 영역을 읽거나 쓰지 않습니다.
+이름·주소·오프셋·길이·식별자는 출력하거나 저장하지 않습니다. 별칭·동적 생성·중복은 보수적으로 처리합니다.
+본문의 참조 관계는 고유 이름64개까지만 추적하며 초과·미분류를 관계 없음으로 바꾸지 않습니다.
+기존 연결 구문 결과와 새 객체 선언 분류는 별개이며 Partial을 없애거나 제어를 활성화하는 기능이 아닙니다.
 수집은 v2와 같은 고정 DSDT 직접 읽기/첫 SSDT이며, 기존 DLL/TXT를 다시 수집하지 않습니다.
 보조 정의는 깊이2·최대8개·호출 표현식32개까지만 읽고 미해석·순환·한계 초과를 구분합니다.
 Arg2의 직접 전달과 Return 형태는 구문 사실이며 변수 값·별칭·실행 경로를 계산하지 않습니다.
@@ -113,7 +126,7 @@ AML 실행, OEM 호출, 삼성 DLL 로드, 예약 접근, 드라이버·서비�
 
 1. ZIP 전체를 새 로컬 폴더에 압축 해제합니다.
 2. ATIVBatteryGuard.AcpiRoutingCheck.exe를 일반 권한으로 실행합니다. 관리자 실행은 요구하지 않습니다.
-3. Acpi-routing-v4 표시와 출력된 새 요약만 복사해 전달하고 Enter로 닫습니다.
+3. Acpi-routing-v5 표시와 출력된 새 요약만 복사해 전달하고 Enter로 닫습니다.
 원본 테이블·삼성 DLL·기존 진단·이전 실행 결과는 다시 제출하지 않습니다.
 
 Windows API는 같은 서명의 테이블 중 첫 것만 반환하므로 전체 SSDT를 읽지 못합니다.
@@ -127,7 +140,7 @@ ID1/길이21/FF 반환 구문은 존재 여부이며 실제 분기의 실행이�
     files['먼저 읽어주세요.txt'] = readme.replace('\n','\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(hashlib.sha256(data).hexdigest()+'  '+name+'\n' for name,data in sorted(files.items())).encode()
     args.output.mkdir(parents=True,exist_ok=True)
-    target = args.output/'ATIVBatteryGuard-ACPI-HELPER-SYNTAX.zip'
+    target = args.output/'ATIVBatteryGuard-ACPI-OBJECT-REFERENCES.zip'
     with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as archive:
         for name,data in sorted(files.items()): archive.writestr(name,data)
     with zipfile.ZipFile(target) as archive:

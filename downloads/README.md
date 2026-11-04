@@ -1,4 +1,12 @@
-# ACPI 보조 본문 구문 점검 — Acpi-routing-v4
+# ACPI 객체·참조 관계 요약 — Acpi-routing-v5
+
+[프로그램 ZIP](ATIVBatteryGuard-ACPI-OBJECT-REFERENCES.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-OBJECT-REFERENCES-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-OBJECT-REFERENCES-SHA256SUMS.txt) · [범위·해석·실행 안내](../ATIVBatteryGuard/ACPI_OBJECT_REFERENCE_UPDATE.md)
+
+같은 테이블에서 관측한 Buffer/Mutex/Field 등의 선언 종류와 Store/Return의 동일 정의 참조 구문을 요약합니다. 실제 값·분기·별칭·데이터 전달·영역 접근은 평가하거나 실행하지 않습니다. **프로그램 ZIP 하나만** 새 폴더에 모두 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행해 **Acpi-routing-v5**의 새 요약만 전달합니다. 소스 ZIP은 실행에 필요하지 않습니다. v4 반복·관리자 비교·기존 TXT/DLL/원본 ACPI 재제출은 요청하지 않습니다.
+
+수집 API·대상·상한은 유지하며 새 참조 관계 추적은 본문당 고유 이름64개까지입니다. 미분류/가림/한계는 관계 부재로 바꾸지 않고 이름·주소·오프셋·길이는 보고하지 않습니다. OEM/AML/삼성 DLL·실험 예약·하드웨어 쓰기는 없고 실제 충전 제어는 Unsupported입니다. v5의 새 분석 실기는 아직 미관측입니다. 이전 1회 실험·표식은 그대로 유지합니다.
+
+## ACPI 보조 본문 구문 점검 v4 — 이전 배포 기록
 
 **실기 결과 수신·추가 실행 불필요:** 보조 본문 해석 1개·미지원 0·실패 None·Acquire/Release를 확인했습니다. [분석과 다음 개발 계획](../ATIVBatteryGuard/ACPI_V4_RESULT_AND_NEXT_PLAN.md)을 기록했고 이번에는 새 프로그램을 배포하지 않습니다. v4 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 아래 ZIP·소스·체크섬은 배포 당시 그대로 보존합니다. 아래는 이전 안내입니다.
 

@@ -1,5 +1,11 @@
 # Settings 앱 분석판 검증 기록
 
+## ACPI 점검 실기 관측 수신 — 2026-11-04
+
+- 전달된 Acpi-routing-v1 요약에서 목록 Complete·DSDT 0·SSDT 4·첫 SSDT Partial·설명자/메서드 0·본문 NotObserved를 확인했습니다. [확인 범위](ACPI_ROUTING_LAPTOP_RESULT.md)를 기록했습니다. 실행 계정 권한은 보고되지 않았으며 DSDT 본문·나머지 SSDT·완전한 AML 해석은 미확인입니다.
+- 첫 SSDT의 서명/길이/체크섬 검사와 제한된 정적 해석 경로까지 관측됐지만 현재 모델의 WMI 정의는 확보하지 못했습니다. 기능 부재나 FF의 의미를 판정하지 않습니다. 권한 거부·시간 초과·InvalidTable 결과로 바꾸지도 않습니다.
+- 문서만 변경했으며 빌드/테스트를 반복하지 않았습니다. 아래 353개·Python 22개·7개 프로젝트 빌드 경고/오류 0개는 직전 코드 검증 기록입니다. 실행 코드·패키지·요청/예약/제어 정책은 변경하지 않았고 새 Windows/OEM/AML 실행은 없습니다.
+
 ## ACPI 정적 WMI 연결 점검 — 2026-11-04
 
 - 전체 **353 passed, 0 failed, 0 skipped (353 registered)**: reports/acpi-routing-tests.json 및 .log. 새11개 그룹은 namespace 연결·패키지/이름/체크섬 경계, opaque 데이터 오인식, 미지원 구문의 비재동기화, 중복/인수/조건부/별칭·간접 호출 구분, 깊이/노드/메모리·개인정보 제한을 검사합니다. 합성 AML만 사용하며 실행하지 않습니다.

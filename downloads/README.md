@@ -1,5 +1,7 @@
 # ACPI 정적 WMI 연결 점검 — Acpi-routing-v1
 
+**실기 결과 수신·추가 실행 불필요:** [결과 분석](../ATIVBatteryGuard/ACPI_ROUTING_LAPTOP_RESULT.md)에서 목록 Complete·DSDT 0·SSDT 4·첫 SSDT Partial을 확인했습니다. WMI 정의와 FF 의미는 아직 미확정입니다. 기존 점검을 반복하거나 관리자 실행·기존 자료 재제출을 할 필요는 없습니다. 배포 ZIP·일치 소스·체크섬은 그대로 보존합니다. 아래는 배포 당시 안내입니다.
+
 [새 점검 도구 ZIP](ATIVBatteryGuard-ACPI-ROUTING-CHECK.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-ROUTING-CHECK-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-ROUTING-CHECK-SHA256SUMS.txt) · [범위·한계·실행 안내](../ATIVBatteryGuard/ACPI_STATIC_ROUTING_CHECK.md)
 
 현재 노트북의 WMI 펌웨어 연결 정의를 Windows 내장 API로 읽는 별도 도구입니다. **AML 실행·OEM 호출·예약 접근·원본 테이블 저장은 없습니다.** DSDT/첫 SSDT의 제한된 구문만 요약하며 전체 펌웨어 해석이나 FF 의미 해결을 보장하지 않습니다. 실제 충전 제어는 미지원입니다.

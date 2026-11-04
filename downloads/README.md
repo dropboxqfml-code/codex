@@ -1,4 +1,12 @@
-# ACPI 메서드 연결 구문 요약 — Acpi-routing-v3
+# ACPI 보조 본문 구문 점검 — Acpi-routing-v4
+
+[프로그램 ZIP](ATIVBatteryGuard-ACPI-HELPER-SYNTAX.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-HELPER-SYNTAX-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-HELPER-SYNTAX-SHA256SUMS.txt) · [결과·변경·해석 경계](../ATIVBatteryGuard/ACPI_HELPER_SYNTAX_UPDATE.md)
+
+v3의 보조 본문 미지원 결과를 바탕으로 표준 확장 구문의 정적 읽기와 고정된 중단 원인 표시를 추가했습니다. **프로그램 ZIP 하나만** 새 폴더에 모두 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행해 **Acpi-routing-v4**의 새 요약만 전달합니다. 소스 ZIP은 실행에 필요하지 않습니다. 기존 TXT/DLL/원본 ACPI 재제출·v3 반복·관리자 비교는 요청하지 않습니다.
+
+구문 이름 Acquire/Wait/Sleep/Fatal 등을 읽더라도 실제 동작은 실행하지 않습니다. 수집 API·대상·시간/크기 제한은 그대로이며 AML/OEM/DLL 실행·원본 저장·예약 접근·하드웨어 쓰기는 없습니다. 해석 완료한 일부 본문의 FF 미관측은 전체 연결이나 실제 응답의 부재가 아닙니다. 새 v4 분석은 실기 미관측이고 충전 제어는 Unsupported입니다. 기존 1회 실험·표식은 그대로 유지합니다.
+
+## ACPI 메서드 연결 구문 요약 v3 — 이전 배포 기록
 
 [프로그램 ZIP](ATIVBatteryGuard-ACPI-METHOD-FLOW.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-METHOD-FLOW-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-METHOD-FLOW-SHA256SUMS.txt) · [실기 관측·변경·해석 한계](../ATIVBatteryGuard/ACPI_METHOD_FLOW_UPDATE.md)
 

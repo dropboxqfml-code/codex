@@ -1,5 +1,15 @@
 # Settings 앱 분석판 검증 기록
 
+## v3 보조 본문 미지원 수신·확장 구문 v4 — 2026-11-04
+
+- v3 사용자 요약은 후보 Parsed·호출 표현식 1·직접 Arg2 인수 0·Return 1/UnresolvedName·보조 정의 1/해석 0/미지원 1·미해결 참조 3입니다. [해석과 v4 구현](ACPI_HELPER_SYNTAX_UPDATE.md)에 원인 미확정과 입력/반환/FF의 의미 비추론을 기록했습니다. 사용자 원문은 저장소에 포함하지 않습니다.
+- 현재 전체 **384 passed, 0 failed, 0 skipped (384 registered)**: reports/acpi-helper-tests.json 및 .log. 새 10개 그룹은 Acquire raw WORD/Fatal raw BYTE+DWORD 경계, 동기화/지연/참조/변환/필드 등 확장 구문, 피연산자 비호출 처리, 동적 namespace 거부, 고정 중단 정보·잘린 입력, 성공한 보조 본문만의 scoped FF/반환·실패 prefix 폐기와 개인정보/불변성을 검사합니다. 모든 입력은 합성 AML·가짜 콜백이며 AML이나 동기화/대기 동작은 실행하지 않습니다.
+- 전체 7개 프로젝트 x64 net48 Release와 테스트 프로젝트 빌드 **경고 0개·오류 0개**: reports/acpi-helper-build.log 및 test-build.log. 런타임 의존성·네이티브 API·수집 대상·상한은 유지합니다.
+- Python 배포 검증 **25개 통과**: reports/acpi-helper-python-tests.log. 순수 parser/model에 실제 Thread/Mutex 대기·동기화 코드를 삽입하면 패키징을 거부하는 회귀를 추가했습니다. 기존 PE/x64/asInvoker·고정 두 읽기 API·무호출/무저장·결합 소스·버전 검사도 유지합니다.
+- 고정 ACPICA 헤더의 문법을 대조했고 독립 소스 검토에서 차단 문제를 찾지 못했습니다. 새 보고서는 고정 enum/int/bool만 유지하며 알 수 없는 opcode도 raw hex/위치/이름/주소로 출력하지 않습니다.
+- 기존 공개 다른 삼성 530U3 DSDT/첫 SSDT로 형식 검증했습니다. 이전 미지원 보조 본문 1개가 Parsed로 읽혔고 Acquire/Release 구문·Return 없음·그 본문 범위의 FF 미관측을 보고했습니다. 전체 연결은 Partial·기존 전체 연결 FF는 미확정으로 유지했습니다. reports/acpi-helper-public-sample.jsonl에 기록하며 현재 사용자 모델의 opcode나 동작 근거로 대입하지 않습니다. 외부 원본 자료는 배포하지 않습니다.
+- 새 v4 분석은 실제 노트북에서 아직 미관측입니다. Windows/OEM/AML/펌웨어를 클라우드에서 실행하지 않았고 일반 앱·기존 요청/응답/예약/제어 정책과 이전 ZIP은 그대로입니다. 실제 충전 제어는 Unsupported입니다.
+
 ## v2 DSDT 실기 관측·반환/보조 정의 구문 요약 v3 — 2026-11-04
 
 - v2 사용자 요약에서 DSDT 직접 본문 읽기 Complete·namespace Partial·알려진 설명자/메서드 각 1개·인수 3개·본문 Parsed를 관측했습니다. 직접 ID1/길이21 비교·상수 FF 반환은 미관측이며 보조 정의나 실제 FF 의미를 판정하지 않습니다. [관측과 구현 범위](ACPI_METHOD_FLOW_UPDATE.md)에 기록했습니다. 사용자 원문은 저장소에 포함하지 않습니다.

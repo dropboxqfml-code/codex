@@ -10,8 +10,8 @@ from package_wmi_preflight_check import code_only, inspect_executable, inspect_s
 
 PROJECT = 'ATIVBatteryGuard.AcpiRoutingCheck'
 READ_ONLY_FOOTPRINT = {
-    'WindowsAcpiRoutingProbe.cs': 'ef148c1bd33792326b4dba5f50c165dfca129811f54c3c4d10bdc9d3a410ab03',
-    'Program.cs': 'd42e63b4f342c2926e711b451af6d8f946a9914a7662e538c6676c88b7e1fffc',
+    'WindowsAcpiRoutingProbe.cs': 'd65da39a6067e8ff96f9806940e5ce13171b997b9b548dca739d2778ee8996b7',
+    'Program.cs': '3b21158075fde2ea82104f0552fbcdb91677134693449a87902cf37821e5c835',
 }
 
 
@@ -29,8 +29,9 @@ def inspect_reader_sources(root):
     for source in [native, host, parser] + models:
         if forbidden.search(code_only(source)):
             raise ValueError('Only static table reading and syntax inspection may be packaged.')
-    if any(re.search(r'\bDllImport\b', code_only(source)) for source in [parser] + models):
-        raise ValueError('The pure syntax parser and reports must not introduce native calls.')
+    if any(re.search(r'\b(?:DllImport|Thread|Task|Mutex|WaitHandle|EventWaitHandle|Monitor|Semaphore)\b', code_only(source))
+           for source in [parser] + models):
+        raise ValueError('The pure syntax parser and reports must not introduce native calls or perform waits or synchronization.')
     imports = re.findall(r'\[DllImport\("([^"]+)"[^\]]*\)\]\s*private static extern uint (\w+)\(', native)
     if set(imports) != {('kernel32.dll', 'EnumSystemFirmwareTables'), ('kernel32.dll', 'GetSystemFirmwareTable')} or len(imports) != 2:
         raise ValueError('Only the two reviewed Windows firmware-table read APIs are permitted.')
@@ -66,19 +67,22 @@ def main():
     build = root / 'src' / PROJECT / 'bin/Release/net48'
     files = {name:(build/name).read_bytes() for name in [PROJECT+'.exe', PROJECT+'.exe.config', 'ATIVBatteryGuard.Core.dll']}
     inspect_executable(files[PROJECT+'.exe'])
-    if ('Acpi-routing-v3'.encode('utf-16le') not in files[PROJECT+'.exe'] or
-            any(('Acpi-routing-v'+str(v)).encode('utf-16le') in files[PROJECT+'.exe'] for v in [1,2])):
-        raise ValueError('The v3 executable is required; a previous routing tool must not be distributed as the method-flow revision.')
+    if ('Acpi-routing-v4'.encode('utf-16le') not in files[PROJECT+'.exe'] or
+            any(('Acpi-routing-v'+str(v)).encode('utf-16le') in files[PROJECT+'.exe'] for v in [1,2,3])):
+        raise ValueError('The v4 executable is required; a previous routing tool must not be distributed as the extended-syntax revision.')
     if (b'GetSystemFirmwareTable\0' not in files[PROJECT+'.exe'] or b'AcpiWmiRoutingInspector\0' not in files['ATIVBatteryGuard.Core.dll']
-            or b'AcpiMethodFlowReport\0' not in files['ATIVBatteryGuard.Core.dll']):
+            or b'AcpiMethodFlowReport\0' not in files['ATIVBatteryGuard.Core.dll'] or b'AcpiSyntaxOperation\0' not in files['ATIVBatteryGuard.Core.dll']):
         raise ValueError('The current static reader and parser binaries are required.')
-    info = {'application':PROJECT, 'revision':'Acpi-routing-v3', 'target':'Windows10x64/.NETFramework4.8',
+    info = {'application':PROJECT, 'revision':'Acpi-routing-v4', 'target':'Windows10x64/.NETFramework4.8',
         'requestsElevation':False, 'usesOnlyWindowsAcpiTableReadApis':True,
         'evaluatesAml':False, 'invokesOemMethods':False, 'touchesExperimentReservation':False,
         'savesOrExportsRawFirmware':False, 'exportsDeviceIdentifiersOrPaths':False,
         'tables':['DSDT','first SSDT only'], 'completeSsdtCoverage':False, 'crossTableResolution':False,
         'dsdtReadIndependentOfEnumeration':True, 'readsAcpiRegistryCache':False,
         'methodFlowSyntaxSummary':True, 'readsObservedSameTableHelperDefinitions':True,
+        'extendedAmlSyntaxConsumedStatically':True, 'syntaxFailuresUseFixedEnumsOnly':True,
+        'executesParsedWaitsSynchronizationFatalOrConversions':False, 'dynamicNamespaceOperationsSupported':False,
+        'parsedHelperObservationsAreExplicitlyScoped':True,
         'maximumHelperDepth':2, 'maximumHelperDefinitions':8, 'maximumHelperCallSites':32,
         'maximumNamespaceObjects':8192,
         'evaluatesVariablesBranchesOrArgumentMapping':False, 'helperSyntaxProvesExecutedRoute':False,
@@ -91,21 +95,25 @@ def main():
         'digitallySigned':False, 'containsOriginalVendorBinariesOrUserReports':False,
         'sourceZipSha256':hashlib.sha256(args.source_zip.read_bytes()).hexdigest()}
     files['BUILD-INFO.json'] = json.dumps(info,ensure_ascii=False,indent=2).encode('utf-8')
-    readme = '''ATIV Battery Guard — ACPI 메서드 연결 구문 요약 (Acpi-routing-v3)
+    readme = '''ATIV Battery Guard — ACPI 보조 본문 구문 점검 (Acpi-routing-v4)
 
-v2 실기에서 DSDT의 알려진 설명자1개·대응 메서드1개·인수3개와 본문 구문 해석을 확인했습니다.
-v3는 해당 후보 본문의 반환 형태와 같은 테이블의 관측된 보조 정의 연결을 정적으로 요약합니다.
+v3 실기에서 알려진 호출 표현식1개·보조 정의1개를 관측했지만 그 보조 본문은 미지원으로 끝났습니다.
+v4는 표준 확장 AML 구문의 정적 읽기와 고정된 해석 중단 원인 표시를 추가합니다.
+Acquire/Release/Wait/Sleep 등의 이름은 읽은 구문이며, 실제 대기·동기화·변환·Fatal을 실행하지 않습니다.
+현재 노트북의 v3 중단 원인이 특정 opcode였다고 확정한 것은 아닙니다.
 수집은 v2와 같은 고정 DSDT 직접 읽기/첫 SSDT이며, 기존 DLL/TXT를 다시 수집하지 않습니다.
 보조 정의는 깊이2·최대8개·호출 표현식32개까지만 읽고 미해석·순환·한계 초과를 구분합니다.
 Arg2의 직접 전달과 Return 형태는 구문 사실이며 변수 값·별칭·실행 경로를 계산하지 않습니다.
-보조 정의의 상수FF 반환 구문도 실제 응답의 발생 위치나 배터리 의미를 입증하지 않습니다.
+해석 완료한 보조 본문 수와 그 범위의 반환 구문만 별도로 표시합니다. 실패한 본문 중간 표식은 폐기합니다.
+그 범위에서 상수FF 구문이 미관측이어도 나머지 연결의 부재·실제 응답의 위치나 의미를 입증하지 않습니다.
+Load/LoadTable/Unload 등 동적 namespace 작업은 해석 불가로 닫고 실행하지 않습니다.
 다른 SSDT를 얻으려고 같은 ID를 반복 조회하거나 레지스트리를 읽지 않습니다.
 AML 실행, OEM 호출, 삼성 DLL 로드, 예약 접근, 드라이버·서비스·보안 변경은 없습니다.
 원본 ACPI/주소/GUID 원문/장치 식별자/메서드 이름/경로는 출력하거나 파일에 저장하지 않습니다.
 
 1. ZIP 전체를 새 로컬 폴더에 압축 해제합니다.
 2. ATIVBatteryGuard.AcpiRoutingCheck.exe를 일반 권한으로 실행합니다. 관리자 실행은 요구하지 않습니다.
-3. Acpi-routing-v3 표시와 출력된 새 요약만 복사해 전달하고 Enter로 닫습니다.
+3. Acpi-routing-v4 표시와 출력된 새 요약만 복사해 전달하고 Enter로 닫습니다.
 원본 테이블·삼성 DLL·기존 진단·이전 실행 결과는 다시 제출하지 않습니다.
 
 Windows API는 같은 서명의 테이블 중 첫 것만 반환하므로 전체 SSDT를 읽지 못합니다.
@@ -119,7 +127,7 @@ ID1/길이21/FF 반환 구문은 존재 여부이며 실제 분기의 실행이�
     files['먼저 읽어주세요.txt'] = readme.replace('\n','\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(hashlib.sha256(data).hexdigest()+'  '+name+'\n' for name,data in sorted(files.items())).encode()
     args.output.mkdir(parents=True,exist_ok=True)
-    target = args.output/'ATIVBatteryGuard-ACPI-METHOD-FLOW.zip'
+    target = args.output/'ATIVBatteryGuard-ACPI-HELPER-SYNTAX.zip'
     with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as archive:
         for name,data in sorted(files.items()): archive.writestr(name,data)
     with zipfile.ZipFile(target) as archive:

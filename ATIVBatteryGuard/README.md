@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**보조 본문 구문 점검 — Acpi-routing-v4:** v3에서 호출 표현식/보조 정의 1개를 관측했으나 보조 본문이 미지원으로 끝났습니다. [v4](ACPI_HELPER_SYNTAX_UPDATE.md)는 수집 범위를 유지하며 표준 확장 구문의 정적 읽기·고정 중단 원인·해석 완료한 보조 본문 범위의 반환 구문을 보고합니다. [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-HELPER-SYNTAX.zip) 하나만 새 폴더에 풀어 일반 권한으로 실행합니다. 실제 대기/동기화/AML/OEM 실행은 없고 FF 의미와 충전 제어는 미확정입니다. 아래는 이전 기록입니다.
+
 **메서드 연결 구문 요약 — Acpi-routing-v3:** v2 실기에서 DSDT 직접 읽기와 알려진 설명자/메서드 각 1개·인수 3개·본문 Parsed를 확인했습니다. [v3 변경과 실행 안내](ACPI_METHOD_FLOW_UPDATE.md)는 같은 수집 범위를 유지하며 후보의 반환 형태·직접 Arg2 전달·제한된 보조 정의 연결을 정적으로 요약합니다. [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-METHOD-FLOW.zip) 하나만 새 폴더에 풀고 일반 권한으로 실행합니다. 메서드 실행이나 값/실행 분기 추론은 없고 FF 의미·충전 제어는 미확정입니다. 아래는 이전 기록입니다.
 
 **DSDT 직접 읽기 수정본 — Acpi-routing-v2:** 공개 ACPICA 구현에서 Windows 목록에 없는 DSDT를 직접 읽는 근거를 확인해 기존 미열거 gate를 수정했습니다. [변경 근거·범위·실행 안내](ACPI_DSDT_DIRECT_READ_UPDATE.md)와 [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-DSDT-DIRECT.zip)을 따릅니다. 프로그램 ZIP 하나만 새 폴더에 풀고 일반 권한으로 실행합니다. OEM/AML 실행·예약 접근·레지스트리 읽기는 없으며 실제 충전 제어는 Unsupported입니다. 새 직접 읽기 경로의 Windows 실기는 아직 미검증입니다. 아래는 이전 단계 기록입니다.

@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## v3 보조 본문 미지원 수신·확장 구문 v4
+
+[현재 관측·구현·범위](ACPI_HELPER_SYNTAX_UPDATE.md)를 먼저 읽습니다. v3는 root Parsed·호출 1·직접 Arg2 인수 0·Return 1/UnresolvedName·보조 1/해석 0/미지원 1·미해결 참조 3입니다. 입력 미전달이나 잘못된 반환이 아니며 미해결 3은 root의 관측입니다. 현재 중단 opcode는 미확정이고 특정 Acquire로 단정하지 않습니다.
+
+v4는 같은 수집/상한 안에서 표준 확장 AML 구문을 정적으로 소비하고 고정 실패 종류/공개 구문 이름만 보고합니다. raw opcode/위치/이름/주소/값/예외 원문은 출력하지 않습니다. Acquire timeout은 raw WORD2바이트이며 실제 대기/동기화/변환/필드 생성/Fatal/AML/OEM을 실행하지 않습니다. 동적 Load/LoadTable/Unload/namespace 정의는 미지원으로 닫습니다.
+
+Root/기존 전체 연결 FF 의미는 유지하며 완전히 구문 해석한 보조 N개 범위의 반환/확장 구문/FF를 별도 집계합니다. N=0은 미확정, 실패 prefix는 폐기하고 scoped false를 전체 부재/실제 FF 위치로 전이하지 않습니다. 새 배포 ACPI-HELPER-SYNTAX/Acpi-routing-v4는 일반 권한·프로그램 ZIP 하나만 사용합니다. v3 반복/관리자 비교/과거 자료 재제출은 필요하지 않습니다. 실제 v4 분석은 아직 미관측이고 충전 제어는 Unsupported입니다. 이전 1회 실험·예약 표식은 유지합니다. 아래는 이전 기록입니다.
+
 ## v2 DSDT 관측 수신·연결 구문 요약 v3
 
 [v2 관측과 v3 구현 경계](ACPI_METHOD_FLOW_UPDATE.md)를 먼저 읽습니다. DSDT 본문 Complete·namespace Partial·알려진 설명자 1·대응 메서드 1·인수 3·본문 Parsed를 관측했습니다. 직접 비교/FF 반환 미관측은 보조 본문의 부재가 아닙니다. 수집 확대 대신 후보 Return 형태·알려진 호출 수·직접 Arg2 인수·같은 테이블의 보조 정의를 깊이 2/최대 8개/전체 호출 표현식 32개 안에서 순수 정적으로 요약합니다.

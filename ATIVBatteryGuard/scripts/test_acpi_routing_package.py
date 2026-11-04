@@ -43,7 +43,7 @@ class AcpiRoutingPackageTests(unittest.TestCase):
     def test_direct_dsdt_gate_and_revision_regressions_cannot_package(self):
         p=self.root/'src'/PROJECT/'WindowsAcpiRoutingProbe.cs'; original=p.read_text()
         for old,new in [('if (id == DsdtId)', 'if (id == DsdtId && occurrences != 0)'),
-                        ('Acpi-routing-v3', 'Acpi-routing-v2')]:
+                        ('Acpi-routing-v4', 'Acpi-routing-v3')]:
             with self.subTest(change=old):
                 self.assertIn(old, original)
                 p.write_text(original.replace(old,new))
@@ -57,6 +57,16 @@ class AcpiRoutingPackageTests(unittest.TestCase):
                           'private void Save() { File.WriteAllBytes("raw", new byte[1]); }',
                           'private void Send() { var client = new HttpClient(); }']:
                 with self.subTest(model=name, action=extra):
+                    p.write_text(original+'\n'+extra)
+                    with self.assertRaises(ValueError): inspect_reader_sources(self.root)
+            p.write_text(original)
+
+    def test_parsing_wait_syntax_must_not_introduce_real_wait_or_sync_calls(self):
+        for relative in ['Services/AcpiWmiRoutingInspector.cs', 'Models/AcpiMethodFlowReport.cs']:
+            p=self.root/'src/ATIVBatteryGuard.Core'/relative; original=p.read_text()
+            for extra in ['private void Wait() { System.Threading.Thread.Sleep(1); }',
+                          'private void Wait() { var wait = new Mutex(); }']:
+                with self.subTest(source=relative, action=extra):
                     p.write_text(original+'\n'+extra)
                     with self.assertRaises(ValueError): inspect_reader_sources(self.root)
             p.write_text(original)

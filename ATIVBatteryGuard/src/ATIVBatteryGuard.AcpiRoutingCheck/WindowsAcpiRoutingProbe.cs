@@ -25,7 +25,7 @@ namespace ATIVBatteryGuard.AcpiRoutingCheck
         internal static string Collect(EnumerateTables enumerate, ReadFirmwareTable read, Func<int> getLastError)
         {
             var text = new StringBuilder();
-            text.AppendLine("ATIV Battery Guard — ACPI 정적 WMI 연결 점검 (Acpi-routing-v3)");
+            text.AppendLine("ATIV Battery Guard — ACPI 정적 WMI 연결 점검 (Acpi-routing-v4)");
             text.AppendLine("Windows 내장 ACPI 테이블 읽기만 사용합니다. 관리자 권한은 요구하지 않습니다.");
             try
             {

@@ -43,7 +43,15 @@ namespace ATIVBatteryGuard.Core.Services
             return true;
         }
         private static AcpiWmiRoutingReport Invalid() => new AcpiWmiRoutingReport(AcpiRoutingStatus.InvalidTable);
-        private sealed class ParseException : Exception { }
+        private sealed class ParseException : Exception
+        {
+            internal readonly AcpiSyntaxFailureKind Kind;
+            internal readonly AcpiSyntaxOperation Operation;
+            internal ParseException(AcpiSyntaxFailureKind kind = AcpiSyntaxFailureKind.InvalidEncoding,
+                AcpiSyntaxOperation operation = AcpiSyntaxOperation.None)
+            { Kind = kind; Operation = operation; }
+            internal ParseException At(AcpiSyntaxOperation operation) => new ParseException(Kind, Operation | operation);
+        }
         private sealed class LimitException : Exception { }
         private sealed class Method { internal string Path; internal int Arguments, Start, End; }
         private sealed class Descriptor { internal string Scope, Suffix; }
@@ -58,12 +66,17 @@ namespace ATIVBatteryGuard.Core.Services
             internal bool IdOne, Input21, Ff, Complete = true;
             internal int CallSites, Arg2CallArguments, ReturnStatements, UnresolvedNames;
             internal AcpiReturnSyntax Returns;
+            internal AcpiSyntaxOperation ExtendedSyntax;
             internal readonly List<Method> Calls = new List<Method>();
         }
         private sealed class FlowEvidence
         {
             internal bool Partial, Limited, Cycle, Ff;
             internal int Inspected, Parsed, Unsupported, Unresolved, CallSites;
+            internal int ParsedReturnStatements;
+            internal AcpiReturnSyntax ParsedReturns;
+            internal AcpiSyntaxOperation ParsedExtendedSyntax, FailureOperations;
+            internal AcpiSyntaxFailureKind Failures;
             internal readonly HashSet<Method> Visited = new HashSet<Method>();
             internal readonly HashSet<Method> Active = new HashSet<Method>();
         }
@@ -97,7 +110,11 @@ namespace ATIVBatteryGuard.Core.Services
                     if (evidence.Complete)
                     {
                         try { ScanBody(method.Start, method.End, Parent(method.Path), evidence, 0); }
-                        catch (ParseException) { evidence.Complete = false; }
+                        catch (ParseException ex)
+                        {
+                            evidence.Complete = false;
+                            flow = new AcpiMethodFlowReport(rootSyntaxFailure: ex.Kind, rootFailureOperations: ex.Operation);
+                        }
                     }
                     if (evidence.Complete)
                     {
@@ -118,7 +135,13 @@ namespace ATIVBatteryGuard.Core.Services
                     flow.Partial ? AcpiMethodFlowStatus.Partial : AcpiMethodFlowStatus.ParsedObservedDefinitions;
                 bool? ff = status == AcpiMethodFlowStatus.ParsedObservedDefinitions && flow.Parsed > 0 ? (bool?)flow.Ff : null;
                 return new AcpiMethodFlowReport(status, body.CallSites, body.Arg2CallArguments, body.ReturnStatements,
-                    body.Returns, flow.Inspected, flow.Parsed, flow.Unsupported, flow.Unresolved, flow.Cycle, ff);
+                    body.Returns, flow.Inspected, flow.Parsed, flow.Unsupported, flow.Unresolved, flow.Cycle, ff,
+                    helperSyntaxFailures: flow.Failures, helperFailureOperations: flow.FailureOperations,
+                    rootExtendedSyntax: body.ExtendedSyntax,
+                    parsedHelperExtendedSyntax: flow.Parsed > 0 ? (AcpiSyntaxOperation?)flow.ParsedExtendedSyntax : null,
+                    parsedHelperReturnStatements: flow.Parsed > 0 ? (int?)flow.ParsedReturnStatements : null,
+                    parsedHelperReturnSyntax: flow.Parsed > 0 ? (AcpiReturnSyntax?)flow.ParsedReturns : null,
+                    parsedHelperLiteralFfReturn: flow.Parsed > 0 ? (bool?)flow.Ff : null);
             }
 
             private void VisitFlow(BodyEvidence body, int depth, FlowEvidence flow)
@@ -137,9 +160,16 @@ namespace ATIVBatteryGuard.Core.Services
                     flow.Visited.Add(method); flow.Inspected++;
                     var child = new BodyEvidence();
                     try { ScanBody(method.Start, method.End, Parent(method.Path), child, 0); }
-                    catch (ParseException) { flow.Unsupported++; flow.Partial = true; continue; }
+                    catch (ParseException ex)
+                    {
+                        flow.Unsupported++; flow.Partial = true;
+                        flow.Failures |= ex.Kind; flow.FailureOperations |= ex.Operation;
+                        continue;
+                    }
                     catch (LimitException) { flow.Limited = true; return; }
                     flow.Parsed++; flow.Ff |= child.Ff;
+                    flow.ParsedReturnStatements += child.ReturnStatements;
+                    flow.ParsedReturns |= child.Returns; flow.ParsedExtendedSyntax |= child.ExtendedSyntax;
                     flow.Active.Add(method);
                     VisitFlow(child, depth + 1, flow);
                     flow.Active.Remove(method);
@@ -251,14 +281,22 @@ namespace ATIVBatteryGuard.Core.Services
                             evidence.Ff = true;
                     }
                     else if (op == 0xa3 || op == 0xa5 || op == 0x9f || op == 0xcc) p++;
+                    else if (op == 0x5b)
+                    {
+                        p++;
+                        Extended(ref p, end, scope, evidence, depth + 1, true);
+                    }
                     else
                     {
+                        if (op == 0x06 || op == 0x08 || op == 0x10 || op == 0x14 || op == 0x15)
+                            throw UnsupportedPrimary(op);
                         // Integer/local/name references alone are not complete
                         // executable TermObjects; never resync after an unknown call.
                         if (op <= 0x6e || IsNameStart(op))
                         {
                             int probe = p; string path = Name(ref probe, end, scope);
-                            if (FindMethod(path, scope, NameCharacter(op, true)) == null) throw new ParseException();
+                            if (FindMethod(path, scope, NameCharacter(op, true)) == null)
+                                throw new ParseException(AcpiSyntaxFailureKind.UnresolvedStatement);
                         }
                         Arg(ref p, end, scope, evidence, depth + 1);
                     }
@@ -268,6 +306,7 @@ namespace ATIVBatteryGuard.Core.Services
             private Value Arg(ref int p, int end, string scope, BodyEvidence evidence, int depth)
             {
                 CheckDepth(depth); Tick(); int original = p; byte op = Get(ref p, end);
+                if (op == 0x5b) return Extended(ref p, end, scope, evidence, depth + 1, false);
                 if (op == 0 || op == 1 || op == 255) return new Value { Kind = 1, Integer = op == 255 ? ulong.MaxValue : op };
                 if (op == 0x0a || op == 0x0b || op == 0x0c || op == 0x0e)
                 {
@@ -284,7 +323,7 @@ namespace ATIVBatteryGuard.Core.Services
                         Value size = Arg(ref p, finish, scope, null, depth + 1);
                         if (size.Kind == 1 && size.Integer == (ulong)(finish - p))
                             result = new Value { BufferStart = p, BufferLength = finish - p };
-                        else if (evidence != null) throw new ParseException();
+                        else if (evidence != null) throw new ParseException(AcpiSyntaxFailureKind.DynamicBuffer);
                     }
                     p = finish; return result;
                 }
@@ -338,15 +377,130 @@ namespace ATIVBatteryGuard.Core.Services
                 }
                 if (op == 0x8a || op == 0x8b || op == 0x8c || op == 0x8d || op == 0x8f)
                 {
-                    Arg(ref p, end, scope, evidence, depth + 1); Arg(ref p, end, scope, evidence, depth + 1);
-                    string created = Name(ref p, end, scope);
-                    // A runtime-created field could hide a method selected by
-                    // static lookup. Do not evaluate its branch or preserve a
-                    // speculative connection in a body with that collision.
-                    if (evidence != null && FindMethod(created, Parent(created), true) != null) throw new ParseException();
+                    try
+                    {
+                        Arg(ref p, end, scope, evidence, depth + 1); Arg(ref p, end, scope, evidence, depth + 1);
+                        CreatedFieldName(ref p, end, scope, evidence);
+                    }
+                    catch (ParseException ex) { throw ex.At(AcpiSyntaxOperation.CreateField); }
                     return default(Value);
                 }
-                throw new ParseException();
+                throw UnsupportedPrimary(op);
+            }
+
+            private Value Extended(ref int p, int end, string scope, BodyEvidence evidence, int depth, bool statement)
+            {
+                CheckDepth(depth);
+                byte ext;
+                try { ext = Get(ref p, end); }
+                catch (ParseException ex) { throw ex.At(AcpiSyntaxOperation.UnrecognizedExtended); }
+                AcpiSyntaxOperation operation = ExtendedOperation(ext);
+                try
+                {
+                    if (statement && (ext == 0x30 || ext == 0x31 || ext == 0x33))
+                        throw new ParseException(AcpiSyntaxFailureKind.UnresolvedStatement);
+                    switch (ext)
+                    {
+                        case 0x12:
+                            Reference(ref p, end, scope, evidence, depth + 1, false, false);
+                            Reference(ref p, end, scope, evidence, depth + 1, true);
+                            break;
+                        case 0x13:
+                            if (!statement) throw new ParseException(AcpiSyntaxFailureKind.UnsupportedExtendedOpcode);
+                            for (int i = 0; i < 3; i++) Arg(ref p, end, scope, evidence, depth + 1);
+                            CreatedFieldName(ref p, end, scope, evidence);
+                            break;
+                        case 0x21: case 0x22:
+                            if (!statement) throw new ParseException(AcpiSyntaxFailureKind.UnsupportedExtendedOpcode);
+                            Arg(ref p, end, scope, evidence, depth + 1);
+                            break;
+                        case 0x23:
+                            Reference(ref p, end, scope, evidence, depth + 1, false);
+                            // Acquire's timeout is a raw WORD, not an AML term.
+                            Advance(ref p, end, 2);
+                            break;
+                        case 0x24: case 0x26: case 0x27:
+                            if (!statement) throw new ParseException(AcpiSyntaxFailureKind.UnsupportedExtendedOpcode);
+                            Reference(ref p, end, scope, evidence, depth + 1, false);
+                            break;
+                        case 0x25:
+                            Reference(ref p, end, scope, evidence, depth + 1, false);
+                            Arg(ref p, end, scope, evidence, depth + 1);
+                            break;
+                        case 0x28: case 0x29:
+                            Arg(ref p, end, scope, evidence, depth + 1);
+                            Reference(ref p, end, scope, evidence, depth + 1, true);
+                            break;
+                        case 0x30: case 0x33:
+                            // Only a syntax kind is observed; do not synthesize a value.
+                            break;
+                        case 0x31:
+                            throw new ParseException(AcpiSyntaxFailureKind.UnsupportedReference);
+                        case 0x32:
+                            if (!statement) throw new ParseException(AcpiSyntaxFailureKind.UnsupportedExtendedOpcode);
+                            // Fatal contains raw BYTE+DWORD data before its TermArg.
+                            Advance(ref p, end, 5);
+                            Arg(ref p, end, scope, evidence, depth + 1);
+                            break;
+                        case 0x1f: case 0x20: case 0x2a:
+                            throw new ParseException(AcpiSyntaxFailureKind.UnsupportedExtendedOpcode);
+                        case 0x01: case 0x02: case 0x80: case 0x81: case 0x82: case 0x83:
+                        case 0x84: case 0x85: case 0x86: case 0x87: case 0x88:
+                            throw new ParseException(AcpiSyntaxFailureKind.DynamicNamespace);
+                        default:
+                            throw new ParseException(AcpiSyntaxFailureKind.UnsupportedExtendedOpcode);
+                    }
+                    if (evidence != null) evidence.ExtendedSyntax |= operation;
+                    return default(Value);
+                }
+                catch (ParseException ex) { throw ex.At(operation); }
+            }
+
+            private void CreatedFieldName(ref int p, int end, string scope, BodyEvidence evidence)
+            {
+                string created = Name(ref p, end, scope);
+                // Creating a field could hide an observed method. This is a
+                // conservative syntax rejection, never a namespace mutation.
+                if (evidence != null && FindMethod(created, Parent(created), true) != null)
+                    throw new ParseException(AcpiSyntaxFailureKind.MethodNameCollision, AcpiSyntaxOperation.CreateField);
+            }
+
+            private static AcpiSyntaxOperation ExtendedOperation(byte ext)
+            {
+                switch (ext)
+                {
+                    case 0x12: return AcpiSyntaxOperation.CondRefOf;
+                    case 0x13: return AcpiSyntaxOperation.CreateField;
+                    case 0x1f: return AcpiSyntaxOperation.LoadTable;
+                    case 0x20: return AcpiSyntaxOperation.Load;
+                    case 0x21: return AcpiSyntaxOperation.Stall;
+                    case 0x22: return AcpiSyntaxOperation.Sleep;
+                    case 0x23: return AcpiSyntaxOperation.Acquire;
+                    case 0x24: return AcpiSyntaxOperation.Signal;
+                    case 0x25: return AcpiSyntaxOperation.Wait;
+                    case 0x26: return AcpiSyntaxOperation.Reset;
+                    case 0x27: return AcpiSyntaxOperation.Release;
+                    case 0x28: return AcpiSyntaxOperation.FromBcd;
+                    case 0x29: return AcpiSyntaxOperation.ToBcd;
+                    case 0x2a: return AcpiSyntaxOperation.Unload;
+                    case 0x30: return AcpiSyntaxOperation.Revision;
+                    case 0x31: return AcpiSyntaxOperation.Debug;
+                    case 0x32: return AcpiSyntaxOperation.Fatal;
+                    case 0x33: return AcpiSyntaxOperation.Timer;
+                    case 0x01: case 0x02: case 0x80: case 0x81: case 0x82: case 0x83:
+                    case 0x84: case 0x85: case 0x86: case 0x87: case 0x88:
+                        return AcpiSyntaxOperation.OtherNamespaceDefinition;
+                    default: return AcpiSyntaxOperation.UnrecognizedExtended;
+                }
+            }
+
+            private static ParseException UnsupportedPrimary(byte op)
+            {
+                if (op == 0x08) return new ParseException(AcpiSyntaxFailureKind.DynamicNamespace, AcpiSyntaxOperation.NameDefinition);
+                if (op == 0x06 || op == 0x10 || op == 0x14 || op == 0x15)
+                    return new ParseException(AcpiSyntaxFailureKind.DynamicNamespace, AcpiSyntaxOperation.OtherNamespaceDefinition);
+                return new ParseException(AcpiSyntaxFailureKind.UnsupportedOpcode,
+                    op == 0x89 ? AcpiSyntaxOperation.Match : AcpiSyntaxOperation.UnrecognizedPrimary);
             }
 
             private Value Reference(ref int p, int end, string scope, BodyEvidence evidence, int depth, bool allowNull,
@@ -365,6 +519,18 @@ namespace ATIVBatteryGuard.Core.Services
                     // arguments are consumed and no call site is recorded.
                     return new Value { Kind = 6 };
                 }
+                if (op == 0x5b)
+                {
+                    byte ext;
+                    try { ext = Get(ref p, end); }
+                    catch (ParseException ex) { throw ex.At(AcpiSyntaxOperation.UnrecognizedExtended); }
+                    if (allowType6 && ext == 0x31)
+                    {
+                        if (evidence != null) evidence.ExtendedSyntax |= AcpiSyntaxOperation.Debug;
+                        return default(Value);
+                    }
+                    throw new ParseException(AcpiSyntaxFailureKind.UnsupportedReference, ExtendedOperation(ext));
+                }
                 if (allowType6 && (op == 0x71 || op == 0x83 || op == 0x88))
                 {
                     // Supported Type6 syntax. Its own TermArg operands may
@@ -373,7 +539,7 @@ namespace ATIVBatteryGuard.Core.Services
                     p = original; Arg(ref p, end, scope, evidence, depth + 1);
                     return default(Value);
                 }
-                throw new ParseException();
+                throw new ParseException(AcpiSyntaxFailureKind.UnsupportedReference, UnsupportedPrimary(op).Operation);
             }
 
             private static int ReferenceOperand(byte op, int index)
@@ -444,7 +610,8 @@ namespace ATIVBatteryGuard.Core.Services
                 foreach (Method method in methods)
                 {
                     if (method.Path != path) continue;
-                    if (found != null || objects.Contains(path)) throw new ParseException();
+                    if (found != null) throw new ParseException(AcpiSyntaxFailureKind.AmbiguousName);
+                    if (objects.Contains(path)) throw new ParseException(AcpiSyntaxFailureKind.MethodNameCollision);
                     found = method;
                 }
                 return found;

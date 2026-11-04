@@ -1,5 +1,7 @@
 # OEM 호출 없는 사전 검증 점검 도구 — 2026-11-04
 
+**실기 결과 수신:** [MethodEnumeration 중단 결과](WMI_PREFLIGHT_ENUMERATION_RESULT.md)를 분석했습니다. 이번 도구의 해당 단계까지 실행과 고정 출력은 사용자 노트북에서 확인됐고 TargetRead 이후는 미실시입니다. 아래는 배포 당시 설명이며 같은 실행을 반복할 필요는 없습니다.
+
 ## 이전 결과에서 보완하는 점
 
 [이전 실제 결과](WMI_ONE_SHOT_PREFLIGHT_RESULT.md)는 Elevated·PreflightFailed·Unavailable·InvocationRequested=false였습니다. 해당 실행은 사전 검증에서 끝났고 후보 요청이나 예약 시도에 진입하지 않았습니다. 이는 기존 예약 표식의 존재 여부를 알려주지는 않습니다. 기존의 공통 오류 문구로는 실패 위치를 특정할 수 없습니다.

@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+[새 점검 도구의 실기 결과](WMI_PREFLIGHT_ENUMERATION_RESULT.md)를 분석했습니다. Elevated 상태에서 모델/BIOS·메서드 정의 검사는 통과했으나 MethodEnumeration의 대상 조건에서 중단됐습니다. Active=false와 객체/경로 문제를 아직 구분할 수 없어 경로 정보 확보 옵션과 고정 오류 분류를 다음 수정 대상으로 정리했습니다. OEM 호출·예약 접근은 없었고 같은 도구의 재실행이나 기존 자료 재제출은 필요하지 않습니다. 이번 변경은 분석 문서뿐입니다.
+
 [OEM 호출 없는 사전 검증 점검 도구](WMI_PREFLIGHT_ONLY_CHECK.md)를 추가했습니다. 이전 Elevated 실패 결과에서 빠졌던 준비 단계와 고정 오류 종류를 출력하며, 기존 실험의 조건·쿼리 옵션은 유지합니다. OEM 호출과 예약 표식 접근은 없고 실제 충전 제어는 계속 Unsupported입니다.
 
 [새 점검 프로그램·소스 다운로드](../downloads/README.md)의 **WMI-PREFLIGHT-ONLY**를 사용합니다. 새 폴더의 **ATIVBatteryGuard.WmiPreflightCheck.exe만 같은 계정에서 수동 관리자 실행**하고 새 출력만 전달하면 됩니다. 이전 WmiOneShotQuery는 재실행하지 않고 예약 표식도 건드리지 않습니다. 과거 TXT나 삼성 DLL을 다시 제출할 필요는 없습니다.

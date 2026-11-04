@@ -1,5 +1,7 @@
 # 사전 검증 점검 도구 — OEM 호출 없음
 
+**실기 결과 수신:** [MethodEnumeration 대상 조건 불일치 분석](../ATIVBatteryGuard/WMI_PREFLIGHT_ENUMERATION_RESULT.md)을 기록했습니다. 이번에는 새 실행 파일을 배포하지 않으며 아래 기존 점검 도구를 반복 실행할 필요가 없습니다. 다음 수정 범위는 오류 분류와 경로 정보 확보 방식입니다. 아래는 해당 배포 당시의 안내입니다.
+
 [새 점검 프로그램 ZIP](ATIVBatteryGuard-WMI-PREFLIGHT-ONLY.zip) · [일치 소스 ZIP](ATIVBatteryGuard-WMI-PREFLIGHT-ONLY-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-WMI-PREFLIGHT-ONLY-SHA256SUMS.txt) · [변경 내용·결과 해석](../ATIVBatteryGuard/WMI_PREFLIGHT_ONLY_CHECK.md)
 
 이전 Elevated 사전 검증 실패의 단계와 고정 오류 분류를 확인하는 별도 도구입니다. **OEM 메서드 실행과 기존 예약 표식의 읽기·쓰기·삭제가 없습니다.** 실제 충전 제어는 계속 Unsupported이며 새 도구의 Windows 실기는 아직 미검증입니다. 삼성 원본 DLL과 이전 실험 EXE는 포함하지 않습니다.

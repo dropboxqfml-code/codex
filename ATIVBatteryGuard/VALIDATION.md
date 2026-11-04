@@ -1,5 +1,11 @@
 # Settings 앱 분석판 검증 기록
 
+## 무호출 점검 실기 결과 분석
+
+- 사용자 TXT에서 Elevated·Complete·MethodEnumeration·InactiveOrInvalidTarget을 확인했습니다. [분기별 해석](WMI_PREFLIGHT_ENUMERATION_RESULT.md)에 따라 모델/BIOS·상세 규약/id1·연결 통과와 TargetRead 이후 미진입을 구분했습니다.
+- 독립 소스 대조로 네 부류의 중단 조건을 확인했으며 Active=false·정확히 한 행·전체 열거 완료·실제 경로 누락은 확정하지 않았습니다. 공식 API 문서와 고정 버전 소스에서 EnsureLocatable의 의미·기본값을 대조했습니다.
+- 원문 TXT는 저장소에 넣지 않고 분석 문서만 수정했습니다. 실행 코드·예약/호출 정책은 그대로이며 새 빌드/테스트/Windows/OEM 실행은 없습니다. 아래329개/경고오류0은 이전 배포의 검증 기록입니다.
+
 ## 무호출 사전 검증 점검 도구 — 2026-11-04
 
 - 전체 **329 passed, 0 failed, 0 skipped (329 registered)**: reports/wmi-preflight-only-tests.json 및 .log. 새 네 그룹은 허용된 오류 분류, 모든 유효 enum 조합의 준비 조건, 잘못된 값 처리, 개인정보와 불변성을 검사합니다. 실제 Windows/OEM을 사용하지 않습니다.

@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 무호출 점검 결과 수신 — 메서드 대상 열거 조건 불일치
+
+[이번 결과와 다음 수정 범위](WMI_PREFLIGHT_ENUMERATION_RESULT.md)를 먼저 읽습니다. 사용자 출력은 Elevated·Complete·MethodEnumeration·InactiveOrInvalidTarget입니다. 이번 실행은 고정 모델/BIOS·상세 metadata/binder/id1·ROOT\WMI 연결을 통과했고 TargetRead/입력CIMTYPE/버퍼 준비에는 도달하지 않았습니다. OEM 호출과 예약 접근은 없습니다.
+
+이 분류는 반환 객체/경로 구조 실패와 명시적 Active=false를 합치므로 Active=false·한 행·전체 열거 완료를 단정하지 않습니다. SELECT Active 결과에 경로를 요구하면서 EnsureLocatable을 지정하지 않은 점을 우선 검토합니다. 공식 API 문서에서 옵션 의미와 기본 false를 확인했으나 실제 경로 누락은 아직 미확정입니다. 이전 Unavailable과도 맞는 구조 실패 가설이며 동일 원인을 확정하지 않습니다.
+
+다음은 무호출 도구의 고정 오류 분류 세분화와 메서드 대상 쿼리의 EnsureLocatable 적용 검토입니다. 기존 단일 활성 대상/경로 검증을 삭제하지 않고 원문 경로도 보고하지 않습니다. 이번에는 문서만 반영했으며 기존 EXE 재실행·자료 재제출·표식 삭제·추가 OEM 실행은 요청하지 않습니다. 329개/6프로젝트0경고오류는 이전 배포 기록이고 이번에는 빌드/테스트를 재실행하지 않았습니다. 아래는 이전 기록입니다.
+
 ## 무호출 사전 검증 점검 도구 구현 후
 
 [이번 구현과 실행 범위](WMI_PREFLIGHT_ONLY_CHECK.md)를 먼저 읽습니다. 이전 Elevated·PreflightFailed·Unavailable·InvocationRequested=false 결과의 실패 위치를 확인하기 위해 별도 WmiPreflightCheck를 추가했습니다. 고정 준비 조건과 DirectRead 옵션·6초 예산을 그대로 재현하며 단계와 오류 enum만 출력합니다. 기존 실험 프로젝트와 예약/호출 정책은 변경하지 않았습니다.

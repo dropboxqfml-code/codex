@@ -1,5 +1,7 @@
 # ACPI 객체·참조 관계 요약 — Acpi-routing-v5
 
+**실기 결과 수신·추가 실행 불필요:** 후보/보조 이름 참조 각 3/3회 분류와 후보 저장/반환의 동일 Field 참조, 보조 SystemIo Field Store 구문을 확인했습니다. [분석과 다음 계획](../ATIVBatteryGuard/ACPI_V5_RESULT_AND_NEXT_PLAN.md)을 기록했고 이번에는 새 프로그램을 배포하지 않습니다. v5 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 아래 ZIP·소스·체크섬은 배포 당시 그대로 보존합니다. 아래는 이전 안내입니다.
+
 [프로그램 ZIP](ATIVBatteryGuard-ACPI-OBJECT-REFERENCES.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-OBJECT-REFERENCES-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-OBJECT-REFERENCES-SHA256SUMS.txt) · [범위·해석·실행 안내](../ATIVBatteryGuard/ACPI_OBJECT_REFERENCE_UPDATE.md)
 
 같은 테이블에서 관측한 Buffer/Mutex/Field 등의 선언 종류와 Store/Return의 동일 정의 참조 구문을 요약합니다. 실제 값·분기·별칭·데이터 전달·영역 접근은 평가하거나 실행하지 않습니다. **프로그램 ZIP 하나만** 새 폴더에 모두 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행해 **Acpi-routing-v5**의 새 요약만 전달합니다. 소스 ZIP은 실행에 필요하지 않습니다. v4 반복·관리자 비교·기존 TXT/DLL/원본 ACPI 재제출은 요청하지 않습니다.

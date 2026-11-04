@@ -1,5 +1,11 @@
 # Settings 앱 분석판 검증 기록
 
+## v5 실기 관측 수신·후속 계획 — 2026-11-05 한국 시간
+
+- 사용자 출력에서 후보 이름 참조 3/3회 Field, 보조 3/3회 Mutex/Field, 보조 Store Field의 선언 공간 SystemIo와 후보 Arg2 저장/직접 반환의 동일 관측 Field 참조 구문을 확인했습니다. [분석과 계획](ACPI_V5_RESULT_AND_NEXT_PLAN.md)에 범위를 기록했습니다.
+- 전체 namespace/연결/객체는 Partial이며 두 root/helper 직접 참조 관계는 미확정입니다. 종류 분류 6/6을 고유 객체 수·실제 값/전달·물리 영역 동일성·I/O/SMI 실행·FF 의미로 확대하지 않습니다. 기존 Flow 미확정 이름 참조 6회는 별도 보수적 지표입니다. 후보 Field의 주소 공간·폭은 이번 출력에 없습니다.
+- 이번에는 문서만 변경했고 빌드/테스트를 재실행하지 않았습니다. 아래 398개·Python 26개·7개 프로젝트 빌드 0경고/0오류는 직전 코드 검증 기록입니다. 실행 코드·배포 ZIP·요청/응답/예약/제어 정책은 그대로이고 새 Windows/OEM/AML 실행도 없습니다.
+
 ## 관측 이름 객체·참조 관계 요약 — v5 / 2026-11-04
 
 - [v5 구현 범위](ACPI_OBJECT_REFERENCE_UPDATE.md)는 직전 v4 관측과 계획에 따라 같은 테이블의 선언 종류·Store/Return 대상 참조 관계만 요약합니다. 기존 Flow의 이름 참조 수·Partial 조건과 직접 비교/FF 의미는 유지하고 새 ObjectReferences 상태·수·종류·nullable 관계를 별도로 보고합니다.

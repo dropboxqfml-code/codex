@@ -1,5 +1,11 @@
 # 다음 개발 재개 메모
 
+## v5 실기 결과·필드 선언과 정적 프레임 통로 계획
+
+[현재 분석과 계획](ACPI_V5_RESULT_AND_NEXT_PLAN.md)을 먼저 읽습니다. v5 사용자 출력에서 root 이름 참조 3/3 Field, helper 3/3 Mutex/Field·Store Field SystemIo, root Store(Arg2)/Return 동일 관측 Field 정의 참조를 확인했습니다. 두 root/helper 직접 참조 관계는 미확정입니다. 선언 종류 6/6 분류는 고유 객체 6개나 실제 데이터 전달 증거가 아니며 기존 Flow 미확정6 지표는 별도 보수적 검사로 유지됩니다.
+
+사용자는 이번에 분석·보고·계획을 요청했습니다. 실행 코드/ZIP은 바꾸지 않았고 빌드/테스트도 반복하지 않았습니다. 다음 구현은 root 저장/반환 Field의 Region 종류·고정21바이트 프레임 대응 분류, directStore의Arg0/1/2/상수/기타 source-role, root/helper의same-observedRegion 정의 관계와 보고문구 정리입니다. raw주소/offset/length/값은 내보내거나 실제영역접근하지 않고 physicalalias/실행/값전파를 추정하지 않습니다. 구조 확인 뒤에도 모델Windows 배터리 명령/FF 의미는 별도 근거가 필요합니다. v5 반복/관리자 비교/원본 재제출·새 OEM 시험은 없고 제어는 Unsupported입니다. 아래는 이전 기록입니다.
+
 ## 이름 객체·Store/Return 참조 관계 구현 — v5
 
 [구현 범위와 실행 안내](ACPI_OBJECT_REFERENCE_UPDATE.md)를 먼저 읽습니다. v4에서 관측한 root/helper의 이름 참조를 same-table 선언 종류와 정적 참조 관계로 분류합니다. 새 ObjectReferences는 기존 Flow/UnresolvedNameReferences/FF 의미와 분리합니다. kind 분류가 실제 runtime 형식·값·별칭·동일 데이터·실행 효과를 보장하지 않습니다.

@@ -1,5 +1,9 @@
 # 하드웨어 조사
 
+## 모델 계약 후속 정적 조사
+
+[입력·버전·공개 ACPI 트리 대조](WMI_MODEL_CONTRACT_FOLLOWUP.md)를 추가했습니다. 조회0x80은Linux에도근거가있으며 version16→SABI3 변환근거는없습니다. 현재공개tree에서940/930X모델을찾지못했고다른모델AML/명령을대입하지않았습니다. 현재Windows명령/FF의미를확정할근거는여전히부족하므로실제제어를활성화하지않습니다. 일반앱의일반권한시작/배터리표시는사용자가확인했습니다.
+
 ## 실제 후보 응답 수신 — 프레임 검증과 의미 분리
 
 [이번 결과와 정적 대조](WMI_ONE_SHOT_QUERY_RESULT.md): 사용자 노트북에서 승인된0x65 요청의 ResponseReceived/FrameChecked/ValidFrame/FF를 확인했습니다. 비동기 완료0·단일 출력·정확히21바이트/ACKAA를 통과했고 payload첫바이트만FF였습니다. 명령 지원·보호상태·상한·부작용 부재나 전체payload/명령echo는 확인하지 않았습니다.

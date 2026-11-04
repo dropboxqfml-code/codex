@@ -1,5 +1,11 @@
 # Settings 앱 분석판 검증 기록
 
+## 일반 권한 실기 확인·명령 계약 추가 조사
+
+- 사용자가 RESULT-REVIEW 빌드의 일반 권한 실행과 현재 배터리 정상 표시를 확인했습니다. 붙여넣기 검토나 모든 GUI 경로의 확인으로 확대하지 않습니다.
+- [추가 정적 조사](WMI_MODEL_CONTRACT_FOLLOWUP.md)에서 Linux 조회 입력0x80·SABI2/3 표와 Windows version16의 구분을 대조하고, linuxhw/ACPI의 고정 Git 트리에서940/930X 경로를 찾지 못했습니다. 이는 모델/기능 부재 판정이 아닙니다.
+- 실행 코드·정책·예약·decoder는 변경하지 않았으며 빌드/테스트를 반복하지 않았습니다. 아래342개/Python19개/경고오류0은 직전 코드 검증 기록입니다. 새 하드웨어/OEM/DLL 실행과 시스템 변경은 없습니다.
+
 ## WMI 후보 응답 수신·오프라인 결과 검토 — 2026-11-04
 
 - 사용자 실제 결과는 ResponseReceived·FrameChecked·ValidFrame·FF입니다. [관측 범위와 공개 소스 대조](WMI_ONE_SHOT_QUERY_RESULT.md)에 WMI 응답/구조 검증 성공과 보호 상태 미확정을 구분했습니다. 승인된1회는사용됐으며 기존 실험/예약/decoder는변경하지 않았습니다.

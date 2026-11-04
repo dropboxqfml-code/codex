@@ -1,5 +1,7 @@
 # 과거 WMI 실험 결과 검토 — 일반 앱
 
+**실기 확인:** 사용자가 현재 앱의 일반 권한 실행과 배터리 정상 표시를 확인했습니다. 붙여넣기 검토까지 확인한 것으로 확대하지 않습니다. [후속 정적 조사](../ATIVBatteryGuard/WMI_MODEL_CONTRACT_FOLLOWUP.md)를 기록했으며 이번에는 새 실행 파일이나 추가 노트북 시험이 필요하지 않습니다. 아래 현재 배포를 그대로 사용합니다.
+
 [새 프로그램 ZIP](ATIVBatteryGuard-WMI-RESULT-REVIEW.zip) · [일치 소스 ZIP](ATIVBatteryGuard-WMI-RESULT-REVIEW-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-WMI-RESULT-REVIEW-SHA256SUMS.txt) · [실제 결과·해석·개발 내용](../ATIVBatteryGuard/WMI_ONE_SHOT_QUERY_RESULT.md)
 
 승인된1회 실험에서 WMI 응답과 ValidFrame을 확인했으며 후보 표식은FF입니다. 이는 보호OFF/ON이나 하드웨어미지원 판정이 아닙니다. **기존 실험은 완료됐으므로 다시 실행하지 않고 예약 표식을 그대로 유지합니다.**

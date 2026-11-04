@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 일반 앱 실기 확인·모델 계약 추가 정적 조사
+
+[이번 조사 범위와 남은 조건](WMI_MODEL_CONTRACT_FOLLOWUP.md)을 먼저 읽습니다. 사용자가 일반 권한 시작/현재 배터리 표시를 확인했고 파일 재제출은 하지 않았습니다. 과거 결과 붙여넣기까지 확인한 것으로 확대하지 않습니다.
+
+Linux v6.12도 조회 입력data[0]=0x80을 명시하므로 FF를근거로0으로바꾸지않습니다. SABI2 표의0xFFFF와응답FF, Windows version16과SABI2/3도구분합니다. 공개linuxhw/ACPI 커밋d6d30c6ef6f45506567f25a302c64f009d8f5f4e를blob없는실제tree로조사했으나940/930X경로없음, 다른모델AML은대입하지않았습니다. 현재모델Windows명령/selector/FF계약은여전히미확정입니다.
+
+새계약근거없이충전어댑터/쓰기/추가OEM시도/입력보정/의미없는wrapper나반복진단을추가하지않습니다. 승인1회는완료됐고marker유지/packager폐쇄그대로입니다. 이번에는문서만변경했으며342+19/경고오류0은직전검증기록입니다. 새EXE/시험/자료재제출은없고기존일반앱을그대로사용합니다. 아래는이전기록입니다.
+
 ## 실제 응답 수신·표식FF·1회 완료·일반 앱 오프라인 검토
 
 [이번 결과·정적 대조·프로그램 개발](WMI_ONE_SHOT_QUERY_RESULT.md)을 먼저 읽습니다. 사용자 출력 Query65-locator-v2/Elevated/ResponseReceived/Complete/Ready/requested/FrameChecked/ValidFrame/FF를 확인했습니다. 비동기완료0·출력1개·정확히21바이트/ACKAA 구조는 통과했고 payload첫바이트만FF로분류했습니다. 전체payload/명령echo/배터리의미/보호상태·충전상한은 미확정입니다. FF를OFF/ON/하드웨어미지원으로 변환하지 않습니다.

@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 무호출 사전 검증 점검 도구 구현 후
+
+[이번 구현과 실행 범위](WMI_PREFLIGHT_ONLY_CHECK.md)를 먼저 읽습니다. 이전 Elevated·PreflightFailed·Unavailable·InvocationRequested=false 결과의 실패 위치를 확인하기 위해 별도 WmiPreflightCheck를 추가했습니다. 고정 준비 조건과 DirectRead 옵션·6초 예산을 그대로 재현하며 단계와 오류 enum만 출력합니다. 기존 실험 프로젝트와 예약/호출 정책은 변경하지 않았습니다.
+
+새 EXE는 OEM 메서드 실행·후보 프레임·실험 runner·예약 접근이 전혀 없습니다. 메모리 입력 객체 생성까지만 하고 모두 해제합니다. 부모/작업자 각각10초 제한, asInvoker·같은 계정 수동 관리자 실행, 고정 쿼리와 개인정보 제한을 유지합니다. Ready도 실제 보호 상태나 충전 제어를 뜻하지 않습니다.
+
+새 확인은 WMI-PREFLIGHT-ONLY ZIP의 새 EXE 출력뿐입니다. 이전 WmiOneShotQuery를 재실행하거나 표식을 삭제하지 않습니다. 기존 TXT/DLL/파일 목록·권한 비교 재제출도 필요 없습니다. 실패 원인을 확인하기 전에 조건/쿼리 옵션을 완화하지 않습니다. 이번 준비가 통과해도 이전 실패 원인 해결이나 추가 OEM 시험 승인을 추정하지 않습니다.
+
+현재 전체329개 통과·6개 프로젝트와 테스트 프로젝트 빌드 경고/오류0개입니다. Windows 실기와 OEM 호출은 클라우드에서 수행하지 않았고 실제 충전 제어는 Unsupported입니다. 새 실행 ZIP은 삼성 원본과 기존 실험 EXE를 제외하고 별도로 공유합니다. 환경 설정 게시는 없습니다. 아래는 이전 기록입니다.
+
 ## 1회 도구 결과 수신 — 사전 검증 중단·무호출
 
 [실제 결과와 보고 전용 보완](WMI_ONE_SHOT_PREFLIGHT_RESULT.md)을 먼저 읽습니다. 2026-11-04 사용자 출력은 Elevated·PreflightFailed·Unavailable·InvocationRequested=false·응답/표식 미관측입니다. 이 상태 조합에서는 Prepare가Complete가되기전에끝나고 예약/채널에진입하지않았습니다. 이번실행의후보요청은없었지만기존예약파일부재나추가실행허가를단정하지않습니다.

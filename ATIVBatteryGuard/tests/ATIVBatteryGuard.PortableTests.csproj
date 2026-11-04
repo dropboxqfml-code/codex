@@ -35,6 +35,7 @@
     <Compile Include="WsabiWmiOneShotReservationTests.cs" />
     <Compile Include="WsabiWmiOneShotCaptureTests.cs" />
     <Compile Include="WsabiWmiOneShotPreflightTraceTests.cs" />
+    <Compile Include="WsabiWmiPreflightInspectionTests.cs" />
     <Compile Include="../src/ATIVBatteryGuard.WmiOneShotQuery/OneShotResultCapture.cs" Link="OneShotResultCapture.cs" />
     <Compile Include="WsabiWmiRequestEncoderTests.cs" />
     <Compile Include="WsabiWmiFrameExchangeTests.cs" />

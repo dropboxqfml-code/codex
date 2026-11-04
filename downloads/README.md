@@ -1,4 +1,14 @@
-# 승인된 1회 WMI 조회 후보 실험 도구
+# 사전 검증 점검 도구 — OEM 호출 없음
+
+[새 점검 프로그램 ZIP](ATIVBatteryGuard-WMI-PREFLIGHT-ONLY.zip) · [일치 소스 ZIP](ATIVBatteryGuard-WMI-PREFLIGHT-ONLY-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-WMI-PREFLIGHT-ONLY-SHA256SUMS.txt) · [변경 내용·결과 해석](../ATIVBatteryGuard/WMI_PREFLIGHT_ONLY_CHECK.md)
+
+이전 Elevated 사전 검증 실패의 단계와 고정 오류 분류를 확인하는 별도 도구입니다. **OEM 메서드 실행과 기존 예약 표식의 읽기·쓰기·삭제가 없습니다.** 실제 충전 제어는 계속 Unsupported이며 새 도구의 Windows 실기는 아직 미검증입니다. 삼성 원본 DLL과 이전 실험 EXE는 포함하지 않습니다.
+
+ZIP 전체를 새 로컬 폴더에 풀고 **ATIVBatteryGuard.WmiPreflightCheck.exe만 같은 Windows 계정에서 수동 관리자 실행**합니다. 창의 `사전검증 전용 · OEM 호출 없음`을 확인하고 새 출력만 복사해 전달하세요. 과거 TXT·삼성 DLL·EXE·파일 목록·권한 비교를 다시 제출할 필요는 없습니다.
+
+**이전 ATIVBatteryGuard.WmiOneShotQuery.exe는 다시 실행하지 않고 기존 예약 표식도 삭제·초기화하지 않습니다.** 아래는 보존된 과거 배포 기록이며 해당 실행 안내를 다시 수행하지 않습니다.
+
+## 기존 1회 실험 도구 — 보관용·재실행 금지
 
 **2026-11-04 결과 수신:** Elevated·PreflightFailed·Unavailable·OEM 호출 요청 없음으로 사전 검증에서 중단됐습니다. [분석과 보고 전용 수정](../ATIVBatteryGuard/WMI_ONE_SHOT_PREFLIGHT_RESULT.md)을 기록했습니다. 이번에는 새 실험 EXE를 배포하지 않으며 아래 기존 ZIP을 재실행하거나 예약 표식을 삭제하지 않습니다.
 

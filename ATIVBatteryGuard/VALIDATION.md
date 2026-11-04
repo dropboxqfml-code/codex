@@ -1,5 +1,16 @@
 # Settings 앱 분석판 검증 기록
 
+## 무호출 사전 검증 점검 도구 — 2026-11-04
+
+- 전체 **329 passed, 0 failed, 0 skipped (329 registered)**: reports/wmi-preflight-only-tests.json 및 .log. 새 네 그룹은 허용된 오류 분류, 모든 유효 enum 조합의 준비 조건, 잘못된 값 처리, 개인정보와 불변성을 검사합니다. 실제 Windows/OEM을 사용하지 않습니다.
+- Core·WPF·기존 세 별도 도구·새 WmiPreflightCheck 등 전체6개 프로젝트 x64 net48 Release 빌드 **경고0개·오류0개**: reports/wmi-preflight-only-build.log. 테스트 프로젝트도 별도 빌드 경고·오류0개입니다.
+- 새 네이티브 진단은 원래 준비 경로의 고정 모델/BIOS·metadata/id1·DirectRead/단일Active/입력CIMTYPE/메모리버퍼 조건을 유지합니다. 원래 실험 프로젝트와 정책/예약 파일은 변경하지 않았습니다.
+- 기존 Python 배포 검증도 이번 환경에서 **6개 통과**했습니다: reports/wmi-preflight-only-python-tests.log.
+- 독립 읽기 전용 검토에서 정상 빈 stderr를 실패로 처리하는 문제를 발견해 수정했고 Complete 문구를 관측 단계의 판정 완료로 좁혔습니다. 새 경로에는 OEM 실행·예약 접근·펌웨어/서비스/ACL 변경이 없습니다.
+- 패키저는 고정 EXE/config/Core만 포함하고 실제 PE x64/asInvoker·호출/예약 참조 부재·전체 소스 대응·SHA-256·ZIP CRC를 검사합니다. 삼성 원본 DLL과 기존 실험 EXE 및 원문 사용자 TXT는 실행 ZIP에서 제외합니다.
+- 별도 패키지 점검 **14항목 통과**: 정상 빌드·소스 수락, 호출/예약 타입·메서드 5종을 참조에 삽입했을 때 거부, 잘못된 PE, 삼성 DLL 혼입·오래된 소스·미완료 테스트 보고서 거부를 확인했습니다. 실제 RT_MANIFEST 리소스 XML도 asInvoker/uiAccess=false로 확인했습니다. reports/wmi-preflight-only-package-audit.json에 기록합니다.
+- 새 Windows 도구의 실기 실행은 아직 미검증입니다. 새 도구로 준비 실패 위치만 확인하며 기존 실험 재실행·표식 삭제·추가 OEM 호출을 요청하지 않습니다. 실제 충전 제어는 Unsupported입니다.
+
 ## 실기 사전 검증 중단 수신·보고만 보완 — 2026-11-04 한국 시간
 
 - 사용자 출력은 Elevated·PreflightFailed·Unavailable·OEM요청없음·응답/후보미관측입니다. 이번실행에서는예약과채널에진입하지않았으며 기존표식유무나실패세부위치를단정하지않습니다. [관측과수정](WMI_ONE_SHOT_PREFLIGHT_RESULT.md)을기록했습니다.

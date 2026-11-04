@@ -399,6 +399,7 @@ internal static partial class Program
         RegisterWsabiWmiOneShotReservationTests();
         RegisterWsabiWmiOneShotCaptureTests();
         RegisterWsabiWmiOneShotPreflightTraceTests();
+        RegisterWsabiWmiPreflightInspectionTests();
         RegisterWsabiWmiRequestEncoderTests();
         RegisterWsabiWmiFrameExchangeTests();
     }

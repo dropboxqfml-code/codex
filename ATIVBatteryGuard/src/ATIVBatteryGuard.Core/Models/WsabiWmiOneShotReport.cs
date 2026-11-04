@@ -20,6 +20,7 @@ namespace ATIVBatteryGuard.Core.Models
         public ProcessElevationState Elevation { get; }
         public bool InvocationRequested { get; }
         public WsabiWmiMetadataStatus PreflightStatus { get; }
+        public WsabiWmiOneShotPreflightStage PreflightStage { get; }
         public WsabiWmiReplyStatus? ReplyStatus { get; }
         public WsabiWmiMethodReplyStatus? MethodReplyStatus { get; }
         public WsabiWmiCandidateMarker Marker { get; }
@@ -30,12 +31,15 @@ namespace ATIVBatteryGuard.Core.Models
 
         internal WsabiWmiOneShotReport(WsabiWmiOneShotStatus status, ProcessElevationState elevation,
             WsabiWmiMetadataStatus preflightStatus, bool invocationRequested = false,
-            WsabiWmiReplyResult reply = null)
+            WsabiWmiReplyResult reply = null,
+            WsabiWmiOneShotPreflightStage preflightStage = WsabiWmiOneShotPreflightStage.Unknown)
         {
             Status = Enum.IsDefined(typeof(WsabiWmiOneShotStatus), status) ? status : WsabiWmiOneShotStatus.PreflightFailed;
             Elevation = Enum.IsDefined(typeof(ProcessElevationState), elevation) ? elevation : ProcessElevationState.Unknown;
             PreflightStatus = Enum.IsDefined(typeof(WsabiWmiMetadataStatus), preflightStatus)
                 ? preflightStatus : WsabiWmiMetadataStatus.Unavailable;
+            PreflightStage = Enum.IsDefined(typeof(WsabiWmiOneShotPreflightStage), preflightStage)
+                ? preflightStage : WsabiWmiOneShotPreflightStage.Unknown;
             InvocationRequested = invocationRequested;
             if (Status != WsabiWmiOneShotStatus.ResponseReceived || !invocationRequested || reply == null) return;
             ReplyStatus = reply.Status;
@@ -58,7 +62,9 @@ namespace ATIVBatteryGuard.Core.Models
             text.AppendLine("범위: 고정 후보 0x65, 최대 1회. 자동 재시도 없음.");
             text.AppendLine("현재 토큰: " + Elevation);
             text.AppendLine("결과: " + StatusText(Status) + " (" + Status + ")");
-            text.AppendLine("사전 검증: " + WsabiWmiContractMetadataReport.StatusText(PreflightStatus));
+            text.AppendLine("사전 검증: " + PreflightStatusText(PreflightStatus) + " (" + PreflightStatus + ")");
+            text.AppendLine("사전 검증 단계: " + PreflightStageText(PreflightStage) + " (" + PreflightStage + ")");
+            text.AppendLine("단계는 마지막으로 시도한 준비 위치이며 실패 원인이나 이전 단계의 모든 사실을 보증하지 않습니다.");
             text.AppendLine("OEM 호출 요청: " + (InvocationRequested ? "요청됨" : "없음"));
             text.AppendLine("호출 요청 여부는 실제 실행·완료를 보장하지 않습니다.");
             text.AppendLine("메서드 응답 판정: " + (MethodReplyStatus.HasValue ? MethodReplyStatus.Value.ToString() : "미관측"));
@@ -88,6 +94,40 @@ namespace ATIVBatteryGuard.Core.Models
                 case WsabiWmiOneShotStatus.ResponseReceived: return "후보 요청의 응답 판정 수신";
                 case WsabiWmiOneShotStatus.TransportFailure: return "호출 요청 후 결과 확인 불가·재시도 금지";
                 default: return "결과 확인 불가";
+            }
+        }
+
+        private static string PreflightStatusText(WsabiWmiMetadataStatus status)
+        {
+            switch (status)
+            {
+                case WsabiWmiMetadataStatus.NotChecked: return "미실시 또는 미관측";
+                case WsabiWmiMetadataStatus.Complete: return "준비 결과 확인 완료";
+                case WsabiWmiMetadataStatus.Partial: return "준비 결과 일부만 확인";
+                case WsabiWmiMetadataStatus.ClassNotFound: return "대상 클래스 정의를 찾지 못함";
+                case WsabiWmiMetadataStatus.NamespaceNotFound: return "대상 네임스페이스를 찾지 못함";
+                case WsabiWmiMetadataStatus.AccessDenied: return "준비 작업의 권한 거부";
+                case WsabiWmiMetadataStatus.TimedOut: return "준비 작업 시간 초과";
+                case WsabiWmiMetadataStatus.UnsupportedPlatform: return "지원되지 않는 실행 환경";
+                default: return "사전 검증 결과 확인 불가";
+            }
+        }
+
+        private static string PreflightStageText(WsabiWmiOneShotPreflightStage stage)
+        {
+            switch (stage)
+            {
+                case WsabiWmiOneShotPreflightStage.DeviceScope: return "로컬 장치 정보 연결";
+                case WsabiWmiOneShotPreflightStage.ModelRead: return "모델 정보 읽기";
+                case WsabiWmiOneShotPreflightStage.BiosRead: return "BIOS 정보 읽기";
+                case WsabiWmiOneShotPreflightStage.ContractMetadata: return "고정 클래스·메서드 정의 확인";
+                case WsabiWmiOneShotPreflightStage.MethodScope: return "로컬 메서드 정보 연결";
+                case WsabiWmiOneShotPreflightStage.MethodEnumeration: return "메서드 인스턴스 확인";
+                case WsabiWmiOneShotPreflightStage.TargetRead: return "관측한 단일 대상 읽기";
+                case WsabiWmiOneShotPreflightStage.InputParameters: return "메모리 입력 매개변수 준비";
+                case WsabiWmiOneShotPreflightStage.BufferInstance: return "메모리 DataBuffer 준비";
+                case WsabiWmiOneShotPreflightStage.Ready: return "입력 준비 완료";
+                default: return "미관측";
             }
         }
 

@@ -1,5 +1,13 @@
 # Settings 앱 분석판 검증 기록
 
+## 실기 사전 검증 중단 수신·보고만 보완 — 2026-11-04 한국 시간
+
+- 사용자 출력은 Elevated·PreflightFailed·Unavailable·OEM요청없음·응답/후보미관측입니다. 이번실행에서는예약과채널에진입하지않았으며 기존표식유무나실패세부위치를단정하지않습니다. [관측과수정](WMI_ONE_SHOT_PREFLIGHT_RESULT.md)을기록했습니다.
+- 현재전체 **325 passed, 0 failed, 0 skipped (325 registered)**, reports/wmi-preflight-trace-tests.json 및 .log. 전체5개프로젝트빌드 **경고0개·오류0개**, reports/wmi-preflight-trace-build.log에기록합니다.
+- 새3개그룹은실패단계의고정enum전달·실패준비정보제거·무호출/무예약·Unknown기존출력·잘못된enum·원문미보관·기존1회gate를검사합니다. 원래7인수공개생성자도유지합니다.
+- 호출메서드·콜백·출력추출·쿼리옵션·시간제한helper는20b046b와바이트동일하게유지했고 고정정책/예약/가드도변경하지않았습니다. 독립읽기전용검토에서차단문제를찾지못했습니다.
+- 변경은보고와기록뿐이며 새실험EXE·추가Windows/OEM실행·재시도·표식삭제는없습니다. 원본TXT는저장소에넣지않고 새로운자료를요청하지않습니다. 배포스크립트는변경하지않아Python suite는반복하지않았습니다. 실제충전제어는계속Unsupported입니다.
+
 ## 승인된 단1회 조회 후보 도구 — 2026-11-03 한국 시간
 
 - 사용자가 검토서의 미검증0x65 후보 한정1회 실험을 명시적으로 승인했습니다. [승인·정확한 범위](WMI_ONE_SHOT_QUERY_APPROVAL.md)에 원문과 구현 제한을 기록했으며 같은 범위를 다시 승인받지 않습니다.

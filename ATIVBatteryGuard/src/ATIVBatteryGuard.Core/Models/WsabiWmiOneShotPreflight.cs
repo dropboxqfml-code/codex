@@ -15,11 +15,23 @@ namespace ATIVBatteryGuard.Core.Models
         public int MethodInstanceCount { get; }
         public bool? SoleInstanceActive { get; }
         public bool InputReady { get; }
+        public WsabiWmiOneShotPreflightStage Stage { get; }
 
         public WsabiWmiOneShotPreflight(WsabiWmiMetadataStatus status, bool? deviceMatches,
             WsabiWmiContractMetadataReport metadata, bool enumerationComplete,
             int methodInstanceCount, bool? soleInstanceActive, bool inputReady)
+            : this(status, deviceMatches, metadata, enumerationComplete, methodInstanceCount,
+                soleInstanceActive, inputReady, WsabiWmiOneShotPreflightStage.Unknown)
         {
+        }
+
+        public WsabiWmiOneShotPreflight(WsabiWmiMetadataStatus status, bool? deviceMatches,
+            WsabiWmiContractMetadataReport metadata, bool enumerationComplete,
+            int methodInstanceCount, bool? soleInstanceActive, bool inputReady,
+            WsabiWmiOneShotPreflightStage stage)
+        {
+            Stage = Enum.IsDefined(typeof(WsabiWmiOneShotPreflightStage), stage)
+                ? stage : WsabiWmiOneShotPreflightStage.Unknown;
             Status = Enum.IsDefined(typeof(WsabiWmiMetadataStatus), status)
                 ? status : WsabiWmiMetadataStatus.Unavailable;
             // Two is the bounded multiple-instance observation. Invalid counts

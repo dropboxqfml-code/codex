@@ -38,6 +38,7 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
 
         public WsabiWmiOneShotPreflight Prepare()
         {
+            var stage = WsabiWmiOneShotPreflightStage.Unknown;
             if (Interlocked.Exchange(ref preparationEntered, 1) != 0)
                 return Failure(WsabiWmiMetadataStatus.Unavailable);
             if (Environment.OSVersion.Platform != PlatformID.Win32NT || !Environment.Is64BitProcess)
@@ -52,28 +53,34 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
             {
                 // The model and BIOS use exactly the fields of the earlier
                 // device observation. No UUID, serial or account is queried.
+                stage = WsabiWmiOneShotPreflightStage.DeviceScope;
                 var deviceScope = OpenScope(@"root\CIMV2");
+                stage = WsabiWmiOneShotPreflightStage.ModelRead;
                 string model = ReadSingleString(deviceScope,
                     "SELECT Name FROM Win32_ComputerSystemProduct", "Name");
-                if (!MatchesFixedString(model, ExpectedModel)) return DeviceMismatch();
+                if (!MatchesFixedString(model, ExpectedModel)) return DeviceMismatch(stage);
+                stage = WsabiWmiOneShotPreflightStage.BiosRead;
                 string bios = ReadSingleString(deviceScope,
                     "SELECT SMBIOSBIOSVersion FROM Win32_BIOS", "SMBIOSBIOSVersion");
-                if (!MatchesFixedString(bios, ExpectedBios)) return DeviceMismatch();
+                if (!MatchesFixedString(bios, ExpectedBios)) return DeviceMismatch(stage);
                 RequirePreflightTime();
 
+                stage = WsabiWmiOneShotPreflightStage.ContractMetadata;
                 WsabiWmiContractMetadataReport metadata = WsabiWmiContractMetadataProbe.Collect();
                 RequirePreflightTime();
                 WsabiWmiMethodBinder binder;
                 if (!WsabiWmiMethodBinder.TryCreate(metadata, out binder) ||
                     metadata.MethodMetadata.MethodId != WsabiWmiOneShotPolicy.RequiredMethodId)
                     return new WsabiWmiOneShotPreflight(WsabiWmiMetadataStatus.Complete, true,
-                        metadata, false, 0, null, false);
+                        metadata, false, 0, null, false, stage);
 
+                stage = WsabiWmiOneShotPreflightStage.MethodScope;
                 var scope = OpenScope(WsabiWmiContractMetadataPolicy.LocalNamespace);
                 string relativePath = null;
                 bool? active = null;
                 int count = 0;
                 bool complete = false;
+                stage = WsabiWmiOneShotPreflightStage.MethodEnumeration;
                 using (var searcher = new ManagementObjectSearcher(scope,
                     new ObjectQuery("SELECT Active FROM WmiAcpiMethod"), CreateEnumerationOptions()))
                 using (var collection = searcher.Get())
@@ -102,7 +109,7 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
                 RequirePreflightTime();
                 if (!complete || count != 1 || active != true)
                     return new WsabiWmiOneShotPreflight(WsabiWmiMetadataStatus.Complete,
-                        true, metadata, complete, count, active, false);
+                        true, metadata, complete, count, active, false, stage);
 
                 lock (resourceGate)
                 {
@@ -110,11 +117,13 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
                     // The observed relative key stays private. The endpoint is
                     // always the fixed local scope and fixed class, never a
                     // guessed key, a version-class row or a remote path.
+                    stage = WsabiWmiOneShotPreflightStage.TargetRead;
                     target = new ManagementObject(scope, new ManagementPath(relativePath),
                         new ObjectGetOptions { Timeout = RemainingTimeout() });
                     target.Get();
                     RequirePreflightTime();
                     if (ReadActive(target) != true) throw FixedFailure();
+                    stage = WsabiWmiOneShotPreflightStage.InputParameters;
                     input = target.GetMethodParameters(WsabiWmiContractMetadataPolicy.MethodName);
                     if (input == null || input.Properties.Count != 1) throw FixedFailure();
                     PropertyData parameter = input.Properties["inData"];
@@ -122,6 +131,7 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
                         WsabiWmiContractMetadataPolicy.NormalizeCimType(
                             parameter.Qualifiers["CIMTYPE"].Value) != WsabiWmiQualifierMatch.MatchesDataBuffer)
                         throw FixedFailure();
+                    stage = WsabiWmiOneShotPreflightStage.BufferInstance;
                     using (var bufferClass = new ManagementClass(scope,
                         new ManagementPath(WsabiWmiContractMetadataPolicy.BufferClass),
                         new ObjectGetOptions { Timeout = RemainingTimeout() }))
@@ -135,13 +145,14 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
                     RequirePreflightTime();
                     prepared = true;
                 }
+                stage = WsabiWmiOneShotPreflightStage.Ready;
                 return new WsabiWmiOneShotPreflight(WsabiWmiMetadataStatus.Complete,
-                    true, metadata, true, 1, true, true);
+                    true, metadata, true, 1, true, true, stage);
             }
             catch (Exception exception)
             {
                 lock (resourceGate) { DisposePrepared(); }
-                return Failure(Classify(exception));
+                return Failure(Classify(exception), stage);
             }
         }
 
@@ -338,11 +349,12 @@ namespace ATIVBatteryGuard.WmiOneShotQuery
             catch (ManagementException exception) when (exception.ErrorCode == ManagementStatus.NotFound) { return null; }
         }
 
-        private static WsabiWmiOneShotPreflight DeviceMismatch()
-            => new WsabiWmiOneShotPreflight(WsabiWmiMetadataStatus.Complete, false, null, false, 0, null, false);
+        private static WsabiWmiOneShotPreflight DeviceMismatch(WsabiWmiOneShotPreflightStage stage)
+            => new WsabiWmiOneShotPreflight(WsabiWmiMetadataStatus.Complete, false, null, false, 0, null, false, stage);
 
-        private static WsabiWmiOneShotPreflight Failure(WsabiWmiMetadataStatus status)
-            => new WsabiWmiOneShotPreflight(status, null, null, false, 0, null, false);
+        private static WsabiWmiOneShotPreflight Failure(WsabiWmiMetadataStatus status,
+            WsabiWmiOneShotPreflightStage stage = WsabiWmiOneShotPreflightStage.Unknown)
+            => new WsabiWmiOneShotPreflight(status, null, null, false, 0, null, false, stage);
 
         private static WsabiWmiMetadataStatus Classify(Exception exception)
         {

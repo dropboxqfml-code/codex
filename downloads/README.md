@@ -1,5 +1,7 @@
 # 승인된 1회 WMI 조회 후보 실험 도구
 
+**2026-11-04 결과 수신:** Elevated·PreflightFailed·Unavailable·OEM 호출 요청 없음으로 사전 검증에서 중단됐습니다. [분석과 보고 전용 수정](../ATIVBatteryGuard/WMI_ONE_SHOT_PREFLIGHT_RESULT.md)을 기록했습니다. 이번에는 새 실험 EXE를 배포하지 않으며 아래 기존 ZIP을 재실행하거나 예약 표식을 삭제하지 않습니다.
+
 [실험 프로그램 ZIP 다운로드](ATIVBatteryGuard-WMI-ONE-SHOT-QUERY.zip) · [같은 버전 소스 ZIP](ATIVBatteryGuard-WMI-ONE-SHOT-SOURCE.zip) · [승인·제한·실행 안내](../ATIVBatteryGuard/WMI_ONE_SHOT_QUERY_APPROVAL.md)
 
 사용자가 미검증 조회후보0x65를 별도 도구·같은 계정의 수동 관리자 실행으로 최대1회 시험하는 범위를 명시적으로 승인했습니다. 같은 승인 재요청 없이 구현·검증했습니다. 모델/BIOS·상승토큰·고정규약/번호1·전체조회완료의 단일Active대상·입력준비·영속예약이 모두 맞아야 요청합니다. 같은 계정의 로컬1회표식이 있거나 안전하게 예약하지 못하면 호출하지 않으며 초기화·삭제·재시도 기능은 없습니다.

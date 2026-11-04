@@ -36,30 +36,32 @@ namespace ATIVBatteryGuard.Core.Services
 
             bool requested = false;
             var preflightStatus = WsabiWmiMetadataStatus.Unavailable;
+            var preflightStage = WsabiWmiOneShotPreflightStage.Unknown;
             try
             {
                 WsabiWmiOneShotPreflight preflight = backend.Prepare();
                 if (preflight == null)
-                    return Report(WsabiWmiOneShotStatus.PreflightFailed, elevation, preflightStatus);
+                    return Report(WsabiWmiOneShotStatus.PreflightFailed, elevation, preflightStatus, stage: preflightStage);
                 preflightStatus = preflight.Status;
+                preflightStage = preflight.Stage;
                 if (preflightStatus != WsabiWmiMetadataStatus.Complete)
-                    return Report(WsabiWmiOneShotStatus.PreflightFailed, elevation, preflightStatus);
+                    return Report(WsabiWmiOneShotStatus.PreflightFailed, elevation, preflightStatus, stage: preflightStage);
                 if (preflight.DeviceMatches != true)
-                    return Report(WsabiWmiOneShotStatus.DeviceMismatch, elevation, preflightStatus);
+                    return Report(WsabiWmiOneShotStatus.DeviceMismatch, elevation, preflightStatus, stage: preflightStage);
 
                 WsabiWmiMethodBinder binder;
                 if (!WsabiWmiMethodBinder.TryCreate(preflight.Metadata, out binder) ||
                     binder.ObservedMethodId != WsabiWmiOneShotPolicy.RequiredMethodId)
-                    return Report(WsabiWmiOneShotStatus.MetadataMismatch, elevation, preflightStatus);
+                    return Report(WsabiWmiOneShotStatus.MetadataMismatch, elevation, preflightStatus, stage: preflightStage);
                 if (!preflight.EnumerationComplete || preflight.MethodInstanceCount != 1 ||
                     preflight.SoleInstanceActive != true || !preflight.InputReady)
-                    return Report(WsabiWmiOneShotStatus.TargetMismatch, elevation, preflightStatus);
+                    return Report(WsabiWmiOneShotStatus.TargetMismatch, elevation, preflightStatus, stage: preflightStage);
 
                 WsabiWmiMethodRequest request;
                 if (!binder.TryPrepareRequest(WsabiWmiOneShotPolicy.CandidateCommand,
                     WsabiWmiOneShotPolicy.CreatePayload(), out request) ||
                     !WsabiWmiOneShotPolicy.IsApprovedRequest(request))
-                    return Report(WsabiWmiOneShotStatus.PreflightFailed, elevation, preflightStatus);
+                    return Report(WsabiWmiOneShotStatus.PreflightFailed, elevation, preflightStatus, stage: preflightStage);
 
                 WsabiWmiOneShotReservationStatus claim;
                 try { claim = reservation.TryClaim(); }
@@ -67,7 +69,7 @@ namespace ATIVBatteryGuard.Core.Services
                 if (claim != WsabiWmiOneShotReservationStatus.Claimed)
                     return Report(claim == WsabiWmiOneShotReservationStatus.AlreadyUsed
                         ? WsabiWmiOneShotStatus.ReservationAlreadyUsed : WsabiWmiOneShotStatus.ReservationUnavailable,
-                        elevation, preflightStatus);
+                        elevation, preflightStatus, stage: preflightStage);
 
                 var channel = new WsabiWmiBoundFrameChannel(binder, backend);
                 requested = true;
@@ -76,17 +78,18 @@ namespace ATIVBatteryGuard.Core.Services
                 WsabiWmiReplyResult reply = await channel.ExchangeAsync(request.Frame, CancellationToken.None)
                     .ConfigureAwait(false);
                 return new WsabiWmiOneShotReport(WsabiWmiOneShotStatus.ResponseReceived,
-                    elevation, preflightStatus, true, reply);
+                    elevation, preflightStatus, true, reply, preflightStage);
             }
             catch
             {
                 return Report(requested ? WsabiWmiOneShotStatus.TransportFailure : WsabiWmiOneShotStatus.PreflightFailed,
-                    elevation, preflightStatus, requested);
+                    elevation, preflightStatus, requested, preflightStage);
             }
         }
 
         private static WsabiWmiOneShotReport Report(WsabiWmiOneShotStatus status,
-            ProcessElevationState elevation, WsabiWmiMetadataStatus preflightStatus, bool requested = false)
-            => new WsabiWmiOneShotReport(status, elevation, preflightStatus, requested);
+            ProcessElevationState elevation, WsabiWmiMetadataStatus preflightStatus, bool requested = false,
+            WsabiWmiOneShotPreflightStage stage = WsabiWmiOneShotPreflightStage.Unknown)
+            => new WsabiWmiOneShotReport(status, elevation, preflightStatus, requested, preflightStage: stage);
     }
 }

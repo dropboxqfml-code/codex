@@ -402,6 +402,7 @@ internal static partial class Program
         RegisterWsabiWmiPreflightInspectionTests();
         RegisterWsabiWmiExperimentReviewTests();
         RegisterAcpiWmiRoutingTests();
+        RegisterAcpiFirmwareTableReadTests();
         RegisterWsabiWmiExperimentReviewViewModelTests();
         RegisterWsabiWmiRequestEncoderTests();
         RegisterWsabiWmiFrameExchangeTests();

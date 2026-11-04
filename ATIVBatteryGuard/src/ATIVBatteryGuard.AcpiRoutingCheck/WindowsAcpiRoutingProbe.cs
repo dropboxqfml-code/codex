@@ -14,22 +14,30 @@ namespace ATIVBatteryGuard.AcpiRoutingCheck
         private const uint SsdtId = 0x54445353;
         private const uint MaximumEnumerationBytes = 4096;
 
-        internal static string Collect()
+        internal delegate uint EnumerateTables(uint provider, byte[] buffer, uint size);
+        internal delegate uint ReadFirmwareTable(uint provider, uint table, byte[] buffer, uint size);
+
+        internal static string Collect() => Collect(EnumSystemFirmwareTables, GetSystemFirmwareTable, Marshal.GetLastWin32Error);
+
+        // Pure callbacks let portable tests exercise native acquisition boundaries
+        // without loading a Windows API or evaluating firmware. Production always
+        // supplies the two fixed read APIs above; no external inputs select them.
+        internal static string Collect(EnumerateTables enumerate, ReadFirmwareTable read, Func<int> getLastError)
         {
             var text = new StringBuilder();
-            text.AppendLine("ATIV Battery Guard — ACPI 정적 WMI 연결 점검 (Acpi-routing-v1)");
+            text.AppendLine("ATIV Battery Guard — ACPI 정적 WMI 연결 점검 (Acpi-routing-v2)");
             text.AppendLine("Windows 내장 ACPI 테이블 읽기만 사용합니다. 관리자 권한은 요구하지 않습니다.");
             try
             {
-                uint needed = EnumSystemFirmwareTables(AcpiProvider, null, 0);
-                if (needed == 0) { text.AppendLine("목록 조회: " + ErrorCategory()); return Finish(text); }
+                uint needed = enumerate(AcpiProvider, null, 0);
+                if (needed == 0) { text.AppendLine("목록 조회: " + ErrorCategory(getLastError())); return Finish(text); }
                 if (needed > MaximumEnumerationBytes || needed % 4 != 0)
                 { text.AppendLine("목록 조회: InvalidOrExcessiveResult"); return Finish(text); }
                 var ids = new byte[needed];
                 try
                 {
-                    uint count = EnumSystemFirmwareTables(AcpiProvider, ids, needed);
-                    if (count == 0) { text.AppendLine("목록 조회: " + ErrorCategory()); return Finish(text); }
+                    uint count = enumerate(AcpiProvider, ids, needed);
+                    if (count == 0) { text.AppendLine("목록 조회: " + ErrorCategory(getLastError())); return Finish(text); }
                     if (count != needed) { text.AppendLine("목록 조회: Incomplete"); return Finish(text); }
                     int dsdt = 0, ssdt = 0;
                     for (int at = 0; at < ids.Length; at += 4)
@@ -41,8 +49,10 @@ namespace ATIVBatteryGuard.AcpiRoutingCheck
                     text.AppendLine("테이블 목록 조회: Complete");
                     text.AppendLine("DSDT 목록 항목 수: " + dsdt);
                     text.AppendLine("SSDT 목록 항목 수: " + ssdt);
-                    ReadTable(text, "DSDT", DsdtId, dsdt);
-                    ReadTable(text, "첫 SSDT", SsdtId, ssdt);
+                    // ACPICA also adds DSDT explicitly: Windows enumeration can
+                    // omit it even though a fixed GetSystemFirmwareTable works.
+                    ReadTable(text, "DSDT", DsdtId, dsdt, read, getLastError);
+                    ReadTable(text, "첫 SSDT", SsdtId, ssdt, read, getLastError);
                 }
                 finally { Array.Clear(ids, 0, ids.Length); }
             }
@@ -50,20 +60,24 @@ namespace ATIVBatteryGuard.AcpiRoutingCheck
             return Finish(text);
         }
 
-        private static void ReadTable(StringBuilder text, string label, uint id, int occurrences)
+        private static void ReadTable(StringBuilder text, string label, uint id, int occurrences,
+            ReadFirmwareTable read, Func<int> getLastError)
         {
             text.AppendLine("[" + label + "]");
-            if (occurrences == 0) { text.AppendLine("조회: 목록에서 미관측"); return; }
-            uint needed = GetSystemFirmwareTable(AcpiProvider, id, null, 0);
-            if (needed == 0) { text.AppendLine("조회: " + ErrorCategory()); return; }
+            if (id == DsdtId)
+                text.AppendLine("조회 방식: 목록 관측 여부와 별도로 고정 DSDT ID 직접 읽기");
+            else if (occurrences == 0) { text.AppendLine("조회: 목록에서 미관측·본문 조회 미실시"); return; }
+            uint needed = read(AcpiProvider, id, null, 0);
+            if (needed == 0) { text.AppendLine("조회: " + ErrorCategory(getLastError())); return; }
             if (needed < 36 || needed > AcpiWmiRoutingInspector.MaximumTableBytes)
             { text.AppendLine("조회: InvalidOrExcessiveResult"); return; }
             var table = new byte[needed];
             try
             {
-                uint count = GetSystemFirmwareTable(AcpiProvider, id, table, needed);
-                if (count == 0) { text.AppendLine("조회: " + ErrorCategory()); return; }
+                uint count = read(AcpiProvider, id, table, needed);
+                if (count == 0) { text.AppendLine("조회: " + ErrorCategory(getLastError())); return; }
                 if (count != needed) { text.AppendLine("조회: Incomplete"); return; }
+                text.AppendLine("본문 읽기: Complete (구문 해석 결과와 별도)");
                 text.Append(AcpiWmiRoutingInspector.Inspect(table).ToDisplayText());
             }
             finally { Array.Clear(table, 0, table.Length); }
@@ -71,6 +85,7 @@ namespace ATIVBatteryGuard.AcpiRoutingCheck
 
         private static string Finish(StringBuilder text)
         {
+            text.AppendLine("DSDT 목록 미관측과 직접 조회 결과는 별개입니다. 미관측을 테이블 부재로 해석하지 않습니다.");
             text.AppendLine("Windows API는 같은 서명의 테이블 중 첫 것만 반환합니다. 모든 SSDT를 확인한 결과가 아닙니다.");
             text.AppendLine("각 테이블을 따로 해석하며 다른 테이블·호출된 보조 메서드의 동작은 합쳐 추정하지 않습니다.");
             text.AppendLine("제한된 AML 구문만 정적으로 읽습니다. 해석 실패나 미관측은 기능 부재가 아닙니다.");
@@ -80,9 +95,8 @@ namespace ATIVBatteryGuard.AcpiRoutingCheck
             return text.ToString();
         }
 
-        private static string ErrorCategory()
+        private static string ErrorCategory(int error)
         {
-            int error = Marshal.GetLastWin32Error();
             if (error == 5) return "AccessDenied";
             if (error == 1 || error == 50 || error == 120) return "NotSupported";
             if (error == 2 || error == 1168) return "NotFound";

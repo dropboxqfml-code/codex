@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## DSDT 미열거와 직접 읽기 근거
+
+**확인된 사실:** v1은 실기에서 DSDT 목록 0 때문에 본문 조회를 건너뛰었습니다. ACPICA의 [고정 Windows 수집 구현](https://github.com/acpica/acpica/blob/e85aa3bebaae81ed1e6d163511ac7e1eafe732cf/source/os_specific/service_layers/oswintbl.c#L231)도 DSDT/XSDT 미열거를 설명하고 DSDT를 고정 ID로 직접 읽습니다. 이 근거로 [v2 수정](ACPI_DSDT_DIRECT_READ_UPDATE.md)을 구현했습니다. 실제 실행 코드는 복사하지 않고 기존 Windows 두 읽기 API와 제한된 순수 파서를 사용합니다.
+
+**가정·미검증:** 현재 모델에서 직접 DSDT 읽기와 WMI 정의 해석이 성공할지는 아직 모릅니다. 읽혀도 부분 구문 또는 SMM 내부 처리 때문에 FF 의미를 밝히지 못할 수 있습니다. 여러 SSDT를 읽는 별도 레지스트리 캐시 방식은 공개 구현에 있지만 전체 활성 테이블 계약으로 확인되지 않았고 이번에는 도입하지 않습니다. OEM/AML 호출이나 원본 내보내기는 없으며 제어는 Unsupported입니다. 아래는 이전 조사 기록입니다.
+
 ## 모델 계약 후속 정적 조사
 
 [입력·버전·공개 ACPI 트리 대조](WMI_MODEL_CONTRACT_FOLLOWUP.md)를 추가했습니다. 조회0x80은Linux에도근거가있으며 version16→SABI3 변환근거는없습니다. 현재공개tree에서940/930X모델을찾지못했고다른모델AML/명령을대입하지않았습니다. 현재Windows명령/FF의미를확정할근거는여전히부족하므로실제제어를활성화하지않습니다. 일반앱의일반권한시작/배터리표시는사용자가확인했습니다.

@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**DSDT 직접 읽기 수정본 — Acpi-routing-v2:** 공개 ACPICA 구현에서 Windows 목록에 없는 DSDT를 직접 읽는 근거를 확인해 기존 미열거 gate를 수정했습니다. [변경 근거·범위·실행 안내](ACPI_DSDT_DIRECT_READ_UPDATE.md)와 [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-DSDT-DIRECT.zip)을 따릅니다. 프로그램 ZIP 하나만 새 폴더에 풀고 일반 권한으로 실행합니다. OEM/AML 실행·예약 접근·레지스트리 읽기는 없으며 실제 충전 제어는 Unsupported입니다. 새 직접 읽기 경로의 Windows 실기는 아직 미검증입니다. 아래는 이전 단계 기록입니다.
+
 **ACPI 점검 실기 결과 수신:** [전달된 결과 분석](ACPI_ROUTING_LAPTOP_RESULT.md)에서 목록 조회 Complete·DSDT 0·SSDT 4·첫 SSDT Partial을 확인했습니다. 현재 모델의 WMI 정의와 FF 의미는 확보하지 못했습니다. 같은 점검 도구를 다시 실행하거나 기존 자료를 재제출할 필요는 없습니다. 이번에는 관측과 수집 한계만 기록했고 실행 코드·배포 ZIP은 변경하지 않았습니다. 아래 실행 안내는 이전 단계 기록입니다.
 
 현재 모델의 WMI 분기를 더 좁히기 위해 [ACPI 정적 연결 점검](ACPI_STATIC_ROUTING_CHECK.md)을 구현했습니다. Windows 내장 API로 DSDT/첫 SSDT만 읽고 제한된 구문 사실을 요약합니다. AML 실행·OEM 호출·예약 접근·원본 테이블 저장은 없습니다. 아직 FF 의미를 해결하거나 실제 제어를 구현한 결과는 아닙니다.

@@ -1,5 +1,7 @@
 # ACPI 정적 WMI 연결 점검 — Acpi-routing-v1
 
+**현재 수정본은 [Acpi-routing-v2](ACPI_DSDT_DIRECT_READ_UPDATE.md)입니다.** 이 문서는 기존 v1의 범위와 배포 기록입니다. v2는 공개 근거에 따라 DSDT 미열거 gate를 제거했으며 v1 실기 결과와 구분합니다.
+
 **실기 결과 수신:** 목록 Complete·DSDT 0·SSDT 4·첫 SSDT Partial·설명자/메서드 0이 보고됐습니다. [결과와 수집 한계](ACPI_ROUTING_LAPTOP_RESULT.md)를 현재 기록으로 따릅니다. DSDT 본문은 읽지 않았고 WMI 정의/FF 의미를 확보하지 못했습니다. 아래는 배포 당시의 범위와 절차이며 같은 도구 재실행이나 기존 자료 재제출은 필요하지 않습니다.
 
 ## 이번 접근의 목적

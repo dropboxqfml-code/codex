@@ -10,8 +10,8 @@ from package_wmi_preflight_check import code_only, inspect_executable, inspect_s
 
 PROJECT = 'ATIVBatteryGuard.AcpiRoutingCheck'
 READ_ONLY_FOOTPRINT = {
-    'WindowsAcpiRoutingProbe.cs': '3752a25c2575647994bce1fa3b98c73672863d7e9508e1af575bc303ed445739',
-    'Program.cs': '23c8dd836d0b8e5805350b230365e89676d512800d86fbd722ddcf88ac15f6f6',
+    'WindowsAcpiRoutingProbe.cs': '0f1e37a41dc9500e68a1b5dad04783f038eac029c9d7087dfe16dac55d35e59b',
+    'Program.cs': 'c14db0484bd3fecb4bf852245d1aa361b998f591f39c0cc6c2909f2533a24126',
 }
 
 
@@ -62,13 +62,17 @@ def main():
     build = root / 'src' / PROJECT / 'bin/Release/net48'
     files = {name:(build/name).read_bytes() for name in [PROJECT+'.exe', PROJECT+'.exe.config', 'ATIVBatteryGuard.Core.dll']}
     inspect_executable(files[PROJECT+'.exe'])
+    if 'Acpi-routing-v2'.encode('utf-16le') not in files[PROJECT+'.exe'] or 'Acpi-routing-v1'.encode('utf-16le') in files[PROJECT+'.exe']:
+        raise ValueError('The v2 executable is required; a previous routing tool must not be distributed as the direct DSDT revision.')
     if b'GetSystemFirmwareTable\0' not in files[PROJECT+'.exe'] or b'AcpiWmiRoutingInspector\0' not in files['ATIVBatteryGuard.Core.dll']:
         raise ValueError('The current static reader and parser binaries are required.')
-    info = {'application':PROJECT, 'revision':'Acpi-routing-v1', 'target':'Windows10x64/.NETFramework4.8',
+    info = {'application':PROJECT, 'revision':'Acpi-routing-v2', 'target':'Windows10x64/.NETFramework4.8',
         'requestsElevation':False, 'usesOnlyWindowsAcpiTableReadApis':True,
         'evaluatesAml':False, 'invokesOemMethods':False, 'touchesExperimentReservation':False,
         'savesOrExportsRawFirmware':False, 'exportsDeviceIdentifiersOrPaths':False,
         'tables':['DSDT','first SSDT only'], 'completeSsdtCoverage':False, 'crossTableResolution':False,
+        'dsdtReadIndependentOfEnumeration':True, 'readsAcpiRegistryCache':False,
+        'dsdtDirectReadPublicReference':'acpica/acpica@e85aa3bebaae81ed1e6d163511ac7e1eafe732cf/source/os_specific/service_layers/oswintbl.c',
         'completeAmlLanguageSupported':False, 'syntaxObservationsProveBatterySupport':False,
         'actualChargeControlSupported':False, 'maximumTableBytes':4194304,
         'parentTimeoutMs':10000, 'independentWorkerTimeoutMs':10000,
@@ -76,17 +80,19 @@ def main():
         'digitallySigned':False, 'containsOriginalVendorBinariesOrUserReports':False,
         'sourceZipSha256':hashlib.sha256(args.source_zip.read_bytes()).hexdigest()}
     files['BUILD-INFO.json'] = json.dumps(info,ensure_ascii=False,indent=2).encode('utf-8')
-    readme = '''ATIV Battery Guard — ACPI 정적 WMI 연결 점검
+    readme = '''ATIV Battery Guard — ACPI 정적 WMI 연결 점검 (Acpi-routing-v2)
 
-공개 자료만으로 확인하지 못한 현재 노트북의 WMI 펌웨어 연결 구조를 읽습니다.
-배터리 상태·기존 DLL/TXT를 다시 수집하는 도구가 아닙니다.
+이전 v1은 DSDT가 목록에 없으면 본문 읽기를 건너뛰었습니다.
+공개 ACPICA 구현에 근거해, v2는 목록 미관측과 별도로 고정 DSDT ID를 직접 읽습니다.
+이전 결과의 배터리 상태·기존 DLL/TXT를 다시 수집하는 도구가 아닙니다.
 Windows 내장 API로 DSDT와 첫 SSDT를 복사해 제한된 AML 구문만 정적으로 읽습니다.
+다른 SSDT를 얻으려고 같은 ID를 반복 조회하거나 레지스트리를 읽지 않습니다.
 AML 실행, OEM 호출, 삼성 DLL 로드, 예약 접근, 드라이버·서비스·보안 변경은 없습니다.
 원본 ACPI/주소/GUID 원문/장치 식별자/메서드 이름/경로는 출력하거나 파일에 저장하지 않습니다.
 
 1. ZIP 전체를 새 로컬 폴더에 압축 해제합니다.
 2. ATIVBatteryGuard.AcpiRoutingCheck.exe를 일반 권한으로 실행합니다. 관리자 실행은 요구하지 않습니다.
-3. Acpi-routing-v1 표시와 출력된 요약만 복사해 전달하고 Enter로 닫습니다.
+3. Acpi-routing-v2 표시와 출력된 요약만 복사해 전달하고 Enter로 닫습니다.
 원본 테이블·삼성 DLL·기존 진단·이전 실행 결과는 다시 제출하지 않습니다.
 
 Windows API는 같은 서명의 테이블 중 첫 것만 반환하므로 전체 SSDT를 읽지 못합니다.
@@ -100,7 +106,7 @@ ID1/길이21/FF 반환 구문은 존재 여부이며 실제 분기의 실행이�
     files['먼저 읽어주세요.txt'] = readme.replace('\n','\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(hashlib.sha256(data).hexdigest()+'  '+name+'\n' for name,data in sorted(files.items())).encode()
     args.output.mkdir(parents=True,exist_ok=True)
-    target = args.output/'ATIVBatteryGuard-ACPI-ROUTING-CHECK.zip'
+    target = args.output/'ATIVBatteryGuard-ACPI-DSDT-DIRECT.zip'
     with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as archive:
         for name,data in sorted(files.items()): archive.writestr(name,data)
     with zipfile.ZipFile(target) as archive:

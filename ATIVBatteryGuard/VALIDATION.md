@@ -1,5 +1,13 @@
 # Settings 앱 분석판 검증 기록
 
+## DSDT 직접 읽기 수정 — Acpi-routing-v2 / 2026-11-04
+
+- 전체 **360 passed, 0 failed, 0 skipped (360 registered)**: reports/acpi-dsdt-tests.json 및 .log. 새 7개 그룹은 미열거 DSDT 직접 읽기, SSDT 4항목의 중복 조회 방지, 직접 읽기 오류 구분, 목록/테이블 크기·길이 변화의 중단, 성공/실패/예외 시 원본 버퍼 삭제, 고정 공급자/ID·잘못된 헤더·개인정보 비노출을 검사합니다. 프로브는 테스트의 가짜 콜백만 사용하며 Windows API를 호출하지 않습니다.
+- 전체 7개 프로젝트 x64 net48 Release 및 테스트 프로젝트 빌드 **경고 0개·오류 0개**: reports/acpi-dsdt-build.log 및 test-build.log. 새 런타임 의존성이나 레지스트리/드라이버 경로는 없습니다.
+- Python 배포 검증 **23개 통과**: reports/acpi-dsdt-python-tests.log. v2 고정 소스와 DSDT gate·버전 회귀를 거부하고 기존 API/호스트/공급자/저장·호출 금지 검사를 유지합니다. 패키저는 실제 EXE의 v2 표시와 v1 표시 부재도 확인합니다.
+- [공개 근거·구현 범위](ACPI_DSDT_DIRECT_READ_UPDATE.md)를 기록했습니다. 고정 ACPICA 소스는 바이트 대조만 했고 실행하거나 프로그램에 포함하지 않았습니다. 독립 소스 검토에서 차단 문제를 찾지 못했습니다.
+- 새 직접 DSDT 읽기의 Windows 실기는 아직 미검증입니다. 기존 v1의 실행 관측을 확대하지 않습니다. 기존 파서/일반 앱/OEM 요청·응답·예약/제어 정책과 이전 ZIP은 유지하며 실제 충전 제어는 Unsupported입니다.
+
 ## ACPI 점검 실기 관측 수신 — 2026-11-04
 
 - 전달된 Acpi-routing-v1 요약에서 목록 Complete·DSDT 0·SSDT 4·첫 SSDT Partial·설명자/메서드 0·본문 NotObserved를 확인했습니다. [확인 범위](ACPI_ROUTING_LAPTOP_RESULT.md)를 기록했습니다. 실행 계정 권한은 보고되지 않았으며 DSDT 본문·나머지 SSDT·완전한 AML 해석은 미확인입니다.

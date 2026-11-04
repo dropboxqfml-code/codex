@@ -1,5 +1,11 @@
 # 다음 개발 재개 메모
 
+## DSDT 직접 읽기 수정본 — Acpi-routing-v2
+
+[수정 근거와 범위](ACPI_DSDT_DIRECT_READ_UPDATE.md)를 먼저 읽습니다. ACPICA 고정 커밋 e85aa3b의 Windows 구현에서 DSDT 미열거를 직접 Get으로 보완하는 근거를 확보했습니다. 기존 두 읽기 API·고정 provider/ID를 유지하고 정상 목록 조회 뒤 DSDT 0이어도 직접 크기/본문을 한 번씩 읽습니다. 목록 관측·본문 읽기·구문 해석은 별도로 보고하며 첫 SSDT만 읽는 한계와 제한된 파서는 그대로입니다.
+
+이번에는 registry SSDT 캐시 경로를 추가하지 않습니다. OEM/AML/DLL 실행·드라이버/물리 메모리/포트·예약 접근·보안 변경·펌웨어 쓰기는 없습니다. 기존 앱/요청/decoder/예약/제어 정책도 유지합니다. 새 실행 패키지는 ACPI-DSDT-DIRECT이며 예전 v1 ZIP은 그대로 보존합니다. 프로그램 ZIP 하나만 일반 권한으로 실행해 v2의 새 요약을 확인하며 소스 ZIP·기존 자료 재제출은 필요하지 않습니다. v2 실제 Windows 직접 읽기는 미검증이고 실제 충전 제어는 Unsupported입니다. 아래는 이전 기록입니다.
+
 ## ACPI 실기 결과 수신 — 정의 확보 범위 부족
 
 [실기 결과와 다음 경계](ACPI_ROUTING_LAPTOP_RESULT.md)를 먼저 읽습니다. 사용자 요약은 Acpi-routing-v1, 목록 Complete, DSDT 0, SSDT 4, 첫 SSDT Partial, 설명자/메서드 0, 본문 NotObserved입니다. DSDT는 미열거 gate로 본문 조회를 하지 않았고 SSDT는 첫 것만 읽었습니다. Partial의 원인 구문은 출력에 없으며 기능 부재나 FF 의미를 입증하지 못했습니다.

@@ -1,4 +1,12 @@
-# ACPI 정적 WMI 연결 점검 — Acpi-routing-v1
+# DSDT 직접 읽기 수정본 — Acpi-routing-v2
+
+[프로그램 ZIP](ATIVBatteryGuard-ACPI-DSDT-DIRECT.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-DSDT-DIRECT-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-DSDT-DIRECT-SHA256SUMS.txt) · [변경 근거·범위·실행 안내](../ATIVBatteryGuard/ACPI_DSDT_DIRECT_READ_UPDATE.md)
+
+v1에서 목록 미관측 때문에 건너뛴 DSDT를 고정 ID로 직접 읽는 수정본입니다. 공개 ACPICA 구현에 근거해 미열거 gate를 제거했습니다. **프로그램 ZIP 하나만** 새 폴더에 모두 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행해 **Acpi-routing-v2** 요약만 전달합니다. 소스 ZIP은 개발용이며 실행에 필요하지 않습니다. 기존 TXT/DLL/원본 ACPI는 다시 제출하지 않습니다.
+
+기존 두 Windows 읽기 API와 크기·시간 제한을 유지합니다. AML/OEM 실행·레지스트리 읽기·원본 저장·예약 접근은 없으며 실제 충전 제어는 Unsupported입니다. 모든 SSDT를 읽거나 FF 의미를 확정한 결과는 아닙니다. v2의 실제 Windows 직접 읽기는 아직 미검증입니다. 기존 1회 실험 재실행·표식 삭제는 하지 않습니다.
+
+## ACPI 정적 WMI 연결 점검 v1 — 이전 배포 기록
 
 **실기 결과 수신·추가 실행 불필요:** [결과 분석](../ATIVBatteryGuard/ACPI_ROUTING_LAPTOP_RESULT.md)에서 목록 Complete·DSDT 0·SSDT 4·첫 SSDT Partial을 확인했습니다. WMI 정의와 FF 의미는 아직 미확정입니다. 기존 점검을 반복하거나 관리자 실행·기존 자료 재제출을 할 필요는 없습니다. 배포 ZIP·일치 소스·체크섬은 그대로 보존합니다. 아래는 배포 당시 안내입니다.
 

@@ -38,5 +38,15 @@ class AcpiRoutingPackageTests(unittest.TestCase):
         project.write_text(project.read_text().replace('</Project>','<ItemGroup><Reference Include="System.Management" /></ItemGroup></Project>'))
         with self.assertRaises(ValueError): inspect_reader_sources(self.root)
 
+    def test_direct_dsdt_gate_and_revision_regressions_cannot_package(self):
+        p=self.root/'src'/PROJECT/'WindowsAcpiRoutingProbe.cs'; original=p.read_text()
+        for old,new in [('if (id == DsdtId)', 'if (id == DsdtId && occurrences != 0)'),
+                        ('Acpi-routing-v2', 'Acpi-routing-v1')]:
+            with self.subTest(change=old):
+                self.assertIn(old, original)
+                p.write_text(original.replace(old,new))
+                with self.assertRaises(ValueError): inspect_reader_sources(self.root)
+        p.write_text(original)
+
 
 if __name__ == '__main__': unittest.main()

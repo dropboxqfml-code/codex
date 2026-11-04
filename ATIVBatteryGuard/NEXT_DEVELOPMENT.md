@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## ACPI 정적 연결 점검 구현
+
+[이번 범위·출력 해석·새 자료](ACPI_STATIC_ROUTING_CHECK.md)를 먼저 읽습니다. 기존전송코드감사에서FF를만드는명백한결함없음, exactmodel공개README검색에서도펌웨어정의없음이므로 현재DSDT/첫SSDT의WMI연결정의를읽는새별도normal-asInvoker도구를준비했습니다. Windows두read API만사용, AML eval/OEM/예약/원본저장X입니다. 과거자료재제출아닌새정의요약만필요합니다.
+
+Core제한AMLreader는static_WDG knownGUID→동일scope WMxx 후보와인수수·직접ID1/Size21비교·literalFF반환구문만요약합니다. opaqueBuffer/Package/String/Field에재동기화하지않고unknownNamespace는Partial, methodunsupported는표식폐기합니다. Partial/관측수/부정표식은전체부재·유일성·배터리의미증거가아닙니다. 모든SSDT/cross-table/보조메서드/SMM해석미지원이며FF원인해결을보장하지않습니다.
+
+새ACPI-ROUTING-CHECK만일반권한으로실행하며oldOneShot재실행/markerreset/추가OEM/0x66없음. 현재일반앱·원래정책/decoder/예약은유지합니다. 원본테이블/GUID원문/주소/이름/경로/식별자는보고하지않습니다. 실제Windows수집경로는아직미검증이고실제충전제어는Unsupported입니다. 아래는이전기록입니다.
+
 ## 일반 앱 실기 확인·모델 계약 추가 정적 조사
 
 [이번 조사 범위와 남은 조건](WMI_MODEL_CONTRACT_FOLLOWUP.md)을 먼저 읽습니다. 사용자가 일반 권한 시작/현재 배터리 표시를 확인했고 파일 재제출은 하지 않았습니다. 과거 결과 붙여넣기까지 확인한 것으로 확대하지 않습니다.

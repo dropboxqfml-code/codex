@@ -1,6 +1,14 @@
-# 과거 WMI 실험 결과 검토 — 일반 앱
+# ACPI 정적 WMI 연결 점검 — Acpi-routing-v1
 
-**실기 확인:** 사용자가 현재 앱의 일반 권한 실행과 배터리 정상 표시를 확인했습니다. 붙여넣기 검토까지 확인한 것으로 확대하지 않습니다. [후속 정적 조사](../ATIVBatteryGuard/WMI_MODEL_CONTRACT_FOLLOWUP.md)를 기록했으며 이번에는 새 실행 파일이나 추가 노트북 시험이 필요하지 않습니다. 아래 현재 배포를 그대로 사용합니다.
+[새 점검 도구 ZIP](ATIVBatteryGuard-ACPI-ROUTING-CHECK.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-ROUTING-CHECK-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-ROUTING-CHECK-SHA256SUMS.txt) · [범위·한계·실행 안내](../ATIVBatteryGuard/ACPI_STATIC_ROUTING_CHECK.md)
+
+현재 노트북의 WMI 펌웨어 연결 정의를 Windows 내장 API로 읽는 별도 도구입니다. **AML 실행·OEM 호출·예약 접근·원본 테이블 저장은 없습니다.** DSDT/첫 SSDT의 제한된 구문만 요약하며 전체 펌웨어 해석이나 FF 의미 해결을 보장하지 않습니다. 실제 충전 제어는 미지원입니다.
+
+ZIP 전체를 새 로컬 폴더에 풀고 **ATIVBatteryGuard.AcpiRoutingCheck.exe를 일반 권한으로 실행**합니다. `(Acpi-routing-v1)` 표시가 있는 새 출력 요약만 전달하면 됩니다. 기존 배터리 진단/TXT/DLL을 다시 제출하지 않으며 원본 ACPI도 제출하지 않습니다. 이전 1회 실험은 재실행하지 않고 예약 표식을 유지합니다. 새 도구의 Windows 실기는 미검증입니다.
+
+## 현재 일반 앱 — 계속 사용 가능
+
+**실기 확인:** 사용자가 현재 앱의 일반 권한 실행과 배터리 정상 표시를 확인했습니다. 붙여넣기 검토까지 확인한 것으로 확대하지 않습니다. 일반 앱은 아래 배포를 계속 사용합니다. 이번에 추가한 별도 ACPI 점검 도구의 실행 방법과 필요한 새 요약은 위 안내를 따릅니다. [이전 정적 조사 기록](../ATIVBatteryGuard/WMI_MODEL_CONTRACT_FOLLOWUP.md)도 보존합니다.
 
 [새 프로그램 ZIP](ATIVBatteryGuard-WMI-RESULT-REVIEW.zip) · [일치 소스 ZIP](ATIVBatteryGuard-WMI-RESULT-REVIEW-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-WMI-RESULT-REVIEW-SHA256SUMS.txt) · [실제 결과·해석·개발 내용](../ATIVBatteryGuard/WMI_ONE_SHOT_QUERY_RESULT.md)
 
@@ -8,7 +16,7 @@
 
 새 ZIP 전체를 새 로컬 폴더에 풀고 **ATIVBatteryGuard.exe를 일반 권한으로 실행**합니다. 새 '과거 WMI 실험 결과 검토'에 원하는 경우 이미 받은 콘솔 출력을 붙여넣어 확인합니다. 검토는 추가 장치/WMI/OEM/예약 접근 없이 텍스트만 처리하며 원문 입력을 비우고 저장하지 않습니다. 현재 장치 일치나 텍스트 진위는 검증하지 않습니다.
 
-새 노트북 실험·기존 자료 재제출은 필요하지 않습니다. 기존 Windows 배터리 표시와 읽기 전용 진단은 유지하며 실제 충전 제어는 계속 Unsupported입니다. 삼성 원본 DLL·실험 EXE·사용자 원문 보고서는 포함하지 않습니다. 새 GUI의 Windows 실기는 아직 미검증입니다. 아래는 과거 배포 기록이며 실험 실행 절차를 다시 수행하지 않습니다.
+이 일반 앱의 오프라인 검토를 위해 새 OEM 시험이나 기존 자료 재제출은 필요하지 않습니다. 기존 Windows 배터리 표시와 읽기 전용 진단은 유지하며 실제 충전 제어는 계속 Unsupported입니다. 삼성 원본 DLL·실험 EXE·사용자 원문 보고서는 포함하지 않습니다. 붙여넣기 검토 GUI의 Windows 실기는 아직 미검증입니다. 아래는 과거 배포 기록이며 실험 실행 절차를 다시 수행하지 않습니다.
 
 ## 완료된 1회 조회 수정본 — 보관용·재실행 금지
 

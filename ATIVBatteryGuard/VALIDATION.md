@@ -1,5 +1,14 @@
 # Settings 앱 분석판 검증 기록
 
+## 명령 원본 후보와 오프라인 인입 검사 — 2026-11-05 한국 시간
+
+- [고정 출처·원본 접근 조건](COMMAND_SOURCE_ARTIFACTS_AND_ACCESS.md)에 정확한 ACJ/P05ACJ 패키지 매핑과 구형NP-RV520 BLE LFS 객체를 기록했습니다. 실제 EXE/ZIP 원본은 미확보이며 목록/포인터 해시를 원본 해시로 취급하지 않습니다.
+- 새 개발용 scripts/inspect_command_research_artifact.py는 네트워크·프로세스·라이브러리 로드·추출·실행 없이 고정 원본 무결성/컨테이너 구조만 검사합니다. 입력64MiB·ZIP4096개/선언 해제량128MiB·PE96개 section 상한, central-directory 실제 개수 선검사·raw deflate 길이/EOF/CRC·descriptor·겹침 검사를 적용합니다. BIOS는 해시가 미확정이라 PE 관측까지만 보고하며 모델/서명/배터리 계약/하드웨어 권한은 모두false입니다.
+- Python 전체 **41개 통과**: reports/command-artifact-python-tests.log. 신규14개는 pointer/실제원본 구분, 고정CLI 정책과 크기·해시 거부, ZIP/PE 잘림·위조·경계·자원 제한, 정상 deflate 경계, 경로/원문 예외 비노출·권한false를 검사합니다. 기존27개 배포 보호 검사도 유지됩니다. 독립 읽기 전용 검토의 ZIP 경계 지적을 수정하고 추가 차단 문제는 발견하지 못했습니다.
+- 실제133바이트 LFS 파일의 검사 결과는 GitLfsPointerOnly·pointerMatchesExpected=true·sourcePayloadIntegrityVerified=false이며 모든 모델/계약/권한 flag도false입니다. reports/command-artifact-pointer-review.json에 경로나 원문 이름 없이 기록했습니다. 원본 ZIP을 검사한 것으로 보고하지 않습니다.
+- sbuservice.samsungmobile.com·media.githubusercontent.com 추가 초안만 저장한 뒤 재조회했습니다(status=saved/requires_publish=true). 기존custom목록과 프리셋을 보존했고 저장소·설치/시작 스크립트·변수/자격 요구사항은 변경하지 않았습니다. 환경을 게시하지 않았으며 원본 접근은 아직 차단돼 있습니다. 적용 후 해당 정상 요청부터 재검증해야 합니다.
+- 앱/Core/요청/디코더/예약/제어 정책과 기존ZIP은 그대로입니다. 이번에는 C# 빌드·429개 portable 테스트를 재실행하지 않았습니다. 기존v7의 빌드0경고/0오류와429개는 이전 검증 기록입니다. OEM/AML/DLL/장치/펌웨어·레지스트리/서비스/보안 작업은 없고 실제 충전 제어는Unsupported입니다. 아래는 이전 검증 기록입니다.
+
 ## 동일 모델 계열·P05ACJ 공개 정적 근거 조사 — 2026-11-05 한국 시간
 
 - [고정 출처와 명령 구분](P05ACJ_BATTERY_COMMAND_EVIDENCE.md)에 새로 확보한farjump/fwtr54ed1c555423babd4c4aa6c69ce95cdf0a4a68f4의 자료·해시·모델/BIOS metadata를 기록했습니다. 공개 Linux 수집 원문에서 DSDT1/SSDT4개 서명·연속 오프셋·선언 길이·체크섬을 확인했습니다.

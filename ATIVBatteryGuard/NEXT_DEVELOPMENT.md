@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## P05ACJ/구형 BLE 원본 위치 확보·정상 접근 대기
+
+[최신 원본 후보·검증·접근 조건](COMMAND_SOURCE_ARTIFACTS_AND_ACCESS.md)을 먼저 읽습니다. ACJ의 정확한 파일명은 ITEM_20140901_21421_WIN_P05ACJ.exe이며 고정SamsungBIOSTools 매핑/수집로그에서 확인했습니다. 같은 계통의 목록을 독립근거로 세거나 목록 해시를 EXE 해시로 오인하지 않습니다. 원본EXE·내부빌드·서명·모델목록은 미확보입니다.
+
+별도NP-RV520 Battery Life Extender1.0.0.11은 고정LFS 포인터133바이트만 확보했고 실제객체는13,728,500바이트/SHA5e3be33df74283d00542777320519c3f5d5fb6a01bdcbd664d7d9e33ce2511fc입니다. 포인터는 바이너리가 아니며 현재ATIV 호환근거도 아닙니다. 개발용 오프라인 인입 검사기는 원본 무결성/컨테이너 구조만 확인하고 OEM진위·모델·명령 계약은 확정하지 않습니다.
+
+현재sbuservice.samsungmobile.com·media.githubusercontent.com이 차단돼 두 호스트 추가 초안만 저장·재조회했습니다(status=saved/requires_publish=true). 설치/시작/저장소/프리셋 등은 보존했고 환경을 게시하지 않았습니다. 사용자 검토·저장·게시 후 원본 정상요청 재확인 → 바이트/해시/구조검증 → 실행 없는 정적분석으로 이어갑니다. 프록시 우회·설치/플래시·원본재제출·노트북반복/OEM추가실험은 없습니다. 앱·기존ZIP·요청/디코더/예약/제어는 유지하며 실제제어는Unsupported입니다. 아래는 이전 작업 당시의 기록입니다.
+
 ## 동일 P05ACJ 공개 ACPI 확보·명령 경로 분리
 
 [새 정적 근거](P05ACJ_BATTERY_COMMAND_EVIDENCE.md)를 먼저 읽습니다. farjump/fwtr54ed1c555423babd4c4aa6c69ce95cdf0a4a68f4의 같은 수집 실행 metadata가940X3G/930X3G·NP940X3G-K03FR·P05ACJ.128.140819.dg를 명시합니다. 공개 Linux 자료로 현재 사용자 장치의 원문/Windows 실행과 구분합니다. DSDT71849바이트·SSDT4개 길이/체크섬을 확인하고 정적 디스어셈블·기존v7 바이트 파서로 검사했습니다. 원본/주소/식별자는 저장소·배포물에 넣지 않습니다.

@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 외부 등록 10개 복구·관측 원본 pin
+
+[P05ACJ_EXTERNAL_REGISTRATION_REVIEW.md](P05ACJ_EXTERNAL_REGISTRATION_REVIEW.md)를 먼저 읽습니다. GUID 바이트 포함 34개 파일에서 직접 참조 6개(provider/bridge/외부 등록자4개)를 복구했습니다. 나머지28개는 직접 참조 미관측입니다. descriptor → LocateProtocol → register 흐름을 복구한 외부 등록10개는 Wireless12/13/69/6A, SwSmi78·67/68, AlwaysOn6D/6E, SetupWin7C입니다. 런타임 등록 성공은 미관측이며 계산/다른 볼륨/동적 등록을 닫지 못해65/66 미지원·미등록을 확정하지 않습니다.
+
+67/68의 USB 문맥과6D/6E의 SecSleepType/설정은 배터리80/100의 근거가 아닙니다. 7C callback은498이며 협상/공유 구조 발견용입니다. 별도3408→4FC→ED4 경로는 인증·UEFI GetVariable/SetVariable을 포함하므로 읽기 전용 대체 조회로 사용하지 않습니다. HII 배터리 문자열 연결은 미확정입니다. 다음은 등록 지도를 기준으로 기존 Windows 호출자 기록과 적용 모델의 OEM 계약을 대조합니다. 유사 명령을 시험하지 않습니다.
+
+개발용 p05acj 인입 검사는 관측 EXE의 길이5,822,368/SHA374c768a09211ce8da6e0812bde870e3b90957bf8b38e2289cac4dc52857e7fd를 먼저 대조한 뒤 PE를 검사합니다. ObservedSourcePayloadMatched는 제조사 진위·모델·명령 검증이 아니며 권한은 false입니다. 별도 오프라인 서명 수학검증과 이미지 digest 일치는 통과했지만 시스템 CA 체인·타임스탬프/폐기·Windows 정책이 미완료여서 전체 authenticodeVerified는 false로 유지합니다.
+
+Python46개 통과. C#/프로그램/기존 ZIP은 미변경이므로 C# 빌드·테스트는 이번에 반복하지 않았습니다. 사용자의 직전판 실행을 수신했고 추가 업로드/시험/OEM 재호출/예약 삭제는 불필요합니다. 실제 제어는 Unsupported입니다. 아래는 이전 단계 기록입니다.
+
 ## 최신 — 원본 확보·P05ACJ 공통 실패 접두부 구현
 
 [FIRMWARE_REPLY_EVIDENCE_UPDATE.md](FIRMWARE_REPLY_EVIDENCE_UPDATE.md)를 먼저 읽습니다. 사용자 환경 게시 후 두 원본을 정상 요청으로 확보하고 정적 분석했습니다. P05ACJ dispatch RVA9E6–9F8은 여러 실패 조건에 데이터20바이트를 FF+19zero로 만들고 ACK AA를 씁니다. 순수 디코더는 지원한 데이터16바이트의 FF+15zero 접두부만 비배타적으로 비교합니다. 과거 결과는 첫FF만 있어 전체패턴/실패원인/현재펌웨어 일치를 확정할 수 없습니다.

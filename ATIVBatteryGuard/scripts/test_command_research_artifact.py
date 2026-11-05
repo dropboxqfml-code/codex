@@ -90,6 +90,15 @@ class ArtifactIntakeTests(unittest.TestCase):
             with patch.object(intake, "_zip_counts", side_effect=AssertionError("must not parse")):
                 self.assertEqual(intake.inspect(data, spec)["status"], expected)
 
+    def test_unpinned_legacy_zip_never_becomes_verified_source_payload(self):
+        data = zip_bytes()
+        with patch.object(intake, "_zip_counts", side_effect=AssertionError("no ZIP parse")) as parsed:
+            report = intake.inspect(data, intake.ArtifactSpec("legacy-ble"))
+        parsed.assert_not_called()
+        self.assertEqual(report["status"], "SourceSizeMismatch")
+        self.assertFalse(report["sourcePayloadIntegrityVerified"])
+        self.assert_closed(report)
+
     def test_valid_zip_verifies_only_source_payload_and_has_no_raw_names(self):
         data = zip_bytes("PRIVATE-USER/serial-unique-927361.bin")
         report = intake.inspect(data, fixture_spec(data))
@@ -223,13 +232,46 @@ class ArtifactIntakeTests(unittest.TestCase):
     def test_pe32_and_pe32plus_are_observations_without_identity_claims(self):
         for plus in (False, True):
             data = pe_bytes(plus)
-            report = intake.inspect(data, intake.SPECS["p05acj"])
+            report = intake.inspect(data, intake.ArtifactSpec("p05acj"))
             self.assertEqual(report["status"], "PeHeaderObserved")
             self.assertEqual(report["peSectionCount"], 1)
             self.assertFalse(report["sourcePayloadIntegrityVerified"])
             self.assert_closed(report)
             self.assertNotIn("private", json.dumps(report))
-            self.assertEqual(report, intake.inspect(data, intake.SPECS["p05acj"]))
+            self.assertEqual(report, intake.inspect(data, intake.ArtifactSpec("p05acj")))
+
+    def test_p05acj_pin_rejects_different_bytes_before_pe_inspection(self):
+        data = pe_bytes()
+        specs = (intake.SPECS["p05acj"],
+                 intake.ArtifactSpec("p05acj", len(data), "0" * 64))
+        for spec, status in zip(specs, ("SourceSizeMismatch", "SourceHashMismatch")):
+            with self.subTest(status=status):
+                with patch.object(intake, "_pe_sections", side_effect=AssertionError("no PE parse")) as parsed:
+                    report = intake.inspect(data, spec)
+                parsed.assert_not_called()
+                self.assertEqual(report["status"], status)
+                self.assertFalse(report["sourcePayloadIntegrityVerified"])
+                self.assert_closed(report)
+
+    def test_observed_p05acj_match_does_not_authenticate_or_authorize_firmware(self):
+        for plus in (False, True):
+            data = pe_bytes(plus)
+            spec = intake.ArtifactSpec("p05acj", len(data), hashlib.sha256(data).hexdigest())
+            report = intake.inspect(data, spec)
+            self.assertEqual(report["status"], "ObservedSourcePayloadMatched")
+            self.assertTrue(report["sourcePayloadIntegrityVerified"])
+            self.assertEqual(report["peSectionCount"], 1)
+            self.assert_closed(report)
+            damaged = data[:-1] + b"1"
+            self.assertEqual(intake.inspect(damaged, spec)["status"], "SourceHashMismatch")
+
+    def test_matching_observed_bytes_still_require_a_valid_pe_container(self):
+        for data in (b"MZ", pe_bytes()[:-1]):
+            spec = intake.ArtifactSpec("p05acj", len(data), hashlib.sha256(data).hexdigest())
+            report = intake.inspect(data, spec)
+            self.assertEqual(report["status"], "InvalidPeContainer")
+            self.assertFalse(report["sourcePayloadIntegrityVerified"])
+            self.assert_closed(report)
 
     def test_pe_header_optional_header_section_and_truncation_bounds(self):
         original = pe_bytes()
@@ -243,11 +285,11 @@ class ArtifactIntakeTests(unittest.TestCase):
             damaged = bytearray(original)
             struct.pack_into(format_, damaged, offset, value)
             with self.subTest(offset=offset, value=value):
-                self.assertEqual(intake.inspect(bytes(damaged), intake.SPECS["p05acj"])["status"],
+                self.assertEqual(intake.inspect(bytes(damaged), intake.ArtifactSpec("p05acj"))["status"],
                                  "InvalidPeContainer")
         for data in (b"MZ", original[:63], original[:350], original[:-1]):
-            self.assertEqual(intake.inspect(data, intake.SPECS["p05acj"])["status"], "InvalidPeContainer")
-        self.assertEqual(intake.inspect(b"arbitrary inert data", intake.SPECS["p05acj"])["status"],
+            self.assertEqual(intake.inspect(data, intake.ArtifactSpec("p05acj"))["status"], "InvalidPeContainer")
+        self.assertEqual(intake.inspect(b"arbitrary inert data", intake.ArtifactSpec("p05acj"))["status"],
                          "UnrecognizedData")
 
     def test_oversized_input_is_not_hashed_or_read_and_input_races_are_bounded(self):
@@ -272,10 +314,12 @@ class ArtifactIntakeTests(unittest.TestCase):
             path = Path(directory) / "PRIVATE-USER-serial-927361.bin"
             path.write_bytes(pe_bytes())
             for arguments, expected, code in (
-                (["--kind", "p05acj", "--input", str(path)], "PeHeaderObserved", 0),
+                (["--kind", "p05acj", "--input", str(path)], "SourceSizeMismatch", 1),
                 (["--kind", "legacy-ble", "--input", str(path)], "SourceSizeMismatch", 1),
                 (["--kind", "private-invalid-kind", "--input", str(path)], "InvalidArguments", 1),
                 (["--kind", "legacy-ble", "--input", str(path), "--expected-sha256", "private"],
+                 "InvalidArguments", 1),
+                (["--kind", "p05acj", "--input", str(path), "--expected-sha256", "private"],
                  "InvalidArguments", 1),
                 (["--kind", "p05acj", "--input", str(path) + "-missing"], "InputUnavailable", 1),
             ):
@@ -295,6 +339,9 @@ class ArtifactIntakeTests(unittest.TestCase):
         self.assertEqual(intake.SPECS["legacy-ble"].expected_size, 13728500)
         self.assertEqual(intake.SPECS["legacy-ble"].expected_sha256,
                          "5e3be33df74283d00542777320519c3f5d5fb6a01bdcbd664d7d9e33ce2511fc")
+        self.assertEqual(intake.SPECS["p05acj"].expected_size, 5822368)
+        self.assertEqual(intake.SPECS["p05acj"].expected_sha256,
+                         "374c768a09211ce8da6e0812bde870e3b90957bf8b38e2289cac4dc52857e7fd")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,15 @@
 # Settings 앱 분석판 검증 기록
 
+## 최신 — P05ACJ 외부 등록 추적·원본 pin 검증 / 2026-11-05
+
+- Python 전체 **46개 통과**, reports/p05acj-registration-python-tests.log. 추가4개는 PE 해석 전 크기/해시 거부·관측 일치의 권한false·일치 후 잘린PE 거부·pin 없는 legacy ZIP 검증 거부입니다. p05acj CLI 해시 덮어쓰기 거부도 검사했습니다. 독립 읽기 전용 검토에서 발견한 legacy 순수API의 pin 누락 경계 퇴행을 수정하고 회귀로 고정했습니다.
+- 실제 확보 P05ACJ 패키지는 ObservedSourcePayloadMatched·5sections·sourcePayloadIntegrityVerified=true이며 서명/모델/배터리 계약/하드웨어 권한은 모두false입니다(reports/p05acj-observed-source-review.json). 이 결과는 HTTP 원본의 이전 관측 바이트와의 일치이고 신뢰 원본 인증이 아닙니다.
+- [정적 추적](P05ACJ_EXTERNAL_REGISTRATION_REVIEW.md): GUID 포함34파일의 직접RIP 참조를 독립 재검사해6개/미복구28개로 분류하고 외부4모듈의 descriptor/LocateProtocol/공개 등록 메서드 호출10경로를 복구했습니다. 런타임 등록 성공·전체 동적 등록 폐쇄·65/66/FF 원인은 검증하지 않았습니다. 제조사 실행·하드웨어·AML 평가·UEFI 변수 접근은 없습니다.
+- 별도 오프라인 OpenSSL 검사는 메인PKCS#7 서명 수학검증(신뢰 체인 검사 생략)과 Authenticode 이미지SHA1 일치를 확인했고, 서명1비트 변조 거부·이미지1비트 변조 digest 불일치 대조를 통과했습니다. 시스템 CA 체인은 issuer 부재로 실패했으며 타임스탬프·폐기·Windows 정책은 미검증입니다. 전체 authenticodeVerified는false이며 인증서 설치·네트워크·원본 실행은 없습니다.
+- 사용자의 직전 프로그램 실행 보고를 수신했습니다. 이번에는 C#/XAML/실행 파일을 수정하지 않아 C# 빌드·테스트는 반복하지 않았습니다. 아래434개/빌드0경고·오류는 직전판 검증입니다. 새 진단/업로드/관리자/OEM 시험/예약 초기화는 불필요하며 제어는 Unsupported입니다.
+
+아래는 이전 단계 검증 기록입니다.
+
 ## 최신 — P05ACJ 응답 근거 반영판 / 2026-11-05
 
 - 현 환경에서 7개 프로젝트 Release 빌드 성공, 경고·오류 0개. PortableTests 별도 빌드도 경고·오류 0개입니다.

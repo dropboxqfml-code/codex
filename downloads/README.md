@@ -1,5 +1,7 @@
 # ATIV Battery Guard — P05ACJ 응답 근거 반영판
 
+**후속 개발 완료 — 실행 프로그램은 동일:** [외부 등록 추적·원본 검사 보강](../ATIVBatteryGuard/P05ACJ_EXTERNAL_REGISTRATION_REVIEW.md)을 진행했습니다. 사용자가 아래 프로그램 실행을 보고했으며 추가 업로드·시험·재다운로드는 필요하지 않습니다. 개발용 검사기만 관측 P05ACJ 길이/해시 pin으로 보강했고 Python46개가 통과했습니다. [새 개발 소스 ZIP](ATIVBatteryGuard-P05ACJ-REGISTRATION-SOURCE.zip) · [소스 체크섬](ATIVBatteryGuard-P05ACJ-REGISTRATION-SHA256SUMS.txt). 소스는 실행에 필요하지 않으며 기존 프로그램 ZIP을 덮어쓰지 않았습니다. 실제 충전 제어는 Unsupported입니다. 아래는 직전 실행판 안내입니다.
+
 2026-11-05. [프로그램 ZIP](ATIVBatteryGuard-FIRMWARE-REPLY-EVIDENCE.zip) · [일치 소스 ZIP](ATIVBatteryGuard-FIRMWARE-REPLY-EVIDENCE-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-FIRMWARE-REPLY-EVIDENCE-SHA256SUMS.txt) · [근거·변경·한계](../ATIVBatteryGuard/FIRMWARE_REPLY_EVIDENCE_UPDATE.md)
 
 **프로그램 ZIP 하나만** 새 폴더에 전부 풀고 ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 소스 ZIP은 개발용이며 함께 풀지 않습니다. 기존 배터리 표시 앱에 P05ACJ의 공통 실패 응답 근거를 반영했습니다. 원하는 경우 이미 보유한 과거 콘솔 출력만 오프라인 검토에 붙여넣어 설명을 확인합니다. 새 노트북 시험·자료 재제출·관리자 비교·OEM 실험 재실행은 필요하지 않습니다.

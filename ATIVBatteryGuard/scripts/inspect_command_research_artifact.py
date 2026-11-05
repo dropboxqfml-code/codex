@@ -1,7 +1,8 @@
-"""Developer-only offline intake; never execute, extract, or identify firmware.
+"""Developer-only offline intake; never execute, extract, or authenticate firmware.
 
-Only the pinned legacy payload can pass source integrity verification. A PE
-header observation says nothing about origin, model, signature, or commands.
+The legacy reference is pinned LFS metadata; the P05ACJ reference is previously
+observed download bytes, not authenticated manufacturer firmware. Neither a hash
+match nor PE headers establish origin, model, signature, or command semantics.
 """
 import argparse
 from dataclasses import dataclass
@@ -33,12 +34,14 @@ class ArtifactSpec:
 
 # Source: Elc3r/drivers_NP-RV520, c20c758117b1410a5e486a7042fc004ac589287f,
 # W7/32bit_64bit/Battery_Life_Extender_1.0.0.11.ZIP (Git LFS metadata).
-# P05ACJ: ITEM_20140901_21421_WIN_P05ACJ.exe is source metadata only;
-# its payload size and hash have not been established.
+# P05ACJ: ITEM_20140901_21421_WIN_P05ACJ.exe, observed after the user
+# published the environment. HTTP source, Authenticode not verified. This pin
+# binds subsequent analysis to the same bytes; it is not a trust anchor.
 SPECS = MappingProxyType({
     "legacy-ble": ArtifactSpec("legacy-ble", 13728500,
         "5e3be33df74283d00542777320519c3f5d5fb6a01bdcbd664d7d9e33ce2511fc"),
-    "p05acj": ArtifactSpec("p05acj"),
+    "p05acj": ArtifactSpec("p05acj", 5822368,
+        "374c768a09211ce8da6e0812bde870e3b90957bf8b38e2289cac4dc52857e7fd"),
 })
 
 
@@ -211,27 +214,33 @@ def inspect(data, spec):
                 match[1].decode("ascii") == spec.expected_sha256 and
                 int(match[2]) == spec.expected_size)
         return report
-    if spec.kind == "legacy-ble":
+    if spec.kind == "legacy-ble" or (spec.kind == "p05acj" and spec.expected_size is not None):
         if len(data) != spec.expected_size:
             report["status"] = "SourceSizeMismatch"
+            return report
         elif report["sourceSha256"] != spec.expected_sha256:
             report["status"] = "SourceHashMismatch"
+            return report
+    if spec.kind == "legacy-ble":
+        try:
+            count, total = _zip_counts(data)
+        except Exception:
+            report["status"] = "InvalidZipContainer"
         else:
-            try:
-                count, total = _zip_counts(data)
-            except Exception:
-                report["status"] = "InvalidZipContainer"
-            else:
-                report.update(status="SourcePayloadVerified", containerEntryCount=count,
-                              containerUncompressedBytes=total,
-                              sourcePayloadIntegrityVerified=True)
+            report.update(status="SourcePayloadVerified", containerEntryCount=count,
+                          containerUncompressedBytes=total,
+                          sourcePayloadIntegrityVerified=True)
     elif spec.kind == "p05acj" and data.startswith(b"MZ"):
         try:
             report["peSectionCount"] = _pe_sections(data)
         except Exception:
             report["status"] = "InvalidPeContainer"
         else:
-            report["status"] = "PeHeaderObserved"
+            if spec.expected_size is None:
+                report["status"] = "PeHeaderObserved"
+            else:
+                report.update(status="ObservedSourcePayloadMatched",
+                              sourcePayloadIntegrityVerified=True)
     return report
 
 
@@ -274,7 +283,7 @@ def main(argv=None):
     else:
         report = inspect_path(arguments.input, SPECS[arguments.kind])
     print(json.dumps(report, sort_keys=True))
-    return 0 if report["status"] in ("SourcePayloadVerified", "PeHeaderObserved") else 1
+    return 0 if report["status"] in ("SourcePayloadVerified", "ObservedSourcePayloadMatched", "PeHeaderObserved") else 1
 
 
 if __name__ == "__main__":

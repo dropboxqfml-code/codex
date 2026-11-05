@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — Windows 호출자 대조·native11 의미 추정 제거
+
+[WINDOWS_CALLER_CONTRACT_UPDATE.md](WINDOWS_CALLER_CONTRACT_UPDATE.md)를 먼저 읽습니다. 구형 OEM의 DLL 선택은 보고major>=6&&minor==1이고 두 DLL 모두5843/65·66을 전달합니다. 설치 ImageState/INI는 모델 가드가 아닙니다. 구형0B bit3 gate는 P05ACJ callback3908→flag getter7DC→초기7F와 조건부 연결되지만, 동적 setter/현재실기값은 미확정입니다. 0B gate는65조회·조건부66쓰기보다 뒤여서 OEM EXE를 진단으로 실행하지 않습니다. 사용자 과거FF는65응답이며0B flag와 혼합하지 않습니다.
+
+확인한 실제 모델 caller는 여전히 없고, ConfigurationMonitor는 팬/정숙 기록, BatteryToast/PowerAudit는 메타데이터, Sabi3/wsabi는 일반 중계입니다. 제3자 hotkeys의 USB67/68·무선69/6A·키보드78 일부 일치는 배터리65/66 등록을 증명하지 않습니다. 모델명 표시도 지원 allowlist가 아닙니다. 같은 기록 재독으로 이 누락을 채우지 않습니다.
+
+기존 Sabi3ReplyDecoder의0/1/FF 보호/지원 추정을 제거했습니다. API0·정확11바이트는UninterpretedPayload+Zero/One/FF/Other, 실패는NotInspected. 보호/상한null·권한false이며 public semantic enum 생성은Unknown으로 정규화합니다. enum 이름/숫자·시그니처는 유지하지만 동작은 의도적으로 변경했습니다. 앱/어댑터 참조는 없고 실제 OEM/WMI/요청/예약/제어 경로는 추가하지 않았습니다. C#435·Python48, 빌드0경고/오류입니다.
+
+새 CALLER-CONTRACT-REVIEW ZIP에 수정 Core를 포함했고 이전 ZIP은 보존합니다. 새 노트북 시험/업로드는 불필요합니다. 다음 근거는 현재 모델/BIOS에 적용되는 OEM 배터리 caller·모델 선택 조건·처리 계약이어야 하며, 그전까지 실제 제어Unsupported를 유지합니다. 아래는 이전 단계 기록입니다.
+
 ## 최신 — 외부 등록 10개 복구·관측 원본 pin
 
 [P05ACJ_EXTERNAL_REGISTRATION_REVIEW.md](P05ACJ_EXTERNAL_REGISTRATION_REVIEW.md)를 먼저 읽습니다. GUID 바이트 포함 34개 파일에서 직접 참조 6개(provider/bridge/외부 등록자4개)를 복구했습니다. 나머지28개는 직접 참조 미관측입니다. descriptor → LocateProtocol → register 흐름을 복구한 외부 등록10개는 Wireless12/13/69/6A, SwSmi78·67/68, AlwaysOn6D/6E, SetupWin7C입니다. 런타임 등록 성공은 미관측이며 계산/다른 볼륨/동적 등록을 닫지 못해65/66 미지원·미등록을 확정하지 않습니다.

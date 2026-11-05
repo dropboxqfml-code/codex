@@ -13,7 +13,9 @@ internal static partial class Program
             for (int i=1;i<buffer.Length;i++) Equal((byte)0,buffer[i]);
             buffer[0]=0;
             Equal((byte)0x80,Sabi3X64Abi.CreateProtectionStatusBuffer()[0]);
-            Equal(Sabi3ReplyState.Unknown,Sabi3ReplyDecoder.Decode(0,Sabi3X64Abi.CreateProtectionStatusBuffer()).State);
+            var result = Sabi3ReplyDecoder.Decode(0,Sabi3X64Abi.CreateProtectionStatusBuffer());
+            Equal(Sabi3ReplyState.UninterpretedPayload, result.State);
+            Equal(Sabi3ReplyMarker.Other, result.Marker);
         });
         Add("Sabi3 driver reply requires full length and acknowledgement before copying all eleven bytes", () =>
         {
@@ -47,14 +49,16 @@ internal static partial class Program
             reply[4]=0xaa;byte[] failed={1};
             Check(!Sabi3X64Abi.TryExtractDriverPayload(false,16,reply,out failed),"failed request accepted");Equal(0,failed.Length);
         });
-        Add("Sabi3 unsupported reply is distinct from disabled protection", () =>
+        Add("Sabi3 zero one and FF are opaque markers rather than protection or support states", () =>
         {
-            var unsupported = Sabi3ReplyDecoder.Decode(0, SabiPayload(255));
-            Equal(Sabi3ReplyState.Unsupported, unsupported.State); Equal<bool?>(null, unsupported.ProtectionEnabled);
-            var off = Sabi3ReplyDecoder.Decode(0, new byte[Sabi3X64Abi.PayloadBytes]);
-            Equal(Sabi3ReplyState.ProtectionDisabled, off.State); Equal<bool?>(false, off.ProtectionEnabled);
-            var on = Sabi3ReplyDecoder.Decode(0, SabiPayload(1));
-            Equal(Sabi3ReplyState.ProtectionEnabled, on.State); Equal<bool?>(true, on.ProtectionEnabled);
+            byte[] values = { 0, 1, 255 };
+            var markers = new[] { Sabi3ReplyMarker.Zero, Sabi3ReplyMarker.One, Sabi3ReplyMarker.FF };
+            for (int i = 0; i < values.Length; i++)
+            {
+                var result = Sabi3ReplyDecoder.Decode(0, SabiPayload(values[i]));
+                Equal(Sabi3ReplyState.UninterpretedPayload, result.State);
+                Equal(markers[i], result.Marker); Equal<bool?>(null, result.ProtectionEnabled);
+            }
         });
         Add("Sabi3 unrecognized byte values never become disabled", () =>
         {
@@ -62,7 +66,8 @@ internal static partial class Program
             for (int state = 2; state < 255; state++)
             {
                 var result = Sabi3ReplyDecoder.Decode(0, SabiPayload((byte)state));
-                Equal(Sabi3ReplyState.Unknown, result.State); Equal<bool?>(null, result.ProtectionEnabled);
+                Equal(Sabi3ReplyState.UninterpretedPayload, result.State);
+                Equal(Sabi3ReplyMarker.Other, result.Marker); Equal<bool?>(null, result.ProtectionEnabled);
             }
         });
         Add("Sabi3 API failure takes precedence over plausible or stale buffer", () =>
@@ -72,19 +77,25 @@ internal static partial class Program
             {
                 var result = Sabi3ReplyDecoder.Decode(code, data);
                 Equal(Sabi3ReplyState.ApiError, result.State); Equal<bool?>(null, result.ProtectionEnabled);
+                Equal(Sabi3ReplyMarker.NotInspected, result.Marker);
             }
         });
         Add("Sabi3 x64 buffer requires eleven bytes and rejects the old four byte example", () =>
         {
             foreach (byte[] data in new[] { null, new byte[0], new byte[1], new byte[3], new byte[4], new byte[5], new byte[10], new byte[12], new byte[4096] })
-                Equal(Sabi3ReplyState.InvalidResponse, Sabi3ReplyDecoder.Decode(0, data).State);
+            {
+                var result = Sabi3ReplyDecoder.Decode(0, data);
+                Equal(Sabi3ReplyState.InvalidResponse, result.State);
+                Equal(Sabi3ReplyMarker.NotInspected, result.Marker);
+            }
         });
-        Add("Sabi3 decoded toggle never asserts a percent limit hardware read or write support", () =>
+        Add("Sabi3 every decoded byte keeps protection percent and hardware support unknown", () =>
         {
             for (int state = 0; state < 256; state++)
             {
                 var result = Sabi3ReplyDecoder.Decode(0, SabiPayload((byte)state));
                 Equal<int?>(null, result.ChargeLimitPercent);
+                Equal<bool?>(null, result.ProtectionEnabled);
                 Check(!result.IsVerifiedHardwareObservation && !result.HardwareWriteAllowed, "interpreted bytes promoted to verified device state");
             }
         });
@@ -94,7 +105,20 @@ internal static partial class Program
             var result = Sabi3ReplyDecoder.Decode(0, buffer);
             Equal((byte)1, buffer[0]); Equal((byte)20, buffer[1]);
             buffer[0] = 0;
-            Equal(Sabi3ReplyState.ProtectionEnabled, result.State);
+            Equal(Sabi3ReplyState.UninterpretedPayload, result.State);
+            Equal(Sabi3ReplyMarker.One, result.Marker);
+        });
+        Add("Sabi3 legacy semantic enum values and unchecked payload states cannot forge checked evidence", () =>
+        {
+            foreach (Sabi3ReplyState state in Enum.GetValues(typeof(Sabi3ReplyState)))
+            {
+                var result = new Sabi3ReplyInterpretation(state);
+                Equal(state == Sabi3ReplyState.ApiError || state == Sabi3ReplyState.InvalidResponse ? state :
+                    Sabi3ReplyState.Unknown, result.State);
+                Equal(Sabi3ReplyMarker.NotInspected, result.Marker);
+                Equal<bool?>(null, result.ProtectionEnabled); Equal<int?>(null, result.ChargeLimitPercent);
+                Check(!result.HardwareWriteAllowed && !result.IsVerifiedHardwareObservation, "enum granted hardware evidence");
+            }
         });
     }
     private static byte[] SabiPayload(byte first)

@@ -23,6 +23,8 @@ class ExperimentReviewPackageTests(unittest.TestCase):
             "src/ATIVBatteryGuard.Core/Services/WsabiWmiExperimentReviewParser.cs",
             "src/ATIVBatteryGuard.Core/Models/WsabiWmiReplyResult.cs",
             "src/ATIVBatteryGuard.Core/Services/WsabiWmiReplyDecoder.cs",
+            "src/ATIVBatteryGuard.Core/Models/Sabi3ReplyInterpretation.cs",
+            "src/ATIVBatteryGuard.Core/Services/Sabi3ReplyDecoder.cs",
         ]
         for name in names:
             target = self.root / name
@@ -56,6 +58,24 @@ class ExperimentReviewPackageTests(unittest.TestCase):
         core = b"WsabiWmiExperimentReview\0WsabiWmiExperimentReviewParser\0"
         with self.assertRaises(ValueError):
             inspect_review_build(b"ReviewExperimentResult\0", core)
+
+    def test_v2_core_without_opaque_native_marker_is_rejected(self):
+        core = b"WsabiWmiExperimentReview\0WsabiWmiExperimentReviewParser\0WsabiWmiDispatchFailurePrefix\0"
+        with self.assertRaises(ValueError):
+            inspect_review_build(b"ReviewExperimentResult\0", core)
+
+    def test_native_reply_source_cannot_restore_semantic_or_hardware_claims(self):
+        path = self.root / "src/ATIVBatteryGuard.Core/Models/Sabi3ReplyInterpretation.cs"
+        source = path.read_text(encoding="utf-8")
+        for old, new in (("ProtectionEnabled => null", "ProtectionEnabled => true"),
+                         ("ChargeLimitPercent => null", "ChargeLimitPercent => 80"),
+                         ("HardwareWriteAllowed => false", "HardwareWriteAllowed => true"),
+                         ("IsVerifiedHardwareObservation => false", "IsVerifiedHardwareObservation => true")):
+            with self.subTest(property=old):
+                self.assertIn(old, source)
+                path.write_text(source.replace(old, new), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    inspect_review_sources(self.root)
 
     def test_completed_one_shot_cli_creates_no_further_oem_distribution(self):
         scripts = self.root / "scripts"

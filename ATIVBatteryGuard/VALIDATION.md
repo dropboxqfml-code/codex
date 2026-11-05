@@ -1,5 +1,15 @@
 # Settings 앱 분석판 검증 기록
 
+## 최신 — Windows caller 대조·native 응답 의미 정정 / 2026-11-05
+
+- C# **435개 통과**, 실패·건너뜀0개(reports/caller-contract-tests.json 및 .log). 기존9개 decoder 회귀를 opaque marker·모든256값·API/길이 실패·버퍼 격리로 정정했고 public semantic enum/checked state 위조 거부1개를 추가했습니다. WMI16바이트의 native 디코더 거부도 통과했습니다.
+- Python **48개 통과**(reports/caller-contract-python-tests.log). v2 Core 혼합 거부와 native 보호/상한/관측/쓰기 주장 재도입 거부2개를 추가했습니다. 기존 보호 검사도 통과했습니다.
+- 현 환경에서7개 프로젝트·별도 portable tests 빌드 경고·오류0개(caller-contract-build.log/caller-contract-portable-build.log). 실제PE는AMD64/asInvoker/uiAccess=false, 금지참조부재·새build표식/source guard를 확인했습니다(caller-contract-build-audit.json).
+- 독립 읽기 전용 코드 검토에서 차단 결함을 발견하지 못했습니다. 기존enum 이름/숫자·public 시그니처는 유지하지만0/1/FF 결과와 semantic 생성자의 동작은 의도적으로 변경했습니다. 보호/상한null·하드웨어false이며 앱/어댑터 참조는 없습니다.
+- [정적 대조 근거](WINDOWS_CALLER_CONTRACT_UPDATE.md)는 구형caller의 설치/INI·OS선택·0B gate와P05ACJ flag 경로를 연결합니다. 조건부 소스 관계이고 현재0B응답/65의FF/배터리 지원을 확정하지 않습니다. 원본 OEM/UEFI/AML·하드웨어·예약·레지스트리·보안 변경은 없습니다. 새GUI Windows 실기는 미검증인 미서명 개발판입니다. 제어Unsupported, 새시험/업로드 불필요입니다.
+
+아래는 이전 단계 검증입니다.
+
 ## 최신 — P05ACJ 외부 등록 추적·원본 pin 검증 / 2026-11-05
 
 - Python 전체 **46개 통과**, reports/p05acj-registration-python-tests.log. 추가4개는 PE 해석 전 크기/해시 거부·관측 일치의 권한false·일치 후 잘린PE 거부·pin 없는 legacy ZIP 검증 거부입니다. p05acj CLI 해시 덮어쓰기 거부도 검사했습니다. 독립 읽기 전용 검토에서 발견한 legacy 순수API의 pin 누락 경계 퇴행을 수정하고 회귀로 고정했습니다.

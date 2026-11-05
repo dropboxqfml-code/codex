@@ -1,3 +1,13 @@
+# ATIV Battery Guard — Windows 호출자 계약 대조 반영판
+
+2026-11-05. [프로그램 ZIP](ATIVBatteryGuard-CALLER-CONTRACT-REVIEW.zip) · [일치 소스 ZIP](ATIVBatteryGuard-CALLER-CONTRACT-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-CALLER-CONTRACT-SHA256SUMS.txt) · [새 분석·변경·한계](../ATIVBatteryGuard/WINDOWS_CALLER_CONTRACT_UPDATE.md)
+
+프로그램 ZIP **하나만** 새 폴더에 모두 풀고 ATIVBatteryGuard.exe를 일반 권한으로 실행할 수 있습니다. 소스 ZIP은 개발용이며 함께 풀 필요가 없습니다. 기존 native11바이트 순수 디코더의0/1/FF 보호/지원 추정을 제거했습니다. 현재 앱의 실제 OEM 호출에 연결된 디코더는 아니며 배터리 표시와 기존 오프라인 검토 흐름은 유지합니다. 새 노트북 시험·자료 재제출·관리자/OEM 재실행은 필요하지 않습니다.
+
+C#435개·Python48개 통과,7개 프로젝트와 portable tests 빌드 경고·오류0개, 실제PE asInvoker/uiAccess=false 확인. 미서명 개발판이며 새GUI Windows 실기는 미검증입니다. 실제 충전 제어는 Unsupported입니다. 삼성 원본·펌웨어·실험 실행 파일은 포함하지 않습니다. 이전 ZIP은 그대로 보존합니다.
+
+아래는 이전 배포 당시의 기록이며 과거 시험을 다시 수행하라는 안내가 아닙니다.
+
 # ATIV Battery Guard — P05ACJ 응답 근거 반영판
 
 **후속 개발 완료 — 실행 프로그램은 동일:** [외부 등록 추적·원본 검사 보강](../ATIVBatteryGuard/P05ACJ_EXTERNAL_REGISTRATION_REVIEW.md)을 진행했습니다. 사용자가 아래 프로그램 실행을 보고했으며 추가 업로드·시험·재다운로드는 필요하지 않습니다. 개발용 검사기만 관측 P05ACJ 길이/해시 pin으로 보강했고 Python46개가 통과했습니다. [새 개발 소스 ZIP](ATIVBatteryGuard-P05ACJ-REGISTRATION-SOURCE.zip) · [소스 체크섬](ATIVBatteryGuard-P05ACJ-REGISTRATION-SHA256SUMS.txt). 소스는 실행에 필요하지 않으며 기존 프로그램 ZIP을 덮어쓰지 않았습니다. 실제 충전 제어는 Unsupported입니다. 아래는 직전 실행판 안내입니다.

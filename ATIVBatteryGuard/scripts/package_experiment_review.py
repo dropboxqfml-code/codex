@@ -11,9 +11,9 @@ from package_wmi_preflight_check import code_only, inspect_executable, inspect_s
 
 
 APPLICATION_NAME = "ATIVBatteryGuard"
-REVIEW_REVISION = "Offline-result-review-v2"
+REVIEW_REVISION = "Offline-result-review-v3"
 REVIEW_TYPES = ("WsabiWmiExperimentReview", "WsabiWmiExperimentReviewParser",
-                "WsabiWmiDispatchFailurePrefix")
+                "WsabiWmiDispatchFailurePrefix", "Sabi3ReplyMarker")
 
 
 def sha(data):
@@ -39,7 +39,9 @@ def inspect_review_sources(root):
     viewmodel = (project / "ViewModels/MainViewModel.cs").read_text(encoding="utf-8")
     reply_model = (root / "src/ATIVBatteryGuard.Core/Models/WsabiWmiReplyResult.cs").read_text(encoding="utf-8")
     reply_decoder = (root / "src/ATIVBatteryGuard.Core/Services/WsabiWmiReplyDecoder.cs").read_text(encoding="utf-8")
-    sections = [model, parser, reply_model, reply_decoder,
+    native_model = (root / "src/ATIVBatteryGuard.Core/Models/Sabi3ReplyInterpretation.cs").read_text(encoding="utf-8")
+    native_decoder = (root / "src/ATIVBatteryGuard.Core/Services/Sabi3ReplyDecoder.cs").read_text(encoding="utf-8")
+    sections = [model, parser, reply_model, reply_decoder, native_model, native_decoder,
                 bounded_section(viewmodel, "public string ExperimentReviewInput", "public bool SamsungFileInspectionBusy"),
                 bounded_section(viewmodel, "public void ReviewExperimentResult()", "private void SelectMode(")]
     forbidden = re.compile(
@@ -55,6 +57,12 @@ def inspect_review_sources(root):
     for capability in ("CanReadHardware", "CanWriteHardware", "CanInvokeMethods"):
         if not re.search(r'\b' + capability + r'\s*=>\s*false\s*;', code_only(model)):
             raise ValueError("Historical text must never grant hardware capabilities.")
+    for property_name in ("ProtectionEnabled", "ChargeLimitPercent"):
+        if not re.search(r'\b' + property_name + r'\s*=>\s*null\s*;', code_only(native_model)):
+            raise ValueError("Opaque native markers must not assert protection or a percentage.")
+    for capability in ("HardwareWriteAllowed", "IsVerifiedHardwareObservation"):
+        if not re.search(r'\b' + capability + r'\s*=>\s*false\s*;', code_only(native_model)):
+            raise ValueError("Opaque native markers must not grant hardware evidence or writes.")
     if not re.search(r'\bphysical\s*=\s*new\s+UnsupportedChargeLimitController\s*\(\s*\)', code_only(viewmodel)):
         raise ValueError("The main application's physical controller must remain unsupported.")
     if not re.search(r'\bMaximumCharacters\s*=\s*8192\s*;', code_only(parser)):
@@ -110,6 +118,8 @@ def main():
         "pureDecoderComparesFirst16Of20FailureDataBytesOnly": True,
         "prefixMatchProvesFirmwareOriginOrSpecificFailure": False,
         "historicalReviewContainsFullResponsePayload": False,
+        "native11ByteReplyUsesOpaqueMarkersOnly": True,
+        "nativeMarkerInfersProtectionOrSupport": False,
         "mainApplicationBatteryAndReadOnlyDiagnosticsRemainAvailable": True,
         "mainApplicationInvokesOemMethods": False,
         "mainApplicationLaunchesExperiment": False,
@@ -133,7 +143,7 @@ def main():
         "matchingSourceZipSha256": sha(args.source_zip.read_bytes()),
     }
     files["BUILD-INFO.json"] = json.dumps(info, ensure_ascii=False, indent=2).encode("utf-8")
-    instructions = """ATIV Battery Guard — P05ACJ 응답 근거 반영판
+    instructions = """ATIV Battery Guard — OEM 호출자 계약 대조 반영판
 
 이 파일은 일반 배터리 표시 앱에 기존 실험 결과 검토를 추가한 개발판입니다.
 ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 관리자 권한은 필요하지 않습니다.
@@ -150,6 +160,8 @@ ValidFrame은 전송 응답 형식 검증이며 FF와 0/1은 보호 OFF/ON 또�
 분석한 P05ACJ 이미지에는 여러 실패 조건에서 ACK AA와 FF+0 데이터를 만드는 공통 경로가 있습니다.
 기존 기록에는 첫 바이트만 있어 전체 패턴·현재 펌웨어 일치·실패 원인은 확정할 수 없습니다.
 전체 응답을 받은 순수 디코더의 패턴 일치도 특정 원인이나 충전 보호 상태를 입증하지 않습니다.
+기존 native11바이트 순수 디코더도 0/1/FF를 보호 OFF/ON·미지원으로 해석하지 않도록 수정했습니다.
+이 디코더는 실제 삼성 DLL 호출이나 제어 경로에 연결돼 있지 않습니다.
 배터리 보호 상태와 후보 명령 지원 여부는 아직 미확정이고 실제 충전 제어는 미지원입니다.
 검토 결과로 실제 제어를 활성화하거나 사용자 선택값·현재 배터리 상태를 바꾸지 않습니다.
 
@@ -163,7 +175,7 @@ ValidFrame은 전송 응답 형식 검증이며 FF와 0/1은 보호 OFF/ON 또�
     files["먼저 읽어주세요.txt"] = instructions.replace("\n", "\r\n").encode("utf-8-sig")
     files["SHA256SUMS.txt"] = "".join(sha(data) + "  " + name + "\n" for name, data in sorted(files.items())).encode("utf-8")
     args.output.mkdir(parents=True, exist_ok=True)
-    target = args.output / "ATIVBatteryGuard-FIRMWARE-REPLY-EVIDENCE.zip"
+    target = args.output / "ATIVBatteryGuard-CALLER-CONTRACT-REVIEW.zip"
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

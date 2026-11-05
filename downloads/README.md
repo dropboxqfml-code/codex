@@ -1,3 +1,15 @@
+# ATIV Battery Guard — P05ACJ 응답 근거 반영판
+
+2026-11-05. [프로그램 ZIP](ATIVBatteryGuard-FIRMWARE-REPLY-EVIDENCE.zip) · [일치 소스 ZIP](ATIVBatteryGuard-FIRMWARE-REPLY-EVIDENCE-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-FIRMWARE-REPLY-EVIDENCE-SHA256SUMS.txt) · [근거·변경·한계](../ATIVBatteryGuard/FIRMWARE_REPLY_EVIDENCE_UPDATE.md)
+
+**프로그램 ZIP 하나만** 새 폴더에 전부 풀고 ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 소스 ZIP은 개발용이며 함께 풀지 않습니다. 기존 배터리 표시 앱에 P05ACJ의 공통 실패 응답 근거를 반영했습니다. 원하는 경우 이미 보유한 과거 콘솔 출력만 오프라인 검토에 붙여넣어 설명을 확인합니다. 새 노트북 시험·자료 재제출·관리자 비교·OEM 실험 재실행은 필요하지 않습니다.
+
+분석한 이미지에는 여러 실패 조건이 ACK AA와 FF+0 데이터를 만드는 경로가 있습니다. 기존 결과는 첫FF만 있어 전체패턴·현재펌웨어일치·실패원인은 미확정입니다. 순수 디코더의 패턴 비교도 특정 오류나 보호 상태를 확정하지 않으며 실제 충전 제어는 Unsupported입니다.
+
+C#434개·Python42개 통과, 7프로젝트와 portable tests 빌드 경고·오류0개, 실제 PE 매니페스트 asInvoker/uiAccess=false 확인. 새 GUI의 Windows 실기는 미검증인 미서명 개발판입니다. 삼성 원본 DLL·EXE·펌웨어·실험 실행 파일은 포함하지 않습니다. 과거 자료와 일회 예약은 보존합니다.
+
+아래는 이전 배포 당시의 안내입니다. 기존 ZIP은 그대로 보존하며 과거 실행 절차를 다시 요구하지 않습니다.
+
 # ACPI Literal Store 대상·구문 배치 요약 — Acpi-routing-v7
 
 **실기 결과 수신·추가 실행 불필요:** Literal1/Integer가 입력/반환과 같은 SystemMemory·21바이트 Field/Region, 보조 Store와 다른 선언을 참조합니다. 같은 직접 목록의 소스 배치는 Literal Store → Arg2 Store → 보조 호출 → Return입니다. [분석과 다음 계획](../ATIVBatteryGuard/ACPI_V7_RESULT_AND_NEXT_PLAN.md)은 모델별 Windows 배터리 명령·응답 계약의 정적 근거 확보를 우선합니다. v7 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 이번에는 새 프로그램을 배포하지 않으며 아래 ZIP·소스·체크섬은 그대로 보존합니다. 아래는 이전 안내입니다.

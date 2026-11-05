@@ -11,8 +11,9 @@ from package_wmi_preflight_check import code_only, inspect_executable, inspect_s
 
 
 APPLICATION_NAME = "ATIVBatteryGuard"
-REVIEW_REVISION = "Offline-result-review-v1"
-REVIEW_TYPES = ("WsabiWmiExperimentReview", "WsabiWmiExperimentReviewParser")
+REVIEW_REVISION = "Offline-result-review-v2"
+REVIEW_TYPES = ("WsabiWmiExperimentReview", "WsabiWmiExperimentReviewParser",
+                "WsabiWmiDispatchFailurePrefix")
 
 
 def sha(data):
@@ -36,7 +37,9 @@ def inspect_review_sources(root):
     model = (root / "src/ATIVBatteryGuard.Core/Models/WsabiWmiExperimentReview.cs").read_text(encoding="utf-8")
     parser = (root / "src/ATIVBatteryGuard.Core/Services/WsabiWmiExperimentReviewParser.cs").read_text(encoding="utf-8")
     viewmodel = (project / "ViewModels/MainViewModel.cs").read_text(encoding="utf-8")
-    sections = [model, parser,
+    reply_model = (root / "src/ATIVBatteryGuard.Core/Models/WsabiWmiReplyResult.cs").read_text(encoding="utf-8")
+    reply_decoder = (root / "src/ATIVBatteryGuard.Core/Services/WsabiWmiReplyDecoder.cs").read_text(encoding="utf-8")
+    sections = [model, parser, reply_model, reply_decoder,
                 bounded_section(viewmodel, "public string ExperimentReviewInput", "public bool SamsungFileInspectionBusy"),
                 bounded_section(viewmodel, "public void ReviewExperimentResult()", "private void SelectMode(")]
     forbidden = re.compile(
@@ -65,7 +68,7 @@ def inspect_review_build(executable, core):
     if b"ReviewExperimentResult\0" not in executable:
         raise ValueError("The built application must include the offline review action.")
     if any(name.encode("ascii") + b"\0" not in core for name in REVIEW_TYPES):
-        raise ValueError("The built Core DLL must contain the offline review model and parser.")
+        raise ValueError("The built Core DLL must contain the current offline review and prefix classifier.")
 
 
 def main():
@@ -103,6 +106,10 @@ def main():
         "reviewTouchesOneShotReservation": False,
         "reviewSavesOriginalText": False,
         "reviewGrantsHardwareCapabilities": False,
+        "analyzedDispatchModuleSha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310",
+        "pureDecoderComparesFirst16Of20FailureDataBytesOnly": True,
+        "prefixMatchProvesFirmwareOriginOrSpecificFailure": False,
+        "historicalReviewContainsFullResponsePayload": False,
         "mainApplicationBatteryAndReadOnlyDiagnosticsRemainAvailable": True,
         "mainApplicationInvokesOemMethods": False,
         "mainApplicationLaunchesExperiment": False,
@@ -126,7 +133,7 @@ def main():
         "matchingSourceZipSha256": sha(args.source_zip.read_bytes()),
     }
     files["BUILD-INFO.json"] = json.dumps(info, ensure_ascii=False, indent=2).encode("utf-8")
-    instructions = """ATIV Battery Guard — 과거 WMI 실험 결과 오프라인 검토
+    instructions = """ATIV Battery Guard — P05ACJ 응답 근거 반영판
 
 이 파일은 일반 배터리 표시 앱에 기존 실험 결과 검토를 추가한 개발판입니다.
 ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 관리자 권한은 필요하지 않습니다.
@@ -140,6 +147,9 @@ ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 관리자 권한은
 
 과거 텍스트의 진위나 현재 장치와의 일치는 검증하지 않습니다.
 ValidFrame은 전송 응답 형식 검증이며 FF와 0/1은 보호 OFF/ON 또는 기능 미지원 판정이 아닙니다.
+분석한 P05ACJ 이미지에는 여러 실패 조건에서 ACK AA와 FF+0 데이터를 만드는 공통 경로가 있습니다.
+기존 기록에는 첫 바이트만 있어 전체 패턴·현재 펌웨어 일치·실패 원인은 확정할 수 없습니다.
+전체 응답을 받은 순수 디코더의 패턴 일치도 특정 원인이나 충전 보호 상태를 입증하지 않습니다.
 배터리 보호 상태와 후보 명령 지원 여부는 아직 미확정이고 실제 충전 제어는 미지원입니다.
 검토 결과로 실제 제어를 활성화하거나 사용자 선택값·현재 배터리 상태를 바꾸지 않습니다.
 
@@ -153,7 +163,7 @@ ValidFrame은 전송 응답 형식 검증이며 FF와 0/1은 보호 OFF/ON 또�
     files["먼저 읽어주세요.txt"] = instructions.replace("\n", "\r\n").encode("utf-8-sig")
     files["SHA256SUMS.txt"] = "".join(sha(data) + "  " + name + "\n" for name, data in sorted(files.items())).encode("utf-8")
     args.output.mkdir(parents=True, exist_ok=True)
-    target = args.output / "ATIVBatteryGuard-WMI-RESULT-REVIEW.zip"
+    target = args.output / "ATIVBatteryGuard-FIRMWARE-REPLY-EVIDENCE.zip"
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)

@@ -64,6 +64,12 @@ namespace ATIVBatteryGuard.Core.Models
                     text.AppendLine("붙여넣은 결과에는 WMI 응답·프레임 검증 성공이 기록돼 있습니다.");
                     text.AppendLine("후보 표식: " + MarkerText(Marker) + " · 의미 미확정");
                     text.AppendLine("FF와 0/1은 보호 OFF/ON 또는 기능 미지원 판정이 아닙니다.");
+                    if (Marker == WsabiWmiCandidateMarker.FF)
+                    {
+                        text.AppendLine("분석한 P05ACJ 이미지에는 ACK AA와 FF로 시작하는 공통 실패 응답 경로가 있습니다.");
+                        text.AppendLine("명령 등록 부재·처리 오류 등 여러 조건이 같은 응답을 만들 수 있습니다.");
+                        text.AppendLine("이 기록은 첫 바이트만 남겨 전체 실패 패턴·현재 펌웨어 일치·실패 원인을 확정할 수 없습니다.");
+                    }
                     break;
             }
             if (InvocationRequested.HasValue)

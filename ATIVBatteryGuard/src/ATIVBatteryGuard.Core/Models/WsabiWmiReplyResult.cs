@@ -10,12 +10,22 @@ namespace ATIVBatteryGuard.Core.Models
         UnsupportedLength, InvalidAcknowledgement, InvalidEnvelope
     }
 
+    // A byte-pattern comparison only: matching does not identify the firmware,
+    // prove which branch ran, or distinguish missing callbacks from EFI errors.
+    public enum WsabiWmiDispatchFailurePrefix
+    {
+        NotInspected, MatchesAnalyzedP05AcjPrefix, DiffersFromAnalyzedP05AcjPrefix
+    }
+
     public sealed class WsabiWmiReplyResult
     {
+        public const string AnalyzedDispatchModuleSha256 =
+            "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310";
         private readonly byte[] payload;
         public WsabiWmiReplyStatus Status { get; }
         public WsabiWmiMethodReplyStatus? MethodReplyStatus { get; }
         public bool IsValidFrame => Status == WsabiWmiReplyStatus.ValidFrame;
+        public WsabiWmiDispatchFailurePrefix DispatchFailurePrefix { get; }
         public byte[] Payload => (byte[])payload.Clone();
         public bool IsHardwareObservation => false;
         public bool CanInvokeMethods => false;
@@ -44,6 +54,17 @@ namespace ATIVBatteryGuard.Core.Models
             Status = status;
             MethodReplyStatus = methodReplyStatus;
             this.payload = status == WsabiWmiReplyStatus.ValidFrame ? (byte[])payload.Clone() : new byte[0];
+            DispatchFailurePrefix = WsabiWmiDispatchFailurePrefix.NotInspected;
+            if (status == WsabiWmiReplyStatus.ValidFrame)
+            {
+                // The analyzed dispatcher clears 20 bytes from +5, then writes
+                // FF at +5 and AA at +4 on several failure paths. Only the first
+                // 16 data bytes are available in our supported WMI frame.
+                bool matches = this.payload[0] == 0xff;
+                for (int i = 1; i < this.payload.Length; i++) matches &= this.payload[i] == 0;
+                DispatchFailurePrefix = matches ? WsabiWmiDispatchFailurePrefix.MatchesAnalyzedP05AcjPrefix :
+                    WsabiWmiDispatchFailurePrefix.DiffersFromAnalyzedP05AcjPrefix;
+            }
         }
 
         internal static WsabiWmiReplyResult FromMethodReply(WsabiWmiMethodReplyResult reply)

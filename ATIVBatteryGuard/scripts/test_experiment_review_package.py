@@ -21,6 +21,8 @@ class ExperimentReviewPackageTests(unittest.TestCase):
             "src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs",
             "src/ATIVBatteryGuard.Core/Models/WsabiWmiExperimentReview.cs",
             "src/ATIVBatteryGuard.Core/Services/WsabiWmiExperimentReviewParser.cs",
+            "src/ATIVBatteryGuard.Core/Models/WsabiWmiReplyResult.cs",
+            "src/ATIVBatteryGuard.Core/Services/WsabiWmiReplyDecoder.cs",
         ]
         for name in names:
             target = self.root / name
@@ -49,6 +51,11 @@ class ExperimentReviewPackageTests(unittest.TestCase):
             with self.subTest(executable=stale_executable, core=stale_core):
                 with self.assertRaises(ValueError):
                     inspect_review_build(stale_executable, stale_core)
+
+    def test_v1_core_without_firmware_prefix_classifier_is_rejected(self):
+        core = b"WsabiWmiExperimentReview\0WsabiWmiExperimentReviewParser\0"
+        with self.assertRaises(ValueError):
+            inspect_review_build(b"ReviewExperimentResult\0", core)
 
     def test_completed_one_shot_cli_creates_no_further_oem_distribution(self):
         scripts = self.root / "scripts"

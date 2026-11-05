@@ -6,6 +6,77 @@ internal static partial class Program
 {
     private static void RegisterWsabiWmiReplyDecoderTests()
     {
+        Add("P05ACJ failure prefix comparison retains structural frame status and grants no hardware meaning", () =>
+        {
+            var bytes = new byte[21]; bytes[4] = 0xaa; bytes[5] = 0xff;
+            var result = WsabiWmiReplyDecoder.Decode(0, bytes);
+            Equal(WsabiWmiReplyStatus.ValidFrame, result.Status);
+            Equal(WsabiWmiDispatchFailurePrefix.MatchesAnalyzedP05AcjPrefix, result.DispatchFailurePrefix);
+            Check(!result.IsHardwareObservation && !result.CanReadHardware && !result.CanWriteHardware && !result.CanInvokeMethods,
+                "a source pattern granted a hardware claim");
+            Equal((byte)0xff, result.Payload[0]);
+            Equal("2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310",
+                WsabiWmiReplyResult.AnalyzedDispatchModuleSha256);
+        });
+        Add("P05ACJ failure prefix requires every supported payload byte rather than its first marker", () =>
+        {
+            var bytes = new byte[21]; bytes[4] = 0xaa;
+            for (int first = 0; first < 255; first++)
+            {
+                bytes[5] = (byte)first;
+                var result = WsabiWmiReplyDecoder.Decode(0, bytes);
+                Equal(WsabiWmiReplyStatus.ValidFrame, result.Status);
+                Equal(WsabiWmiDispatchFailurePrefix.DiffersFromAnalyzedP05AcjPrefix, result.DispatchFailurePrefix);
+                Check(!result.CanReadHardware && !result.CanWriteHardware, "a different pattern granted capabilities");
+            }
+            bytes[5] = 0xff;
+            for (int offset = 6; offset < bytes.Length; offset++)
+            for (int value = 1; value < 256; value++)
+            {
+                bytes[offset] = (byte)value;
+                var result = WsabiWmiReplyDecoder.Decode(0, bytes);
+                Equal(WsabiWmiDispatchFailurePrefix.DiffersFromAnalyzedP05AcjPrefix, result.DispatchFailurePrefix);
+                Equal(WsabiWmiReplyStatus.ValidFrame, result.Status);
+                bytes[offset] = 0;
+            }
+        });
+        Add("P05ACJ failure prefix is not inspected for failed frames or rejected envelopes", () =>
+        {
+            var bytes = new byte[21]; bytes[4] = 0xaa; bytes[5] = 0xff;
+            foreach (var result in new[] {
+                WsabiWmiReplyDecoder.Decode(1, bytes), WsabiWmiReplyDecoder.Decode(0, null),
+                WsabiWmiReplyDecoder.Decode(0, new byte[20]), WsabiWmiReplyDecoder.Decode(0, new byte[21]),
+                WsabiWmiReplyDecoder.Decode(0, new byte[1, 21]), WsabiWmiReplyDecoder.Decode(0, "private") })
+                Equal(WsabiWmiDispatchFailurePrefix.NotInspected, result.DispatchFailurePrefix);
+            var binder = OneShotExperimentBinder(1);
+            var rejected = WsabiWmiReplyResult.FromMethodReply(binder.DecodeOutput(0, null));
+            Equal(WsabiWmiDispatchFailurePrefix.NotInspected, rejected.DispatchFailurePrefix);
+            var checkedReply = WsabiWmiReplyResult.FromMethodReply(binder.DecodeOutput(0, OneShotExperimentOutput(bytes)));
+            Equal<WsabiWmiMethodReplyStatus?>(WsabiWmiMethodReplyStatus.FrameChecked, checkedReply.MethodReplyStatus);
+            Equal(WsabiWmiDispatchFailurePrefix.MatchesAnalyzedP05AcjPrefix, checkedReply.DispatchFailurePrefix);
+        });
+        Add("P05ACJ failure prefix uses isolated validated payload snapshots", () =>
+        {
+            var bytes = new byte[21]; bytes[4] = 0xaa; bytes[5] = 0xff;
+            var result = WsabiWmiReplyDecoder.Decode(0, bytes);
+            bytes[5] = 1;
+            var copy = result.Payload; copy[1] = 1;
+            Equal(WsabiWmiDispatchFailurePrefix.MatchesAnalyzedP05AcjPrefix, result.DispatchFailurePrefix);
+            Equal((byte)0xff, result.Payload[0]); Equal((byte)0, result.Payload[1]);
+        });
+        Add("historical FF review explains the firmware source without inventing a complete failure pattern", () =>
+        {
+            var result = WsabiWmiExperimentReviewParser.Parse(ExperimentReviewFixture(0xff));
+            Equal(WsabiWmiExperimentReviewStatus.ValidatedFrameMeaningUnknown, result.Status);
+            string text = result.ToDisplayText();
+            Check(text.Contains("공통 실패 응답 경로") && text.Contains("첫 바이트만") &&
+                text.Contains("실패 원인을 확정할 수 없습니다"), "incomplete historical evidence became a definitive failure");
+            foreach (byte marker in new byte[] { 0, 1, 0x42 })
+                Check(!WsabiWmiExperimentReviewParser.Parse(ExperimentReviewFixture(marker)).ToDisplayText().Contains("공통 실패 응답 경로"),
+                    "an unrelated marker was described as firmware failure evidence");
+            Check(!WsabiWmiExperimentReviewParser.Parse("후보 표식: FF").ToDisplayText().Contains("공통 실패 응답 경로"),
+                "unvalidated historical text gained firmware evidence");
+        });
         Add("wsabi typed reply distinguishes API non-success before every response condition", () =>
         {
             object[] responses = { null, new object(), "private response", new byte[0], WsabiReply() };

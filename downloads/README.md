@@ -1,5 +1,7 @@
 # ATIV Battery Guard — Windows 호출자 계약 대조 반영판
 
+**후속 개발 / 2026-11-06 — 실행 프로그램 동일:** [HII 설정 참조 검사·시험 경로 구분](../ATIVBatteryGuard/P05ACJ_HII_REFERENCE_UPDATE.md)을 진행했습니다. Python60개 통과, 고정 리소스의 지원한 표준 헤더에서 USB/보정 참조와 배터리 수명 연장 미관측을 구분합니다. 현재 배터리 명령 계약은 미확정이며 제어는 Unsupported입니다. [새 개발 소스 ZIP](ATIVBatteryGuard-HII-REFERENCE-SOURCE.zip) · [소스 체크섬](ATIVBatteryGuard-HII-REFERENCE-SHA256SUMS.txt). 개발 소스는 실행에 필요하지 않고 기존 프로그램을 덮어쓰지 않았습니다. 새 다운로드·시험·업로드는 필요하지 않습니다. 아래는 직전 실행판 안내입니다.
+
 2026-11-05. [프로그램 ZIP](ATIVBatteryGuard-CALLER-CONTRACT-REVIEW.zip) · [일치 소스 ZIP](ATIVBatteryGuard-CALLER-CONTRACT-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-CALLER-CONTRACT-SHA256SUMS.txt) · [새 분석·변경·한계](../ATIVBatteryGuard/WINDOWS_CALLER_CONTRACT_UPDATE.md)
 
 프로그램 ZIP **하나만** 새 폴더에 모두 풀고 ATIVBatteryGuard.exe를 일반 권한으로 실행할 수 있습니다. 소스 ZIP은 개발용이며 함께 풀 필요가 없습니다. 기존 native11바이트 순수 디코더의0/1/FF 보호/지원 추정을 제거했습니다. 현재 앱의 실제 OEM 호출에 연결된 디코더는 아니며 배터리 표시와 기존 오프라인 검토 흐름은 유지합니다. 새 노트북 시험·자료 재제출·관리자/OEM 재실행은 필요하지 않습니다.

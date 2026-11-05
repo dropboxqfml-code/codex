@@ -1,5 +1,14 @@
 # Settings 앱 분석판 검증 기록
 
+## 최신 — 고정 P05ACJ HII 참조 인덱서 / 2026-11-06
+
+- Python 전체 **60개 통과**, reports/p05acj-hii-python-tests.log. 신규12개는11종 공통 헤더·조건부scope 무평가·prompt/help쌍 구분·vendor/미지원/다른package의 가짜 token 무시·scope/길이/개수/late failure의 원자적 폐기·숫자형 크기·자원 상한·hash 선검사·CLI/경로 비노출·symlink/비정규 파일·stat/fstat 후 증가의 cap+1 읽기를 검사합니다.
+- 실제 고정333801바이트/SHA53ec78bfce49bf65858d64aaadee9fbb31abf79088ee0c9b60c28783a6ddf527는 ObservedResourceIndexed, package11/Forms10/opcode12447/지원statement2648/vendor34입니다. 지원 범위의 배터리 수명 연장 참조0·USB CheckBox1·보정Ref1을 보존 범용 byte-walk와 대조했습니다(reports/p05acj-hii-reference-review.json). 모든 계약/모델/제조사/하드웨어 권한false입니다.
+- [추가 정적 분석](P05ACJ_HII_REFERENCE_UPDATE.md)의 OFBD 시험 분기는 포트쓰기와 연결되어 대체 조회/제어 후보로 사용하지 않습니다. OEM/UEFI/AML·하드웨어·포트/CMOS/EC·예약/보안 변경은 없습니다.
+- C#/XAML/실행 파일은 미변경이므로 이번에 C# 빌드·테스트는 반복하지 않았습니다. 아래435개/빌드0경고·오류는 직전판 기록입니다. 기존 프로그램과 ZIP을 유지하고 새 개발 소스만 제공합니다. 현재 모델 배터리 계약은 미확정/Unsupported, 새시험/업로드는 불필요입니다.
+
+아래는 이전 단계 검증 기록입니다.
+
 ## 최신 — Windows caller 대조·native 응답 의미 정정 / 2026-11-05
 
 - C# **435개 통과**, 실패·건너뜀0개(reports/caller-contract-tests.json 및 .log). 기존9개 decoder 회귀를 opaque marker·모든256값·API/길이 실패·버퍼 격리로 정정했고 public semantic enum/checked state 위조 거부1개를 추가했습니다. WMI16바이트의 native 디코더 거부도 통과했습니다.

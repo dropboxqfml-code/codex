@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — HII 표준 헤더 참조·시험 경로 구분 / 2026-11-06
+
+[P05ACJ_HII_REFERENCE_UPDATE.md](P05ACJ_HII_REFERENCE_UPDATE.md)를 먼저 읽습니다. 고정 Setup HII 리소스333801/SHA53ec78bfce49bf65858d64aaadee9fbb31abf79088ee0c9b60c28783a6ddf527에 대해 개발용 bounded 인덱서를 구현했습니다. package11/Forms10/opcode12447/지원 statement2648/vendor GUID34이며11종 공통 헤더에서 배터리 수명 연장 참조0, USB CheckBox1·보정Ref1을 확인했습니다. vendor payload/동적/다른리소스 미폐쇄이고 visibility/부재/명령을 판정하지 않습니다.
+
+입력1MiB/package64/opcode32768/depth64, 고정 hash 선검사·scope/길이 오류의 전체 결과 폐기·cap+1 파일 읽기·경로 비노출·모든 권한false를 적용했습니다. Python60개 통과. OFBD 배터리 신뢰성 시험 문자열 분기는 포트쓰기 helper로 연결되며 상한 계약이 아니므로 실행/포팅/대체 조회하지 않습니다.
+
+C#/앱/기존 ZIP은 미변경이며 C# 빌드/테스트를 이번에 반복하지 않았습니다. CALLER-CONTRACT-REVIEW 유지, 새 개발 소스만 제공. 제한적인 새 공개검색3건도 모델별 계약을 제공하지 않았습니다. 보유 자료에서 현재 모델 caller→처리자→응답의 연결을 찾지 못해 제어 구현은 근거 부족으로 보류합니다. 다음 실제 구현 조건은 적용 모델이 확인되는 새 OEM 배터리 caller/지원 조건 또는 펌웨어 처리 계약입니다. 같은 기록/진단 반복·추가 OEM/업로드/예약 초기화 없이 Unsupported를 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — Windows 호출자 대조·native11 의미 추정 제거
 
 [WINDOWS_CALLER_CONTRACT_UPDATE.md](WINDOWS_CALLER_CONTRACT_UPDATE.md)를 먼저 읽습니다. 구형 OEM의 DLL 선택은 보고major>=6&&minor==1이고 두 DLL 모두5843/65·66을 전달합니다. 설치 ImageState/INI는 모델 가드가 아닙니다. 구형0B bit3 gate는 P05ACJ callback3908→flag getter7DC→초기7F와 조건부 연결되지만, 동적 setter/현재실기값은 미확정입니다. 0B gate는65조회·조건부66쓰기보다 뒤여서 OEM EXE를 진단으로 실행하지 않습니다. 사용자 과거FF는65응답이며0B flag와 혼합하지 않습니다.

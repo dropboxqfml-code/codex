@@ -1,6 +1,6 @@
 # 공개 모델 카탈로그 조회와 서비스 응답 구분 — 2026-11-06 한국 시간
 
-**후속 완료:** [실제 BOM·Settings 파일명 확인](SETTINGS_BOM_PACKAGE_UPDATE.md)에서 게시된 appmanager 허용 적용과 XML2개200을 확인했습니다. Easy Settings2.0.0.89의 정확 ZIP명은 BASW-83876A21.ZIP입니다. 아래 BOM 접근 대기는 이전 기록이며 현재는 실제 ZIP 목적지 org.downloadcenter.samsung.com 허용 초안이 대기 중입니다. ZIP바이트·내부모듈·배터리 계약은 아직 미확보입니다.
+**후속 완료:** [실제 BOM·Settings 파일명과 최종 목적지 확인](SETTINGS_BOM_PACKAGE_UPDATE.md)에서 게시된 appmanager 허용 적용과 XML2개200을 확인했습니다. Easy Settings2.0.0.89의 정확 ZIP명은 BASW-83876A21.ZIP입니다. 이어 org.downloadcenter 허용은 적용됐고 실제302가 최종 downloadcenter.samsung.com을 가리켜 그 한 호스트 추가 초안을 저장했습니다. 아래 BOM 접근 대기는 이전 기록입니다. ZIP바이트·내부모듈·배터리 계약은 아직 미확보입니다.
 
 **사용자 시리얼 없이 삼성 공개 모델 검색과 비교 모델의 소프트웨어 카탈로그 조회에 성공했습니다.** 아직 Settings 원본 파일이나 현재 ATIV의 배터리 명령 계약을 확보한 것은 아닙니다. 개발용 오프라인 응답 검사기를 추가했으며 Windows 프로그램과 실제 충전 제어는 기존 상태를 유지합니다.
 

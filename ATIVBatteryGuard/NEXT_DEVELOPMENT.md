@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — 실제 ZIP 최종 호스트·접근 초안 / 2026-11-06
+
+[SETTINGS_BOM_PACKAGE_UPDATE.md](SETTINGS_BOM_PACKAGE_UPDATE.md)의 최상단 후속을 먼저 읽습니다. 게시 후 org.downloadcenter 허용은 정상 적용됐고 기록된 실제 요청은302로 downloadcenter.samsung.com의 정확 BASW-83876A21.ZIP 경로를 반환했습니다. 최종 URL은 쿼리 없는 공개 주소이며 비공개 redirect/access 기록과 문서에 보존했습니다. 최종 호스트 HEAD는CONNECT403, ZIP·부분파일·바이트/해시·내부caller는 미확보입니다. 정확 파일명 GitHub 질의4개도 새 고정 미러 연결을 제공하지 않았습니다. 코드 검색은 로그인 요구이므로 완전 검색 결과로 취급하지 않습니다.
+
+기존 게시된6호스트를 보존하고 downloadcenter.samsung.com 하나만 추가한 초안을 저장·재조회했습니다(saved/requires_publish=true, revision2). 프리셋/스크립트/저장소/요구사항 보존, 환경미게시. 사용자 게시 후 현재 적용 확인 → 문서/캐시에 이미 기록된 최종 ZIP 목적지 정상 취득 → 수신 길이/SHA/컨테이너 → 원본 비공개 정적 분석으로 재개합니다. 같은 ORCA/BOM 조회·추측 URL·중계·삼성 코드 실행을 반복할 필요가 없습니다.
+
+이번에는 문서·접근 증거만 변경했고 앱/개발도구/테스트/EXE/기존 ZIP은 유지합니다. 빌드·테스트를 반복하지 않았으며85/435는 이전 기록입니다. 새 다운로드·노트북/OEM 시험·업로드·예약 삭제 불필요. 실제 제어Unsupported. 아래는 이전 기록입니다.
+
 ## 최신 — Settings2.0.0.89 실제 BOM·정확 ZIP 식별 / 2026-11-06
 
 [SETTINGS_BOM_PACKAGE_UPDATE.md](SETTINGS_BOM_PACKAGE_UPDATE.md)를 먼저 읽습니다. 게시 후 appmanager 허용 적용을 확인했고 실제 BOM2개를200으로 확보했습니다. 길이426679/488124, SHAac93fcf335218ad1a5b34cb57a92b58a2fb9e67be3d415683c229bac79848f46 / 116e0e2d84bd44d2d4024bd10c17f281b78717e61a03e6e3fad094c55d6509dc입니다. 둘 다 비교930X5J/Win7 문맥의 Easy Settings2.0.0.89 → BASW-83876A21.ZIP을 가리킵니다. 동일 Settings 항목의 중복이며 독립 바이너리 두 개의 증거가 아닙니다. FileVer/크기/TestYes는 원본 무결성·시험 통과·현재 모델 지원을 뜻하지 않습니다.

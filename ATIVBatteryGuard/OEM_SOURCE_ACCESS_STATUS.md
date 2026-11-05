@@ -1,5 +1,7 @@
 # OEM 원본 확보 경로와 현재 접근 상태 — 2026-11-06 한국 시간
 
+**최신 후속:** [최종 ZIP 목적지 확인](SETTINGS_BOM_PACKAGE_UPDATE.md)에서 게시된 org.downloadcenter 허용 적용 후 downloadcenter.samsung.com의 실제 파일 경로로302를 확인했습니다. 최종 호스트 HEAD는CONNECT403이며 한 호스트 추가 초안 저장·재조회를 완료했습니다. 기존6호스트와 설정은 보존했고 환경은 게시하지 않았습니다. 원본 바이트/해시·내부caller는 미확보이며 앱/도구/테스트/배포파일은 유지합니다. 아래는 이전 단계 기록입니다.
+
 **최신 후속:** [실제 BOM200·ZIP명 식별](SETTINGS_BOM_PACKAGE_UPDATE.md)을 완료했습니다. 현재 필요한 새 목적지는 실제 Settings ZIP의302가 가리킨 org.downloadcenter.samsung.com 하나입니다. 기존 게시된 다섯 호스트는 유지했고 추가 초안을 저장·재조회했습니다. ZIP바이트·내부모듈·배터리 계약은 아직 미확보이며 사용자 시험·업로드는 필요하지 않습니다. 아래는 이전 단계 기록입니다.
 
 **최신 후속:** [공개 카탈로그 조사와 개발 도구](SAMSUNG_UPDATE_CATALOG_REVIEW.md)에서 기존 ORCA 허용 적용, 공개 모델 목록과 비교 모델 W7 카탈로그 SUCC를 확인했습니다. 실제 Settings 바이트는 아직 확보하지 않았습니다. 현재 필요한 새 호스트는 BOM 목록의 appmanager.samsungmobile.com 하나이며 초안 저장·재조회를 완료했습니다. 아래의 NBR/ORCA 접근 대기는 이전 단계 기록입니다. 사용자 자료 재제출·실제 시리얼·노트북 반복 시험은 필요하지 않습니다.

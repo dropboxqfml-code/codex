@@ -1,3 +1,15 @@
+# ACPI Field·프레임 통로 선언 요약 — Acpi-routing-v6
+
+2026-11-05 한국 시간. [프로그램 ZIP](ATIVBatteryGuard-ACPI-FIELD-CHANNEL.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-FIELD-CHANNEL-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-FIELD-CHANNEL-SHA256SUMS.txt) · [변경·해석·실행 안내](../ATIVBatteryGuard/ACPI_FIELD_CHANNEL_UPDATE.md)
+
+**실행에는 프로그램 ZIP 하나만 필요합니다.** 새 폴더에 그 ZIP 전체를 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행합니다. 소스 ZIP은 개발용이며 다운로드하거나 같은 폴더에 함께 풀 필요가 없습니다. **Acpi-routing-v6** 표시와 새 Field 통로 선언·입력 역할·Region 관계 요약만 전달합니다.
+
+v5 실기에서 확인한 Field 저장/반환 구문을 바탕으로 후보 Field의 선언 공간·고정21바이트 대비 폭 범주, 직접 Store 원천, 보조 Store와의 Region 선언 동일성을 추가합니다. 반복 참조와 고유 후보를 구분하고 복수·혼합·미확정을 단일 일치로 바꾸지 않습니다. 실제 값·주소·물리 영역·실행·FF 의미는 판단하지 않으며 충전 제어는 Unsupported입니다.
+
+수집은 기존 두 Windows 읽기 API와 고정 DSDT/첫 SSDT·기존 상한을 유지합니다. AML/OEM/삼성 DLL 실행·원본 저장·예약 접근·하드웨어 쓰기는 없으며 원본 삼성 DLL·실험 EXE는 포함하지 않습니다. v6의 새 분석은 실제 노트북에서 아직 미관측입니다. v5 반복·관리자 비교·기존 TXT/DLL/EXE·원본 ACPI 재제출·완료된 OEM 실험 재실행은 필요하지 않습니다. 아래는 각 단계 당시의 배포 기록이며 이전 실행 절차를 다시 수행하라는 안내가 아닙니다.
+
+## 이전 배포 기록
+
 # ACPI 객체·참조 관계 요약 — Acpi-routing-v5
 
 **실기 결과 수신·추가 실행 불필요:** 후보/보조 이름 참조 각 3/3회 분류와 후보 저장/반환의 동일 Field 참조, 보조 SystemIo Field Store 구문을 확인했습니다. [분석과 다음 계획](../ATIVBatteryGuard/ACPI_V5_RESULT_AND_NEXT_PLAN.md)을 기록했고 이번에는 새 프로그램을 배포하지 않습니다. v5 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 아래 ZIP·소스·체크섬은 배포 당시 그대로 보존합니다. 아래는 이전 안내입니다.

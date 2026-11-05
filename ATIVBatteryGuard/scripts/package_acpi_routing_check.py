@@ -10,8 +10,8 @@ from package_wmi_preflight_check import code_only, inspect_executable, inspect_s
 
 PROJECT = 'ATIVBatteryGuard.AcpiRoutingCheck'
 READ_ONLY_FOOTPRINT = {
-    'WindowsAcpiRoutingProbe.cs': 'd7c9653efccc04ad6c798e3ad10eb4075a1937aa211c3dcbaf301342622aa081',
-    'Program.cs': '0efb632ebc566a2583fd8918a3f5e810cd57643935e05577bf056c75337154df',
+    'WindowsAcpiRoutingProbe.cs': 'e26b69073be82cb4fb56e7c70e4e26a0ab4301deda625ffbdc5a75bd97ec2ae3',
+    'Program.cs': 'a76bd83d53d8b45e4777b087d7131d453a65ec70b604464ceb8785106bbeecfe',
 }
 
 
@@ -21,7 +21,7 @@ def inspect_reader_sources(root):
     host = (project / 'Program.cs').read_text(encoding='utf-8')
     parser = (root / 'src/ATIVBatteryGuard.Core/Services/AcpiWmiRoutingInspector.cs').read_text(encoding='utf-8')
     models = [(root / ('src/ATIVBatteryGuard.Core/Models/' + name)).read_text(encoding='utf-8')
-              for name in ['AcpiWmiRoutingReport.cs', 'AcpiMethodFlowReport.cs', 'AcpiObjectReferenceReport.cs']]
+              for name in ['AcpiWmiRoutingReport.cs', 'AcpiMethodFlowReport.cs', 'AcpiObjectReferenceReport.cs', 'AcpiFieldChannelReport.cs']]
     forbidden = re.compile(r'\b(?:InvokeMethod|TryClaim|WindowsOneShotBackend|ManagementObject|ManagementClass|'
         r'ManagementScope|WsabiWmiOneShotExperiment|WsabiWmiOneShotFileReservation|LoadLibrary|'
         r'DeviceIoControl|WriteFile|FileStream|StreamWriter|HttpClient|WebClient|Socket|Registry|ServiceController)\b|'
@@ -70,14 +70,14 @@ def main():
     build = root / 'src' / PROJECT / 'bin/Release/net48'
     files = {name:(build/name).read_bytes() for name in [PROJECT+'.exe', PROJECT+'.exe.config', 'ATIVBatteryGuard.Core.dll']}
     inspect_executable(files[PROJECT+'.exe'])
-    if ('Acpi-routing-v5'.encode('utf-16le') not in files[PROJECT+'.exe'] or
-            any(('Acpi-routing-v'+str(v)).encode('utf-16le') in files[PROJECT+'.exe'] for v in [1,2,3,4])):
-        raise ValueError('The v5 executable is required; a previous routing tool must not be distributed as the object-reference revision.')
+    if ('Acpi-routing-v6'.encode('utf-16le') not in files[PROJECT+'.exe'] or
+            any(('Acpi-routing-v'+str(v)).encode('utf-16le') in files[PROJECT+'.exe'] for v in [1,2,3,4,5])):
+        raise ValueError('The v6 executable is required; a previous routing tool must not be distributed as the field-channel revision.')
     if (b'GetSystemFirmwareTable\0' not in files[PROJECT+'.exe'] or b'AcpiWmiRoutingInspector\0' not in files['ATIVBatteryGuard.Core.dll']
             or b'AcpiMethodFlowReport\0' not in files['ATIVBatteryGuard.Core.dll'] or b'AcpiSyntaxOperation\0' not in files['ATIVBatteryGuard.Core.dll']
-            or b'AcpiObjectReferenceReport\0' not in files['ATIVBatteryGuard.Core.dll']):
+            or b'AcpiObjectReferenceReport\0' not in files['ATIVBatteryGuard.Core.dll'] or b'AcpiFieldChannelReport\0' not in files['ATIVBatteryGuard.Core.dll']):
         raise ValueError('The current static reader and parser binaries are required.')
-    info = {'application':PROJECT, 'revision':'Acpi-routing-v5', 'target':'Windows10x64/.NETFramework4.8',
+    info = {'application':PROJECT, 'revision':'Acpi-routing-v6', 'target':'Windows10x64/.NETFramework4.8',
         'requestsElevation':False, 'usesOnlyWindowsAcpiTableReadApis':True,
         'evaluatesAml':False, 'invokesOemMethods':False, 'touchesExperimentReservation':False,
         'savesOrExportsRawFirmware':False, 'exportsDeviceIdentifiersOrPaths':False,
@@ -92,6 +92,10 @@ def main():
         'exportsObjectNamesAddressesOffsetsOrLengths':False, 'evaluatesAliasesValuesOrDataFlow':False,
         'fieldListSupport':['NamedField','ReservedField','AccessField','ExtendedAccessField'],
         'completeFieldListLanguageSupported':False, 'legacyMethodFlowSemanticsPreserved':True,
+        'fieldChannelDeclarationSummary':True, 'fieldWidthComparedToFixedFrameBytes':21,
+        'rawFieldWidthsExported':False, 'directStoreSourceSyntaxOnly':True,
+        'regionComparisonIsObservedDefinitionIdentityOnly':True, 'comparesPhysicalAddressesOrOverlaps':False,
+        'multipleCandidatesAreNotSingleMatches':True, 'automaticallyChangesRequestsOnMismatch':False,
         'maximumHelperDepth':2, 'maximumHelperDefinitions':8, 'maximumHelperCallSites':32,
         'maximumNamespaceObjects':8192,
         'evaluatesVariablesBranchesOrArgumentMapping':False, 'helperSyntaxProvesExecutedRoute':False,
@@ -102,13 +106,17 @@ def main():
         'portableTests':tests, 'testsExecuteWindowsOrFirmware':False, 'windowsRuntimeTested':False,
         'previousDsdtDirectReadObserved':True, 'currentMethodFlowWindowsObserved':False,
         'previousExtendedHelperSyntaxObserved':True, 'currentObjectReferenceWindowsObserved':False,
+        'previousObjectReferenceObserved':True, 'currentFieldChannelWindowsObserved':False,
         'digitallySigned':False, 'containsOriginalVendorBinariesOrUserReports':False,
         'sourceZipSha256':hashlib.sha256(args.source_zip.read_bytes()).hexdigest()}
     files['BUILD-INFO.json'] = json.dumps(info,ensure_ascii=False,indent=2).encode('utf-8')
-    readme = '''ATIV Battery Guard — ACPI 객체·참조 관계 요약 (Acpi-routing-v5)
+    readme = '''ATIV Battery Guard — ACPI Field·프레임 통로 선언 요약 (Acpi-routing-v6)
 
-v4 실기에서 보조 본문1개·Acquire/Release 구문 해석과 미지원0개를 확인했습니다.
-v5는 같은 테이블의 Buffer/Mutex/Field 등 관측 정의의 종류와 Store/Return의 참조 관계를 요약합니다.
+v5 실기에서 후보/보조 이름 참조 각3/3회 분류와 같은 Field 저장/반환 구문을 확인했습니다.
+v6는 입력/반환 Field의 선언 공간·21바이트 프레임에 대응하는 선언 폭·직접 Store 입력 역할을 요약합니다.
+후보/보조의 같은 Region 선언 여부를 비교하지만 실제 주소의 동일·겹침·분리는 판단하지 않습니다.
+복수 대상·혼합·미분류·부분 탐색은 하나의 일치로 바꾸지 않습니다. 폭 불일치에도 요청을 자동 수정하지 않습니다.
+선언 폭 일치는 정확한 바이트 배치·실행·프로토콜 의미나 충전 지원의 증거가 아닙니다.
 같은 정의 참조 구문은 실제 값 전달·실행 순서·동일한 데이터 반환이나 하드웨어 효과를 증명하지 않습니다.
 OperationRegion은 선언된 주소 공간 종류만 읽고 실제 영역을 읽거나 쓰지 않습니다.
 이름·주소·오프셋·길이·식별자는 출력하거나 저장하지 않습니다. 별칭·동적 생성·중복은 보수적으로 처리합니다.
@@ -124,9 +132,9 @@ Load/LoadTable/Unload 등 동적 namespace 작업은 해석 불가로 닫고 실
 AML 실행, OEM 호출, 삼성 DLL 로드, 예약 접근, 드라이버·서비스·보안 변경은 없습니다.
 원본 ACPI/주소/GUID 원문/장치 식별자/메서드 이름/경로는 출력하거나 파일에 저장하지 않습니다.
 
-1. ZIP 전체를 새 로컬 폴더에 압축 해제합니다.
+1. 프로그램 ZIP 하나만 새 로컬 폴더에 전부 압축 해제합니다. 소스 ZIP은 실행에 필요하지 않으며 함께 풀지 않습니다.
 2. ATIVBatteryGuard.AcpiRoutingCheck.exe를 일반 권한으로 실행합니다. 관리자 실행은 요구하지 않습니다.
-3. Acpi-routing-v5 표시와 출력된 새 요약만 복사해 전달하고 Enter로 닫습니다.
+3. Acpi-routing-v6 표시와 출력된 새 요약만 복사해 전달하고 Enter로 닫습니다.
 원본 테이블·삼성 DLL·기존 진단·이전 실행 결과는 다시 제출하지 않습니다.
 
 Windows API는 같은 서명의 테이블 중 첫 것만 반환하므로 전체 SSDT를 읽지 못합니다.
@@ -140,7 +148,7 @@ ID1/길이21/FF 반환 구문은 존재 여부이며 실제 분기의 실행이�
     files['먼저 읽어주세요.txt'] = readme.replace('\n','\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(hashlib.sha256(data).hexdigest()+'  '+name+'\n' for name,data in sorted(files.items())).encode()
     args.output.mkdir(parents=True,exist_ok=True)
-    target = args.output/'ATIVBatteryGuard-ACPI-OBJECT-REFERENCES.zip'
+    target = args.output/'ATIVBatteryGuard-ACPI-FIELD-CHANNEL.zip'
     with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as archive:
         for name,data in sorted(files.items()): archive.writestr(name,data)
     with zipfile.ZipFile(target) as archive:

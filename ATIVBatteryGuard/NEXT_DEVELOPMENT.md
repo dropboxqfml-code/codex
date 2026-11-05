@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 현재 구현 — Field 통로 선언·입력 역할 v6 / 2026-11-05 한국 시간
+
+[현재 구현과 실행 안내](ACPI_FIELD_CHANNEL_UPDATE.md)를 먼저 읽습니다. 사용자 승인에 따라 [v5 후속 계획](ACPI_V5_RESULT_AND_NEXT_PLAN.md)의 후보 Arg2 저장/직접 반환 Field 주소 공간·21바이트 선언 폭 범주, 후보 Store 원천 Arg0/1/2/literal/Other, 보조 Store와의 관측 Region 정의 관계를 구현했습니다. 반복 참조와 고유 후보를 구분하며 복수 동일 폭은 MultipleCandidates, 서로 다른 폭은 Mixed, 불완전·모호함은 Unknown으로 남깁니다. 비Field·미분류 대상을 버려 단일 일치를 만들지 않습니다.
+
+기존 Flow 지표·ObjectReferences·직접 FF 의미는 유지합니다. 폭 일치나 같은 Region 선언을 바이트 배치·입력 보존·실행·물리 주소 동일성·SMI·충전 지원으로 확대하지 않습니다. 원시 폭·이름·주소·오프셋·길이·값을 보고하지 않고 실제 영역 접근·OEM/AML/DLL 실행·예약 접근을 추가하지 않습니다. 수집은 같은 두 읽기 API와 고정 DSDT/첫 SSDT이며 기존 상한을 유지합니다.
+
+새 배포 ACPI-FIELD-CHANNEL의 **프로그램 ZIP 하나만** 새 폴더에 풀어 일반 권한으로 실행하고 **Acpi-routing-v6 새 요약만** 확인합니다. 소스 ZIP은 개발용입니다. 새 요약은 v5에서 없던 후보 공간·폭·Region 관계를 추가하므로 의미가 있으며 기존 자료 재제출·v5 반복·관리자 비교·완료된 OEM 실험 재실행은 요청하지 않습니다. 새 v6 실기는 미관측이고 제어는 Unsupported입니다. 이후 새 정적 근거를 기존 Windows/SABI 규약과 대조하되 모델별 명령 계약·FF 의미가 입증되지 않으면 제어를 활성화하지 않습니다. 아래는 이전 작업 당시의 기록입니다.
+
+## 이전 개발 기록
+
 ## v5 실기 결과·필드 선언과 정적 프레임 통로 계획
 
 [현재 분석과 계획](ACPI_V5_RESULT_AND_NEXT_PLAN.md)을 먼저 읽습니다. v5 사용자 출력에서 root 이름 참조 3/3 Field, helper 3/3 Mutex/Field·Store Field SystemIo, root Store(Arg2)/Return 동일 관측 Field 정의 참조를 확인했습니다. 두 root/helper 직접 참조 관계는 미확정입니다. 선언 종류 6/6 분류는 고유 객체 6개나 실제 데이터 전달 증거가 아니며 기존 Flow 미확정6 지표는 별도 보수적 검사로 유지됩니다.

@@ -1,5 +1,11 @@
 # ATIV Battery Guard
 
+**현재 배포 — Field·프레임 통로 선언 요약 / Acpi-routing-v6 (2026-11-05 한국 시간):** [변경·해석·실행 안내](ACPI_FIELD_CHANNEL_UPDATE.md)에 따라 후보 입력/반환 Field의 선언 공간과 고정21바이트 프레임에 대한 폭 분류, 직접 Store 입력 역할, 보조 Store와의 Region 선언 관계를 추가했습니다. 관측 선언의 구문만 비교하며 실제 값·주소·물리 영역·AML/OEM 실행을 확인하지 않습니다. 복수/혼합/미확정을 단일 일치로 바꾸지 않으며 FF 의미와 실제 충전 제어는 여전히 미확정/Unsupported입니다.
+
+[프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-FIELD-CHANNEL.zip) **하나만** 새 폴더에 모두 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행합니다. 소스 ZIP은 개발용이며 함께 풀 필요가 없습니다. **Acpi-routing-v6 새 요약만** 확인하며 이전 TXT/DLL/EXE·원본 ACPI 재제출, v5 반복·관리자 비교·OEM 재실행은 필요하지 않습니다. 수집 API·대상·안전 상한과 기존 실험 예약은 유지합니다. 새 v6 Windows 실기는 아직 미관측이며 자동 검증 결과는 [VALIDATION.md](VALIDATION.md)를 따릅니다. 아래는 각 단계 당시의 기록입니다.
+
+## 이전 개발 기록
+
 **v5 실기 결과 수신:** 후보 3/3회 Field·보조 3/3회 Mutex/Field 종류 분류, 후보 입력 저장/반환의 동일 관측 Field 참조와 보조 SystemIo Field Store 구문을 확인했습니다. [분석 및 다음 개발 계획](ACPI_V5_RESULT_AND_NEXT_PLAN.md)은 필드 선언 형태·정적 프레임 통로 확인을 우선합니다. FF 의미와 실제 제어는 미확정입니다. 이번에는 분석·계획만 기록하고 코드/ZIP을 변경하지 않으며 v5 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 아래는 이전 기록입니다.
 
 **객체·참조 관계 요약 — Acpi-routing-v5:** [직전 계획](ACPI_V4_RESULT_AND_NEXT_PLAN.md)에 따라 같은 테이블의 관측 이름 정의 종류와 Store/Return의 참조 관계를 분류합니다. [변경 범위·실행 안내](ACPI_OBJECT_REFERENCE_UPDATE.md)와 [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-OBJECT-REFERENCES.zip)을 따릅니다. 프로그램 ZIP 하나만 새 폴더에 풀어 일반 권한으로 실행합니다. 값·분기·별칭·실제 데이터 전달을 평가하지 않으며 Field/OperationRegion을 실제로 읽거나 쓰지 않습니다. FF 의미와 충전 제어는 미확정이고 새 v5 실기는 아직 미관측입니다. 아래는 이전 기록입니다.

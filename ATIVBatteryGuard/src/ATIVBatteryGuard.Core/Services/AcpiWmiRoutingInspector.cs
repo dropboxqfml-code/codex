@@ -66,6 +66,7 @@ namespace ATIVBatteryGuard.Core.Services
             internal AcpiNamedObjectKinds Kind;
             internal AcpiAddressSpaceKinds Space;
             internal NameReference Region;
+            internal uint? DeclaredFieldBits;
             internal bool Ambiguous;
         }
         private sealed class NamedUse
@@ -73,6 +74,8 @@ namespace ATIVBatteryGuard.Core.Services
             internal NameReference Reference;
             internal int Count;
             internal bool Returned, Arg2StoreTarget, StoreTarget;
+            internal int StoreSites, Arg2StoreSites;
+            internal AcpiStoreSourceKinds StoreSources;
         }
         private sealed class ClassifiedName
         {
@@ -90,6 +93,16 @@ namespace ATIVBatteryGuard.Core.Services
             internal readonly HashSet<object> Returns = new HashSet<object>();
             internal readonly HashSet<object> Arg2Targets = new HashSet<object>();
         }
+        private sealed class FieldRoles
+        {
+            internal int StoreSites, Arg2Sites;
+            internal AcpiStoreSourceKinds Sources;
+            internal bool Unknown, StoreUnknown, Arg2Unknown, ReturnUnknown, Arg2Other, ReturnOther;
+            internal AcpiAddressSpaceKinds Arg2Spaces, ReturnSpaces, StoreSpaces;
+            internal readonly HashSet<NamedDefinition> Arg2Fields = new HashSet<NamedDefinition>();
+            internal readonly HashSet<NamedDefinition> ReturnFields = new HashSet<NamedDefinition>();
+            internal readonly HashSet<NamedDefinition> StoreFields = new HashSet<NamedDefinition>();
+        }
         private struct Value
         {
             internal int Kind; // 1: integer, 2: Arg1, 3: Arg2, 4: SizeOf(Arg2), 5: known call, 6: unresolved name
@@ -97,6 +110,7 @@ namespace ATIVBatteryGuard.Core.Services
             internal int BufferStart, BufferLength;
             internal AcpiNamedObjectKinds DeclarationKind;
             internal NamedUse NamedUse;
+            internal AcpiStoreSourceKinds DirectStoreSourceRole;
         }
         private sealed class BodyEvidence
         {
@@ -107,6 +121,7 @@ namespace ATIVBatteryGuard.Core.Services
             internal readonly List<Method> Calls = new List<Method>();
             internal int NamedReferenceCount;
             internal bool ObjectRelationLimit;
+            internal bool Arg2NonNamedStore, NonNamedReturn;
             internal readonly Dictionary<string, NamedUse> NamedUses = new Dictionary<string, NamedUse>();
             internal readonly HashSet<string> CreatedNames = new HashSet<string>();
         }
@@ -145,6 +160,7 @@ namespace ATIVBatteryGuard.Core.Services
                 int? args = null; bool? id = null, size = null, ff = null;
                 AcpiMethodFlowReport flow = null;
                 AcpiObjectReferenceReport objectReferences = null;
+                AcpiFieldChannelReport fieldChannel = null;
                 AcpiMethodSyntaxStatus syntax = descriptors.Count > 1 || matches.Count > 1
                     ? AcpiMethodSyntaxStatus.Ambiguous : AcpiMethodSyntaxStatus.NotObserved;
                 if (descriptors.Count == 1 && matches.Count == 1)
@@ -167,10 +183,11 @@ namespace ATIVBatteryGuard.Core.Services
                         List<BodyEvidence> helpers;
                         flow = InspectFlow(method, evidence, out helpers);
                         objectReferences = InspectObjectReferences(evidence, helpers, flow);
+                        fieldChannel = InspectFieldChannel(evidence, helpers, flow);
                     }
                 }
                 return new AcpiWmiRoutingReport(complete ? AcpiRoutingStatus.Complete : AcpiRoutingStatus.Partial,
-                    descriptors.Count, matches.Count, args, id, size, ff, syntax, flow, objectReferences);
+                    descriptors.Count, matches.Count, args, id, size, ff, syntax, flow, objectReferences, fieldChannel);
             }
 
             private AcpiMethodFlowReport InspectFlow(Method root, BodyEvidence body, out List<BodyEvidence> helpers)
@@ -315,7 +332,7 @@ namespace ATIVBatteryGuard.Core.Services
                 NameReference region = ReadNameReference(ref p, end, scope);
                 byte flags = Get(ref p, end);
                 if ((flags & 0x80) != 0 || (flags & 15) > 5 || ((flags >> 5) & 3) == 3) throw new ParseException();
-                var fields = new List<NamedDefinition>();
+                var fields = new List<KeyValuePair<NamedDefinition, uint>>();
                 while (p < end)
                 {
                     Tick(); byte op = bytes[p];
@@ -332,28 +349,31 @@ namespace ATIVBatteryGuard.Core.Services
                             segment.Append((char)value);
                         }
                         NamedDefinition definition = ObjectName(Join(scope, segment.ToString()));
-                        FieldBitLength(ref p, end);
+                        uint width = FieldBitLength(ref p, end);
                         if (fields.Count >= MaximumNamespaceObjects) throw new LimitException();
-                        fields.Add(definition);
+                        fields.Add(new KeyValuePair<NamedDefinition, uint>(definition, width));
                     }
                     else throw new ParseException(); // Includes opaque ConnectField; never resynchronize.
                 }
                 // A failed FieldList leaves only opaque name barriers. No prefix
                 // becomes a typed Field before the entire bounded list parses.
-                foreach (NamedDefinition definition in fields)
+                foreach (KeyValuePair<NamedDefinition, uint> field in fields)
                 {
+                    NamedDefinition definition = field.Key;
                     CommitDefinition(definition, AcpiNamedObjectKinds.Field);
-                    if (!definition.Ambiguous) definition.Region = region;
+                    if (!definition.Ambiguous) { definition.Region = region; definition.DeclaredFieldBits = field.Value; }
                 }
             }
 
-            private void FieldBitLength(ref int p, int end)
+            private uint FieldBitLength(ref int p, int end)
             {
                 byte lead = Get(ref p, end); int following = lead >> 6;
                 if (following != 0 && (lead & 0x30) != 0) throw new ParseException();
                 // FieldLength uses PkgLength encoding but describes a bit count,
                 // not a package extent. It may greatly exceed remaining bytes.
-                Advance(ref p, end, following);
+                uint value = (uint)(lead & (following == 0 ? 0x3f : 0x0f));
+                for (int i = 0; i < following; i++) value |= (uint)Get(ref p, end) << (4 + 8 * i);
+                return value;
             }
 
             private static AcpiAddressSpaceKinds AddressSpace(byte value)
@@ -432,6 +452,141 @@ namespace ATIVBatteryGuard.Core.Services
                     helpers.Count == 0 ? null : Kinds(helperSummary.Kinds, helperSummary.Unknown),
                     helpers.Count == 0 ? null : Kinds(helperSummary.StoreKinds, helperSummary.StoreUnknown),
                     helperSpaces, storeReturn, returnHelper, storeHelper);
+            }
+
+            private AcpiFieldChannelReport InspectFieldChannel(BodyEvidence root, List<BodyEvidence> helpers,
+                AcpiMethodFlowReport flow)
+            {
+                bool limited = root.ObjectRelationLimit || flow.Status == AcpiMethodFlowStatus.LimitExceeded;
+                var created = new HashSet<string>(root.CreatedNames);
+                foreach (BodyEvidence helper in helpers)
+                {
+                    limited |= helper.ObjectRelationLimit;
+                    foreach (string name in helper.CreatedNames) created.Add(name);
+                }
+                if (limited)
+                    return new AcpiFieldChannelReport(AcpiFieldChannelStatus.LimitExceeded, parsedHelpers: helpers.Count);
+
+                FieldRoles candidate = SummarizeFieldRoles(root, created);
+                var helperRoles = new FieldRoles();
+                foreach (BodyEvidence helper in helpers) SummarizeFieldRoles(helper, created, helperRoles);
+                AcpiFieldWidthAssessment inputWidth = FieldWidth(candidate.Arg2Fields, candidate.Arg2Unknown, candidate.Arg2Other);
+                AcpiFieldWidthAssessment returnWidth = FieldWidth(candidate.ReturnFields, candidate.ReturnUnknown, candidate.ReturnOther);
+                bool incompleteHelpers = flow.UnsupportedHelpers != 0 || flow.CycleObserved;
+                bool partial = !complete || candidate.Unknown || helperRoles.Unknown || incompleteHelpers ||
+                    inputWidth == AcpiFieldWidthAssessment.Unknown || returnWidth == AcpiFieldWidthAssessment.Unknown;
+                return new AcpiFieldChannelReport(partial ? AcpiFieldChannelStatus.Partial : AcpiFieldChannelStatus.ObservedDeclarations,
+                    candidate.StoreSites, candidate.Arg2Sites, candidate.Sources,
+                    FieldSpaces(candidate.Arg2Spaces, candidate.Arg2Unknown),
+                    FieldSpaces(candidate.ReturnSpaces, candidate.ReturnUnknown), inputWidth, returnWidth,
+                    helpers.Count, helpers.Count == 0 ? null : FieldSpaces(helperRoles.StoreSpaces, helperRoles.StoreUnknown),
+                    RegionRelation(candidate.Arg2Fields, helperRoles.StoreFields, created,
+                        candidate.Arg2Unknown || (candidate.Arg2Other && candidate.Arg2Fields.Count != 0) ||
+                            helperRoles.StoreUnknown || incompleteHelpers),
+                    RegionRelation(candidate.ReturnFields, helperRoles.StoreFields, created,
+                        candidate.ReturnUnknown || (candidate.ReturnOther && candidate.ReturnFields.Count != 0) ||
+                            helperRoles.StoreUnknown || incompleteHelpers));
+            }
+
+            private FieldRoles SummarizeFieldRoles(BodyEvidence body, HashSet<string> created, FieldRoles roles = null)
+            {
+                if (roles == null) roles = new FieldRoles();
+                roles.Arg2Other |= body.Arg2NonNamedStore;
+                roles.ReturnOther |= body.NonNamedReturn;
+                foreach (NamedUse use in body.NamedUses.Values)
+                {
+                    ClassifiedName classified = Classify(use.Reference, created);
+                    if (classified == null)
+                    {
+                        roles.Unknown = true;
+                        roles.StoreUnknown |= use.StoreTarget;
+                        roles.Arg2Unknown |= use.Arg2StoreTarget;
+                        roles.ReturnUnknown |= use.Returned;
+                        continue;
+                    }
+                    if (classified.Kind != AcpiNamedObjectKinds.Field)
+                    {
+                        roles.Arg2Other |= use.Arg2StoreTarget;
+                        roles.ReturnOther |= use.Returned;
+                        continue;
+                    }
+                    var field = (NamedDefinition)classified.Identity;
+                    if (classified.Space == AcpiAddressSpaceKinds.Unknown) roles.Unknown = true;
+                    if (use.StoreTarget)
+                    {
+                        roles.StoreSites += use.StoreSites;
+                        roles.Arg2Sites += use.Arg2StoreSites;
+                        roles.Sources |= use.StoreSources;
+                        roles.StoreFields.Add(field);
+                        roles.StoreSpaces |= classified.Space;
+                    }
+                    if (use.Arg2StoreTarget)
+                    {
+                        roles.Arg2Fields.Add(field);
+                        roles.Arg2Spaces |= classified.Space;
+                    }
+                    if (use.Returned)
+                    {
+                        roles.ReturnFields.Add(field);
+                        roles.ReturnSpaces |= classified.Space;
+                    }
+                }
+                return roles;
+            }
+
+            private static AcpiAddressSpaceKinds? FieldSpaces(AcpiAddressSpaceKinds spaces, bool unknown)
+                => spaces == AcpiAddressSpaceKinds.None && unknown ? null :
+                    (AcpiAddressSpaceKinds?)(spaces | (unknown ? AcpiAddressSpaceKinds.Unknown : AcpiAddressSpaceKinds.None));
+
+            private static AcpiFieldWidthAssessment FieldWidth(HashSet<NamedDefinition> fields, bool unknown, bool other)
+            {
+                // Never discard an unknown or non-Field role to leave a single
+                // matching declaration. Repeated uses of one definition count once.
+                if (unknown || (other && fields.Count != 0)) return AcpiFieldWidthAssessment.Unknown;
+                if (fields.Count == 0) return AcpiFieldWidthAssessment.NotObserved;
+                uint? first = null; bool mixed = false;
+                foreach (NamedDefinition field in fields)
+                {
+                    if (!field.DeclaredFieldBits.HasValue || field.DeclaredFieldBits.Value == 0)
+                        return AcpiFieldWidthAssessment.Unknown;
+                    if (!first.HasValue) first = field.DeclaredFieldBits.Value;
+                    else if (first.Value != field.DeclaredFieldBits.Value) mixed = true;
+                }
+                if (mixed) return AcpiFieldWidthAssessment.Mixed;
+                if (fields.Count > 1) return AcpiFieldWidthAssessment.MultipleCandidates;
+                return first.Value == 21U * 8U ? AcpiFieldWidthAssessment.Matches21ByteFrame :
+                    AcpiFieldWidthAssessment.DoesNotMatch21ByteFrame;
+            }
+
+            private AcpiRegionDefinitionRelation RegionRelation(HashSet<NamedDefinition> leftFields,
+                HashSet<NamedDefinition> rightFields, HashSet<string> created, bool unknown)
+            {
+                if (unknown) return AcpiRegionDefinitionRelation.Unknown;
+                var left = new HashSet<NamedDefinition>();
+                var right = new HashSet<NamedDefinition>();
+                if (!CollectRegionDefinitions(leftFields, created, left) || !CollectRegionDefinitions(rightFields, created, right))
+                    return AcpiRegionDefinitionRelation.Unknown;
+                if (left.Count == 0 || right.Count == 0)
+                    return complete ? AcpiRegionDefinitionRelation.NotObserved : AcpiRegionDefinitionRelation.Unknown;
+                if (left.Count > 1 || right.Count > 1) return AcpiRegionDefinitionRelation.Mixed;
+                // Same/different refers only to observed declarations. Neither
+                // case compares evaluated addresses, overlap or physical aliases.
+                foreach (NamedDefinition region in left)
+                    return right.Contains(region) ? AcpiRegionDefinitionRelation.SameObservedDefinition :
+                        AcpiRegionDefinitionRelation.DifferentObservedDefinitions;
+                return AcpiRegionDefinitionRelation.Unknown;
+            }
+
+            private bool CollectRegionDefinitions(HashSet<NamedDefinition> fields, HashSet<string> created,
+                HashSet<NamedDefinition> regions)
+            {
+                foreach (NamedDefinition field in fields)
+                {
+                    ClassifiedName region = field.Region == null ? null : ResolveReference(field.Region, created);
+                    if (region == null || region.Kind != AcpiNamedObjectKinds.OperationRegion) return false;
+                    regions.Add((NamedDefinition)region.Identity);
+                }
+                return true;
             }
 
             private ReferenceSummary SummarizeReferences(BodyEvidence body, HashSet<string> created,
@@ -552,6 +707,7 @@ namespace ATIVBatteryGuard.Core.Services
                         evidence.ReturnStatements++;
                         evidence.Returns |= ReturnForm(value);
                         if (value.Kind == 6 && value.NamedUse != null) value.NamedUse.Returned = true;
+                        else evidence.NonNamedReturn = true;
                         if ((value.Kind == 1 && value.Integer == 255) ||
                             (value.BufferLength == 21 && bytes[value.BufferStart + 4] == 0xaa && bytes[value.BufferStart + 5] == 255))
                             evidence.Ff = true;
@@ -584,30 +740,37 @@ namespace ATIVBatteryGuard.Core.Services
                 CheckDepth(depth); Tick(); int original = p; byte op = Get(ref p, end);
                 if (op == 0x5b) return Extended(ref p, end, scope, evidence, depth + 1, false);
                 if (op == 0 || op == 1 || op == 255)
-                    return new Value { Kind = 1, Integer = op == 255 ? ulong.MaxValue : op, DeclarationKind = AcpiNamedObjectKinds.Integer };
+                    return new Value { Kind = 1, Integer = op == 255 ? ulong.MaxValue : op,
+                        DeclarationKind = AcpiNamedObjectKinds.Integer, DirectStoreSourceRole = AcpiStoreSourceKinds.Literal };
                 if (op == 0x0a || op == 0x0b || op == 0x0c || op == 0x0e)
                 {
                     int count = op == 0x0a ? 1 : op == 0x0b ? 2 : op == 0x0c ? 4 : 8;
                     ulong value = 0; for (int i = 0; i < count; i++) value |= (ulong)Get(ref p, end) << (8 * i);
-                    return new Value { Kind = 1, Integer = value, DeclarationKind = AcpiNamedObjectKinds.Integer };
+                    return new Value { Kind = 1, Integer = value, DeclarationKind = AcpiNamedObjectKinds.Integer,
+                        DirectStoreSourceRole = AcpiStoreSourceKinds.Literal };
                 }
                 if (op == 0x0d)
-                { while (Get(ref p, end) != 0) { } return new Value { DeclarationKind = AcpiNamedObjectKinds.String }; }
+                { while (Get(ref p, end) != 0) { } return new Value { DeclarationKind = AcpiNamedObjectKinds.String,
+                    DirectStoreSourceRole = AcpiStoreSourceKinds.Literal }; }
                 if (op == 0x11 || op == 0x12 || op == 0x13)
                 {
                     int finish = Package(ref p, end);
-                    Value result = new Value { DeclarationKind = op == 0x11 ? AcpiNamedObjectKinds.Buffer : AcpiNamedObjectKinds.Package };
+                    Value result = new Value { DeclarationKind = op == 0x11 ? AcpiNamedObjectKinds.Buffer : AcpiNamedObjectKinds.Package,
+                        DirectStoreSourceRole = AcpiStoreSourceKinds.Literal };
                     if (op == 0x11)
                     {
                         Value size = Arg(ref p, finish, scope, null, depth + 1);
                         if (size.Kind == 1 && size.Integer == (ulong)(finish - p))
-                            result = new Value { BufferStart = p, BufferLength = finish - p, DeclarationKind = AcpiNamedObjectKinds.Buffer };
+                            result = new Value { BufferStart = p, BufferLength = finish - p, DeclarationKind = AcpiNamedObjectKinds.Buffer,
+                                DirectStoreSourceRole = AcpiStoreSourceKinds.Literal };
                         else if (evidence != null) throw new ParseException(AcpiSyntaxFailureKind.DynamicBuffer);
                     }
                     p = finish; return result;
                 }
                 if (op >= 0x60 && op <= 0x6e)
-                    return new Value { Kind = op == 0x69 ? 2 : op == 0x6a ? 3 : 0 };
+                    return new Value { Kind = op == 0x69 ? 2 : op == 0x6a ? 3 : 0,
+                        DirectStoreSourceRole = op == 0x68 ? AcpiStoreSourceKinds.Arg0 : op == 0x69 ? AcpiStoreSourceKinds.Arg1 :
+                            op == 0x6a ? AcpiStoreSourceKinds.Arg2 : AcpiStoreSourceKinds.Other };
                 if (IsNameStart(op))
                 {
                     p = original; string path = Name(ref p, end, scope);
@@ -650,8 +813,12 @@ namespace ATIVBatteryGuard.Core.Services
                     if (target.NamedUse != null)
                     {
                         target.NamedUse.StoreTarget = true;
-                        if (source.Kind == 3) target.NamedUse.Arg2StoreTarget = true;
+                        target.NamedUse.StoreSites++;
+                        target.NamedUse.StoreSources |= source.DirectStoreSourceRole == AcpiStoreSourceKinds.None
+                            ? AcpiStoreSourceKinds.Other : source.DirectStoreSourceRole;
+                        if (source.Kind == 3) { target.NamedUse.Arg2StoreTarget = true; target.NamedUse.Arg2StoreSites++; }
                     }
+                    else if (evidence != null && source.Kind == 3) evidence.Arg2NonNamedStore = true;
                     return default(Value);
                 }
                 int arity = Arity(op);
@@ -921,6 +1088,7 @@ namespace ATIVBatteryGuard.Core.Services
                 {
                     definition.Ambiguous = true; definition.Kind = AcpiNamedObjectKinds.None;
                     definition.Region = null; definition.Space = AcpiAddressSpaceKinds.Unknown;
+                    definition.DeclaredFieldBits = null;
                 }
                 else
                 {

@@ -104,7 +104,8 @@ namespace ATIVBatteryGuard.Core.Models
                 (ParsedHelperReturnSyntax.HasValue ? ParsedHelperReturnSyntax.Value.ToString() : "미확정"));
             text.AppendLine("구문 해석을 완료한 보조 본문 " + ParsedHelpers + "개의 상수FF/FF프레임 반환 구문: " +
                 Observed(ParsedHelperLiteralFfReturn, "해석한 본문 범위에서 미관측"));
-            text.AppendLine("객체 또는 호출 종류가 미확정인 이름 참조 수: " + UnresolvedNameReferences);
+            text.AppendLine("연결 구문 검사에서 객체 참조·호출 구분을 미확정으로 센 이름 참조 횟수: " + UnresolvedNameReferences);
+            text.AppendLine("선언 종류 분류와 별도로 유지하는 지표입니다. 이름 객체·참조 관계 분류 결과도 함께 확인하세요.");
             text.AppendLine("관측한 연결의 순환 구문: " + (CycleObserved ? "관측" : "관측한 연결 범위에서 미관측"));
             text.AppendLine("보조 정의 본문의 상수FF/FF프레임 반환 구문: " +
                 (HelperLiteralFfReturn.HasValue ? (HelperLiteralFfReturn.Value ? "관측" : "해석한 보조 정의 범위에서 미관측") : "해석 불가 또는 미실시"));

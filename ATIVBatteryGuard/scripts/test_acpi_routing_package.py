@@ -16,7 +16,8 @@ class AcpiRoutingPackageTests(unittest.TestCase):
                 'src/ATIVBatteryGuard.Core/Services/AcpiWmiRoutingInspector.cs',
                 'src/ATIVBatteryGuard.Core/Models/AcpiWmiRoutingReport.cs',
                 'src/ATIVBatteryGuard.Core/Models/AcpiMethodFlowReport.cs',
-                'src/ATIVBatteryGuard.Core/Models/AcpiObjectReferenceReport.cs']:
+                'src/ATIVBatteryGuard.Core/Models/AcpiObjectReferenceReport.cs',
+                'src/ATIVBatteryGuard.Core/Models/AcpiFieldChannelReport.cs']:
             p=self.root/name; p.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(source/name,p)
 
     def test_current_reader_is_read_only_and_separate(self):
@@ -44,7 +45,7 @@ class AcpiRoutingPackageTests(unittest.TestCase):
     def test_direct_dsdt_gate_and_revision_regressions_cannot_package(self):
         p=self.root/'src'/PROJECT/'WindowsAcpiRoutingProbe.cs'; original=p.read_text()
         for old,new in [('if (id == DsdtId)', 'if (id == DsdtId && occurrences != 0)'),
-                        ('Acpi-routing-v5', 'Acpi-routing-v4')]:
+                        ('Acpi-routing-v6', 'Acpi-routing-v5')]:
             with self.subTest(change=old):
                 self.assertIn(old, original)
                 p.write_text(original.replace(old,new))
@@ -52,7 +53,7 @@ class AcpiRoutingPackageTests(unittest.TestCase):
         p.write_text(original)
 
     def test_pure_flow_models_cannot_hide_native_network_or_storage_actions(self):
-        for name in ['AcpiWmiRoutingReport.cs', 'AcpiMethodFlowReport.cs', 'AcpiObjectReferenceReport.cs']:
+        for name in ['AcpiWmiRoutingReport.cs', 'AcpiMethodFlowReport.cs', 'AcpiObjectReferenceReport.cs', 'AcpiFieldChannelReport.cs']:
             p=self.root/'src/ATIVBatteryGuard.Core/Models'/name; original=p.read_text()
             for extra in ['[DllImport("kernel32.dll")] private static extern int NewNativeCall();',
                           'private void Save() { File.WriteAllBytes("raw", new byte[1]); }',

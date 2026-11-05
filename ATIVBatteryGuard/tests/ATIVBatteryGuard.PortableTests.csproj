@@ -41,6 +41,7 @@
     <Compile Include="AcpiMethodFlowTests.cs" />
     <Compile Include="AcpiExtendedSyntaxTests.cs" />
     <Compile Include="AcpiObjectReferenceTests.cs" />
+    <Compile Include="AcpiFieldChannelTests.cs" />
     <Compile Include="AcpiFirmwareTableReadTests.cs" />
     <Compile Include="../src/ATIVBatteryGuard.AcpiRoutingCheck/WindowsAcpiRoutingProbe.cs" Link="WindowsAcpiRoutingProbe.cs" />
     <Compile Include="WsabiWmiExperimentReviewViewModelTests.cs" />

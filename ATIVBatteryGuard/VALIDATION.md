@@ -1,5 +1,15 @@
 # Settings 앱 분석판 검증 기록
 
+## Field·프레임 통로 선언 요약 — v6 / 2026-11-05 한국 시간
+
+- [v6 변경·실행 안내](ACPI_FIELD_CHANNEL_UPDATE.md)에 따라 후보 Arg2 저장/직접 반환 Field의 공간·고정21바이트 대비 선언 폭, 직접 Store 원천, 보조 Store와의 관측 Region 정의 관계를 추가했습니다. 기존 Flow·ObjectReferences·FF 계산은 유지하고 기존 이름 참조 횟수의 설명만 명확히 했습니다.
+- 현재 전체 **413 passed, 0 failed, 0 skipped (413 registered)**: reports/acpi-field-tests.json 및 .log. 새 15개 그룹은 단일/반복/복수/혼합 폭, 미분류·비Field·비명명 대상 혼합, 직접 원천과 계산식 구분, 보조 인수 비대입, 비트 길이 인코딩 경계와 FieldList 전체 성공 후 확정, 선언 동일성·별칭·가림·불완전 본문·상한·개인정보·불변성을 검사합니다.
+- 전체 7개 프로젝트 x64 net48 Release 및 portable 테스트 프로젝트 빌드 **경고 0개·오류 0개**: reports/acpi-field-build.log 및 test-build.log. 추가 런타임 의존성은 없습니다. Windows 수집/호스트 코드는 v6 표시 외에 변경하지 않았습니다.
+- Python 배포 검증 **26개 통과**: reports/acpi-field-python-tests.log. 새 모델을 순수 코드 검사에 포함하고 이전 revision·네이티브/저장/네트워크/동기화 코드의 혼입을 거부합니다. 실제 PE·x64/asInvoker·바이너리·소스 바이트 대응은 별도 패키지 감사에서도 확인합니다.
+- 독립 읽기 전용 소스 검토에서 차단 문제를 발견하지 못했습니다. raw FieldLength를 인코딩 길이와 분리하고, 고유 선언 집합을 사용하며 미확정 대상을 버려 단일 일치로 만들지 않습니다. 보고서에는 원시 폭·주소·이름·값을 보관하지 않습니다.
+- 기존 공개 다른 삼성 530U3 DSDT/SSDT를 형식 검증에만 재사용했습니다. 후보의 직접 Field 역할 미관측과 미해소 보조 관계를 각각 NotObserved/Unknown으로 유지했고, 지원하지 않는 범위는 Partial/NotInspected로 남았습니다. reports/acpi-field-public-sample.jsonl에 고정 분류·수만 기록했습니다. 현재 사용자 모델의 Field 관측이나 물리 영역·명령 의미를 대입하지 않았고 원본 자료는 배포하지 않습니다.
+- v6의 새 분석은 실제 노트북에서 아직 미관측입니다. 자동 테스트는 합성 AML과 가짜 콜백만 사용하며 Windows/OEM/AML/영역/드라이버/펌웨어 실행은 하지 않았습니다. 수집 범위·시간/크기 제한, 기존 일반 앱·요청/응답/예약/제어 정책과 이전 배포 ZIP은 유지합니다. FF 의미는 미확정이며 실제 충전 제어는 Unsupported입니다. 아래는 이전 검증 기록입니다.
+
 ## v5 실기 관측 수신·후속 계획 — 2026-11-05 한국 시간
 
 - 사용자 출력에서 후보 이름 참조 3/3회 Field, 보조 3/3회 Mutex/Field, 보조 Store Field의 선언 공간 SystemIo와 후보 Arg2 저장/직접 반환의 동일 관측 Field 참조 구문을 확인했습니다. [분석과 계획](ACPI_V5_RESULT_AND_NEXT_PLAN.md)에 범위를 기록했습니다.

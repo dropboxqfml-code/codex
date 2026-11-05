@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — Settings 원문·버전 후보 확인 / 2026-11-06:** [새 원문 분석](SETTINGS_VERSION_SOURCE_REVIEW.md)에서 NP940X3G의2.1.0.20 배포 기록과 구형 Series7의2.0.0.89 시험을 구분했습니다. UI탭 제거는 현재 모델의 펌웨어 지원 부재나 구버전 호환성 증명이 아닙니다. 비교 원본 후보와 원문에 명시된 삼성 SWUpdate 위치를 좁혔고, orcaservice.samsungmobile.com 한 호스트 추가 초안을 저장·재조회했습니다(requires_publish=true). 기존 NBR 접근은 해결됐으며 환경을 다시 게시하지 않았습니다. 앱·프로그램은 유지하고 실제 제어는 Unsupported입니다. 아래는 이전 기록입니다.
+
 **최신 — OEM 원본 접근 준비 / 2026-11-06:** [조사 결과·확인된 접근 조건](OEM_SOURCE_ACCESS_STATUS.md)을 기록했습니다. 제한적 공개 검색에서 현재 모델의 배터리 caller는 미확보이며, 이전 사용자 제공 Settings/Easy Settings 원문은 CONNECT403으로 차단됩니다. www.nbrchive.net 한 호스트만 환경 초안에 추가·재조회했고 기존 설정은 보존했습니다(saved/requires_publish=true). 환경 게시 후 적용과 원문 접근을 재확인해야 하며 에이전트가 게시하지 않았습니다. 새 프로그램이나 시험은 없고 제어는 Unsupported입니다. 아래는 이전 기록입니다.
 
 **최신 — P05ACJ 설정 참조 검사 / 2026-11-06:** [새 분석·개발 도구](P05ACJ_HII_REFERENCE_UPDATE.md)는 고정 HII 리소스의11개 package·12,447 opcode를 읽고11종 표준 statement 헤더를 검사합니다. USB 충전/배터리 보정 참조는 관측됐지만 배터리 수명 연장 참조는 지원한 헤더에서 미관측입니다. 전체 기능 부재 판정은 아닙니다. 새로 구분한 배터리 신뢰성 시험 경로는 포트 쓰기를 포함해 대체 제어로 사용하지 않습니다. Python60개 통과. 앱 실행 파일은 변경하지 않아 기존 CALLER-CONTRACT-REVIEW를 사용하며 새 시험·업로드는 필요하지 않습니다. 현재 모델의 배터리 계약 근거가 없어 제어는 Unsupported입니다. 아래는 이전 단계 기록입니다.

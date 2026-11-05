@@ -1,5 +1,7 @@
 # OEM 원본 확보 경로와 현재 접근 상태 — 2026-11-06 한국 시간
 
+**후속 — 기존 원문 접근 해결:** [SETTINGS_VERSION_SOURCE_REVIEW.md](SETTINGS_VERSION_SOURCE_REVIEW.md)에 게시 후NBRchive 원문2페이지200과버전/모델분석을 기록했습니다. www.nbrchive.net 허용은 적용됐고 재적용하지 않았습니다. 아래 차단·초안 대기는 이전 단계 기록입니다. 현재 새 인입 조건은 글에 명시된 orcaservice.samsungmobile.com 한 호스트 추가 초안(saved/requires_publish=true)이며, 기존 설정과 실행 프로그램은 보존했습니다.
+
 이번 단계는 같은 펌웨어 구문을 반복 검사하는 대신 현재 모델의 OEM 호출자를 얻을 공개 경로를 찾는 작업입니다. **새 배터리 명령이나 응답 계약은 아직 확보하지 못했습니다.** 앱 소스·테스트·실행 파일과 기존 배포 ZIP은 변경하지 않았습니다. 현재 제어는 Unsupported입니다.
 
 ## 수행한 제한적 출처 조사

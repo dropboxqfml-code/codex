@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — NBR 원문 확보·2.0.0.89 비교 후보·삼성 인입 대기 / 2026-11-06
+
+[SETTINGS_VERSION_SOURCE_REVIEW.md](SETTINGS_VERSION_SOURCE_REVIEW.md)를 먼저 읽습니다. 게시 후www.nbrchive.net 허용은current/enforced로 적용됐고 원문2페이지를200으로 확보했습니다. 기본 Python 헤더는HTTP403/1010, 같은HTTPS/호스트/프록시/TLS에서 일반브라우저헤더는200이며 로그인/챌린지/우회없음. 파일/해시와독립주장범위검토를비공개캐시에보존했습니다. 기존차단설정은재적용하지않았습니다.
+
+#1은NP940X3G에Settings2.1.0.20이제공된다는기록, #39의2.0BLE탭/2.1·2.2UI제거는구형NP700Z3A문맥, #49하드웨어호출차이는저자추측입니다. #62/#63은NP930X5J-S02US Win7목록의EasySettings2.0.0.89 외부패키지→내부Win8 Settings2.0.0.89, 시험은구형Series7입니다. NP940X3K≠940X3G, NP930X5J≠930X3G이며현재모델/BIOS/Win10충전성공·명령계약은미확정입니다. 메뉴부재만으로지원부재/구버전설치성공을추정하지않습니다.
+
+원문은정확Settings파일URL대신 http://orcaservice.samsungmobile.com/SWUpdate.aspx 와모델검색/Export를제시합니다. 독립공개검색16개에서도해당ZIP/파일명/SHA미확보. bootstrapper HEAD403이고현재호스트미허용이어서orcaservice.samsungmobile.com 한호스트만추가한새초안을저장·재조회했습니다(saved/requires_publish=true). 기존3호스트/프리셋/스크립트/저장소/요구사항보존, 환경미게시. 사용자게시후적용확인→원본응답/인입검증→실행없는배포메타데이터/패키지정적분석으로진행합니다.
+
+앱/테스트/EXE/기존ZIP미변경, 빌드·테스트미반복. 새노트북실험/업로드/Export요청/설치/보안변경/OEM호출/예약삭제불필요. 현재제어Unsupported. 아래는이전기록입니다.
+
 ## 최신 — OEM 원문 접근 초안 저장·게시 후 재개 / 2026-11-06
 
 [OEM_SOURCE_ACCESS_STATUS.md](OEM_SOURCE_ACCESS_STATUS.md)를 먼저 읽습니다. 새 공개 저장소/이슈/README 조사11질의와 후보 확인에서는 현재 모델 OEM 배터리 caller를 얻지 못했습니다. 명칭만 맞는 다운로드·신형/Android 도구를 사용하지 않았습니다. peilim/SamsungUpdate는 빈 저장소이고 BIOS 서비스 WSDL은 서버 오류 본문이어서 배포 기능을 확인하지 못했습니다.

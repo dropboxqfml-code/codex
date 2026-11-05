@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — OEM 원본 접근 준비 / 2026-11-06:** [조사 결과·확인된 접근 조건](OEM_SOURCE_ACCESS_STATUS.md)을 기록했습니다. 제한적 공개 검색에서 현재 모델의 배터리 caller는 미확보이며, 이전 사용자 제공 Settings/Easy Settings 원문은 CONNECT403으로 차단됩니다. www.nbrchive.net 한 호스트만 환경 초안에 추가·재조회했고 기존 설정은 보존했습니다(saved/requires_publish=true). 환경 게시 후 적용과 원문 접근을 재확인해야 하며 에이전트가 게시하지 않았습니다. 새 프로그램이나 시험은 없고 제어는 Unsupported입니다. 아래는 이전 기록입니다.
+
 **최신 — P05ACJ 설정 참조 검사 / 2026-11-06:** [새 분석·개발 도구](P05ACJ_HII_REFERENCE_UPDATE.md)는 고정 HII 리소스의11개 package·12,447 opcode를 읽고11종 표준 statement 헤더를 검사합니다. USB 충전/배터리 보정 참조는 관측됐지만 배터리 수명 연장 참조는 지원한 헤더에서 미관측입니다. 전체 기능 부재 판정은 아닙니다. 새로 구분한 배터리 신뢰성 시험 경로는 포트 쓰기를 포함해 대체 제어로 사용하지 않습니다. Python60개 통과. 앱 실행 파일은 변경하지 않아 기존 CALLER-CONTRACT-REVIEW를 사용하며 새 시험·업로드는 필요하지 않습니다. 현재 모델의 배터리 계약 근거가 없어 제어는 Unsupported입니다. 아래는 이전 단계 기록입니다.
 
 **최신 — Windows 호출자 대조와 native 응답 해석 수정:** [새 근거·코드 변경](WINDOWS_CALLER_CONTRACT_UPDATE.md)에 구형 OEM의 DLL 선택과 시작 가드, P05ACJ의 별도0B flag 경로를 대조했습니다. 과거65의FF와0B 소스 flag는 별개입니다. 기존 native11바이트 디코더의0/1/FF→보호 OFF/ON·미지원 추정을 제거하고 opaque 표식만 반환하도록 수정했습니다. 실제 앱의 하드웨어 호출 경로는 추가하지 않았고 제어는 Unsupported입니다. C#435개·Python48개 통과, 빌드 경고·오류0개. [프로그램 ZIP](../downloads/ATIVBatteryGuard-CALLER-CONTRACT-REVIEW.zip) 하나만 새 폴더에 풀어 일반 권한으로 실행할 수 있으며 새 시험·업로드는 필요하지 않습니다. 아래는 이전 단계 기록입니다.

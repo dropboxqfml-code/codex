@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — OEM 원문 접근 초안 저장·게시 후 재개 / 2026-11-06
+
+[OEM_SOURCE_ACCESS_STATUS.md](OEM_SOURCE_ACCESS_STATUS.md)를 먼저 읽습니다. 새 공개 저장소/이슈/README 조사11질의와 후보 확인에서는 현재 모델 OEM 배터리 caller를 얻지 못했습니다. 명칭만 맞는 다운로드·신형/Android 도구를 사용하지 않았습니다. peilim/SamsungUpdate는 빈 저장소이고 BIOS 서비스 WSDL은 서버 오류 본문이어서 배포 기능을 확인하지 못했습니다.
+
+기존 사용자 제공 NBRchive Settings/Easy Settings 원문의 정상HTTPS는CONNECT403. 현재 custom2호스트를 보존하고www.nbrchive.net 한 호스트만 환경 초안에 추가·재조회했습니다(saved/requires_publish=true). 설치/시작/저장소/프리셋/변수·비밀 요구사항은 보존했고 환경을 게시하지 않았습니다. 초안은 현재 적용이 아닙니다. 사용자 환경 게시 후 runtime/호스트 적용 확인→원문 날짜·모델/OS/Settings 지원/패키지 출처 검토→적용 가능한 원본만 비공개 정적 분석으로 이어갑니다. 포럼 실행/보안 변경 지시는 따르지 않습니다.
+
+앱/테스트/EXE/ZIP은 미변경, 빌드·테스트를 새로 수행한 것으로 보고하지 않습니다. 현재 명령 계약미확정·제어Unsupported입니다. 원문/삼성파일 재제출·노트북 반복/관리자/OEM 시험·예약 삭제는 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — HII 표준 헤더 참조·시험 경로 구분 / 2026-11-06
 
 [P05ACJ_HII_REFERENCE_UPDATE.md](P05ACJ_HII_REFERENCE_UPDATE.md)를 먼저 읽습니다. 고정 Setup HII 리소스333801/SHA53ec78bfce49bf65858d64aaadee9fbb31abf79088ee0c9b60c28783a6ddf527에 대해 개발용 bounded 인덱서를 구현했습니다. package11/Forms10/opcode12447/지원 statement2648/vendor GUID34이며11종 공통 헤더에서 배터리 수명 연장 참조0, USB CheckBox1·보정Ref1을 확인했습니다. vendor payload/동적/다른리소스 미폐쇄이고 visibility/부재/명령을 판정하지 않습니다.

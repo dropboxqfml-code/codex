@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 동일 P05ACJ 공개 ACPI 확보·명령 경로 분리
+
+[새 정적 근거](P05ACJ_BATTERY_COMMAND_EVIDENCE.md)를 먼저 읽습니다. farjump/fwtr54ed1c555423babd4c4aa6c69ce95cdf0a4a68f4의 같은 수집 실행 metadata가940X3G/930X3G·NP940X3G-K03FR·P05ACJ.128.140819.dg를 명시합니다. 공개 Linux 자료로 현재 사용자 장치의 원문/Windows 실행과 구분합니다. DSDT71849바이트·SSDT4개 길이/체크섬을 확인하고 정적 디스어셈블·기존v7 바이트 파서로 검사했습니다. 원본/주소/식별자는 저장소·배포물에 넣지 않습니다.
+
+공개WQ본문은 상수0x10, 중계는 같은168비트 Field에 Zero→Arg2→helper→Return입니다. 그 본문에는 명령 선택·FF 의미 판정이 없습니다. 표준 배터리 정보/상태의 별도GSSB/GSSW 경로와 _BTP 알림 임계값은 충전 상한으로 사용하지 않습니다. 다른SAM0428의0x7A/E9/91 계약도 현재ATIV에 대입하지 않습니다. 미해소 외부 메서드·동적 표 로드·다른 공개 장치라는 한계를 유지합니다.
+
+다음은 적용 모델이 확인되는 OEM 배터리 호출자의 명령/응답 선택 또는 같은BIOS의 관련 처리 계약을 입증하는 출처입니다. 일반 중계/표준 상태 경로만으로 새 요청·디코더 의미·제어 어댑터를 추가하지 않습니다. 이번에는 정적 조사·기록만 변경했으며 실제 제어는 Unsupported, 기존실험/예약/앱/ZIP은 유지합니다. 원본 재제출·진단 반복·추가 OEM 호출은 요청하지 않습니다. 아래는 이전 작업 당시의 기록입니다.
+
 ## v7 실기 관측 수신·모델별 명령 계약 근거 확보
 
 [최신 분석과 다음 계획](ACPI_V7_RESULT_AND_NEXT_PLAN.md)을 먼저 읽습니다. Literal Store1/Integer·SystemMemory·Matches21ByteFrame이며 입력/반환과 같은 Field/Region, 보조 Store와 다른 Field/Region 선언입니다. SingleDirectList의 앞뒤를 합치면 소스 배치는 Literal Store → Arg2 Store → 보조 호출 → Return입니다. 실제 초기화·덮어쓰기·입력 보존·SMI·FF 원인으로 확대하지 않습니다. 후보/보조 Parsed·실패 None, 기존 Partial과 참조6회는 유지됩니다.

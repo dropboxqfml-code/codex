@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 같은 모델 계열·P05ACJ의 공개 정적 자료
+
+**확인된 사실:** [새 공개 출처](P05ACJ_BATTERY_COMMAND_EVIDENCE.md)는 같은 수집 실행의 metadata에940X3G/930X3G·NP940X3G-K03FR·P05ACJ.128.140819.dg를 명시합니다. 별도 Linux 장치의 DSDT1/SSDT4개를 정적으로 검증했습니다. WMI 중계의 선행 literal은Zero이고 WQ본문은 상수0x10을 반환합니다. 표준 배터리 정보/상태·알림 임계값은 별도 helper 경로입니다. _BTP를 충전 상한으로 재사용하지 않습니다.
+
+**미검증과 다음 조건:** 공개 자료가 현재 사용자 장치와 같은 바이트/런타임을 뜻하지 않습니다. 미해소 외부 참조·동적 로드가 있고0x65/FF/실제 보호 상태는 미확정입니다. 현재 모델의 명령 계약을 입증할 OEM 배터리 호출자 또는 관련 펌웨어 처리 근거가 필요합니다. 포트/EC/SMM 경로를 실행하거나 다른SAM0428 명령을 대입하지 않습니다. 앱·배포 ZIP·Unsupported 정책은 유지합니다. 아래는 이전 조사입니다.
+
 ## v7 실기에서 관측한 Literal 대상과 직접 구문 배치
 
 **확인된 사실:** Literal Store1회는 Integer 원천이며 SystemMemory·21바이트 Field입니다. 입력/반환과 같은 Field·Region, 보조 Store와 다른 Field·Region 선언을 참조합니다. SingleDirectList의 소스 배치는 Literal Store → Arg2 Store → 보조 호출 → Return입니다. 정수 값·실제 실행·형 변환·덮어쓰기·물리 영역 분리·FF 원인을 확인한 결과는 아닙니다.

@@ -1,5 +1,12 @@
 # Settings 앱 분석판 검증 기록
 
+## 동일 모델 계열·P05ACJ 공개 정적 근거 조사 — 2026-11-05 한국 시간
+
+- [고정 출처와 명령 구분](P05ACJ_BATTERY_COMMAND_EVIDENCE.md)에 새로 확보한farjump/fwtr54ed1c555423babd4c4aa6c69ce95cdf0a4a68f4의 자료·해시·모델/BIOS metadata를 기록했습니다. 공개 Linux 수집 원문에서 DSDT1/SSDT4개 서명·연속 오프셋·선언 길이·체크섬을 확인했습니다.
+- iasl20250404의 정적 -d 결과를 독립 검토했습니다. WQ상수0x10·중계선행Zero·동일21바이트 Field 전달·별도 표준 배터리 정보/상태/알림 임계값 경로를 확인했습니다. -da 결합 시 중복 정의 오류가 있어 각 표를 독립적으로 읽었고 미해소 외부 참조의 한계는 유지합니다. AML 평가·수집 스크립트·펌웨어는 실행하지 않았습니다.
+- 기존v7 순수 바이트 파서로 공개5개 표를 검사한 고정 분류·수는 reports/p05acj-public-static-review.jsonl에 있습니다. 공개DSDT의 후보1/인수3/보조해석1·실패None·Integer/SystemMemory/21바이트·관측정의관계·SingleDirectList 배치가 사용자v7 요약과 부합합니다. 현재 사용자 원문 동일성·새 Windows 실행·명령 지원 증거는 아닙니다.
+- 앱 코드·요청/응답·예약/제어 정책·배포ZIP은 변경하지 않았으며 새 빌드·전체 테스트를 재실행하지 않았습니다. 아래429개·Python27개·빌드0경고/0오류는 v7 배포 당시의 검증 기록입니다. 현재모델0x65/FF 의미·충전 상한은 미확정이며 추가 호출·자료 재제출·진단 반복은 요청하지 않습니다. 아래는 이전 검증 기록입니다.
+
 ## v7 실기 관측 수신·후속 계획 — 2026-11-05 한국 시간
 
 - 사용자 Acpi-routing-v7 출력에서 DSDT Complete·후보 Parsed·보조 해석1/미지원0/실패 None, Literal1/Integer·SystemMemory·Matches21ByteFrame을 확인했습니다. Literal 대상은 입력/반환과 같은 Field/Region이며 보조 Store와는 다른 Field/Region 선언입니다. SingleDirectList의 소스 배치는 Literal Store → Arg2 Store → 보조 호출 → Return으로 v7의 직접 목표가 관측됐습니다.

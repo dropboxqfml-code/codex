@@ -1,5 +1,7 @@
 # ATIV Battery Guard — Settings BOM 조사 소스
 
+**최신 후속 — 작업 저장 / 2026-11-06:** [원본 확보·중간 분석 재개 메모](../ATIVBatteryGuard/SETTINGS_CALLER_ANALYSIS_HANDOFF.md)를 저장했습니다. 삼성 원본 ZIP 다운로드는 해결됐으며 내부Win8모듈과배터리caller를정적으로분석하다사용자요청으로중지했습니다. 원본/디스어셈블리는비공개캐시에만보존하고프로그램·소스코드·테스트·기존ZIP은변경하지않았습니다. 새다운로드·시험·업로드는필요하지않으며제어는Unsupported입니다. 아래는이전배포기록입니다.
+
 **후속 / 2026-11-06 — 배포파일 동일:** [최종 ZIP 목적지 확인](../ATIVBatteryGuard/SETTINGS_BOM_PACKAGE_UPDATE.md)에서 실제 삼성 원본이 downloadcenter.samsung.com으로 추가 이동함을 확인했습니다. 이 한 호스트 추가 초안을 저장했고 원본 바이트는 아직 미확보입니다. 이번에는 문서만 갱신했으며 프로그램/개발도구 소스·테스트·EXE·기존 ZIP은 변경하지 않았습니다. 새 다운로드·시험·업로드는 필요하지 않습니다. 아래는 직전 배포 검증 당시의 기록입니다.
 
 2026-11-06 한국 시간. [개발 소스 ZIP](ATIVBatteryGuard-SETTINGS-BOM-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-SETTINGS-BOM-SHA256SUMS.txt) · [분석·구현·다음 작업](../ATIVBatteryGuard/SETTINGS_BOM_PACKAGE_UPDATE.md)

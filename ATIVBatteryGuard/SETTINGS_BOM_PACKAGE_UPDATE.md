@@ -1,5 +1,7 @@
 # Settings 비교 원본 식별과 BOM 검사 — 2026-11-06 한국 시간
 
+**최신 후속:** [원본 확보와 호출자 분석 재개 메모](SETTINGS_CALLER_ANALYSIS_HANDOFF.md)에 다운로드200/길이/SHA·실제Win8모듈·SUS/Cmd정적 관측을 저장했습니다. downloadcenter 허용은 적용돼 접근 문제가 해결됐습니다. 사용자 요청으로 중간 분석을 중지했으며 앱/테스트/기존ZIP은 유지합니다. 아래 차단·초안 대기는 이전 단계 기록입니다.
+
 ## 후속 — 최종 ZIP 호스트 확인
 
 사용자가 게시한 새 환경에서 명령 실행과 current/running·enforced 상태, `org.downloadcenter.samsung.com` 허용 적용을 확인했습니다. 기록된 실제 ContentsFile.aspx를 정상 요청했더니 HTTP302로 **`downloadcenter.samsung.com`**을 추가로 가리켰습니다. 확인된 리다이렉트 목적지는 다음과 같습니다.

@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — 원본 확보·호출자 중간 분석 저장 / 2026-11-06
+
+사용자 요청으로 작업을 중지·저장했습니다. [SETTINGS_CALLER_ANALYSIS_HANDOFF.md](SETTINGS_CALLER_ANALYSIS_HANDOFF.md)를 먼저 읽습니다. downloadcenter 허용 적용 후 BASW-83876A21.ZIP을HTTP200/126414820바이트/SHAa501fde3b9870e3840d1b4561255c70e3cece4e9426c1070ff8481446d8ba3b7로 확보했습니다. ZIP CRC/경로와 Win7·실제Win8 MSI/파일 버전2.0.0.89를 확인했습니다. 원본과 모든 중간 디스어셈블리는 저장소 밖 비공개 캐시에 보존하며 새 환경 초안이나 환경 게시를 하지 않았습니다.
+
+SUS/Cmd의 배터리 getter·setter·지원 메뉴 캐시와 조건부 쓰기를 정적으로 찾았습니다. 중요한 차이는 선행0B 응답의 같은 버퍼에서 첫byte만80으로 바꿔65를 호출한다는 점입니다. 과거80+zeros 단발과 입력/순서 동등성을 확정하지 않습니다. FF/선행 조건 오류를 합친OEM상태2는 현재장치지원판정이 아니고, setter성공반환·소프트웨어캐시는read-back이 아닙니다. 940X3G 문자열의 일반모델분류도 BLE지원allowlist로 입증되지 않았습니다.
+
+다음은 저장한 hash/RVA/변형의 독립 교차 검토와 UI 메뉴/상태 연결을 마무리하는 작업입니다. 사용자 재제출·노트북 반복·추가OEM·예약 접근 없이 진행합니다. 원본실행/드라이버/서비스/보안변경금지, 실제제어Unsupported. 앱/도구/테스트/EXE/기존 ZIP은 미변경이고 빌드·테스트를 이번에 실행하지 않았습니다(435/85는이전기록). 아래는 이전 단계 기록입니다.
+
 ## 최신 — 실제 ZIP 최종 호스트·접근 초안 / 2026-11-06
 
 [SETTINGS_BOM_PACKAGE_UPDATE.md](SETTINGS_BOM_PACKAGE_UPDATE.md)의 최상단 후속을 먼저 읽습니다. 게시 후 org.downloadcenter 허용은 정상 적용됐고 기록된 실제 요청은302로 downloadcenter.samsung.com의 정확 BASW-83876A21.ZIP 경로를 반환했습니다. 최종 URL은 쿼리 없는 공개 주소이며 비공개 redirect/access 기록과 문서에 보존했습니다. 최종 호스트 HEAD는CONNECT403, ZIP·부분파일·바이트/해시·내부caller는 미확보입니다. 정확 파일명 GitHub 질의4개도 새 고정 미러 연결을 제공하지 않았습니다. 코드 검색은 로그인 요구이므로 완전 검색 결과로 취급하지 않습니다.

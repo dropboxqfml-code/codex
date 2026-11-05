@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 원본 확보·중간 분석 저장 / 2026-11-06:** 사용자 요청으로 개발을 중지하고 [재개 메모](SETTINGS_CALLER_ANALYSIS_HANDOFF.md)를 저장했습니다. 확인된 Settings ZIP을200으로 받아 실제Win8모듈·SUS/Cmd배터리 함수와 조건부 쓰기를 정적으로 조사했습니다. 버퍼 재사용·오류/메뉴 캐시 때문에 과거 단발과 입력/의미가 같다고 단정할 수 없습니다. 현재 모델 적용성과 UI 연결은 미완료이며 실제 제어Unsupported입니다. 앱·기존ZIP은 유지하고 새 시험·업로드는 필요하지 않습니다. 아래는 이전 기록입니다.
+
 **최신 — ZIP 최종 호스트 확인 / 2026-11-06:** [새 접근 결과](SETTINGS_BOM_PACKAGE_UPDATE.md)에서 게시된 org.downloadcenter 허용 적용과 실제302를 확인했습니다. 정확한 ZIP 목적지는 downloadcenter.samsung.com이며 현재 HEAD는CONNECT403입니다. 이 한 호스트 추가 초안을 저장·재조회했고 기존6호스트/설정은 보존했습니다. 원본 ZIP·내부caller는 아직 미확보입니다. 이번에는 문서만 갱신해 프로그램·소스코드·테스트·기존ZIP은 유지하고 빌드/테스트를 반복하지 않았습니다. 새 다운로드·시험·업로드 불필요, 실제 제어Unsupported. 아래는 이전 기록입니다.
 
 **최신 — Settings 비교 원본 식별 / 2026-11-06:** [실제 BOM 분석·새 검사 기능](SETTINGS_BOM_PACKAGE_UPDATE.md)에서 Easy Settings2.0.0.89의 정확한 원본 파일명 BASW-83876A21.ZIP을 확인했습니다. 모델930X5J의 비교 자료이며 현재 ATIV 지원 근거는 아닙니다. stdin 전용 BOM 검사를 추가하고 기존 SOAP/JSON 상한을 유지합니다. Python85개·실제응답10개 대조를 통과했습니다. ZIP 목적지 org.downloadcenter.samsung.com 한 호스트 추가 초안을 저장했으며 게시 후 실제 바이트·내부Win8모듈·배터리 caller를 확인해야 합니다. [개발 소스 ZIP](../downloads/ATIVBatteryGuard-SETTINGS-BOM-SOURCE.zip)은 실행 교체판이 아닙니다. 기존 프로그램을 그대로 사용하고 새 시험·업로드는 필요하지 않습니다. 실제 제어Unsupported. 아래는 이전 기록입니다.

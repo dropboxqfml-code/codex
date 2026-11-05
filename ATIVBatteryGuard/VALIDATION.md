@@ -1,5 +1,15 @@
 # Settings 앱 분석판 검증 기록
 
+## Literal Store 역할·직접 구문 배치 요약 — v7 / 2026-11-05 한국 시간
+
+- [v7 구현·실행 안내](ACPI_STORE_ROLE_UPDATE.md)에 따라 후보의 즉시 Literal 원천 Store 수·문법 종류, 대상 Field의 공간·폭 범주, 입력/반환/보조 Store와의 Field·Region 선언 관계를 추가했습니다. 단일 직접 구문 목록의 앞뒤만 표시하며 실제 실행 순서·값·FF 원인을 추론하지 않습니다.
+- 현재 전체 **429 passed, 0 failed, 0 skipped (429 registered)**: reports/acpi-store-tests.json 및 .log. 새16개 그룹은 Literal과 이름/Local/계산식 구분, 고유 선언·반복·복수·혼합·미분류/비Field 대상, 별칭/동적 가림/opaque scope, 순서 반전·누락·중복·분기/반복/중첩, 실패 본문 폐기·본문당64개 새 이벤트 상한·기존 지표 보존·개인정보·불변성을 검사합니다. Package/VarPackage의 불투명한 내용은 종류 분류를 유지하면서 배치를 Unknown으로 닫는 회귀를 포함합니다.
+- 전체7개 프로젝트 x64 net48 Release와 portable 테스트 프로젝트 빌드 **경고0개·오류0개**: reports/acpi-store-build.log 및 test-build.log. Windows 수집/호스트 코드는 v7 표시 외 변경하지 않았고 새 런타임 의존성은 없습니다.
+- Python 배포 검증 **27개 통과**: reports/acpi-store-python-tests.log. 새 보고서 모델을 순수 코드 검사에 포함했고 이벤트64개 상한의 증가·제거를 거부하는 회귀를 추가했습니다. 기존 고정 네이티브/호스트·구버전 혼입·PE/x64/asInvoker·소스 바이트 대응 검사를 유지합니다.
+- 독립 읽기 전용 소스 검토에서 차단 문제를 발견하지 못했습니다. 직접 문장 문맥과 중첩 호출/Store 카운터를 분리하고 opaque Package를 단일 배치로 확정하지 않습니다. 새 한계는 StoreRoles에만 반영하며 기존 Value.Kind·구문 소비·Flow/ObjectReferences/FieldChannel/FF 계산 의미를 보존합니다.
+- 기존 공개 다른 삼성530U3 DSDT/SSDT는 형식 검증에만 사용했습니다. 새 분석은 Literal 역할 미관측과 미해소 선언 관계·배치를 NotObserved/Unknown, 미분석 대상을 NotInspected로 유지했습니다. reports/acpi-store-public-sample.jsonl에 고정 분류·수만 기록했고 현재 사용자 모델에 대상·순서·FF 의미를 대입하지 않았습니다. 원본 자료는 배포하지 않습니다.
+- v7의 새 분석은 실제 노트북에서 아직 미관측입니다. 자동 입력은 합성 AML·가짜 콜백이고 공개 자료도 정적 바이트 파서만 사용했습니다. 새 Windows/OEM/AML/Field/드라이버/펌웨어 실행이나 예약 접근은 없습니다. 일반 앱·요청/응답/예약/제어 정책과 이전 ZIP은 유지하며 FF 의미는 미확정, 실제 제어는 Unsupported입니다. 아래는 이전 검증 기록입니다.
+
 ## v6 실기 관측 수신·후속 계획 — 2026-11-05 한국 시간
 
 - 사용자 Acpi-routing-v6 출력에서 DSDT Complete·후보 Parsed·보조 해석1개/미지원0/실패 None을 확인했습니다. 후보 Arg2 저장/반환 Field는 SystemMemory·Matches21ByteFrame, 보조 Store는 SystemIo, 양쪽 Region 관계는 DifferentObservedDefinitions입니다. 새 정적 요약의 직접 목표가 실기에서 관측됐습니다.

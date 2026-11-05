@@ -1,4 +1,16 @@
-# ACPI Field·프레임 통로 선언 요약 — Acpi-routing-v6
+# ACPI Literal Store 대상·구문 배치 요약 — Acpi-routing-v7
+
+2026-11-05 한국 시간. [프로그램 ZIP](ATIVBatteryGuard-ACPI-STORE-ROLES.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-STORE-ROLES-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-STORE-ROLES-SHA256SUMS.txt) · [변경·해석·실행 안내](../ATIVBatteryGuard/ACPI_STORE_ROLE_UPDATE.md)
+
+**실행에는 프로그램 ZIP 하나만 필요합니다.** 새 폴더에 그 ZIP 전체를 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행합니다. 소스 ZIP은 개발용이며 다운로드하거나 같은 폴더에 함께 풀 필요가 없습니다. **Acpi-routing-v7** 표시와 새 Literal Store 대상·구문 종류·관측 정의 관계·직접 구문 배치 요약만 전달합니다.
+
+v6의 추가 Literal Store 대상이 입력/반환/보조 Store Field 및 Region과 어떤 관측 선언 관계인지 분류합니다. 직접 literal 종류는 Integer·String·Buffer·Package이며 원문 값은 보고하지 않습니다. 같은 후보 직접 구문 목록의 앞뒤 배치만 비교하고 분기·반복·중첩·복수 후보를 실제 실행 순서로 바꾸지 않습니다. 새 구문 기록은64개로 제한하며 기존 보고서의 의미와 수집 상한은 유지합니다.
+
+같은 두 Windows 읽기 API와 고정 DSDT/첫 SSDT만 사용합니다. AML/OEM/삼성 DLL 실행·원본 저장·예약 접근·실제 영역 접근·하드웨어 쓰기는 없으며 원본 삼성 DLL·실험 EXE를 포함하지 않습니다. 새 v7 분석의 실제 노트북 결과와 FF 의미는 미확정이고 충전 제어는 Unsupported입니다. v6 반복·관리자 비교·기존 TXT/DLL/EXE·원본 ACPI 재제출·완료된 OEM 실험 재실행은 필요하지 않습니다. 아래는 각 단계 당시의 배포 기록이며 과거 실행 절차를 다시 수행하라는 안내가 아닙니다.
+
+## 이전 배포 기록
+
+## ACPI Field·프레임 통로 선언 요약 — Acpi-routing-v6
 
 **실기 결과 수신·추가 실행 불필요:** 입력 저장/반환 Field의 SystemMemory·21바이트 선언 폭 일치, 보조 SystemIo Store와 다른 관측 Region 정의 관계를 확인했습니다. 후보 Store2회 중1회는 Literal 원천이며 [분석과 다음 계획](../ATIVBatteryGuard/ACPI_V6_RESULT_AND_NEXT_PLAN.md)에 남은 대상·literal 종류·구문 관계의 분석 조건을 기록했습니다. v6 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 새 프로그램은 배포하지 않으며 아래 ZIP·소스·체크섬은 배포 당시 그대로 보존합니다. 아래는 이전 안내입니다.
 

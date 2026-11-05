@@ -10,8 +10,8 @@ from package_wmi_preflight_check import code_only, inspect_executable, inspect_s
 
 PROJECT = 'ATIVBatteryGuard.AcpiRoutingCheck'
 READ_ONLY_FOOTPRINT = {
-    'WindowsAcpiRoutingProbe.cs': 'e26b69073be82cb4fb56e7c70e4e26a0ab4301deda625ffbdc5a75bd97ec2ae3',
-    'Program.cs': 'a76bd83d53d8b45e4777b087d7131d453a65ec70b604464ceb8785106bbeecfe',
+    'WindowsAcpiRoutingProbe.cs': '7c512d5e1c66f2600d1d5ca7829de92ad5387ab7d58245df7a7891474a633980',
+    'Program.cs': '3cc3738166e9274c28aedf72608e04d404b20d87acc7141896e73866e8808ccc',
 }
 
 
@@ -21,7 +21,7 @@ def inspect_reader_sources(root):
     host = (project / 'Program.cs').read_text(encoding='utf-8')
     parser = (root / 'src/ATIVBatteryGuard.Core/Services/AcpiWmiRoutingInspector.cs').read_text(encoding='utf-8')
     models = [(root / ('src/ATIVBatteryGuard.Core/Models/' + name)).read_text(encoding='utf-8')
-              for name in ['AcpiWmiRoutingReport.cs', 'AcpiMethodFlowReport.cs', 'AcpiObjectReferenceReport.cs', 'AcpiFieldChannelReport.cs']]
+              for name in ['AcpiWmiRoutingReport.cs', 'AcpiMethodFlowReport.cs', 'AcpiObjectReferenceReport.cs', 'AcpiFieldChannelReport.cs', 'AcpiStoreRoleReport.cs']]
     forbidden = re.compile(r'\b(?:InvokeMethod|TryClaim|WindowsOneShotBackend|ManagementObject|ManagementClass|'
         r'ManagementScope|WsabiWmiOneShotExperiment|WsabiWmiOneShotFileReservation|LoadLibrary|'
         r'DeviceIoControl|WriteFile|FileStream|StreamWriter|HttpClient|WebClient|Socket|Registry|ServiceController)\b|'
@@ -35,6 +35,8 @@ def inspect_reader_sources(root):
                      r'\bSystem\s*\.\s*Threading\b|\bnew\s+Mutex\b|\bMutex\s*\.', code_only(source))
            for source in [parser] + models):
         raise ValueError('The pure syntax parser and reports must not introduce native calls or perform waits or synchronization.')
+    if not re.search(r'\bMaximumStoreRoleStatements\s*=\s*64\s*;', code_only(parser)):
+        raise ValueError('The bounded static Store-role statement limit must remain 64.')
     imports = re.findall(r'\[DllImport\("([^"]+)"[^\]]*\)\]\s*private static extern uint (\w+)\(', native)
     if set(imports) != {('kernel32.dll', 'EnumSystemFirmwareTables'), ('kernel32.dll', 'GetSystemFirmwareTable')} or len(imports) != 2:
         raise ValueError('Only the two reviewed Windows firmware-table read APIs are permitted.')
@@ -70,14 +72,15 @@ def main():
     build = root / 'src' / PROJECT / 'bin/Release/net48'
     files = {name:(build/name).read_bytes() for name in [PROJECT+'.exe', PROJECT+'.exe.config', 'ATIVBatteryGuard.Core.dll']}
     inspect_executable(files[PROJECT+'.exe'])
-    if ('Acpi-routing-v6'.encode('utf-16le') not in files[PROJECT+'.exe'] or
-            any(('Acpi-routing-v'+str(v)).encode('utf-16le') in files[PROJECT+'.exe'] for v in [1,2,3,4,5])):
-        raise ValueError('The v6 executable is required; a previous routing tool must not be distributed as the field-channel revision.')
+    if ('Acpi-routing-v7'.encode('utf-16le') not in files[PROJECT+'.exe'] or
+            any(('Acpi-routing-v'+str(v)).encode('utf-16le') in files[PROJECT+'.exe'] for v in [1,2,3,4,5,6])):
+        raise ValueError('The v7 executable is required; a previous routing tool must not be distributed as the Store-role revision.')
     if (b'GetSystemFirmwareTable\0' not in files[PROJECT+'.exe'] or b'AcpiWmiRoutingInspector\0' not in files['ATIVBatteryGuard.Core.dll']
             or b'AcpiMethodFlowReport\0' not in files['ATIVBatteryGuard.Core.dll'] or b'AcpiSyntaxOperation\0' not in files['ATIVBatteryGuard.Core.dll']
-            or b'AcpiObjectReferenceReport\0' not in files['ATIVBatteryGuard.Core.dll'] or b'AcpiFieldChannelReport\0' not in files['ATIVBatteryGuard.Core.dll']):
+            or b'AcpiObjectReferenceReport\0' not in files['ATIVBatteryGuard.Core.dll'] or b'AcpiFieldChannelReport\0' not in files['ATIVBatteryGuard.Core.dll']
+            or b'AcpiStoreRoleReport\0' not in files['ATIVBatteryGuard.Core.dll']):
         raise ValueError('The current static reader and parser binaries are required.')
-    info = {'application':PROJECT, 'revision':'Acpi-routing-v6', 'target':'Windows10x64/.NETFramework4.8',
+    info = {'application':PROJECT, 'revision':'Acpi-routing-v7', 'target':'Windows10x64/.NETFramework4.8',
         'requestsElevation':False, 'usesOnlyWindowsAcpiTableReadApis':True,
         'evaluatesAml':False, 'invokesOemMethods':False, 'touchesExperimentReservation':False,
         'savesOrExportsRawFirmware':False, 'exportsDeviceIdentifiersOrPaths':False,
@@ -96,6 +99,11 @@ def main():
         'rawFieldWidthsExported':False, 'directStoreSourceSyntaxOnly':True,
         'regionComparisonIsObservedDefinitionIdentityOnly':True, 'comparesPhysicalAddressesOrOverlaps':False,
         'multipleCandidatesAreNotSingleMatches':True, 'automaticallyChangesRequestsOnMismatch':False,
+        'literalStoreTargetRoleSummary':True, 'literalSourceSyntaxKindsOnly':True,
+        'storeRoleRelationsAreObservedDefinitionIdentityOnly':True,
+        'rootStatementLayoutIsSourceOrderOnly':True, 'exportsStatementPositionsOrLiteralValues':False,
+        'branchesLoopsNestedOrAmbiguousLayoutsAreNotSingleSequences':True,
+        'maximumStoreRoleStatements':64, 'storeRoleLimitChangesEarlierReports':False,
         'maximumHelperDepth':2, 'maximumHelperDefinitions':8, 'maximumHelperCallSites':32,
         'maximumNamespaceObjects':8192,
         'evaluatesVariablesBranchesOrArgumentMapping':False, 'helperSyntaxProvesExecutedRoute':False,
@@ -107,14 +115,21 @@ def main():
         'previousDsdtDirectReadObserved':True, 'currentMethodFlowWindowsObserved':False,
         'previousExtendedHelperSyntaxObserved':True, 'currentObjectReferenceWindowsObserved':False,
         'previousObjectReferenceObserved':True, 'currentFieldChannelWindowsObserved':False,
+        'previousFieldChannelObserved':True, 'currentStoreRoleWindowsObserved':False,
         'digitallySigned':False, 'containsOriginalVendorBinariesOrUserReports':False,
         'sourceZipSha256':hashlib.sha256(args.source_zip.read_bytes()).hexdigest()}
     files['BUILD-INFO.json'] = json.dumps(info,ensure_ascii=False,indent=2).encode('utf-8')
-    readme = '''ATIV Battery Guard — ACPI Field·프레임 통로 선언 요약 (Acpi-routing-v6)
+    readme = '''ATIV Battery Guard — ACPI Literal Store 대상·구문 배치 요약 (Acpi-routing-v7)
 
-v5 실기에서 후보/보조 이름 참조 각3/3회 분류와 같은 Field 저장/반환 구문을 확인했습니다.
-v6는 입력/반환 Field의 선언 공간·21바이트 프레임에 대응하는 선언 폭·직접 Store 입력 역할을 요약합니다.
-후보/보조의 같은 Region 선언 여부를 비교하지만 실제 주소의 동일·겹침·분리는 판단하지 않습니다.
+v6 실기에서 입력/반환 SystemMemory Field의 21바이트 선언 폭 일치와 보조 SystemIo의 다른 Region 선언을 확인했습니다.
+후보 Field Store2회 중 직접 Arg2 원천은1회이고 나머지는 Literal 원천이지만 그 대상·종류·구문 위치는 미확정이었습니다.
+v7은 Literal Store의 직접 문법 종류와 대상 Field/Region을 입력·반환·보조 Store의 관측 정의와 비교합니다.
+주소 공간·선언 폭 범주·동일/다른/혼합/미확정 관계만 표시하며 원문 상수·값·이름·주소는 내보내지 않습니다.
+같은 직접 문장 목록 안의 Store·보조 호출·Return 배치를 제한적으로 요약합니다. 실제 실행 순서나 값 전달은 계산하지 않습니다.
+분기·반복·중첩 표현식·복수 후보는 단일 순서로 바꾸지 않으며 새 문장 추적은64개까지입니다.
+이 한계는 새 요약에만 적용하며 기존 연결·객체·Field 통로·FF 지표의 의미를 유지합니다.
+Literal을 FF 초기화·상태 초기화·selector·트리거로 단정하지 않습니다. FF 의미와 충전 지원은 미확정입니다.
+Region 정의는 비교하지만 실제 주소의 동일·겹침·분리는 판단하지 않습니다.
 복수 대상·혼합·미분류·부분 탐색은 하나의 일치로 바꾸지 않습니다. 폭 불일치에도 요청을 자동 수정하지 않습니다.
 선언 폭 일치는 정확한 바이트 배치·실행·프로토콜 의미나 충전 지원의 증거가 아닙니다.
 같은 정의 참조 구문은 실제 값 전달·실행 순서·동일한 데이터 반환이나 하드웨어 효과를 증명하지 않습니다.
@@ -134,7 +149,7 @@ AML 실행, OEM 호출, 삼성 DLL 로드, 예약 접근, 드라이버·서비�
 
 1. 프로그램 ZIP 하나만 새 로컬 폴더에 전부 압축 해제합니다. 소스 ZIP은 실행에 필요하지 않으며 함께 풀지 않습니다.
 2. ATIVBatteryGuard.AcpiRoutingCheck.exe를 일반 권한으로 실행합니다. 관리자 실행은 요구하지 않습니다.
-3. Acpi-routing-v6 표시와 출력된 새 요약만 복사해 전달하고 Enter로 닫습니다.
+3. Acpi-routing-v7 표시와 출력된 새 요약만 복사해 전달하고 Enter로 닫습니다.
 원본 테이블·삼성 DLL·기존 진단·이전 실행 결과는 다시 제출하지 않습니다.
 
 Windows API는 같은 서명의 테이블 중 첫 것만 반환하므로 전체 SSDT를 읽지 못합니다.
@@ -148,7 +163,7 @@ ID1/길이21/FF 반환 구문은 존재 여부이며 실제 분기의 실행이�
     files['먼저 읽어주세요.txt'] = readme.replace('\n','\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(hashlib.sha256(data).hexdigest()+'  '+name+'\n' for name,data in sorted(files.items())).encode()
     args.output.mkdir(parents=True,exist_ok=True)
-    target = args.output/'ATIVBatteryGuard-ACPI-FIELD-CHANNEL.zip'
+    target = args.output/'ATIVBatteryGuard-ACPI-STORE-ROLES.zip'
     with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as archive:
         for name,data in sorted(files.items()): archive.writestr(name,data)
     with zipfile.ZipFile(target) as archive:

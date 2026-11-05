@@ -16,6 +16,7 @@ namespace ATIVBatteryGuard.Core.Services
         public const int MaximumHelperCallSites = 32;
         public const int MaximumNamespaceObjects = 8192;
         public const int MaximumObjectRelationNames = 64;
+        public const int MaximumStoreRoleStatements = 64;
         private static readonly byte[] KnownGuid = new Guid("C16C47BA-50E3-444A-AF3A-B1C348380001").ToByteArray();
 
         public static AcpiWmiRoutingReport Inspect(byte[] table)
@@ -74,7 +75,8 @@ namespace ATIVBatteryGuard.Core.Services
             internal NameReference Reference;
             internal int Count;
             internal bool Returned, Arg2StoreTarget, StoreTarget;
-            internal int StoreSites, Arg2StoreSites;
+            internal int StoreSites, Arg2StoreSites, LiteralStoreSites;
+            internal AcpiLiteralSyntaxKinds LiteralSyntax;
             internal AcpiStoreSourceKinds StoreSources;
         }
         private sealed class ClassifiedName
@@ -97,11 +99,25 @@ namespace ATIVBatteryGuard.Core.Services
         {
             internal int StoreSites, Arg2Sites;
             internal AcpiStoreSourceKinds Sources;
-            internal bool Unknown, StoreUnknown, Arg2Unknown, ReturnUnknown, Arg2Other, ReturnOther;
+            internal bool Unknown, StoreUnknown, Arg2Unknown, ReturnUnknown, Arg2Other, ReturnOther, StoreOther;
             internal AcpiAddressSpaceKinds Arg2Spaces, ReturnSpaces, StoreSpaces;
             internal readonly HashSet<NamedDefinition> Arg2Fields = new HashSet<NamedDefinition>();
             internal readonly HashSet<NamedDefinition> ReturnFields = new HashSet<NamedDefinition>();
             internal readonly HashSet<NamedDefinition> StoreFields = new HashSet<NamedDefinition>();
+        }
+        private enum StoreStatementKind { Other, Arg2Store, LiteralStore, HelperCall, Return }
+        private sealed class StoreStatement
+        {
+            internal StoreStatementKind Kind;
+            internal NamedUse Target;
+            internal NameReference CallReference;
+            internal bool KnownNonField, ComplexTarget;
+        }
+        private sealed class LiteralRoles
+        {
+            internal bool Unknown, Other;
+            internal AcpiAddressSpaceKinds Spaces;
+            internal readonly HashSet<NamedDefinition> Fields = new HashSet<NamedDefinition>();
         }
         private struct Value
         {
@@ -111,6 +127,12 @@ namespace ATIVBatteryGuard.Core.Services
             internal AcpiNamedObjectKinds DeclarationKind;
             internal NamedUse NamedUse;
             internal AcpiStoreSourceKinds DirectStoreSourceRole;
+            internal bool SimpleSyntax, SimpleReference, ComplexReference, KnownNonFieldReference;
+            internal bool IsStore, SimpleStoreOperands, IsKnownCall, SimpleCallOperands;
+            internal AcpiStoreSourceKinds StatementStoreSource;
+            internal NamedUse StatementStoreTarget;
+            internal NameReference DirectCallReference;
+            internal bool StatementTargetKnownNonField, StatementTargetComplex;
         }
         private sealed class BodyEvidence
         {
@@ -122,6 +144,13 @@ namespace ATIVBatteryGuard.Core.Services
             internal int NamedReferenceCount;
             internal bool ObjectRelationLimit;
             internal bool Arg2NonNamedStore, NonNamedReturn;
+            internal int LiteralStoreSites, StoreExpressions;
+            internal AcpiLiteralSyntaxKinds LiteralSyntax;
+            internal bool LiteralNonNamedOther, LiteralNonNamedUnknown;
+            internal bool AnyNonNamedStore, ComplexNonNamedStore, Arg2ComplexStore, ReturnComplex;
+            internal bool TrackStoreLayout = true, LayoutComplex, StoreRoleLimit;
+            internal int StoreRoleEventCount;
+            internal readonly List<StoreStatement> StoreStatements = new List<StoreStatement>();
             internal readonly Dictionary<string, NamedUse> NamedUses = new Dictionary<string, NamedUse>();
             internal readonly HashSet<string> CreatedNames = new HashSet<string>();
         }
@@ -161,12 +190,13 @@ namespace ATIVBatteryGuard.Core.Services
                 AcpiMethodFlowReport flow = null;
                 AcpiObjectReferenceReport objectReferences = null;
                 AcpiFieldChannelReport fieldChannel = null;
+                AcpiStoreRoleReport storeRoles = null;
                 AcpiMethodSyntaxStatus syntax = descriptors.Count > 1 || matches.Count > 1
                     ? AcpiMethodSyntaxStatus.Ambiguous : AcpiMethodSyntaxStatus.NotObserved;
                 if (descriptors.Count == 1 && matches.Count == 1)
                 {
                     var method = matches[0]; args = method.Arguments;
-                    var evidence = new BodyEvidence { Complete = method.Arguments == 3 };
+                    var evidence = new BodyEvidence { Complete = method.Arguments == 3, TrackStoreLayout = true };
                     syntax = method.Arguments == 3 ? AcpiMethodSyntaxStatus.UnsupportedSyntax : AcpiMethodSyntaxStatus.WrongArgumentCount;
                     if (evidence.Complete)
                     {
@@ -184,10 +214,11 @@ namespace ATIVBatteryGuard.Core.Services
                         flow = InspectFlow(method, evidence, out helpers);
                         objectReferences = InspectObjectReferences(evidence, helpers, flow);
                         fieldChannel = InspectFieldChannel(evidence, helpers, flow);
+                        storeRoles = InspectStoreRoles(evidence, helpers, flow);
                     }
                 }
                 return new AcpiWmiRoutingReport(complete ? AcpiRoutingStatus.Complete : AcpiRoutingStatus.Partial,
-                    descriptors.Count, matches.Count, args, id, size, ff, syntax, flow, objectReferences, fieldChannel);
+                    descriptors.Count, matches.Count, args, id, size, ff, syntax, flow, objectReferences, fieldChannel, storeRoles);
             }
 
             private AcpiMethodFlowReport InspectFlow(Method root, BodyEvidence body, out List<BodyEvidence> helpers)
@@ -508,6 +539,7 @@ namespace ATIVBatteryGuard.Core.Services
                     {
                         roles.Arg2Other |= use.Arg2StoreTarget;
                         roles.ReturnOther |= use.Returned;
+                        roles.StoreOther |= use.StoreTarget;
                         continue;
                     }
                     var field = (NamedDefinition)classified.Identity;
@@ -532,6 +564,179 @@ namespace ATIVBatteryGuard.Core.Services
                     }
                 }
                 return roles;
+            }
+
+            private AcpiStoreRoleReport InspectStoreRoles(BodyEvidence root, List<BodyEvidence> helpers,
+                AcpiMethodFlowReport flow)
+            {
+                bool limited = root.ObjectRelationLimit || root.StoreRoleLimit ||
+                    flow.Status == AcpiMethodFlowStatus.LimitExceeded;
+                var created = new HashSet<string>(root.CreatedNames);
+                foreach (BodyEvidence helper in helpers)
+                {
+                    limited |= helper.ObjectRelationLimit || helper.StoreRoleLimit;
+                    foreach (string name in helper.CreatedNames) created.Add(name);
+                }
+                if (limited) return new AcpiStoreRoleReport(AcpiStoreRoleStatus.LimitExceeded,
+                    parsedHelpers: helpers.Count, layoutStatus: AcpiRootLayoutStatus.LimitExceeded);
+
+                LiteralRoles literal = SummarizeLiteralRoles(root, created);
+                FieldRoles candidate = SummarizeFieldRoles(root, created);
+                var helperRoles = new FieldRoles();
+                bool helperOther = false, helperUnknown = false;
+                foreach (BodyEvidence helper in helpers)
+                {
+                    SummarizeFieldRoles(helper, created, helperRoles);
+                    helperOther |= helper.AnyNonNamedStore;
+                    helperUnknown |= helper.ComplexNonNamedStore;
+                }
+                bool literalUnknown = literal.Unknown || (literal.Other && literal.Fields.Count != 0);
+                bool arg2Unknown = candidate.Arg2Unknown || root.Arg2ComplexStore ||
+                    (candidate.Arg2Other && candidate.Arg2Fields.Count != 0);
+                bool returnUnknown = candidate.ReturnUnknown || root.ReturnComplex ||
+                    (candidate.ReturnOther && candidate.ReturnFields.Count != 0);
+                bool incompleteHelpers = flow.UnsupportedHelpers != 0 || flow.CycleObserved;
+                bool storeUnknown = helperRoles.StoreUnknown || helperUnknown || incompleteHelpers ||
+                    ((helperRoles.StoreOther || helperOther) && helperRoles.StoreFields.Count != 0);
+                AcpiFieldWidthAssessment width = FieldWidth(literal.Fields, literal.Unknown, literal.Other);
+                AcpiRootLayoutStatus layout = InspectRootLayout(root, created, incompleteHelpers,
+                    out AcpiStatementOrder arg2Literal, out AcpiStatementOrder arg2Call,
+                    out AcpiStatementOrder literalCall, out AcpiStatementOrder callReturn);
+                bool partial = !complete || literalUnknown || candidate.Unknown || helperRoles.Unknown ||
+                    helperUnknown || incompleteHelpers || width == AcpiFieldWidthAssessment.Unknown ||
+                    layout == AcpiRootLayoutStatus.Unknown;
+                return new AcpiStoreRoleReport(partial ? AcpiStoreRoleStatus.Partial : AcpiStoreRoleStatus.ObservedSyntax,
+                    root.LiteralStoreSites, root.LiteralSyntax, FieldSpaces(literal.Spaces, literalUnknown), width,
+                    helpers.Count,
+                    DefinitionRelation(literal.Fields, candidate.Arg2Fields, literalUnknown || arg2Unknown),
+                    DefinitionRelation(literal.Fields, candidate.ReturnFields, literalUnknown || returnUnknown),
+                    DefinitionRelation(literal.Fields, helperRoles.StoreFields, literalUnknown || storeUnknown),
+                    RegionRelation(literal.Fields, candidate.Arg2Fields, created, literalUnknown || arg2Unknown),
+                    RegionRelation(literal.Fields, candidate.ReturnFields, created, literalUnknown || returnUnknown),
+                    RegionRelation(literal.Fields, helperRoles.StoreFields, created, literalUnknown || storeUnknown),
+                    layout, arg2Literal, arg2Call, literalCall, callReturn);
+            }
+
+            private LiteralRoles SummarizeLiteralRoles(BodyEvidence body, HashSet<string> created)
+            {
+                var roles = new LiteralRoles { Other = body.LiteralNonNamedOther, Unknown = body.LiteralNonNamedUnknown };
+                foreach (NamedUse use in body.NamedUses.Values)
+                {
+                    if (use.LiteralStoreSites == 0) continue;
+                    ClassifiedName classified = Classify(use.Reference, created);
+                    if (classified == null) { roles.Unknown = true; continue; }
+                    if (classified.Kind != AcpiNamedObjectKinds.Field) { roles.Other = true; continue; }
+                    roles.Fields.Add((NamedDefinition)classified.Identity);
+                    roles.Spaces |= classified.Space;
+                }
+                return roles;
+            }
+
+            private AcpiDefinitionRelation DefinitionRelation(HashSet<NamedDefinition> left,
+                HashSet<NamedDefinition> right, bool unknown)
+            {
+                if (unknown) return AcpiDefinitionRelation.Unknown;
+                if (left.Count == 0 || right.Count == 0)
+                    return complete ? AcpiDefinitionRelation.NotObserved : AcpiDefinitionRelation.Unknown;
+                if (left.Count > 1 || right.Count > 1) return AcpiDefinitionRelation.Mixed;
+                foreach (NamedDefinition definition in left)
+                    return right.Contains(definition) ? AcpiDefinitionRelation.SameObservedDefinition :
+                        AcpiDefinitionRelation.DifferentObservedDefinitions;
+                return AcpiDefinitionRelation.Unknown;
+            }
+
+            private AcpiRootLayoutStatus InspectRootLayout(BodyEvidence body, HashSet<string> created, bool incompleteHelpers,
+                out AcpiStatementOrder arg2Literal, out AcpiStatementOrder arg2Call,
+                out AcpiStatementOrder literalCall, out AcpiStatementOrder callReturn)
+            {
+                arg2Literal = arg2Call = literalCall = callReturn = AcpiStatementOrder.Unknown;
+                if (body.LayoutComplex || incompleteHelpers) return AcpiRootLayoutStatus.Unknown;
+                int arg2 = -1, literal = -1, call = -1, returned = -1;
+                int arg2Fields = 0, literalFields = 0, returnFields = 0;
+                bool multiple = false, unknown = false;
+                for (int i = 0; i < body.StoreStatements.Count; i++)
+                {
+                    StoreStatement statement = body.StoreStatements[i];
+                    if (statement.Kind == StoreStatementKind.Other) continue;
+                    if (statement.Kind == StoreStatementKind.HelperCall)
+                    {
+                        ClassifiedName method = statement.CallReference == null ? null : ResolveReference(statement.CallReference, created);
+                        if (method == null || method.Kind != AcpiNamedObjectKinds.MethodReference) { unknown = true; continue; }
+                    }
+                    else
+                    {
+                        if (statement.ComplexTarget) { unknown = true; continue; }
+                        ClassifiedName target = statement.Target == null ? null : Classify(statement.Target.Reference, created);
+                        if (target == null && !statement.KnownNonField) { unknown = true; continue; }
+                        if (target == null || target.Kind != AcpiNamedObjectKinds.Field) continue;
+                    }
+                    switch (statement.Kind)
+                    {
+                        case StoreStatementKind.Arg2Store: multiple |= arg2 >= 0; arg2 = i; arg2Fields++; break;
+                        case StoreStatementKind.LiteralStore: multiple |= literal >= 0; literal = i; literalFields++; break;
+                        case StoreStatementKind.HelperCall: multiple |= call >= 0; call = i; break;
+                        case StoreStatementKind.Return: multiple |= returned >= 0; returned = i; returnFields++; break;
+                    }
+                }
+                // Non-Field/unknown alternatives must not disappear to leave one
+                // convenient occurrence. Compare total syntax roles with events.
+                int arg2Occurrences = 0, literalOccurrences = 0, returnOccurrences = 0;
+                foreach (StoreStatement statement in body.StoreStatements)
+                {
+                    if (statement.Kind == StoreStatementKind.Arg2Store) arg2Occurrences++;
+                    if (statement.Kind == StoreStatementKind.LiteralStore) literalOccurrences++;
+                    if (statement.Kind == StoreStatementKind.Return) returnOccurrences++;
+                }
+                if (unknown || (arg2 >= 0 && arg2Occurrences != arg2Fields) ||
+                    (literal >= 0 && literalOccurrences != literalFields) ||
+                    (returned >= 0 && returnOccurrences != returnFields))
+                    return AcpiRootLayoutStatus.Unknown;
+                if (multiple)
+                {
+                    arg2Literal = arg2Call = literalCall = callReturn = AcpiStatementOrder.MultipleCandidates;
+                    return AcpiRootLayoutStatus.MultipleCandidates;
+                }
+                if (arg2 < 0 || literal < 0 || call < 0 || returned < 0)
+                {
+                    if (!complete) return AcpiRootLayoutStatus.Unknown;
+                    arg2Literal = arg2Call = literalCall = callReturn = AcpiStatementOrder.NotObserved;
+                    return AcpiRootLayoutStatus.NotObserved;
+                }
+                arg2Literal = StatementOrder(arg2, literal); arg2Call = StatementOrder(arg2, call);
+                literalCall = StatementOrder(literal, call); callReturn = StatementOrder(call, returned);
+                return AcpiRootLayoutStatus.SingleDirectList;
+            }
+
+            private static AcpiStatementOrder StatementOrder(int left, int right)
+                => left < right ? AcpiStatementOrder.BeforeInSameList : AcpiStatementOrder.AfterInSameList;
+
+            private static AcpiLiteralSyntaxKinds LiteralSyntax(Value value)
+            {
+                if (value.DirectStoreSourceRole != AcpiStoreSourceKinds.Literal) return AcpiLiteralSyntaxKinds.None;
+                switch (value.DeclarationKind)
+                {
+                    case AcpiNamedObjectKinds.Integer: return AcpiLiteralSyntaxKinds.Integer;
+                    case AcpiNamedObjectKinds.String: return AcpiLiteralSyntaxKinds.String;
+                    case AcpiNamedObjectKinds.Buffer: return AcpiLiteralSyntaxKinds.Buffer;
+                    case AcpiNamedObjectKinds.Package: return AcpiLiteralSyntaxKinds.Package;
+                    default: return AcpiLiteralSyntaxKinds.None;
+                }
+            }
+
+            private static void StoreRoleEvent(BodyEvidence body)
+            {
+                if (body == null || !body.TrackStoreLayout) return;
+                if (body.StoreRoleEventCount >= MaximumStoreRoleStatements) body.StoreRoleLimit = true;
+                else body.StoreRoleEventCount++;
+            }
+
+            private static void DirectStoreStatement(BodyEvidence body, StoreStatementKind kind, NamedUse target = null,
+                bool knownNonField = false, bool complexTarget = false, NameReference callReference = null)
+            {
+                if (!body.TrackStoreLayout || body.StoreRoleLimit) return;
+                if (body.StoreStatements.Count >= MaximumStoreRoleStatements) { body.StoreRoleLimit = true; return; }
+                body.StoreStatements.Add(new StoreStatement { Kind = kind, Target = target,
+                    KnownNonField = knownNonField, ComplexTarget = complexTarget, CallReference = callReference });
             }
 
             private static AcpiAddressSpaceKinds? FieldSpaces(AcpiAddressSpaceKinds spaces, bool unknown)
@@ -695,8 +900,10 @@ namespace ATIVBatteryGuard.Core.Services
                 while (p < end)
                 {
                     Tick(); byte op = bytes[p];
+                    int storesBefore = evidence.StoreExpressions, callsBefore = evidence.CallSites;
                     if (op == 0xa0 || op == 0xa1 || op == 0xa2)
                     {
+                        evidence.LayoutComplex = true;
                         p++; int finish = Package(ref p, end);
                         if (op != 0xa1) Arg(ref p, finish, scope, evidence, depth + 1);
                         ScanBody(p, finish, scope, evidence, depth + 1); p = finish;
@@ -708,13 +915,27 @@ namespace ATIVBatteryGuard.Core.Services
                         evidence.Returns |= ReturnForm(value);
                         if (value.Kind == 6 && value.NamedUse != null) value.NamedUse.Returned = true;
                         else evidence.NonNamedReturn = true;
+                        evidence.ReturnComplex |= !value.SimpleSyntax;
                         if ((value.Kind == 1 && value.Integer == 255) ||
                             (value.BufferLength == 21 && bytes[value.BufferStart + 4] == 0xaa && bytes[value.BufferStart + 5] == 255))
                             evidence.Ff = true;
+                        StoreRoleEvent(evidence);
+                        if (depth == 0)
+                        {
+                            DirectStoreStatement(evidence, StoreStatementKind.Return, value.NamedUse,
+                                value.SimpleSyntax && value.Kind != 6, !value.SimpleSyntax);
+                            if (!value.SimpleSyntax || evidence.StoreExpressions != storesBefore || evidence.CallSites != callsBefore)
+                                evidence.LayoutComplex = true;
+                        }
                     }
-                    else if (op == 0xa3 || op == 0xa5 || op == 0x9f || op == 0xcc) p++;
+                    else if (op == 0xa3 || op == 0xa5 || op == 0x9f || op == 0xcc)
+                    {
+                        if (op != 0xa3) evidence.LayoutComplex = true;
+                        p++;
+                    }
                     else if (op == 0x5b)
                     {
+                        evidence.LayoutComplex = true;
                         p++;
                         Extended(ref p, end, scope, evidence, depth + 1, true);
                     }
@@ -730,7 +951,25 @@ namespace ATIVBatteryGuard.Core.Services
                             if (FindMethod(path, scope, NameCharacter(op, true)) == null)
                                 throw new ParseException(AcpiSyntaxFailureKind.UnresolvedStatement);
                         }
-                        Arg(ref p, end, scope, evidence, depth + 1);
+                        Value value = Arg(ref p, end, scope, evidence, depth + 1);
+                        if (depth != 0) continue;
+                        if (value.IsStore)
+                        {
+                            StoreStatementKind kind = value.StatementStoreSource == AcpiStoreSourceKinds.Arg2
+                                ? StoreStatementKind.Arg2Store : value.StatementStoreSource == AcpiStoreSourceKinds.Literal
+                                ? StoreStatementKind.LiteralStore : StoreStatementKind.Other;
+                            DirectStoreStatement(evidence, kind, value.StatementStoreTarget,
+                                value.StatementTargetKnownNonField, value.StatementTargetComplex);
+                            if (!value.SimpleStoreOperands || evidence.StoreExpressions != storesBefore + 1 ||
+                                evidence.CallSites != callsBefore) evidence.LayoutComplex = true;
+                        }
+                        else if (value.IsKnownCall)
+                        {
+                            DirectStoreStatement(evidence, StoreStatementKind.HelperCall, callReference: value.DirectCallReference);
+                            if (!value.SimpleCallOperands || evidence.StoreExpressions != storesBefore ||
+                                evidence.CallSites != callsBefore + 1) evidence.LayoutComplex = true;
+                        }
+                        else evidence.LayoutComplex = true;
                     }
                 }
             }
@@ -741,28 +980,28 @@ namespace ATIVBatteryGuard.Core.Services
                 if (op == 0x5b) return Extended(ref p, end, scope, evidence, depth + 1, false);
                 if (op == 0 || op == 1 || op == 255)
                     return new Value { Kind = 1, Integer = op == 255 ? ulong.MaxValue : op,
-                        DeclarationKind = AcpiNamedObjectKinds.Integer, DirectStoreSourceRole = AcpiStoreSourceKinds.Literal };
+                        DeclarationKind = AcpiNamedObjectKinds.Integer, DirectStoreSourceRole = AcpiStoreSourceKinds.Literal, SimpleSyntax = true };
                 if (op == 0x0a || op == 0x0b || op == 0x0c || op == 0x0e)
                 {
                     int count = op == 0x0a ? 1 : op == 0x0b ? 2 : op == 0x0c ? 4 : 8;
                     ulong value = 0; for (int i = 0; i < count; i++) value |= (ulong)Get(ref p, end) << (8 * i);
                     return new Value { Kind = 1, Integer = value, DeclarationKind = AcpiNamedObjectKinds.Integer,
-                        DirectStoreSourceRole = AcpiStoreSourceKinds.Literal };
+                        DirectStoreSourceRole = AcpiStoreSourceKinds.Literal, SimpleSyntax = true };
                 }
                 if (op == 0x0d)
                 { while (Get(ref p, end) != 0) { } return new Value { DeclarationKind = AcpiNamedObjectKinds.String,
-                    DirectStoreSourceRole = AcpiStoreSourceKinds.Literal }; }
+                    DirectStoreSourceRole = AcpiStoreSourceKinds.Literal, SimpleSyntax = true }; }
                 if (op == 0x11 || op == 0x12 || op == 0x13)
                 {
                     int finish = Package(ref p, end);
                     Value result = new Value { DeclarationKind = op == 0x11 ? AcpiNamedObjectKinds.Buffer : AcpiNamedObjectKinds.Package,
-                        DirectStoreSourceRole = AcpiStoreSourceKinds.Literal };
+                        DirectStoreSourceRole = AcpiStoreSourceKinds.Literal, SimpleSyntax = op == 0x11 };
                     if (op == 0x11)
                     {
                         Value size = Arg(ref p, finish, scope, null, depth + 1);
                         if (size.Kind == 1 && size.Integer == (ulong)(finish - p))
                             result = new Value { BufferStart = p, BufferLength = finish - p, DeclarationKind = AcpiNamedObjectKinds.Buffer,
-                                DirectStoreSourceRole = AcpiStoreSourceKinds.Literal };
+                                DirectStoreSourceRole = AcpiStoreSourceKinds.Literal, SimpleSyntax = true };
                         else if (evidence != null) throw new ParseException(AcpiSyntaxFailureKind.DynamicBuffer);
                     }
                     p = finish; return result;
@@ -770,7 +1009,7 @@ namespace ATIVBatteryGuard.Core.Services
                 if (op >= 0x60 && op <= 0x6e)
                     return new Value { Kind = op == 0x69 ? 2 : op == 0x6a ? 3 : 0,
                         DirectStoreSourceRole = op == 0x68 ? AcpiStoreSourceKinds.Arg0 : op == 0x69 ? AcpiStoreSourceKinds.Arg1 :
-                            op == 0x6a ? AcpiStoreSourceKinds.Arg2 : AcpiStoreSourceKinds.Other };
+                            op == 0x6a ? AcpiStoreSourceKinds.Arg2 : AcpiStoreSourceKinds.Other, SimpleSyntax = true };
                 if (IsNameStart(op))
                 {
                     p = original; string path = Name(ref p, end, scope);
@@ -778,17 +1017,23 @@ namespace ATIVBatteryGuard.Core.Services
                     if (method == null)
                     {
                         if (evidence != null) evidence.UnresolvedNames++;
-                        return new Value { Kind = 6, NamedUse = RecordReference(evidence, path, scope, NameCharacter(op, true)) };
+                        return new Value { Kind = 6, NamedUse = RecordReference(evidence, path, scope, NameCharacter(op, true)), SimpleSyntax = true, SimpleReference = true };
                     }
-                    int arg2 = 0;
+                    int arg2 = 0; bool simpleOperands = true;
                     for (int i = 0; i < method.Arguments; i++)
-                        if (Arg(ref p, end, scope, evidence, depth + 1).Kind == 3) arg2++;
+                    {
+                        Value argument = Arg(ref p, end, scope, evidence, depth + 1);
+                        if (argument.Kind == 3) arg2++;
+                        simpleOperands &= argument.SimpleSyntax;
+                    }
                     if (evidence != null)
                     {
                         evidence.CallSites++; evidence.Arg2CallArguments += arg2;
                         if (evidence.Calls.Count < MaximumHelperCallSites) evidence.Calls.Add(method);
+                        StoreRoleEvent(evidence);
                     }
-                    return new Value { Kind = 5 };
+                    return new Value { Kind = 5, IsKnownCall = true, SimpleCallOperands = simpleOperands,
+                        DirectCallReference = new NameReference { Path = path, Scope = scope, ParentSearch = NameCharacter(op, true) } };
                 }
                 if (op == 0x93 || op == 0x94 || op == 0x95)
                 {
@@ -819,7 +1064,34 @@ namespace ATIVBatteryGuard.Core.Services
                         if (source.Kind == 3) { target.NamedUse.Arg2StoreTarget = true; target.NamedUse.Arg2StoreSites++; }
                     }
                     else if (evidence != null && source.Kind == 3) evidence.Arg2NonNamedStore = true;
-                    return default(Value);
+                    if (evidence != null)
+                    {
+                        evidence.StoreExpressions++;
+                        StoreRoleEvent(evidence);
+                        if (target.NamedUse == null)
+                        {
+                            evidence.AnyNonNamedStore = true;
+                            evidence.ComplexNonNamedStore |= !target.KnownNonFieldReference;
+                            evidence.Arg2ComplexStore |= source.Kind == 3 && !target.KnownNonFieldReference;
+                        }
+                        AcpiLiteralSyntaxKinds literal = LiteralSyntax(source);
+                        if (literal != AcpiLiteralSyntaxKinds.None)
+                        {
+                            evidence.LiteralStoreSites++;
+                            evidence.LiteralSyntax |= literal;
+                            if (target.NamedUse != null)
+                            {
+                                target.NamedUse.LiteralStoreSites++;
+                                target.NamedUse.LiteralSyntax |= literal;
+                            }
+                            else if (target.KnownNonFieldReference) evidence.LiteralNonNamedOther = true;
+                            else evidence.LiteralNonNamedUnknown = true;
+                        }
+                    }
+                    return new Value { IsStore = true, SimpleStoreOperands = source.SimpleSyntax && target.SimpleReference,
+                        StatementStoreSource = source.DirectStoreSourceRole,
+                        StatementStoreTarget = target.NamedUse, StatementTargetKnownNonField = target.KnownNonFieldReference,
+                        StatementTargetComplex = target.ComplexReference || (!target.SimpleReference && !target.KnownNonFieldReference) };
                 }
                 int arity = Arity(op);
                 if (arity >= 0)
@@ -970,9 +1242,9 @@ namespace ATIVBatteryGuard.Core.Services
                 bool allowType6 = true)
             {
                 CheckDepth(depth); Tick(); int original = p; byte op = Get(ref p, end);
-                if (allowNull && op == 0) return default(Value);
+                if (allowNull && op == 0) return new Value { SimpleSyntax = true, SimpleReference = true, KnownNonFieldReference = true };
                 if (op >= 0x60 && op <= 0x6e)
-                    return new Value { Kind = op == 0x69 ? 2 : op == 0x6a ? 3 : 0 };
+                    return new Value { Kind = op == 0x69 ? 2 : op == 0x6a ? 3 : 0, SimpleSyntax = true, SimpleReference = true, KnownNonFieldReference = true };
                 if (IsNameStart(op))
                 {
                     p = original; string path = Name(ref p, end, scope);
@@ -980,7 +1252,7 @@ namespace ATIVBatteryGuard.Core.Services
                     // SuperName/Target names denote references, including when
                     // their spelling also belongs to a known method. No method
                     // arguments are consumed and no call site is recorded.
-                    return new Value { Kind = 6, NamedUse = RecordReference(evidence, path, scope, NameCharacter(op, true)) };
+                    return new Value { Kind = 6, NamedUse = RecordReference(evidence, path, scope, NameCharacter(op, true)), SimpleSyntax = true, SimpleReference = true };
                 }
                 if (op == 0x5b)
                 {
@@ -990,7 +1262,7 @@ namespace ATIVBatteryGuard.Core.Services
                     if (allowType6 && ext == 0x31)
                     {
                         if (evidence != null) evidence.ExtendedSyntax |= AcpiSyntaxOperation.Debug;
-                        return default(Value);
+                        return new Value { SimpleSyntax = true, SimpleReference = true, KnownNonFieldReference = true };
                     }
                     throw new ParseException(AcpiSyntaxFailureKind.UnsupportedReference, ExtendedOperation(ext));
                 }
@@ -1000,7 +1272,7 @@ namespace ATIVBatteryGuard.Core.Services
                     // contain real call expressions; the outer reference does
                     // not itself become a call or a direct Arg2 expression.
                     p = original; Arg(ref p, end, scope, evidence, depth + 1);
-                    return default(Value);
+                    return new Value { ComplexReference = true };
                 }
                 throw new ParseException(AcpiSyntaxFailureKind.UnsupportedReference, UnsupportedPrimary(op).Operation);
             }

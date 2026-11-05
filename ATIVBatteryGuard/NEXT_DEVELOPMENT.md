@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 현재 구현 — Literal Store 대상·직접 구문 배치 v7 / 2026-11-05 한국 시간
+
+[현재 구현·해석·실행 안내](ACPI_STORE_ROLE_UPDATE.md)를 먼저 읽습니다. v6 실기에서는 후보 입력/반환 Field의 SystemMemory·21바이트 선언 폭 일치, 보조 SystemIo와 다른 Region 선언, Store2회 중 Arg2/Literal 원천을 확인했습니다. v7는 남은 Literal Store의 직접 Integer/String/Buffer/Package 종류와 대상 Field의 공간·폭 범주, 입력/반환/해석한 보조 Store와의 Field/Region 관측 정의 관계를 분류합니다. Literal Store 수는 Field 여부와 관계없는 직접 구문 발생 횟수이고 정의 비교는 고유 후보를 사용합니다.
+
+후보의 Arg2 Store·Literal Store·알려진 보조 호출·Return이 같은 직접 구문 목록에 각각 하나씩 관측될 때 앞뒤 관계를 요약합니다. 분기·반복·중첩 Store/호출·복잡한 피연산자는 Unknown, 복수 역할 후보는 MultipleCandidates이며 실제 실행 순서나 값/인수 대입·초기화·트리거 효과를 추론하지 않습니다. 원문 값·주소·이름·폭·구문 위치 번호는 내보내지 않습니다. 새64개 구문 기록 한계는 새 Store 역할 보고서에만 적용하고 기존 Flow·객체·Field 통로·FF 의미는 유지합니다.
+
+새 배포 ACPI-STORE-ROLES의 **프로그램 ZIP 하나만** 새 폴더에 전부 풀어 일반 권한으로 실행하고 **Acpi-routing-v7 새 요약만** 확인합니다. 소스 ZIP은 실행에 필요하지 않으며 함께 풀지 않습니다. 기존 자료 재제출·v6 반복·관리자 비교·완료된 OEM 실험 재실행은 요청하지 않습니다. 같은 두 읽기 API·고정 DSDT/첫 SSDT·기존 상한과 무실행/무쓰기 경계를 유지합니다. v7의 실제 노트북 결과와 모델별 명령/FF 의미는 미확정이고 제어는 Unsupported입니다. 아래는 이전 작업 당시의 기록입니다.
+
 ## v6 실기 관측 수신·추가 Store 역할 분석 계획
 
 [현재 결과와 다음 수용 조건](ACPI_V6_RESULT_AND_NEXT_PLAN.md)을 먼저 읽습니다. 사용자 v6 출력에서 root Arg2 저장/반환 Field 모두 SystemMemory·Matches21ByteFrame, helper Store SystemIo, 양쪽 Region 관계 DifferentObservedDefinitions를 확인했습니다. root Store2회/직접 Arg2 1회·Sources Arg2,Literal이며 같은 입력/반환 Field 정의 참조도 유지됩니다. 선언 비교는 실제 메모리/I/O·SMI·물리 영역 분리·FF 의미를 입증하지 않습니다.

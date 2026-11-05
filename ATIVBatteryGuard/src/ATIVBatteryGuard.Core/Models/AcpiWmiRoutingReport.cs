@@ -21,13 +21,15 @@ namespace ATIVBatteryGuard.Core.Models
         public AcpiMethodFlowReport Flow { get; }
         public AcpiObjectReferenceReport ObjectReferences { get; }
         public AcpiFieldChannelReport FieldChannel { get; }
+        public AcpiStoreRoleReport StoreRoles { get; }
         public bool CanInvokeMethods => false;
         public bool CanWriteHardware => false;
 
         internal AcpiWmiRoutingReport(AcpiRoutingStatus status, int descriptors = 0, int methods = 0,
             int? arguments = null, bool? idOne = null, bool? input21 = null, bool? ff = null,
             AcpiMethodSyntaxStatus syntax = AcpiMethodSyntaxStatus.NotObserved, AcpiMethodFlowReport flow = null,
-            AcpiObjectReferenceReport objectReferences = null, AcpiFieldChannelReport fieldChannel = null)
+            AcpiObjectReferenceReport objectReferences = null, AcpiFieldChannelReport fieldChannel = null,
+            AcpiStoreRoleReport storeRoles = null)
         {
             Status = status; MatchingDescriptors = descriptors; MatchingMethods = methods;
             MethodArgumentCount = arguments; DirectMethodIdOneComparison = idOne;
@@ -36,6 +38,7 @@ namespace ATIVBatteryGuard.Core.Models
             Flow = flow ?? new AcpiMethodFlowReport();
             ObjectReferences = objectReferences ?? new AcpiObjectReferenceReport();
             FieldChannel = fieldChannel ?? new AcpiFieldChannelReport();
+            StoreRoles = storeRoles ?? new AcpiStoreRoleReport();
         }
 
         public string ToDisplayText()
@@ -55,6 +58,7 @@ namespace ATIVBatteryGuard.Core.Models
             text.Append(Flow.ToDisplayText());
             text.Append(ObjectReferences.ToDisplayText());
             text.Append(FieldChannel.ToDisplayText());
+            text.Append(StoreRoles.ToDisplayText());
             return text.ToString();
         }
 

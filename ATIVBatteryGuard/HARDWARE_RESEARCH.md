@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## Literal Store 대상과 직접 구문 배치 v7 — 2026-11-05 한국 시간
+
+**확인된 사실:** v6 실기에서 후보 입력 저장/반환 Field는 SystemMemory·고정21바이트 선언 폭 일치였고, 보조 Store Field는 SystemIo의 다른 Region 선언을 참조했습니다. 후보 Store2회 중1회가 Literal 원천이지만 그 대상·직접 구문 종류·위치는 당시 출력에 없었습니다. Literal을 FF 초기화나 명령 selector로 단정하지 않습니다.
+
+**새 구현:** [v7](ACPI_STORE_ROLE_UPDATE.md)는 Literal Store의 구문 종류와 대상 Field의 공간·폭 범주, 입력/반환/보조 Store의 Field·Region 관측 정의 관계를 분류합니다. 같은 후보 직접 구문 목록에 있는 Store·보조 호출·Return의 앞뒤 관계만 제한적으로 보고합니다. 분기·반복·중첩·복수 후보는 보수적으로 남기고 실제 값·실행 순서·초기화·I/O 트리거·물리 영역 동일성을 계산하지 않습니다.
+
+**아직 검증되지 않은 항목:** v7의 실제 노트북 출력, FF 생성 위치와 현재 모델의 Windows 배터리 명령 계약입니다. 기존 수집/API/상한을 유지하고 새 구문 기록 한계는 새 보고서에만 적용합니다. 원문 값·주소·이름·폭·구문 위치는 내보내지 않으며 실제 영역 접근·OEM/AML/DLL 실행·예약 접근을 추가하지 않습니다. 실제 제어는 Unsupported입니다. 아래는 이전 조사 당시의 기록입니다.
+
 ## v6 실기에서 구분한 프레임 Field와 보조 Store 선언
 
 **확인된 사실:** 후보 Arg2 저장/직접 반환 Field는 SystemMemory·Matches21ByteFrame이며 같은 관측 Field 정의 참조 관계를 유지했습니다. 보조 Store Field는 SystemIo이고 두 역할의 Region 비교는 DifferentObservedDefinitions입니다. 후보 Field Store2회 중1회는 직접 Arg2, 나머지1회는 Literal 원천입니다. 서로 다른 Region 선언은 실제 물리 주소의 분리나 SMI 실행을 뜻하지 않습니다.

@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — Settings2.0.0.89 실제 BOM·정확 ZIP 식별 / 2026-11-06
+
+[SETTINGS_BOM_PACKAGE_UPDATE.md](SETTINGS_BOM_PACKAGE_UPDATE.md)를 먼저 읽습니다. 게시 후 appmanager 허용 적용을 확인했고 실제 BOM2개를200으로 확보했습니다. 길이426679/488124, SHAac93fcf335218ad1a5b34cb57a92b58a2fb9e67be3d415683c229bac79848f46 / 116e0e2d84bd44d2d4024bd10c17f281b78717e61a03e6e3fad094c55d6509dc입니다. 둘 다 비교930X5J/Win7 문맥의 Easy Settings2.0.0.89 → BASW-83876A21.ZIP을 가리킵니다. 동일 Settings 항목의 중복이며 독립 바이너리 두 개의 증거가 아닙니다. FileVer/크기/TestYes는 원본 무결성·시험 통과·현재 모델 지원을 뜻하지 않습니다.
+
+개발용 stdin 응답 검사기에 별도 BOM16,384노드/깊이16/Item256 상한과 구조·privacy·전체 성공 후 수치 보고를 구현했습니다. 기존 SOAP/JSON 상한은 유지합니다. 실제 BOM의 전체 Item40/45·직접 위치25/30·비교 후보1/1이며, FURL missing15개씩과 빈Version17개씩·레이블 XML 줄바꿈을 허용하고 URL 내부 공백은 거부합니다. 새11개 포함 전체Python85개·실제응답10개 대조·독립검토 통과. 원본 XML·식별자·설치 인수는 저장소/배포물에 넣지 않습니다.
+
+실제 ORCA ZIP 링크는302로 org.downloadcenter.samsung.com에 같은 파일명을 전달합니다. 목적지 HEAD는CONNECT403이고 ZIP바이트/해시·내부Win8모듈·caller는 미확보입니다. 실제 목적지 한 호스트를 추가한 새 초안을 저장·재조회했습니다(saved/requires_publish=true, revision2). 기존 게시된5호스트/프리셋/스크립트/저장소/요구사항 보존, 환경미게시. 사용자 게시 후 적용 확인 → 기록된 원본 ZIP 정상 취득·길이/해시/컨테이너 → 비공개 정적 분석으로 재개합니다. 추측 URL·중계·설치/삼성코드 실행을 사용하지 않습니다.
+
+C#/EXE와 기존 ZIP을 유지하고 새 개발 소스만 별도 제공합니다. 추가 노트북 시험·TXT/DLL 재제출·시리얼·Samsung Update/Export·관리자/OEM 반복·예약 삭제는 필요하지 않습니다. 현재 충전 제어Unsupported. 아래는 이전 기록입니다.
+
 ## 최신 — 공개 모델 카탈로그·오프라인 응답 검사 / 2026-11-06
 
 [SAMSUNG_UPDATE_CATALOG_REVIEW.md](SAMSUNG_UPDATE_CATALOG_REVIEW.md)를 먼저 읽습니다. 게시 후 ORCA 허용을 확인했고, 실행 없이 공개 모델 검색 → 공개 ModelCode → 레거시 카탈로그 경로를 검증했습니다. 사용자 시리얼/DMI는 사용하지 않았습니다. NP940X3G 모델116개·NP930X5J 모델36개 검색은 성공했습니다. 현재 계열의 지원 OS 및 시도한 W8 카탈로그는 서비스404이고, 비교 NP930X5J-S02US의 W7 카탈로그는 SUCC/HDM.ITEM2입니다. 후자는 목록 XML 위치이며 Settings2.0.0.89 실파일이나 현재 ATIV의 충전 지원을 확보한 결과가 아닙니다.

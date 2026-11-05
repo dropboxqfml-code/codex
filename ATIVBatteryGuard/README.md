@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — Settings 비교 원본 식별 / 2026-11-06:** [실제 BOM 분석·새 검사 기능](SETTINGS_BOM_PACKAGE_UPDATE.md)에서 Easy Settings2.0.0.89의 정확한 원본 파일명 BASW-83876A21.ZIP을 확인했습니다. 모델930X5J의 비교 자료이며 현재 ATIV 지원 근거는 아닙니다. stdin 전용 BOM 검사를 추가하고 기존 SOAP/JSON 상한을 유지합니다. Python85개·실제응답10개 대조를 통과했습니다. ZIP 목적지 org.downloadcenter.samsung.com 한 호스트 추가 초안을 저장했으며 게시 후 실제 바이트·내부Win8모듈·배터리 caller를 확인해야 합니다. [개발 소스 ZIP](../downloads/ATIVBatteryGuard-SETTINGS-BOM-SOURCE.zip)은 실행 교체판이 아닙니다. 기존 프로그램을 그대로 사용하고 새 시험·업로드는 필요하지 않습니다. 실제 제어Unsupported. 아래는 이전 기록입니다.
+
 **최신 — 공개 카탈로그 조회·서비스 오류 구분 / 2026-11-06:** [새 개발·근거·다음 작업](SAMSUNG_UPDATE_CATALOG_REVIEW.md)에 사용자 시리얼 없는 공개 모델 검색과 비교 모델 W7 카탈로그 조회 성공을 기록했습니다. 현재 계열의 시도한 W8 요청404와 비교 목록 XML2개를 구분하며, Settings 원본과 배터리 계약은 아직 미확보입니다. 새 오프라인 stdin 검사기는 HTTP200을 서비스 성공으로 오인하지 않습니다. Python74개 테스트와 실제 저장 응답8개 대조를 통과했습니다. [개발 소스 ZIP](../downloads/ATIVBatteryGuard-UPDATE-CATALOG-SOURCE.zip)은 실행 프로그램 교체판이 아닙니다. 기존 프로그램을 그대로 사용하며 새 시험·업로드는 필요하지 않습니다. 실제 제어Unsupported. 실제 BOM 호스트 appmanager.samsungmobile.com 하나를 추가한 환경 초안은 저장됐고 게시 후 적용 확인이 필요합니다. 아래는 이전 기록입니다.
 
 **최신 — Settings 원문·버전 후보 확인 / 2026-11-06:** [새 원문 분석](SETTINGS_VERSION_SOURCE_REVIEW.md)에서 NP940X3G의2.1.0.20 배포 기록과 구형 Series7의2.0.0.89 시험을 구분했습니다. UI탭 제거는 현재 모델의 펌웨어 지원 부재나 구버전 호환성 증명이 아닙니다. 비교 원본 후보와 원문에 명시된 삼성 SWUpdate 위치를 좁혔고, orcaservice.samsungmobile.com 한 호스트 추가 초안을 저장·재조회했습니다(requires_publish=true). 기존 NBR 접근은 해결됐으며 환경을 다시 게시하지 않았습니다. 앱·프로그램은 유지하고 실제 제어는 Unsupported입니다. 아래는 이전 기록입니다.

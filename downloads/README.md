@@ -1,3 +1,13 @@
+# ATIV Battery Guard — Settings BOM 조사 소스
+
+2026-11-06 한국 시간. [개발 소스 ZIP](ATIVBatteryGuard-SETTINGS-BOM-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-SETTINGS-BOM-SHA256SUMS.txt) · [분석·구현·다음 작업](../ATIVBatteryGuard/SETTINGS_BOM_PACKAGE_UPDATE.md)
+
+실제 삼성 BOM 두 개에서 Easy Settings for Win72.0.0.89의 정확 파일명 BASW-83876A21.ZIP을 확인했습니다. ZIP바이트·내부Win8모듈·현재 ATIV 배터리 계약은 아직 미확보입니다. 개발용 stdin BOM 검사는 별도 상한으로 항목/위치/비교 후보 수를 구분하고 기존 SOAP/JSON 한계를 유지합니다. 새11개 포함 Python85개·실제응답10개 대조를 통과했습니다.
+
+소스 ZIP은 현재 허용 소스266개와 바이트가 일치하며 CRC 검증을 통과했습니다. 원본 XML·삼성 DLL/EXE·펌웨어·HTML은 포함하지 않습니다. **실행 프로그램 교체판이 아니며** 기존 프로그램과 같은 폴더에 풀 필요가 없습니다. 추가 노트북 시험·업로드는 필요하지 않고 충전 제어는 Unsupported입니다. 기존 EXE/C#/다운로드 파일은 유지합니다. 다음은 실제 ZIP 목적지 호스트 적용 후 컨테이너와 배터리 caller를 정적으로 확인하는 작업입니다.
+
+아래는 이전 소스와 실행 프로그램의 배포 기록입니다.
+
 # ATIV Battery Guard — 공개 카탈로그 조사 소스
 
 2026-11-06 한국 시간. [개발 소스 ZIP](ATIVBatteryGuard-UPDATE-CATALOG-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-UPDATE-CATALOG-SHA256SUMS.txt) · [근거·구현·다음 작업](../ATIVBatteryGuard/SAMSUNG_UPDATE_CATALOG_REVIEW.md)

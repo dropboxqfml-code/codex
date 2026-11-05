@@ -18,6 +18,11 @@ MAX_INPUT_BYTES = 2 * 1024 * 1024
 MAX_DEPTH = 32
 MAX_NODES = 8192
 MAX_RECORDS = 2048
+# BOM catalogs have a different shape and their own budget. SOAP/JSON budgets
+# stay unchanged; a larger BOM is never accepted as a larger service response.
+BOM_MAX_DEPTH = 16
+BOM_MAX_NODES = 16384
+BOM_MAX_ITEMS = 256
 SOAP_NS = "http://schemas.xmlsoap.org/soap/envelope/"
 OP_NS = "http://orcaservice.samsungmobile.com/"
 OPERATIONS = {
@@ -25,7 +30,7 @@ OPERATIONS = {
     "os": ("GetSupportedOSList", "OS"),
     "model-code": ("GetModelCode", "ModelCode"),
 }
-KINDS = tuple(OPERATIONS) + ("catalog",)
+KINDS = tuple(OPERATIONS) + ("catalog", "bom")
 
 
 class _InvalidResponse(ValueError):
@@ -39,7 +44,9 @@ class _LimitExceeded(ValueError):
 def _report(status, kind=None, http_status=None, size=0, digest=None):
     return dict(status=status, kind=kind, httpStatus=http_status,
                 sourceByteCount=size, sourceSha256=digest, serviceCode=None,
-                entryCount=None, manufacturerAuthenticityVerified=False,
+                entryCount=None, bomDownloadLocatorCount=None,
+                comparisonSettingsCandidateCount=None,
+                manufacturerAuthenticityVerified=False,
                 currentDeviceIdentityVerified=False,
                 currentModelCompatibilityVerified=False,
                 batteryCommandContractVerified=False,
@@ -73,7 +80,7 @@ def _numeric_code(value):
     return value
 
 
-def _xml_root(text):
+def _xml_root(text, *, max_depth=MAX_DEPTH, max_nodes=MAX_NODES):
     # No entity expansion, DTD fetching, alternate encoding or XML 1.1 controls.
     if "\x00" in text or re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", text, re.I):
         raise _InvalidResponse()
@@ -91,7 +98,7 @@ def _xml_root(text):
             if event == "start":
                 depth += 1
                 nodes += 1
-                if depth > MAX_DEPTH or nodes > MAX_NODES:
+                if depth > max_depth or nodes > max_nodes:
                     raise _LimitExceeded()
                 if root is None:
                     root = element
@@ -240,6 +247,46 @@ def _catalog(text):
     return ("Completed" if entries else "CompletedEmpty"), "SUCC", len(entries)
 
 
+def _bom_text(parent, tag, max_length, *, required=True):
+    matches = [child for child in parent if child.tag == tag]
+    if len(matches) > 1 or (required and not matches):
+        raise _InvalidResponse()
+    value = _plain_text(matches[0]) if matches else ""
+    # Catalog display labels may contain XML whitespace, including line breaks.
+    # Nonempty locators receive the stricter URL validation separately.
+    if len(value) > max_length or any(ord(char) < 32 and char not in "\t\n\r" for char in value):
+        raise _InvalidResponse()
+    return value
+
+
+def _bom(text):
+    root = _xml_root(text, max_depth=BOM_MAX_DEPTH, max_nodes=BOM_MAX_NODES)
+    if root.tag != "MaxList":
+        raise _InvalidResponse()
+    head = _single(root, "Head")
+    # Structure only: these strings are neither returned nor matched to a device.
+    _bom_text(head, "Model", 128)
+    _bom_text(head, "OS", 128)
+    entries = [child for child in root if child.tag == "Item"]
+    if len(entries) > BOM_MAX_ITEMS:
+        raise _LimitExceeded()
+    locators = candidates = 0
+    for entry in entries:
+        name = _bom_text(entry, "DisplayName", 512)
+        version = _bom_text(entry, "Version", 128)
+        # Some observed metadata items have no FURL element at all. Neither
+        # missing nor empty locators erase the item or establish file absence.
+        locator = _bom_text(entry, "FURL", 4096, required=False)
+        if locator:
+            _locator(locator)
+            locators += 1
+        # A metadata comparison candidate is not a downloaded/verified module,
+        # an install recommendation, or a current-model battery contract.
+        if name == "Easy Settings for Win7 2.0.0.89" and version == "2.0.0.89":
+            candidates += 1
+    return ("Completed" if entries else "CompletedEmpty"), len(entries), locators, candidates
+
+
 def inspect_response(data, kind, http_status):
     """Classify bounded, untrusted bytes. This function performs no I/O."""
     if (kind not in KINDS or not isinstance(http_status, int) or
@@ -256,8 +303,15 @@ def inspect_response(data, kind, http_status):
     report["sourceSha256"] = hashlib.sha256(data).hexdigest()
     try:
         text = data.decode("utf-8-sig")
-        status, code, count = _catalog(text) if kind == "catalog" else _soap(text, kind)
-        report.update(status=status, serviceCode=code, entryCount=count)
+        if kind == "bom":
+            status, count, locators, candidates = _bom(text)
+            # Publish all counts together only after every direct item validates.
+            report.update(status=status, entryCount=count,
+                          bomDownloadLocatorCount=locators,
+                          comparisonSettingsCandidateCount=candidates)
+        else:
+            status, code, count = _catalog(text) if kind == "catalog" else _soap(text, kind)
+            report.update(status=status, serviceCode=code, entryCount=count)
     except _LimitExceeded:
         report["status"] = "LimitExceeded"
     except (ValueError, ElementTree.ParseError, RecursionError, OverflowError):

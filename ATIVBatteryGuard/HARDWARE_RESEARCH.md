@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 비교 Settings ZIP명과 실제 바이트의 구분 / 2026-11-06
+
+**확인된 사실:** [실제 BOM 분석](SETTINGS_BOM_PACKAGE_UPDATE.md)에서930X5J의 두 목록을 받아 Easy Settings for Win7 2.0.0.89 → BASW-83876A21.ZIP을 확인했습니다. 항목40/45·원본 위치25/30·동일 비교 항목1/1입니다. FileVer/VerifyAttribute는 버전 검사이며 원본 해시가 아닙니다. 실제 ZIP 링크는 삼성 다운로드센터로302 이동하며 현재 CONNECT403으로 바이트는 미확보입니다.
+
+**미검증:** 내부Win8 Settings·배터리 caller·940X3G/930X3G/P05ACJ 적용성·명령/응답 계약은 아직 미확정입니다. Header TestYes는 실기 시험 결과가 아니고 두 동일 항목은 독립 바이너리 검증이 아닙니다. 새 오프라인 BOM 구조 검사가 이 한계를 바꾸지 않습니다. 추가 시험·업로드 없이 실제 제어Unsupported를 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 공개 모델 조회와 배터리 지원의 분리 / 2026-11-06
 
 **확인된 사실:** [새 카탈로그 조사](SAMSUNG_UPDATE_CATALOG_REVIEW.md)에서 공개 모델명 조회로 얻은 ModelCode만 사용했습니다. 현재 계열의 모델 목록은116개이며 비교 NP930X5J-S02US의 W7 카탈로그는 SUCC/HDM.ITEM2입니다. HTTP200이어도 현재 계열의 OS/W8 요청은 서비스404입니다. 오프라인 검사기로 HTTP·서비스 결과·빈 목록·null을 구분하며 서버 원문은 배포하지 않습니다.

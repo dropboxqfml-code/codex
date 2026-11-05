@@ -5,6 +5,7 @@ import io
 import json
 import unittest
 from unittest.mock import patch
+from xml.sax.saxutils import escape
 
 import inspect_samsung_update_response as response
 
@@ -33,6 +34,18 @@ def item(**fields):
     return data
 
 
+def bom_item(name="synthetic-private-item", version="", locator=None, extra=""):
+    locator_xml = "" if locator is None else f"<FURL>{escape(locator)}</FURL>"
+    return (f"<Item><DisplayName>{escape(name)}</DisplayName>"
+            f"<Version>{escape(version)}</Version>{locator_xml}{extra}</Item>")
+
+
+def bom(items="", extra="", head_extra=""):
+    return ("<MaxList><Head><Model>synthetic-private-model</Model>"
+            f"<OS>synthetic-private-os</OS>{head_extra}</Head>"
+            f"{items}{extra}</MaxList>").encode()
+
+
 class SamsungUpdateResponseTests(unittest.TestCase):
     def assert_closed(self, report):
         for key in ("manufacturerAuthenticityVerified", "currentDeviceIdentityVerified",
@@ -44,7 +57,8 @@ class SamsungUpdateResponseTests(unittest.TestCase):
             self.assertIs(report[key], False, key)
         rendered = json.dumps(report)
         for secret in ("synthetic-private", "example.invalid", "metadata.xml", "1234ABCD",
-                       "private-path", "token=private", "NOT FOUND"):
+                       "private-path", "token=private", "NOT FOUND",
+                       "Easy Settings for Win7 2.0.0.89", "2.0.0.89"):
             self.assertNotIn(secret, rendered)
 
     def inspect(self, data, kind="models", http_status=200):
@@ -56,6 +70,8 @@ class SamsungUpdateResponseTests(unittest.TestCase):
         report = self.inspect(data, kind)
         self.assertEqual(status, report["status"])
         self.assertIsNone(report["entryCount"])
+        self.assertIsNone(report["bomDownloadLocatorCount"])
+        self.assertIsNone(report["comparisonSettingsCandidateCount"])
         return report
 
     def test_all_soap_operations_count_only_their_direct_records(self):
@@ -247,6 +263,169 @@ class SamsungUpdateResponseTests(unittest.TestCase):
         self.assertEqual("Completed", report["status"])
         self.assertEqual(1, report["entryCount"])
         self.assert_closed(report)
+
+    def test_bom_missing_or_empty_locators_and_versions_preserve_metadata_items(self):
+        data = bom(bom_item() + bom_item(locator="") +
+                   bom_item(version="synthetic-private-version",
+                            locator="https://example.invalid/metadata.xml"),
+                   head_extra="<Test>Yes</Test>")
+        report = self.inspect(data, "bom")
+        self.assertEqual("Completed", report["status"])
+        self.assertEqual(3, report["entryCount"])
+        self.assertEqual(1, report["bomDownloadLocatorCount"])
+        self.assertEqual(0, report["comparisonSettingsCandidateCount"])
+        self.assertIsNone(report["serviceCode"])
+
+    def test_bom_comparison_candidates_require_both_exact_direct_fields(self):
+        exact_name, exact_version = "Easy Settings for Win7 2.0.0.89", "2.0.0.89"
+        candidate = bom_item(exact_name, exact_version,
+                             "https://example.invalid/private-path/metadata.xml",
+                             "<CheckType>FileVer</CheckType>"
+                             "<VerifyAttribute>2.0.0.89</VerifyAttribute>"
+                             "<InstallFileSize>synthetic-private-size</InstallFileSize>"
+                             "<InstallPara1>synthetic-private-command</InstallPara1>")
+        items = (candidate + bom_item(exact_name, "different-version") +
+                 bom_item("different-name", exact_version) +
+                 bom_item(exact_name.lower(), exact_version))
+        report = self.inspect(bom(items, extra=f"<Unknown>{candidate}</Unknown>"), "bom")
+        self.assertEqual(4, report["entryCount"])
+        self.assertEqual(1, report["bomDownloadLocatorCount"])
+        self.assertEqual(1, report["comparisonSettingsCandidateCount"])
+        self.assertFalse(report["catalogHashCryptographicallyVerified"])
+
+    def test_bom_explicit_zero_direct_items_is_empty_without_feature_absence(self):
+        for extra in ("", f"<Unknown>{bom_item()}</Unknown>"):
+            with self.subTest(nested_item=bool(extra)):
+                report = self.inspect(bom(extra=extra), "bom")
+                self.assertEqual("CompletedEmpty", report["status"])
+                for key in ("entryCount", "bomDownloadLocatorCount", "comparisonSettingsCandidateCount"):
+                    self.assertEqual(0, report[key])
+                self.assertFalse(report["canInferFeatureAbsence"])
+
+    def test_bom_wrong_structure_duplicate_and_complex_core_fields_are_rejected(self):
+        valid = bom(bom_item())
+        invalid = [
+            valid.replace(b"MaxList", b"maxlist"),
+            valid.replace(b"<MaxList>", b'<MaxList xmlns="https://example.invalid/">'),
+            valid.replace(b"<Head>", b"<Unknown><Head>")
+                .replace(b"</Head>", b"</Head></Unknown>"),
+            valid.replace(b"</Head>", b"</Head><Head/>"),
+            valid.replace(b"<Model>synthetic-private-model</Model>", b""),
+            bom(head_extra="<OS>duplicate</OS>"),
+            bom(head_extra="<Model>duplicate</Model>"),
+            bom(bom_item(extra="<DisplayName>duplicate</DisplayName>")),
+            bom(bom_item(extra="<Version>duplicate</Version>")),
+            bom(bom_item(locator="", extra="<FURL/>")),
+            valid.replace(b"<Version></Version>", b"<Version><Nested/></Version>"),
+            valid.replace(b"<DisplayName>", b'<DisplayName id="synthetic-private-id">'),
+            valid.replace(b"<Version></Version>", b""),
+        ]
+        for index, data in enumerate(invalid):
+            with self.subTest(index=index):
+                self.assert_failure(data, "bom")
+        self.assert_failure(soap(), "bom")
+        self.assert_failure(catalog(), "bom")
+        self.assert_failure(valid, "models")
+
+    def test_bom_late_invalid_or_truncated_item_discards_all_counts(self):
+        first = bom_item("Easy Settings for Win7 2.0.0.89", "2.0.0.89",
+                         "https://example.invalid/metadata.xml")
+        invalid_items = [bom_item(locator="file:///synthetic-private-path"),
+                         bom_item(extra="<Version>duplicate</Version>"),
+                         "<Item><DisplayName>synthetic-private-tail</DisplayName></Item>"]
+        self.assertEqual(1, self.inspect(bom(first), "bom")["comparisonSettingsCandidateCount"])
+        for last in invalid_items:
+            with self.subTest(last=last[:20]):
+                self.assert_failure(bom(first + last), "bom")
+        self.assert_failure(bom(first + bom_item())[:-3], "bom")
+
+    def test_bom_hostile_xml_encodings_and_locators_never_emit_metadata(self):
+        valid = bom(bom_item())
+        invalid = [b'<!DOCTYPE x [<!ENTITY x SYSTEM "file:///synthetic-private">]>' + valid,
+                   b'<!DOCTYPE x [<!ENTITY x "content">]>' + valid,
+                   valid.decode().encode("utf-16"), b"\xff" + valid,
+                   valid.replace(b"<Version></Version>", b"<Version>&unknown;</Version>")]
+        for data in invalid:
+            with self.subTest(size=len(data)):
+                self.assert_failure(data, "bom")
+        for locator in ("ftp://example.invalid/a", "https://user:password@example.invalid/a",
+                        "https://example.invalid/a#private", "https://example.invalid:bad/a",
+                        "https://example.invalid/a\nb"):
+            with self.subTest(locator=locator):
+                self.assert_failure(bom(bom_item(locator=locator)), "bom")
+
+    def test_bom_accepts_8271_nodes_without_raising_existing_soap_budget(self):
+        # MaxList + Head + Model + OS + Metadata + 8266 padding nodes = 8271.
+        data = bom(extra="<Metadata>" + "<Padding/>" * 8266 + "</Metadata>")
+        self.assertEqual(8271, sum(1 for _ in response.ElementTree.fromstring(data).iter()))
+        self.assertEqual("CompletedEmpty", self.inspect(data, "bom")["status"])
+        self.assert_failure(data, "models", "LimitExceeded")
+        self.assertEqual(8192, response.MAX_NODES)
+        self.assertEqual(32, response.MAX_DEPTH)
+
+    def test_bom_has_separate_node_depth_and_item_boundary_limits(self):
+        at_nodes = bom(extra="<Metadata>" + "<Padding/>" * (16384 - 5) + "</Metadata>")
+        over_nodes = bom(extra="<Metadata>" + "<Padding/>" * (16385 - 5) + "</Metadata>")
+        self.assertEqual("CompletedEmpty", self.inspect(at_nodes, "bom")["status"])
+        self.assert_failure(over_nodes, "bom", "LimitExceeded")
+        at_depth = bom(extra="<Layer>" * 15 + "</Layer>" * 15)
+        over_depth = bom(extra="<Layer>" * 16 + "</Layer>" * 16)
+        self.assertEqual("CompletedEmpty", self.inspect(at_depth, "bom")["status"])
+        self.assert_failure(over_depth, "bom", "LimitExceeded")
+        self.assertEqual(256, self.inspect(bom(bom_item() * 256), "bom")["entryCount"])
+        self.assert_failure(bom(bom_item() * 257), "bom", "LimitExceeded")
+
+    def test_bom_plain_text_limits_allow_empty_fields_but_reject_oversize(self):
+        self.assertEqual("Completed", self.inspect(bom(bom_item("", "", "")), "bom")["status"])
+        multiline = bom(bom_item("synthetic-private\nmultiline\tlabel"))
+        self.assertEqual("Completed", self.inspect(multiline, "bom")["status"])
+        self.assertEqual(1, self.inspect(bom(bom_item("x" * 512, "v" * 128)), "bom")["entryCount"])
+        for record in (bom_item("x" * 513), bom_item(version="v" * 129),
+                       bom_item(locator="https://example.invalid/" + "x" * 4096)):
+            with self.subTest(size=len(record)):
+                self.assert_failure(bom(record), "bom")
+        self.assert_failure(bom().replace(b"synthetic-private-model", b"x" * 129), "bom")
+
+    def test_bom_transport_is_checked_before_xml_and_other_kinds_have_no_bom_counts(self):
+        with patch.object(response, "_xml_root") as parser:
+            report = self.inspect(b"<!DOCTYPE untrusted [bad]>", "bom", 403)
+            self.assertEqual("TransportRejected", report["status"])
+            parser.assert_not_called()
+            self.assertIsNone(report["sourceSha256"])
+        for data, kind in ((soap(), "models"), (catalog(), "catalog")):
+            with self.subTest(kind=kind):
+                report = self.inspect(data, kind)
+                self.assertIsNone(report["bomDownloadLocatorCount"])
+                self.assertIsNone(report["comparisonSettingsCandidateCount"])
+
+    def test_bom_cli_is_stdin_only_bounded_and_clears_previous_success_counts(self):
+        args = ["--kind", "bom", "--http-status", "200"]
+        valid = bom(bom_item("Easy Settings for Win7 2.0.0.89", "2.0.0.89",
+                             "https://example.invalid/metadata.xml"))
+        with patch.object(response.sys, "stdin") as stdin, patch("builtins.open") as opened, \
+                patch("socket.socket") as network:
+            stdin.buffer.read.return_value = valid
+            with redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(0, response.main(args))
+            report = json.loads(output.getvalue())
+            self.assertEqual(1, report["comparisonSettingsCandidateCount"])
+            self.assert_closed(report)
+            stdin.buffer.read.assert_called_once_with(response.MAX_INPUT_BYTES + 1)
+            opened.assert_not_called()
+            network.assert_not_called()
+            stdin.buffer.read.return_value = valid[:-3]
+            with redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(1, response.main(args))
+            report = json.loads(output.getvalue())
+            for key in ("entryCount", "bomDownloadLocatorCount", "comparisonSettingsCandidateCount"):
+                self.assertIsNone(report[key])
+        with patch.object(response.sys, "stdin") as stdin, patch.object(response.hashlib, "sha256") as digest:
+            stdin.buffer.read.return_value = b"x" * (response.MAX_INPUT_BYTES + 1)
+            with redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(1, response.main(args))
+            stdin.buffer.read.assert_called_once_with(response.MAX_INPUT_BYTES + 1)
+            digest.assert_not_called()
+            self.assertEqual("LimitExceeded", json.loads(output.getvalue())["status"])
 
 
 if __name__ == "__main__":

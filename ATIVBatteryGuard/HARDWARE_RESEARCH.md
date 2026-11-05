@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## v7 실기에서 관측한 Literal 대상과 직접 구문 배치
+
+**확인된 사실:** Literal Store1회는 Integer 원천이며 SystemMemory·21바이트 Field입니다. 입력/반환과 같은 Field·Region, 보조 Store와 다른 Field·Region 선언을 참조합니다. SingleDirectList의 소스 배치는 Literal Store → Arg2 Store → 보조 호출 → Return입니다. 정수 값·실제 실행·형 변환·덮어쓰기·물리 영역 분리·FF 원인을 확인한 결과는 아닙니다.
+
+**미검증과 다음 계획:** 중계 구조가 구체화돼도 모델별 Windows 배터리 명령/응답 계약은 남아 있습니다. [후속 계획](ACPI_V7_RESULT_AND_NEXT_PLAN.md)은 기존 wsabi/Sabi3의 전송 규약을 구분하고, 배터리 호출자가 명령·입력·응답 의미를 정하는 적합한 정적 출처를 추적하는 것입니다. 추가 wrapper 세분화·진단 반복·추가 OEM 호출은 우선하지 않습니다. FF 의미와 실제 제어는 미확정·Unsupported입니다. 아래는 이전 조사입니다.
+
 ## Literal Store 대상과 직접 구문 배치 v7 — 2026-11-05 한국 시간
 
 **확인된 사실:** v6 실기에서 후보 입력 저장/반환 Field는 SystemMemory·고정21바이트 선언 폭 일치였고, 보조 Store Field는 SystemIo의 다른 Region 선언을 참조했습니다. 후보 Store2회 중1회가 Literal 원천이지만 그 대상·직접 구문 종류·위치는 당시 출력에 없었습니다. Literal을 FF 초기화나 명령 selector로 단정하지 않습니다.

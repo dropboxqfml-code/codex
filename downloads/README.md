@@ -1,5 +1,7 @@
 # ACPI Literal Store 대상·구문 배치 요약 — Acpi-routing-v7
 
+**실기 결과 수신·추가 실행 불필요:** Literal1/Integer가 입력/반환과 같은 SystemMemory·21바이트 Field/Region, 보조 Store와 다른 선언을 참조합니다. 같은 직접 목록의 소스 배치는 Literal Store → Arg2 Store → 보조 호출 → Return입니다. [분석과 다음 계획](../ATIVBatteryGuard/ACPI_V7_RESULT_AND_NEXT_PLAN.md)은 모델별 Windows 배터리 명령·응답 계약의 정적 근거 확보를 우선합니다. v7 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 이번에는 새 프로그램을 배포하지 않으며 아래 ZIP·소스·체크섬은 그대로 보존합니다. 아래는 이전 안내입니다.
+
 2026-11-05 한국 시간. [프로그램 ZIP](ATIVBatteryGuard-ACPI-STORE-ROLES.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-STORE-ROLES-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-STORE-ROLES-SHA256SUMS.txt) · [변경·해석·실행 안내](../ATIVBatteryGuard/ACPI_STORE_ROLE_UPDATE.md)
 
 **실행에는 프로그램 ZIP 하나만 필요합니다.** 새 폴더에 그 ZIP 전체를 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행합니다. 소스 ZIP은 개발용이며 다운로드하거나 같은 폴더에 함께 풀 필요가 없습니다. **Acpi-routing-v7** 표시와 새 Literal Store 대상·구문 종류·관측 정의 관계·직접 구문 배치 요약만 전달합니다.

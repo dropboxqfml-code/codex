@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**v7 실기 결과 수신:** Integer Literal Store1회가 입력/반환과 같은 SystemMemory·21바이트 Field/Region을 참조하며, 보조 Store와는 다른 관측 선언입니다. 같은 직접 목록의 소스 배치는 Literal Store → Arg2 Store → 보조 호출 → Return입니다. [분석과 다음 계획](ACPI_V7_RESULT_AND_NEXT_PLAN.md)은 중계 구문 세분화보다 모델별 Windows 배터리 명령·응답 계약의 근거 확보를 우선합니다. 실제 실행·FF 의미·충전 지원은 미확정입니다. 이번에는 분석·계획만 기록하며 v7 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 아래는 이전 작업 당시의 기록입니다.
+
 **현재 배포 — Literal Store 대상·구문 배치 요약 / Acpi-routing-v7 (2026-11-05 한국 시간):** [v6 후속 계획](ACPI_V6_RESULT_AND_NEXT_PLAN.md)에 따라 직접 Literal Store의 구문 종류·대상 Field와 입력/반환/보조 Field 및 Region의 관측 정의 관계, 같은 직접 구문 목록의 앞뒤 배치를 추가했습니다. [변경·해석·실행 안내](ACPI_STORE_ROLE_UPDATE.md)와 [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-STORE-ROLES.zip)을 따릅니다. **프로그램 ZIP 하나만** 새 폴더에 전부 풀고 일반 권한으로 실행합니다. 소스 ZIP은 개발용입니다. 분기·반복·중첩·복수 후보는 미확정/복수 분류로 남기며 실제 실행 순서·값 전파·FF 원인을 추론하지 않습니다. 기존 수집 범위와 안전 제한은 유지하고 실제 제어는 Unsupported입니다. 새 v7 실기는 아직 미관측입니다. 아래는 이전 작업 당시의 기록이며 과거 실행 절차를 다시 수행하라는 안내가 아닙니다.
 
 **v6 실기 결과 수신:** 입력 저장/반환 Field는 모두 SystemMemory·21바이트 선언 폭 일치이며 보조 Store는 SystemIo의 다른 관측 Region 정의를 참조합니다. 후보 Field Store2회 중1회는 직접 Arg2, 나머지는 Literal 원천입니다. [분석과 다음 계획](ACPI_V6_RESULT_AND_NEXT_PLAN.md)에 추가 Store 대상·literal 종류·제한된 구문 위치 관계의 분석 조건을 기록했습니다. FF 의미와 실제 제어는 미확정입니다. 이번에는 결과 분석만 기록하고 새 프로그램을 배포하지 않으며 v6 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 아래는 이전 작업 당시의 기록입니다.

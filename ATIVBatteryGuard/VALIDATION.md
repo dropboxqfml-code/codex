@@ -1,5 +1,11 @@
 # Settings 앱 분석판 검증 기록
 
+## v7 실기 관측 수신·후속 계획 — 2026-11-05 한국 시간
+
+- 사용자 Acpi-routing-v7 출력에서 DSDT Complete·후보 Parsed·보조 해석1/미지원0/실패 None, Literal1/Integer·SystemMemory·Matches21ByteFrame을 확인했습니다. Literal 대상은 입력/반환과 같은 Field/Region이며 보조 Store와는 다른 Field/Region 선언입니다. SingleDirectList의 소스 배치는 Literal Store → Arg2 Store → 보조 호출 → Return으로 v7의 직접 목표가 관측됐습니다.
+- 기존 Partial·참조3/3회+3/3회 분류·연결 검사6회는 유지됩니다. 구문 배치를 실제 실행·초기화·덮어쓰기·SMI·FF 원인으로 해석하지 않습니다. [분석과 후속 계획](ACPI_V7_RESULT_AND_NEXT_PLAN.md)에 모델별 명령/응답 계약의 출처 확보와 구현 전 수용 조건을 기록했습니다.
+- 이번에는 문서만 변경했고 빌드·테스트를 재실행하지 않았습니다. 아래 429개·Python27개·7개 프로젝트 빌드0경고/0오류는 v7 배포 당시의 검증 기록입니다. 실행 코드·배포 ZIP·요청/응답/예약/제어 정책은 그대로이며 새 하드웨어 실행·추가 자료 요청은 없습니다. 실제 제어는 Unsupported입니다. 아래는 이전 검증 기록입니다.
+
 ## Literal Store 역할·직접 구문 배치 요약 — v7 / 2026-11-05 한국 시간
 
 - [v7 구현·실행 안내](ACPI_STORE_ROLE_UPDATE.md)에 따라 후보의 즉시 Literal 원천 Store 수·문법 종류, 대상 Field의 공간·폭 범주, 입력/반환/보조 Store와의 Field·Region 선언 관계를 추가했습니다. 단일 직접 구문 목록의 앞뒤만 표시하며 실제 실행 순서·값·FF 원인을 추론하지 않습니다.

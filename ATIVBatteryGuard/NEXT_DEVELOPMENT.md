@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## v7 실기 관측 수신·모델별 명령 계약 근거 확보
+
+[최신 분석과 다음 계획](ACPI_V7_RESULT_AND_NEXT_PLAN.md)을 먼저 읽습니다. Literal Store1/Integer·SystemMemory·Matches21ByteFrame이며 입력/반환과 같은 Field/Region, 보조 Store와 다른 Field/Region 선언입니다. SingleDirectList의 앞뒤를 합치면 소스 배치는 Literal Store → Arg2 Store → 보조 호출 → Return입니다. 실제 초기화·덮어쓰기·입력 보존·SMI·FF 원인으로 확대하지 않습니다. 후보/보조 Parsed·실패 None, 기존 Partial과 참조6회는 유지됩니다.
+
+다음 우선순위는 현재 모델·BIOS의 Windows 배터리 명령/selector/입력/응답 의미를 입증하는 정적 출처입니다. 저장된 서비스 wsabi는 호출자 명령을 포장하는 일반 중계이고 ConfigurationMonitor의 확인 문맥은 팬·정숙 모드입니다. 배터리 호출자의 선택·응답 분기를 적합한 보유 기록/공개 자료에서 추적하고 전송/모델/명령/입출력/상태 의미의 출처 대조표를 작성합니다. 실제 응답의 echo/전체 payload를 복원하거나 다른 모델·Linux 후보를 적용하지 않습니다. 근거가 확보된 부분만 순수 명세·합성 테스트로 고정하며 근거 없이 요청·디코더·제어 정책이나 새 반복 진단 도구를 추가하지 않습니다.
+
+이번에는 분석·문서만 변경했고 v7 반복·관리자 비교·기존 자료 재제출·추가 OEM 시험은 필요하지 않습니다. 완료된 실험·예약 표식을 유지하며 제어는 Unsupported입니다. 아래는 이전 작업 당시의 기록입니다.
+
 ## 현재 구현 — Literal Store 대상·직접 구문 배치 v7 / 2026-11-05 한국 시간
 
 [현재 구현·해석·실행 안내](ACPI_STORE_ROLE_UPDATE.md)를 먼저 읽습니다. v6 실기에서는 후보 입력/반환 Field의 SystemMemory·21바이트 선언 폭 일치, 보조 SystemIo와 다른 Region 선언, Store2회 중 Arg2/Literal 원천을 확인했습니다. v7는 남은 Literal Store의 직접 Integer/String/Buffer/Package 종류와 대상 Field의 공간·폭 범주, 입력/반환/해석한 보조 Store와의 Field/Region 관측 정의 관계를 분류합니다. Literal Store 수는 Field 여부와 관계없는 직접 구문 발생 횟수이고 정의 비교는 고유 후보를 사용합니다.

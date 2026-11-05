@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## v6 실기 관측 수신·추가 Store 역할 분석 계획
+
+[현재 결과와 다음 수용 조건](ACPI_V6_RESULT_AND_NEXT_PLAN.md)을 먼저 읽습니다. 사용자 v6 출력에서 root Arg2 저장/반환 Field 모두 SystemMemory·Matches21ByteFrame, helper Store SystemIo, 양쪽 Region 관계 DifferentObservedDefinitions를 확인했습니다. root Store2회/직접 Arg2 1회·Sources Arg2,Literal이며 같은 입력/반환 Field 정의 참조도 유지됩니다. 선언 비교는 실제 메모리/I/O·SMI·물리 영역 분리·FF 의미를 입증하지 않습니다.
+
+다음 최소 구현은 남은 literal Store의 대상 역할·입력/반환/보조 Field 및 Region과의 관측 정의 관계, 직접 literal 구문 종류를 분류하는 것입니다. 필요하면 같은 직접 구문 목록에서 Store/보조 호출/Return의 위치 관계만 요약하고 분기·반복·중첩은 미확정으로 닫습니다. 실행 순서·값/인수 대입·초기화·트리거 효과는 추론하지 않습니다. 원문 상수·주소·이름·버퍼는 보고하지 않고 기존 수집/API/상한·무실행/무쓰기 경계를 유지합니다.
+
+이번에는 결과 분석·문서만 변경했습니다. v6 반복·관리자 비교·기존 자료 재제출·새 OEM 시험은 필요하지 않습니다. Partial과 기존 Flow6회는 새 오류나 고유 객체 수가 아니며 충전 제어는 Unsupported입니다. 아래는 이전 작업 당시의 기록입니다.
+
 ## 현재 구현 — Field 통로 선언·입력 역할 v6 / 2026-11-05 한국 시간
 
 [현재 구현과 실행 안내](ACPI_FIELD_CHANNEL_UPDATE.md)를 먼저 읽습니다. 사용자 승인에 따라 [v5 후속 계획](ACPI_V5_RESULT_AND_NEXT_PLAN.md)의 후보 Arg2 저장/직접 반환 Field 주소 공간·21바이트 선언 폭 범주, 후보 Store 원천 Arg0/1/2/literal/Other, 보조 Store와의 관측 Region 정의 관계를 구현했습니다. 반복 참조와 고유 후보를 구분하며 복수 동일 폭은 MultipleCandidates, 서로 다른 폭은 Mixed, 불완전·모호함은 Unknown으로 남깁니다. 비Field·미분류 대상을 버려 단일 일치를 만들지 않습니다.

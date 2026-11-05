@@ -1,5 +1,11 @@
 # Settings 앱 분석판 검증 기록
 
+## v6 실기 관측 수신·후속 계획 — 2026-11-05 한국 시간
+
+- 사용자 Acpi-routing-v6 출력에서 DSDT Complete·후보 Parsed·보조 해석1개/미지원0/실패 None을 확인했습니다. 후보 Arg2 저장/반환 Field는 SystemMemory·Matches21ByteFrame, 보조 Store는 SystemIo, 양쪽 Region 관계는 DifferentObservedDefinitions입니다. 새 정적 요약의 직접 목표가 실기에서 관측됐습니다.
+- 후보 Field Store2회/직접 Arg2 1회·원천 Arg2,Literal입니다. 추가 literal Store의 대상·종류·위치는 현재 출력에 없으므로 FF 초기화나 트리거를 추정하지 않습니다. Partial·기존 미확정 참조6회와 새 선언 분류는 별개이며 물리 영역·실행·FF 의미·충전 기능을 확인한 결과가 아닙니다.
+- [분석과 다음 계획](ACPI_V6_RESULT_AND_NEXT_PLAN.md)만 기록했습니다. 실행 코드·배포 ZIP·요청/응답/예약/제어 정책은 그대로이고 이번에는 빌드·테스트를 재실행하지 않았습니다. 아래 413개·Python26개·7개 프로젝트 빌드0경고/0오류는 v6 배포 당시의 기록입니다. 새 OEM/AML 실행이나 추가 자료 요청은 없으며 제어는 Unsupported입니다. 아래는 이전 검증 기록입니다.
+
 ## Field·프레임 통로 선언 요약 — v6 / 2026-11-05 한국 시간
 
 - [v6 변경·실행 안내](ACPI_FIELD_CHANNEL_UPDATE.md)에 따라 후보 Arg2 저장/직접 반환 Field의 공간·고정21바이트 대비 선언 폭, 직접 Store 원천, 보조 Store와의 관측 Region 정의 관계를 추가했습니다. 기존 Flow·ObjectReferences·FF 계산은 유지하고 기존 이름 참조 횟수의 설명만 명확히 했습니다.

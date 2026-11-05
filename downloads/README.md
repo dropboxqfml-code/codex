@@ -1,5 +1,7 @@
 # ACPI Field·프레임 통로 선언 요약 — Acpi-routing-v6
 
+**실기 결과 수신·추가 실행 불필요:** 입력 저장/반환 Field의 SystemMemory·21바이트 선언 폭 일치, 보조 SystemIo Store와 다른 관측 Region 정의 관계를 확인했습니다. 후보 Store2회 중1회는 Literal 원천이며 [분석과 다음 계획](../ATIVBatteryGuard/ACPI_V6_RESULT_AND_NEXT_PLAN.md)에 남은 대상·literal 종류·구문 관계의 분석 조건을 기록했습니다. v6 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 새 프로그램은 배포하지 않으며 아래 ZIP·소스·체크섬은 배포 당시 그대로 보존합니다. 아래는 이전 안내입니다.
+
 2026-11-05 한국 시간. [프로그램 ZIP](ATIVBatteryGuard-ACPI-FIELD-CHANNEL.zip) · [일치 소스 ZIP](ATIVBatteryGuard-ACPI-FIELD-CHANNEL-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-ACPI-FIELD-CHANNEL-SHA256SUMS.txt) · [변경·해석·실행 안내](../ATIVBatteryGuard/ACPI_FIELD_CHANNEL_UPDATE.md)
 
 **실행에는 프로그램 ZIP 하나만 필요합니다.** 새 폴더에 그 ZIP 전체를 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행합니다. 소스 ZIP은 개발용이며 다운로드하거나 같은 폴더에 함께 풀 필요가 없습니다. **Acpi-routing-v6** 표시와 새 Field 통로 선언·입력 역할·Region 관계 요약만 전달합니다.

@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**v6 실기 결과 수신:** 입력 저장/반환 Field는 모두 SystemMemory·21바이트 선언 폭 일치이며 보조 Store는 SystemIo의 다른 관측 Region 정의를 참조합니다. 후보 Field Store2회 중1회는 직접 Arg2, 나머지는 Literal 원천입니다. [분석과 다음 계획](ACPI_V6_RESULT_AND_NEXT_PLAN.md)에 추가 Store 대상·literal 종류·제한된 구문 위치 관계의 분석 조건을 기록했습니다. FF 의미와 실제 제어는 미확정입니다. 이번에는 결과 분석만 기록하고 새 프로그램을 배포하지 않으며 v6 반복·관리자 비교·기존 자료 재제출은 필요하지 않습니다. 아래는 이전 작업 당시의 기록입니다.
+
 **현재 배포 — Field·프레임 통로 선언 요약 / Acpi-routing-v6 (2026-11-05 한국 시간):** [변경·해석·실행 안내](ACPI_FIELD_CHANNEL_UPDATE.md)에 따라 후보 입력/반환 Field의 선언 공간과 고정21바이트 프레임에 대한 폭 분류, 직접 Store 입력 역할, 보조 Store와의 Region 선언 관계를 추가했습니다. 관측 선언의 구문만 비교하며 실제 값·주소·물리 영역·AML/OEM 실행을 확인하지 않습니다. 복수/혼합/미확정을 단일 일치로 바꾸지 않으며 FF 의미와 실제 충전 제어는 여전히 미확정/Unsupported입니다.
 
 [프로그램 ZIP](../downloads/ATIVBatteryGuard-ACPI-FIELD-CHANNEL.zip) **하나만** 새 폴더에 모두 풀고 `ATIVBatteryGuard.AcpiRoutingCheck.exe`를 **일반 권한**으로 실행합니다. 소스 ZIP은 개발용이며 함께 풀 필요가 없습니다. **Acpi-routing-v6 새 요약만** 확인하며 이전 TXT/DLL/EXE·원본 ACPI 재제출, v5 반복·관리자 비교·OEM 재실행은 필요하지 않습니다. 수집 API·대상·안전 상한과 기존 실험 예약은 유지합니다. 새 v6 Windows 실기는 아직 미관측이며 자동 검증 결과는 [VALIDATION.md](VALIDATION.md)를 따릅니다. 아래는 각 단계 당시의 기록입니다.

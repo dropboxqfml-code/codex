@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## v6 실기에서 구분한 프레임 Field와 보조 Store 선언
+
+**확인된 사실:** 후보 Arg2 저장/직접 반환 Field는 SystemMemory·Matches21ByteFrame이며 같은 관측 Field 정의 참조 관계를 유지했습니다. 보조 Store Field는 SystemIo이고 두 역할의 Region 비교는 DifferentObservedDefinitions입니다. 후보 Field Store2회 중1회는 직접 Arg2, 나머지1회는 Literal 원천입니다. 서로 다른 Region 선언은 실제 물리 주소의 분리나 SMI 실행을 뜻하지 않습니다.
+
+**미검증과 다음 계획:** 추가 literal Store의 대상·직접 literal 종류·구문 위치는 현재 요약에 없습니다. FF 초기화나 명령 selector로 단정하지 않습니다. [후속 계획](ACPI_V6_RESULT_AND_NEXT_PLAN.md)은 그 역할을 관측 선언과 제한된 구문 관계로 확인하며 실제 값/분기 평가·영역 접근·OEM 실행은 하지 않습니다. 모델별 명령 계약과 실제 FF 의미는 미확정이고 제어는 Unsupported입니다. 아래는 이전 조사입니다.
+
 ## Field 선언 폭·입력 역할·Region 관계 v6 — 2026-11-05 한국 시간
 
 **확인된 사실:** v5 실기에서 후보 Field 참조3/3회·보조 Mutex/Field 참조3/3회, 후보 Store(Arg2)/Return의 동일 관측 Field 정의와 보조 SystemIo Field Store 구문을 확인했습니다. 후보 Field 공간·폭과 보조와의 Region 선언 관계는 당시 요약에 없었습니다. 이를 실제 값 전달·I/O·SMI 실행으로 해석하지 않습니다.

@@ -1,3 +1,13 @@
+# ATIV Battery Guard — 공개 카탈로그 조사 소스
+
+2026-11-06 한국 시간. [개발 소스 ZIP](ATIVBatteryGuard-UPDATE-CATALOG-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-UPDATE-CATALOG-SHA256SUMS.txt) · [근거·구현·다음 작업](../ATIVBatteryGuard/SAMSUNG_UPDATE_CATALOG_REVIEW.md)
+
+사용자 시리얼 없이 공개 모델 검색과 비교 모델의 W7 카탈로그 조회에 성공했습니다. HTTP200과 서비스 오류·명시적 빈 목록·HDM null을 구분하는 stdin 전용 개발 검사기를 추가했습니다. 전체 Python74개와 실제 캐시 응답8개 대조를 통과했습니다. 소스 ZIP은 현재 허용 소스265개와 바이트가 일치하며 CRC 검증을 통과했습니다. 원본 응답·삼성 DLL/EXE·펌웨어·HTML은 포함하지 않습니다.
+
+이 파일은 **실행 프로그램 교체판이 아닙니다.** 기존 CALLER-CONTRACT-REVIEW 프로그램을 그대로 사용하고 소스 ZIP을 같은 폴더에 풀 필요가 없습니다. C# 소스/EXE를 바꾸지 않아 빌드·435개 C# 테스트를 이번에 반복하지 않았습니다. 현재 배터리 명령 계약은 미확정이고 실제 제어는 Unsupported입니다. 추가 노트북 시험·업로드는 필요하지 않습니다. 다음 개발은 실제 카탈로그가 가리키는 BOM XML 읽기와 관련 Settings 원본의 정적 분석입니다.
+
+아래는 기존 실행 프로그램과 이전 단계의 기록입니다. 기존 다운로드 파일은 보존합니다.
+
 # ATIV Battery Guard — Windows 호출자 계약 대조 반영판
 
 **후속 개발 / 2026-11-06 — 실행 프로그램 동일:** [HII 설정 참조 검사·시험 경로 구분](../ATIVBatteryGuard/P05ACJ_HII_REFERENCE_UPDATE.md)을 진행했습니다. Python60개 통과, 고정 리소스의 지원한 표준 헤더에서 USB/보정 참조와 배터리 수명 연장 미관측을 구분합니다. 현재 배터리 명령 계약은 미확정이며 제어는 Unsupported입니다. [새 개발 소스 ZIP](ATIVBatteryGuard-HII-REFERENCE-SOURCE.zip) · [소스 체크섬](ATIVBatteryGuard-HII-REFERENCE-SHA256SUMS.txt). 개발 소스는 실행에 필요하지 않고 기존 프로그램을 덮어쓰지 않았습니다. 새 다운로드·시험·업로드는 필요하지 않습니다. 아래는 직전 실행판 안내입니다.

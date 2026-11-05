@@ -1,5 +1,7 @@
 # OEM 원본 확보 경로와 현재 접근 상태 — 2026-11-06 한국 시간
 
+**최신 후속:** [공개 카탈로그 조사와 개발 도구](SAMSUNG_UPDATE_CATALOG_REVIEW.md)에서 기존 ORCA 허용 적용, 공개 모델 목록과 비교 모델 W7 카탈로그 SUCC를 확인했습니다. 실제 Settings 바이트는 아직 확보하지 않았습니다. 현재 필요한 새 호스트는 BOM 목록의 appmanager.samsungmobile.com 하나이며 초안 저장·재조회를 완료했습니다. 아래의 NBR/ORCA 접근 대기는 이전 단계 기록입니다. 사용자 자료 재제출·실제 시리얼·노트북 반복 시험은 필요하지 않습니다.
+
 **후속 — 기존 원문 접근 해결:** [SETTINGS_VERSION_SOURCE_REVIEW.md](SETTINGS_VERSION_SOURCE_REVIEW.md)에 게시 후NBRchive 원문2페이지200과버전/모델분석을 기록했습니다. www.nbrchive.net 허용은 적용됐고 재적용하지 않았습니다. 아래 차단·초안 대기는 이전 단계 기록입니다. 현재 새 인입 조건은 글에 명시된 orcaservice.samsungmobile.com 한 호스트 추가 초안(saved/requires_publish=true)이며, 기존 설정과 실행 프로그램은 보존했습니다.
 
 이번 단계는 같은 펌웨어 구문을 반복 검사하는 대신 현재 모델의 OEM 호출자를 얻을 공개 경로를 찾는 작업입니다. **새 배터리 명령이나 응답 계약은 아직 확보하지 못했습니다.** 앱 소스·테스트·실행 파일과 기존 배포 ZIP은 변경하지 않았습니다. 현재 제어는 Unsupported입니다.

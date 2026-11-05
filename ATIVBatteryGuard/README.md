@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 공개 카탈로그 조회·서비스 오류 구분 / 2026-11-06:** [새 개발·근거·다음 작업](SAMSUNG_UPDATE_CATALOG_REVIEW.md)에 사용자 시리얼 없는 공개 모델 검색과 비교 모델 W7 카탈로그 조회 성공을 기록했습니다. 현재 계열의 시도한 W8 요청404와 비교 목록 XML2개를 구분하며, Settings 원본과 배터리 계약은 아직 미확보입니다. 새 오프라인 stdin 검사기는 HTTP200을 서비스 성공으로 오인하지 않습니다. Python74개 테스트와 실제 저장 응답8개 대조를 통과했습니다. [개발 소스 ZIP](../downloads/ATIVBatteryGuard-UPDATE-CATALOG-SOURCE.zip)은 실행 프로그램 교체판이 아닙니다. 기존 프로그램을 그대로 사용하며 새 시험·업로드는 필요하지 않습니다. 실제 제어Unsupported. 실제 BOM 호스트 appmanager.samsungmobile.com 하나를 추가한 환경 초안은 저장됐고 게시 후 적용 확인이 필요합니다. 아래는 이전 기록입니다.
+
 **최신 — Settings 원문·버전 후보 확인 / 2026-11-06:** [새 원문 분석](SETTINGS_VERSION_SOURCE_REVIEW.md)에서 NP940X3G의2.1.0.20 배포 기록과 구형 Series7의2.0.0.89 시험을 구분했습니다. UI탭 제거는 현재 모델의 펌웨어 지원 부재나 구버전 호환성 증명이 아닙니다. 비교 원본 후보와 원문에 명시된 삼성 SWUpdate 위치를 좁혔고, orcaservice.samsungmobile.com 한 호스트 추가 초안을 저장·재조회했습니다(requires_publish=true). 기존 NBR 접근은 해결됐으며 환경을 다시 게시하지 않았습니다. 앱·프로그램은 유지하고 실제 제어는 Unsupported입니다. 아래는 이전 기록입니다.
 
 **최신 — OEM 원본 접근 준비 / 2026-11-06:** [조사 결과·확인된 접근 조건](OEM_SOURCE_ACCESS_STATUS.md)을 기록했습니다. 제한적 공개 검색에서 현재 모델의 배터리 caller는 미확보이며, 이전 사용자 제공 Settings/Easy Settings 원문은 CONNECT403으로 차단됩니다. www.nbrchive.net 한 호스트만 환경 초안에 추가·재조회했고 기존 설정은 보존했습니다(saved/requires_publish=true). 환경 게시 후 적용과 원문 접근을 재확인해야 하며 에이전트가 게시하지 않았습니다. 새 프로그램이나 시험은 없고 제어는 Unsupported입니다. 아래는 이전 기록입니다.

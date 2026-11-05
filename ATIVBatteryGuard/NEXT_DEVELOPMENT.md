@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 공개 모델 카탈로그·오프라인 응답 검사 / 2026-11-06
+
+[SAMSUNG_UPDATE_CATALOG_REVIEW.md](SAMSUNG_UPDATE_CATALOG_REVIEW.md)를 먼저 읽습니다. 게시 후 ORCA 허용을 확인했고, 실행 없이 공개 모델 검색 → 공개 ModelCode → 레거시 카탈로그 경로를 검증했습니다. 사용자 시리얼/DMI는 사용하지 않았습니다. NP940X3G 모델116개·NP930X5J 모델36개 검색은 성공했습니다. 현재 계열의 지원 OS 및 시도한 W8 카탈로그는 서비스404이고, 비교 NP930X5J-S02US의 W7 카탈로그는 SUCC/HDM.ITEM2입니다. 후자는 목록 XML 위치이며 Settings2.0.0.89 실파일이나 현재 ATIV의 충전 지원을 확보한 결과가 아닙니다.
+
+새 stdin 전용 개발 도구는 HTTP 상태와 서비스 성공·명시적 빈 목록·HDM null·오류를 구분합니다. 입력2MiB/깊이32/노드8192/항목2048, 중복/DTD/entity 거부, 부분 수치 폐기, 원문·식별자·URL 비노출, 모든 하드웨어 권한false입니다. 합성 fixture 테스트14개를 포함해 전체 Python74개 통과, 실제 캐시 응답8개 분류·수치·해시 대조와 독립 코드 리뷰 완료. 원본 응답은 비공개 캐시에만 보존합니다.
+
+실제 BOM 링크의 호스트 appmanager.samsungmobile.com은 현재 미허용/HEAD403입니다. 이 한 호스트만 추가하는 초안을 저장·재조회했습니다(saved/requires_publish=true, revision3). 이번에 임시로 추가했던 미게시 bootstrapper용 org.downloadcenter 호스트는 제외하고, 기존 게시된 네 호스트/프리셋/스크립트/저장소/요구사항을 보존했습니다. 에이전트는 환경을 게시하지 않았습니다. 사용자 게시 후 적용 확인 → 실제 XML 두 개의 정상 읽기 → 버전/모델/파일명 확인 → 관련 원본만 실행 없는 정적 분석으로 이어갑니다.
+
+C#/EXE와 기존 ZIP은 유지합니다. 새 개발 소스는 별도 ZIP으로 제공하며 실행에 필요하지 않습니다. 추가 노트북 시험·TXT/DLL 재제출·시리얼·Samsung Update 실행/Export·관리자/OEM 반복·예약 삭제는 필요하지 않습니다. 실제 충전 제어Unsupported. 아래는 이전 기록입니다.
+
 ## 최신 — NBR 원문 확보·2.0.0.89 비교 후보·삼성 인입 대기 / 2026-11-06
 
 [SETTINGS_VERSION_SOURCE_REVIEW.md](SETTINGS_VERSION_SOURCE_REVIEW.md)를 먼저 읽습니다. 게시 후www.nbrchive.net 허용은current/enforced로 적용됐고 원문2페이지를200으로 확보했습니다. 기본 Python 헤더는HTTP403/1010, 같은HTTPS/호스트/프록시/TLS에서 일반브라우저헤더는200이며 로그인/챌린지/우회없음. 파일/해시와독립주장범위검토를비공개캐시에보존했습니다. 기존차단설정은재적용하지않았습니다.

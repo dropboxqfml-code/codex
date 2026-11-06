@@ -53,7 +53,7 @@ x64 Sabi3의 해시는 기존 사용자 제공 파일과 정확히 같습니다.
 | SettingsCmd GetCommand6460/PushCommand64E0 | 명령 부재·null 입력의0 fallback. 성공한 하드웨어 조회로 해석하지 않음 |
 | SettingsEventHandler | BatteryLife 문자열은 수명 알림 토큰과 CmdExecuteBatteryToast 문맥. 충전 상한 caller의 잔존 근거가 아님 |
 
-전체 설정은289명령을 선언하고, 고유 factory 대상287개 중281개 RTTI를 복구했습니다. 나머지와 동적 등록·설치 후 설정·실제 DLL 검색 결과는 미해결입니다. 모듈 이름이나 한정 미관측을 패키지 전체·펌웨어의 충전 기능 부재로 확대하지 않습니다.
+당시 전체 설정은289명령을 선언했고, 고유 직접 호출 후보287개와 복구된 RTTI281개를 기록했습니다. 직접 호출 후보 전체를 검증된 생성자로 부르는 것은 부정확했습니다. [후속 정정](NATIVE_SABI_DRIVER_REVIEW.md)에서 남은6개 직접 대상은 문자열 helper이며 실제 객체는 GetCommand에서 inline으로 구성됨을 확인했습니다. 새로 복원한 객체는 배터리 보호 명령이 아닙니다. 전체 슬롯 대응·동적 등록·설치 후 설정·실제 DLL 검색 결과는 여전히 미해결입니다. 모듈 이름이나 한정 미관측을 패키지 전체·펌웨어의 충전 기능 부재로 확대하지 않습니다.
 
 P05ACJ flag도 새로 한정 추적했습니다. generic setter07FC는 caller의5바이트를 마스크 없이 복사해 bit3 변경 가능성을 막지 않습니다. 같은 offset의 다른 프로토콜/NVS 객체 쓰기는 SABI flag writer에서 제외했습니다. 기존 마스크가 보존하는 것은 입력 snapshot의 bit3이며 모든 런타임 변경까지 닫은 것은 아닙니다. 새 배터리 처리자나 확정된 bit3 변경 caller는 확보하지 못했고 초기7F를 현재 값으로 사용하지 않습니다.
 

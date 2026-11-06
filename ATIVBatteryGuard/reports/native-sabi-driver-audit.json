@@ -1,0 +1,148 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Existing same-family native driver body and DLL boundary review plus selected inline command inventory correction;not live hardware validation",
+  "softwareCodeBaseCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "x64 Sabi.sys",
+      "bytes": 13824,
+      "sha256": "7a53b3fba3f82ede6fa688e531fbe7ec9e1ae329090c0afe0dcd64f65bd90f21"
+    },
+    {
+      "source": "x64 Sabi3.dll",
+      "bytes": 28976,
+      "sha256": "09a9714f0e11734872d60f2966edf8590ca721f0c05b2ca852a0bf20d6c006ae"
+    },
+    {
+      "source": "Sabi.INF",
+      "bytes": 3107,
+      "sha256": "f5372772075dc1602d51d182315531e68de803483aeacd03f57d4097148cb74f"
+    }
+  ],
+  "newBinaryAcquired": false,
+  "driverBodyNewlyReviewed": true,
+  "sameDriverHashPreviouslyInComparisonPackage": true,
+  "catalogue": {
+    "savedSameFamilyDocumentsChecked": 6,
+    "standaloneSabiOrSystemEventControllerItemObserved": false,
+    "airplaneModeItemsEstablishBatteryContract": false
+  },
+  "inf": {
+    "declarationsDescribeCurrentInstallation": false,
+    "declarationsProveWindows10Support": false,
+    "kernelServiceDeclaration": "SABI",
+    "startTypeDeclaration": "Automatic",
+    "kmdfDeclaration": "1.9",
+    "infExecuted": false
+  },
+  "nativeBoundary": {
+    "selectedDeviceControlBranches": 5,
+    "runtimeFunctionSpansDecoded": 25,
+    "selectedDeviceAddAndDispatchRowsIndependentlyMatched": 518,
+    "selectedSourceAssertionsPassed": 20,
+    "dllAndDriverCommunicationIoctlValueMatched": true,
+    "minimumInputBytes": 26,
+    "minimumOutputBytes": 16,
+    "driverFrameCopyBytes": 16,
+    "requestInformationBytes": 16,
+    "dllCallerPayloadBytes": 11,
+    "dllAcknowledgementCheckObserved": true,
+    "nativeAndWmiContractsAreInterchangeable": false,
+    "callerSuppliesPortSelectorsAndSharedAddress": true,
+    "completionStatusUsesBufferRetrievalOutcome": true,
+    "completionStatusProvesFirmwareAckOrBatterySuccess": false,
+    "driverBranchAssignsBatteryMeaning": false,
+    "initializationSnapshotBytes": 65536,
+    "signatureSearchOwnedByDll": true,
+    "currentP05NativeSelectorsAndProviderBindingProved": false,
+    "queueFieldsEstablishGlobalConcurrencyGuarantee": false,
+    "genericReadOnlyBatteryBackendEstablished": false,
+    "completionPathScope": "Selected normal copy path;short-buffer and retrieval failures complete with separate error status"
+  },
+  "commandInventoryCorrection": {
+    "priorDeclaredCommandSlots": 289,
+    "priorDirectCandidateTargets": 287,
+    "priorResolvedRttiNames": 281,
+    "stringHelpersPreviouslyCalledUnresolvedConstructors": 6,
+    "selectedInlineObjectIdentitiesIndependentlyMatched": 6,
+    "modulePins": [
+      {
+        "module": "CommandInputEvent.dll",
+        "bytes": 34112,
+        "sha256": "92e4f8d0ad14f99b1eb8a7b615f98003ee54d8fa77ea610a5329186866533a75"
+      },
+      {
+        "module": "CommandKMWork.dll",
+        "bytes": 32576,
+        "sha256": "a9a1f964a9f2031dc211ddb375240d21a0fa310bc7747695867e378491be17e8"
+      },
+      {
+        "module": "CommandMNBoot.dll",
+        "bytes": 34112,
+        "sha256": "57e585b042080643e9e789f03277f5f1d09b945784381f6989fd0c6b645ea6fe"
+      },
+      {
+        "module": "CommandMNInput.dll",
+        "bytes": 46400,
+        "sha256": "610500c8939986c449ff4c3de40c421bf9d946bb4bc7fced206986b97c088f92"
+      },
+      {
+        "module": "CommandMNSecurity.dll",
+        "bytes": 36160,
+        "sha256": "ae8eabfa461787dd901114f0fd16714d7effa227e80d5d3daef9c64f50759011"
+      },
+      {
+        "module": "CommandSystemPowerEvent.dll",
+        "bytes": 30528,
+        "sha256": "13d5d41bdac82e41e47e5d14ecf78cbcc9e2d97828b6c24167ec7f3904469b1d"
+      }
+    ],
+    "roles": [
+      "Settings launch",
+      "Mute LED",
+      "ExpressCache",
+      "OTP",
+      "Camera and microphone",
+      "Sleep-entry action list"
+    ],
+    "all289SlotsAndDynamicRegistrationProved": false,
+    "newBatteryHandlerOrReadBackContractRecovered": false
+  },
+  "validation": {
+    "sourceHashesAndSelectedMachineCodeAssertionsPassed": true,
+    "independentComponentReviewsPassed": true,
+    "buildRun": false,
+    "unitTestsRun": false,
+    "previousCodeValidationOnly": {
+      "csharpPassed": 437,
+      "pythonPassed": 85,
+      "buildWarnings": 0,
+      "buildErrors": 0
+    },
+    "independentPublicReportReviewsPassed": true
+  },
+  "productCodeChanged": false,
+  "testsChanged": false,
+  "newExecutableOrSourceZipProvided": false,
+  "originalVendorDataIncluded": false,
+  "vendorCodeExecutedOrLoaded": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "actualExperimentMarkerAccessed": false,
+  "driverServiceSecurityOrFirmwareSettingsChanged": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "currentInstalledDriverIdentityProved": false,
+  "protectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "newLaptopTestOrResubmissionRequired": false,
+  "documentValidation": {
+    "markdownFiles": 6,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "privatePathsRequestIdentifiersOrLowLevelIoctls": 0,
+    "existingReleaseArchiveHashesUnchanged": 4,
+    "gitDiffCheckPassed": true
+  }
+}

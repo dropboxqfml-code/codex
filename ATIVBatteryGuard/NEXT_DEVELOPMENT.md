@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 보유 x64 native SABI 드라이버 본문 검토 / 2026-11-07 한국 시간
+
+[NATIVE_SABI_DRIVER_REVIEW.md](NATIVE_SABI_DRIVER_REVIEW.md)를 먼저 읽습니다. 같은 940X3G W7 Settings2.0.0.78의 SABI3x64/Sabi.sys(13,824B/SHA7a53b3fba3f82ede6fa688e531fbe7ec9e1ae329090c0afe0dcd64f65bd90f21)는 이미 보유한 원본이며 이번에는 미검토 driverbody를 분석했습니다. x64 Sabi3 DLL의 IOCTL과 연결한 분기는 입력>=26/출력>=16, 프레임16복사이며 정상 복사 경로의 Information16/완료 NTSTATUS는 buffer retrieval 성공 결과입니다. 길이·버퍼 조회 실패는 별도 오류로 완료됩니다. ACK/main/sub/배터리 상태는 driver가 판정하지 않습니다. DLL26/16/11과 WMI21/16을 구분합니다.
+
+선택된 DeviceAdd/dispatch518행 독립 재생성, root의 exactsource3개 해시·기계어·DLL경로 검산 완료. caller가 port/selector/공유주소를 공급하는 일반 privileged 중계이며 실제 P05legacyselector binding은 미증명입니다. 설치/서비스 시작/driver로드/물리메모리·I/O 대체 조회를 하지 않습니다. INF의 자동시작 선언도 현 설치 상태·Win10 지원이 아닙니다.
+
+현재2.2.0.18 명령 후보 중 미복구6개는 문자열 helper였고 GetCommand의 inline object/RTTI를 새로 복원했습니다. Settings 실행/LED/ExpressCache/OTP/CameraMic/절전 진입으로 배터리 계약은 없습니다. 기존287 직접대상/281 RTTI는 당시의 후보 집계이며 전체289슬롯·동적 등록 증명이 아닙니다. private cache: 20261107/driver-catalog-next,native-driver-boundary-next,native-driver-independent-next,inline-command-correction-next.
+
+앱·테스트·EXE·ZIP은 미변경이고 이번 빌드·단위 테스트는 미실행입니다. 437/85 및 경고·오류0은 직전5d77df5의 기록입니다. 새 배터리 처리자·응답·read-back은 없어 Unsupported이며 추가 실기·업로드·OEM·예약·드라이버/서비스/보안 변경 없이 기존 프로그램을 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 전송 취소 callback 차단 수정 / 2026-11-07 한국 시간
 
 [WMI_CANCELLATION_BOUNDARY_UPDATE.md](WMI_CANCELLATION_BOUNDARY_UPDATE.md)를 먼저 읽습니다. 순수 FrameExchange의 동기 Cancel이 채널 callback에서 막혀 timeout/cancel 결과를 반환하지 못하는 결함을 재현했습니다(새 회귀만 추가한 기존 코드 436통과/1실패). 채널 취소는 worker로 분리하고 `WhenAll(pending,cancellation)` 뒤에 token source와 busy 슬롯을 정리합니다. 결과 게시 전 관측한 caller 취소만 우선하며 늦은 callback 부수 효과를 기다리지 않습니다. 입력·응답·단발 정책·예약·권한·어댑터·앱 연결은 미변경입니다.

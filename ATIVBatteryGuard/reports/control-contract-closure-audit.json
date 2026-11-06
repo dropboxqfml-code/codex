@@ -1,0 +1,95 @@
+{
+  "date": "2026-11-06",
+  "timezone": "Asia/Seoul",
+  "scope": "Static source identity, saved firmware coverage totals and documentation validation; no product execution",
+  "sourceIdentityChecks": [
+    {
+      "source": "SUS.dll x86",
+      "bytes": 1741104,
+      "sha256": "c6a3e78ab6a4899c76e2cac5d816f8dc86a3596518bfa8a45c379e2a10b9ee95",
+      "matched": true
+    },
+    {
+      "source": "SUS.dll x64",
+      "bytes": 2365744,
+      "sha256": "d471164bd5a997bed4620121188f0b18d246c1532bd95f76b882d7c4a729d5ac",
+      "matched": true
+    },
+    {
+      "source": "ModuleSABI.dll x86",
+      "bytes": 27968,
+      "sha256": "7c57ac5a6ce5727766f425c0aa7368ee75be20fdf790b84113b7e9abf2069f12",
+      "matched": true
+    },
+    {
+      "source": "Manual ZIP",
+      "bytes": 129663156,
+      "sha256": "c9b52af1a2308678d069f038402ffaf898dba3d7759dc4a9f43e39f7c80069d2",
+      "matched": true
+    },
+    {
+      "source": "English manual PDF",
+      "bytes": 16417221,
+      "sha256": "30b3c8affebace5f8de1ca982910b0d7c3c479a4bc1674769c44e14908e80b48",
+      "matched": true
+    },
+    {
+      "source": "Korean manual PDF",
+      "bytes": 17297976,
+      "sha256": "4acdd6a9f065ad31acf2eb89d1891c579d15d9391834399ba34f3299f45c5d0f",
+      "matched": true
+    },
+    {
+      "source": "Saved P05ACJ capsule",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0",
+      "matched": true
+    },
+    {
+      "source": "Unchanged program ZIP",
+      "bytes": 137485,
+      "sha256": "f3e80f3d970b860ebc60912d3608182cf3f6a37c05c3833a0e2d22bf52cd48ed",
+      "matched": true
+    },
+    {
+      "source": "Unchanged source ZIP",
+      "bytes": 740717,
+      "sha256": "09794cd03a17aba7dac3dc44bd540f8288fd1212cc3f98d51c36d7617750f793",
+      "matched": true
+    }
+  ],
+  "firmwareCounts": {
+    "fv": 7,
+    "ffs": 466,
+    "files": 483,
+    "peSections": 231,
+    "uniquePeHashes": 229,
+    "newFilesOutsideFv04": 232,
+    "newPeOutsideFv04": 46,
+    "standardCompressedSections": 390,
+    "decompressedBytes": 24857040,
+    "peHashesMatchedTo7zip": 231
+  },
+  "newFilesExactTargetGuidOccurrences": 0,
+  "sectionOrFfsParseErrors": 0,
+  "modifiedMarkdownDocumentsChecked": 7,
+  "cjkOrBrokenRelativeLinks": 0,
+  "independentReviews": [
+    "SUS x86/x64 caller and file helpers",
+    "FV coverage and USB selector/flag crosswalk",
+    "Manufacturer manual provenance/page context and combined report"
+  ],
+  "productSourceChanged": false,
+  "productBuildRunThisStage": false,
+  "unitTestsRunThisStage": false,
+  "vendorCodeExecuted": false,
+  "hardwareOrOemCallsPerformed": false,
+  "markerAccessed": false,
+  "environmentConfigurationChanged": false,
+  "chargeControl": "Unsupported",
+  "limits": [
+    "Static syntax coverage is not complete firmware behavior or installed-image identity",
+    "Raw gaps, computed/indirect/dynamic registration and external code remain unresolved",
+    "No trustworthy current-model protection read-back contract is established"
+  ]
+}

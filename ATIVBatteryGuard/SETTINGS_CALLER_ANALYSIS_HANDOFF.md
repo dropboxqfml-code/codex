@@ -36,7 +36,7 @@ CmdServer/SUS.dll1.0.5.7 x86의 SHA는 `650f8fc4480ee64e377553886f7c67530afd9773
 - 0x65 첫FF는 outStatus2, 첫01은1, 나머지는0입니다. 0x65 API 결과는 검사하지 않고 외부 getter API는1을 반환합니다. 이 분류만으로 현재 보호 상태나 실패 원인을 검증하지 못합니다.
 - Setter export FDE0 → CB80은0x66/첫81 또는80을 전송하고, 하위 결과 검사 없이1을 반환합니다. 이 성공 반환은 실제 적용·read-back 증거가 아닙니다.
 
-SOSI/SUS1.0.6.1 x86 SHA `c6a3e78ab6a4899c76e2cac5d816f8dc86a3596518bfa8a45c379e2a10b9ee95`, x64 SHA `d471164bd5a997bed4620121188f0b18d246c1532bd95f76b882d7c4a729d5ac`도 두 OS 패키지에서 같습니다. 이 변형은11바이트를 재사용하고0x0B API 결과 검사가 없습니다. getter는 x86 C170/x64 DA10입니다. **x64 setter 명령 본문은10F20이며5EC0는 popup/config helper입니다.** 서로 다른 변형과 RVA를 혼합하지 않습니다.
+`SOSI` 배포 디렉터리의 `SUS.dll 1.0.6.1` x86 SHA `c6a3e78ab6a4899c76e2cac5d816f8dc86a3596518bfa8a45c379e2a10b9ee95`, x64 SHA `d471164bd5a997bed4620121188f0b18d246c1532bd95f76b882d7c4a729d5ac`도 두 OS 패키지에서 같습니다. 이 변형은11바이트를 재사용하고0x0B API 결과 검사가 없습니다. getter는 x86 C170/x64 DA10입니다. **x64 setter 명령 본문은10F20이며5EC0는 popup/config helper입니다.** 서로 다른 변형과 RVA를 혼합하지 않습니다. [후속 분석](CONTROL_CONTRACT_CLOSURE_REVIEW.md)에서 실제 INI 스트림 처리를 확인했습니다.
 
 이는 비교용 OEM 호출자의 계약 차이입니다. 현재 모델의0x0B 실제 응답, P05ACJ의 동적 flag 값·0x65 처리자·FF 원인은 확인하지 않았습니다. 선행 호출 누락을 새 OEM 시험이나 추가 승인 필요로 해석하지 않습니다. 기존1회 예약 표식은 읽거나 변경하지 않습니다.
 

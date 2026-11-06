@@ -34,7 +34,7 @@
 
 SUS 정상 getter API 반환1과 outStatus0/1/2도 별도 값입니다. Cmd 설명 문자열은2를 `not support`라고 이름 붙이지만, 위처럼 여러 조건을 합친 호출자/UI 분류입니다. 현재 모델의 물리적 배터리 기능 부재 판정으로 전용하지 않습니다.
 
-SOSI/SUS1.0.6.1 x86/x64도 별도로 대조했습니다. 11바이트 버퍼·0B API 결과 검사 부재·같은 버퍼 재사용을 확인했고, native11과 WMI data16을 혼합하지 않았습니다. x64 setter 명령 본문은10F20입니다.
+`SOSI` 배포 디렉터리의 `SUS.dll 1.0.6.1` x86/x64도 별도로 대조했습니다. 11바이트 버퍼·0B API 결과 검사 부재·같은 버퍼 재사용을 확인했고, native11과 WMI data16을 혼합하지 않았습니다. x64 setter 명령 본문은10F20입니다. [후속 분석](CONTROL_CONTRACT_CLOSURE_REVIEW.md)에서 INI helper를 더 확인했으며, 현재 파일의 실제 로더 선택 이름은 SABI3/WSABI/SABI2.dll입니다.
 
 ## 메뉴 생성까지 연결한 흐름
 

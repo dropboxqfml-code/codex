@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 현재 SUS 후속 처리·전체 FV·제조사 매뉴얼 대조 / 2026-11-06
+
+[CONTROL_CONTRACT_CLOSURE_REVIEW.md](CONTROL_CONTRACT_CLOSURE_REVIEW.md)를 먼저 읽습니다. 현재 Settings 2.2.0.18의 SUS 1.0.6.1 x86/x64를 각각 해시로 고정해 후속 helper를 대조했습니다. `conf.ini`의 팝업 카운터·다시 묻지 않기 읽기/쓰기이며 setter 반환1·wrapper 0x63은 검증된 보호 상태 재조회에 조건부가 아닙니다. SOSI는 배포 디렉터리이고 실제 로더 선택 이름은 SABI3/WSABI/SABI2.dll입니다. 비교 SUS 1.0.5.7의16바이트 배치를 혼합하지 않습니다.
+
+P05ACJ 전체7 FV/466 FFS를 검사했고 기존 FV04 밖232파일·46개 IA32 PE를 추가 확인했습니다. 390개 표준 압축 섹션을 별도 디코더로 해제해 전체231개 PE 섹션 해시를 7-Zip 출력과 맞췄습니다(고유 PE 해시229개). 새65/66 등록·bit3 writer는 미확정입니다. 기존34/6/10은 새 발견이 아니며 raw262144바이트·간접/동적/외부 경계는 남습니다. USB bit4/67/68의 양측 관계는 한정 대조됐지만 배터리 근거로 확대하지 않습니다.
+
+같은 Model940X3G WB 배포 목록의 공통 Win8.1 매뉴얼을 확보해 전원 안내·잔량 보정과 충전 상한을 구분했습니다. 추출 텍스트와 관련 영문2쪽에서 상한 설명을 찾지 못한 것은 기능 부재의 증명이 아닙니다. 원본·전체 텍스트·디스어셈블리는 저장소 밖 비공개 캐시에만 보존합니다.
+
+앱/테스트 코드/EXE/기존 ZIP은 미변경이고 이번 빌드·단위 테스트는 미실행입니다. 435/85와 경고·오류0은 직전 프로그램 검증 기록입니다. 문서·정적 근거만 갱신하며 새 프로그램·노트북 시험·자료 재제출·OEM 호출·예약 접근·드라이버/서비스/보안 변경 없이 Unsupported를 유지합니다. 다음 실제 제어 구현에는 현재 모델 배터리 처리자·선행 조건·응답 의미·신뢰할 설정 read-back을 연결하는 새 근거가 필요합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 현재 계열2.2.0.18 원본 확보·설명 반영판 / 2026-11-06
 
 [CURRENT_MODEL_OEM_EVIDENCE_UPDATE.md](CURRENT_MODEL_OEM_EVIDENCE_UPDATE.md)를 먼저 읽습니다. 실제 OS응답A1/W7/WB를근거로문서화된WB카탈로그를조회해 Model940X3G의 Settings2.2.0.18→BASW-84270A4N.ZIP을받았습니다. 원본73237618바이트/SHAa709e49804b02f3441ef063a849c11c4c16a632a3cdf2eb6c5667bfe30d5a216. privatecache는 /workspace/.cache/ativ-command-research/20261106/target-settings-2.2.0.18, 카탈로그원문은인접swupdate/target-os-resolution입니다. 원본실행·기기/SN/예약접근·환경변경없음.

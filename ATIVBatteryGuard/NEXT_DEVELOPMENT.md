@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 남은 직접 호출·삭제 호출자·SSDT 대응 감사 / 2026-11-06
+
+[REMAINING_QUERY_PATHS_REVIEW.md](REMAINING_QUERY_PATHS_REVIEW.md)를 먼저 읽습니다. provider의 열린직접함수8개(DB4,1B94,2150,230C,4C74,5AEC,5B2C,5CC4)를 buffer쓰기/주소유래/호출순서로대조했습니다. 5B2C의30B수신은caller의descriptor와분리돼등록뒤에수행되며,내부30B는WMI16payload규약이아닙니다. sourceI/O함수는실행하지않았습니다. 4C74 key의producer는SecMemoryInfo의기존/25B구성데이터게시로연결했으나전체runtime producer별칭의부재는미검증입니다.
+
+기존5모듈에새typed unregister/65·66삭제descriptor는없어공개삭제API가능성과실제삭제관측을구분합니다. SecLagacy외부80/82는구성I/O보존·변경/복원,81은기존interface+20이며frame5843sub와다른namespace입니다. actualWindowsdriver경로를입증한것이아니고대체query로실행하지않습니다.
+
+publicSSDT4↔capsuleCpu0Ist/CpuPm/SataTabl/IsctTabl의54MethodOp쌍을독립검산했습니다. 전체표차이227/35/0/7byte는CPU Package데이터도포함하므로전체의미동일X. ECMD는public에도있지만caller가Store후호출하므로읽기전용보호조회로채택못하며본문/binding미해결입니다. privatecache: initializer-direct-callees-next,unregister-caller-next,legacy-gateway-next,vendor-config-next,acpi-template-selection-next.
+
+새배터리handler/read-back/실제설정관측은없습니다. 검토한직접경로의같은자료재세분화를기능진전으로보고하지않고,실제구현에는새현재모델/BIOS별handler·응답근거가필요합니다. code/tests/EXE/ZIP미변경,이번빌드·단위테스트미실행(436/85는직전기록),새실기/자료재제출/OEM/예약접근없이Unsupported입니다. 아래는이전기록입니다.
+
 ## 최신 — 조회 테이블·캡슐 ACPI와 요청 범위 보강 / 2026-11-06
 
 [FIRMWARE_QUERY_BOUNDARY_UPDATE.md](FIRMWARE_QUERY_BOUNDARY_UPDATE.md)를 먼저 읽습니다. provider 생성자A04는 main-group capacity1/그룹당256슬롯을 준비하고 lookup8F4는 sub WORD 상한 검사 없이 계산합니다. 공개unregister954는 callback/context 일치 후 슬롯을 지우며, 실패 데이터FF/ACKAA와 펌웨어 정상0은 Windows HRESULT와 별도입니다. 선택된SecLagacySabi81 중계에도 sub상위byte검사는 없습니다. 실기취약점/실제이미지/전체alias 증명으로 확대하지 않습니다.

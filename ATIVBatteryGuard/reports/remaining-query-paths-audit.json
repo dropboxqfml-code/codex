@@ -1,0 +1,174 @@
+{
+  "date": "2026-11-06",
+  "timezone": "Asia/Seoul",
+  "scope": "Bounded saved-source direct-callee,unregister-caller,legacy-gateway,vendor-config and SSDT correspondence review;not a hardware inventory or global alias proof",
+  "softwareCodeBaseCommit": "750994ceb2243943bd7c10fca6dfc6ca4b928401",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "SecSabiDispatch.efi",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    },
+    {
+      "source": "SecWirelessDev.efi",
+      "bytes": 11296,
+      "sha256": "300bad958d191cf73719048ca61ad19053c4c7dffc1dcc834a35be4ab8861d7b"
+    },
+    {
+      "source": "SecSwSmiDispatch.efi",
+      "bytes": 11744,
+      "sha256": "fc8d0f6968b18843243dd906104fba88770ccb73c8adf4a8e559bcdd08d11c9a"
+    },
+    {
+      "source": "SecAlwaysOn.efi",
+      "bytes": 6496,
+      "sha256": "f550a74df96680ed7a2d0b041c5fbbec62afd899e89d1adfb858671b09419d1b"
+    },
+    {
+      "source": "SecSetupWin.efi",
+      "bytes": 23552,
+      "sha256": "85746029af1b2beccf415104e866f570f4e627bd568858b7278664c2351df3f8"
+    },
+    {
+      "source": "SecLagacySabi.efi",
+      "bytes": 5920,
+      "sha256": "446360f3bea7cb7f6af8331f83ca183ca3316cf26592235931e61b7147c2a961"
+    },
+    {
+      "source": "SecMemoryInfo.efi",
+      "bytes": 4736,
+      "sha256": "9a89012eb665953d423046b50fcf9103d449230e5f31fa49c899c5279a67afbc"
+    }
+  ],
+  "directCalleeReview": {
+    "rootFunctions": 8,
+    "rootInstructionRowsRechecked": 240,
+    "selectedCallerRowsRechecked": 284,
+    "receiveHelperWritesCallerBytes": 30,
+    "selectedCallerReceiveScratchAndDescriptorsDisjoint": true,
+    "selectedReceiveOccursAfterRegistration": true,
+    "ordinaryMemoryEffectsAreNotHardwareReadOnlyProof": true,
+    "newRegistrationOrBatteryHandlerRecovered": false,
+    "newTypedSabiFlagWriterRecovered": false,
+    "allPossibleRuntimeAliasesOrIoEffectsClosed": false
+  },
+  "vendorConfig": {
+    "producer": "SecMemoryInfo",
+    "producerKeyAndConsumerKeyExact16ByteMatch": true,
+    "existingTableOrAllocationBytes": 25,
+    "normalPublishedRecordCount": 4,
+    "normalRecordFillUsesSmbusByteReadSource": true,
+    "newTypedSabiManagerAliasOrBatteryHandlerRecovered": false,
+    "actualInstallSuccessOrAllOtherRuntimeProducersProved": false,
+    "producerRowsIndependentlyRechecked": 213,
+    "consumerRowsIndependentlyRechecked": 93
+  },
+  "unregisterCallers": {
+    "sourceModules": 5,
+    "newTypedSabiUnregisterCallRecovered": false,
+    "new65or66DeletionDescriptorRecovered": false,
+    "currentDeviceDeletionObserved": false,
+    "firstFfCauseExplainedByDeletion": false,
+    "allCopiedComputedAndOpaqueCallsClosed": false
+  },
+  "legacyGateway": {
+    "sourceSha256": "446360f3bea7cb7f6af8331f83ca183ca3316cf26592235931e61b7147c2a961",
+    "externalSelectorsAreFrameSubcommands": false,
+    "selector80Role": "configuration-byte preserve/modify/write andmain/sub/data clear",
+    "selector80DataClearOffsets": "+5..+24",
+    "ackPlus4ClearedByThatLoop": false,
+    "selector81Role": "same SABI interface+20",
+    "selector82Role": "configuration-byte restore/write",
+    "selectedInstructionRowsIndependentlyCompared": 74,
+    "windowsNativeDriverUsesThisSequenceProved": false,
+    "protectionReadOnlyAlternativeContractRecovered": false
+  },
+  "ssdtCorrespondence": {
+    "publicSnapshotSsdtCount": 4,
+    "savedCapsuleSsdtTemplates": 15,
+    "pairs": [
+      {
+        "tableId": "Cpu0Ist",
+        "bytes": 1337,
+        "capsuleSha256": "3cd8a860bd3f6b51b06b73ea52a0112289845133b72573d0eba83efc7df1a365",
+        "publicSha256": "fc5197347dcd08c1520c115b0731db3ea6a5521838e95aa6461e0f436df294fb",
+        "wholeByteEqual": false,
+        "differentBytes": 227,
+        "selectedMethodCount": 2,
+        "allMethodPacketsByteEqual": true
+      },
+      {
+        "tableId": "CpuPm",
+        "bytes": 2776,
+        "capsuleSha256": "b88e521ee5340e8b74e8be214fc9afe90c10af27df8e96a00aa07241fab15d0b",
+        "publicSha256": "9bca835b152a1296aac3d5bab5951e1342a285791febeadf9c0991b9bc9c0d59",
+        "wholeByteEqual": false,
+        "differentBytes": 35,
+        "selectedMethodCount": 28,
+        "allMethodPacketsByteEqual": true
+      },
+      {
+        "tableId": "SataTabl",
+        "bytes": 789,
+        "capsuleSha256": "7635f9cb31ed55a49e76fb1f442b2a7a7689361ef152fc83b2a6c6a0b6cfa417",
+        "publicSha256": "7635f9cb31ed55a49e76fb1f442b2a7a7689361ef152fc83b2a6c6a0b6cfa417",
+        "wholeByteEqual": true,
+        "differentBytes": 0,
+        "selectedMethodCount": 9,
+        "allMethodPacketsByteEqual": true
+      },
+      {
+        "tableId": "IsctTabl",
+        "bytes": 2188,
+        "capsuleSha256": "f0bb5fa6e3c40f17de27334cc88d60b4d96bf512808d813f86b90a94f62265f4",
+        "publicSha256": "14b3fcabbeba18f9b910ebb26a9403abfc9d78d0ff456609da51b9373545b2e6",
+        "wholeByteEqual": false,
+        "differentBytes": 7,
+        "selectedMethodCount": 15,
+        "allMethodPacketsByteEqual": true
+      }
+    ],
+    "methodPacketPairsCompared": 54,
+    "allSelectedMethodPacketsByteIdentical": true,
+    "cpuPssDifferencesIncludePackageLengthCountAndData": true,
+    "ecmdCallsPresentInPublicSnapshot": true,
+    "ecmdCallersStoreBeforeInvokingInSelectedBranch": true,
+    "ecmdReturnOrProtectionReadbackValidatedByCallers": false,
+    "ecmdCompleteEffectsOrBindingResolved": false,
+    "allTemplatesLoadedOrCurrentUserNamespaceProved": false
+  },
+  "currentStageValidation": {
+    "staticSourceAssertionsPassed": true,
+    "independentComponentAndReportReviewsPassed": true,
+    "buildRun": false,
+    "unitTestsRun": false,
+    "previousCodeValidationOnly": {
+      "csharpPassed": 436,
+      "pythonPassed": 85,
+      "buildWarnings": 0,
+      "buildErrors": 0
+    }
+  },
+  "productCodeChanged": false,
+  "testsChanged": false,
+  "newExecutableOrSourceZipProvided": false,
+  "originalVendorDataIncluded": false,
+  "vendorCodeExecuted": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "realExperimentMarkerAccessed": false,
+  "environmentConfigurationChanged": false,
+  "protectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "resumeRequirement": "Concrete current-model/BIOS battery handler or equivalent manufacturer evidence that closes command meaning and trustworthy protection-state read-back;not repeated candidate parsing or new speculative calls",
+  "documentValidation": {
+    "markdownDocuments": 5,
+    "jsonReports": 1,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "privatePathsOrRequestIdentifiers": 0,
+    "gitDiffCheckPassed": true,
+    "existingProgramAndSourceArchiveHashesUnchanged": 3
+  }
+}

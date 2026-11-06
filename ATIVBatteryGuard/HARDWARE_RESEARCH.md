@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — OEM 메뉴 생성과 실제 상태의 분리 / 2026-11-06
+
+**확인된 사실:** [재개한 정적 대조](OEM_UI_SUPPORT_CONTRACT_REVIEW.md)에서 SUS조회분류→Cmd메뉴지원캐시→UI의SUB_PM_BLE/PM_BLE→child/헤더생성을연결했습니다. 로컬UI속성과상태표시경로도별도입니다. 0B뒤tail을호출자가덮지않는것은확인했지만비영/과거와다른payload를확정하지않습니다. setter정상반환1은read-back비교에조건부가아니고후속helper전체는미완료입니다.
+
+**미검증:** 비교원본은현재ATIV의OEM실행/지원/상한증거가아닙니다. PROGRAM_PRIVILIGE 생성자·실제Win10DLL선택·현재0B응답·65/66처리자와신뢰가능한read-back은미확정입니다. 초기7F/메뉴부재/화면변경으로대체하지않습니다. 코드/EXE/기존ZIP유지,이번빌드·테스트미실행,추가시험·업로드없이Unsupported입니다. 아래는이전기록입니다.
+
 ## 최신 — 비교 Settings ZIP명과 실제 바이트의 구분 / 2026-11-06
 
 **확인된 사실:** [실제 BOM 분석](SETTINGS_BOM_PACKAGE_UPDATE.md)에서930X5J의 두 목록을 받아 Easy Settings for Win7 2.0.0.89 → BASW-83876A21.ZIP을 확인했습니다. 항목40/45·원본 위치25/30·동일 비교 항목1/1입니다. FileVer/VerifyAttribute는 버전 검사이며 원본 해시가 아닙니다. 실제 ZIP 링크는 삼성 다운로드센터로302 이동하며 현재 CONNECT403으로 바이트는 미확보입니다.

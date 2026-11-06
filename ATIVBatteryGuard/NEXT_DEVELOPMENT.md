@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — OEM 메뉴·상태·전송의 한정 연결 완료 / 2026-11-06
+
+[OEM_UI_SUPPORT_CONTRACT_REVIEW.md](OEM_UI_SUPPORT_CONTRACT_REVIEW.md)를 먼저 읽습니다. 저장ZIP과주요모듈SHA일치·SUS실바이트독립감사를완료했습니다. 지원판정은getter반환/상태2→지원캐시→SUB_PM_BLE→PROGRAM_PRIVILIGE/MUITEST 로컬속성→PM_BLE비영의child뷰/헤더생성으로연결됩니다. PROGRAM_PRIVILIGE 생성자는미확정이며관리자조건으로명명하지않습니다. 상태2는ViewUpdate와별도nonzero-flag setter분기에서다르게그려질수있고(후자의lifecycle미확정), UI선택값도명령핸들없어도로컬에기록돼read-back증거가아닙니다.
+
+정밀화: tail15는0B뒤호출자가덮지않는내용일뿐비영/다른payload라는증거가아닙니다. setter반환1은read-back비교에조건부가아니지만후속6000/6310helper전체는미완료여서부수효과/모든읽기부재를주장하지않습니다. Server/Wrapper의자체Init반환1도module/hardware성공동치아닙니다. 실제Win10검색/보고버전과현재모델65/66처리계약은미확정입니다.
+
+이번사용자요청은분석재개라코드/테스트/EXE/기존ZIP을변경하지않고문서만갱신했습니다. 빌드·테스트미반복,435/85는이전기록. 다음정적근거는현재모델적용OEM버전또는P05ACJ처리계약이어야합니다. 같은기록/첫FF/모델문자열로빈간극을메우지않고추가OEM/업로드/관리자반복/예약/드라이버/서비스/보안변경없이Unsupported유지. 아래는이전기록입니다.
+
 ## 최신 — 원본 확보·호출자 중간 분석 저장 / 2026-11-06
 
 사용자 요청으로 작업을 중지·저장했습니다. [SETTINGS_CALLER_ANALYSIS_HANDOFF.md](SETTINGS_CALLER_ANALYSIS_HANDOFF.md)를 먼저 읽습니다. downloadcenter 허용 적용 후 BASW-83876A21.ZIP을HTTP200/126414820바이트/SHAa501fde3b9870e3840d1b4561255c70e3cece4e9426c1070ff8481446d8ba3b7로 확보했습니다. ZIP CRC/경로와 Win7·실제Win8 MSI/파일 버전2.0.0.89를 확인했습니다. 원본과 모든 중간 디스어셈블리는 저장소 밖 비공개 캐시에 보존하며 새 환경 초안이나 환경 게시를 하지 않았습니다.

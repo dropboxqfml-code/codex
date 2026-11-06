@@ -1,5 +1,7 @@
 # Settings 원본 확보·호출자 분석 재개 메모 — 2026-11-06 한국 시간
 
+**분석 재개 후속:** [OEM 메뉴·상태·전송 대조](OEM_UI_SUPPORT_CONTRACT_REVIEW.md)에서 저장된 원본을 재검증하고 SUS 계약의 독립 감사·UI 메뉴 생성 연결을 완료했습니다. tail은 호출자가 덮지 않은 버퍼 내용이며 반드시 비영이거나 과거 요청과 다른 값이라는 증거는 아닙니다. setter의 후속 helper 전체 callgraph는 미완료여서 모든 하위 read-back 부재를 단정하지 않습니다. 아래는 중지 시점의 기록입니다.
+
 사용자가 현재 작업을 저장하고 다음에 개발을 이어가도록 요청해 **새 분석을 중지했습니다.** 아래는 확보한 자료와 중간 정적 관측입니다. 프로그램 소스·테스트·EXE·기존 ZIP은 변경하지 않았고 환경도 게시하지 않았습니다. 실제 충전 제어는 Unsupported입니다.
 
 ## 확보와 컨테이너 검증 완료
@@ -30,7 +32,7 @@ ZIP은 디렉터리2개를 포함한9항목/파일7개이며 CRC·중복/대소�
 CmdServer/SUS.dll1.0.5.7 x86의 SHA는 `650f8fc4480ee64e377553886f7c67530afd9773e1f85d4154f46da903235a89`입니다. Win7·Win8의 대응 파일이 같습니다.
 
 - Getter export RVA FE20 → CC10은16바이트를0으로 준비해0x0B를 먼저 호출합니다. 반환 첫 바이트 bit3 또는 그 호출 결과의 AL 비영이면 outStatus2입니다.
-- 통과하면 **같은 버퍼의 첫 바이트만0x80으로 바꾸고0x65를 호출합니다. 나머지15바이트는0x0B 응답을 보존합니다.** 과거 단발 시험의 고정80+zeros와 전체 입력·호출 순서가 같다고 단정할 수 없습니다.
+- 통과하면 **같은 버퍼의 첫 바이트만0x80으로 바꾸고0x65를 호출합니다. 호출자는0x0B 직후 나머지15바이트를 덮지 않습니다.** 그 값이 실제로 비영인지·0x0B가 모두 썼는지는 미확정입니다. 과거 단발 시험의 고정80+zeros와 전체 입력·호출 순서의 동등성을 단정할 수 없습니다.
 - 0x65 첫FF는 outStatus2, 첫01은1, 나머지는0입니다. 0x65 API 결과는 검사하지 않고 외부 getter API는1을 반환합니다. 이 분류만으로 현재 보호 상태나 실패 원인을 검증하지 못합니다.
 - Setter export FDE0 → CB80은0x66/첫81 또는80을 전송하고, 하위 결과 검사 없이1을 반환합니다. 이 성공 반환은 실제 적용·read-back 증거가 아닙니다.
 
@@ -45,7 +47,7 @@ SOSI/SUS1.0.6.1 x86 SHA `c6a3e78ab6a4899c76e2cac5d816f8dc86a3596518bfa8a45c379e2
 | 본문 RVA | 관측 |
 | --- | --- |
 | 5FBD0 / GetStatus | SUS getter 실패 시 캐시2. 결과 index0에 캐시 반환. 설명 문자열 D4658은1=enable/0=disable/2=not support라고 이름 붙임 |
-| 5F930 / OnEnable, 7AB80 / OnDisable | SUS setter1/0의 반환1에 따라 소프트웨어 캐시1/0 갱신. 실제 장치 read-back 없음 |
+| 5F930 / OnEnable, 7AB80 / OnDisable | SUS setter1/0의 반환1에 따라 소프트웨어 캐시1/0 갱신. 이 반환은 read-back 비교에 조건부인 성공이 아님. 하위 helper 전체는 미검토 |
 | 83250 / GetMenuExistStatus, 2C780 helper | getter 성공이고 상태2가 아닐 때 메뉴 지원1, 그외0. 이후 지원 결과를 캐시 |
 | 9D660 / EASYCMD_Init | getter 갱신과 지원 캐시 초기화 호출 포함 |
 | 5FD60 / SetCountFile | 호스트 EXE 폴더 conf.ini의 BatteryLifeExtender/nValue=-1이면 getter 호출, 출력0일 때 setter0 호출. getter 반환 무시 |

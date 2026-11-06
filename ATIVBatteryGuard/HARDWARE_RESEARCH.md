@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 실제 배터리 접근을 위한 간접 경로 감사 / 2026-11-06
+
+**같은 계열 원본 추가:** 공식 A1/W7의2.2.0.21/2.0.0.78을 받아 같은940X3G 계열의 과거 배터리 caller를 직접 확인했습니다. W7의SUS1.0.5.7은 같은 표시 버전이라도 비교 원본과 SHA/코드가 달라 새RVA로검토했습니다. 0B/bit3·AL gate→65·소프트웨어상태분류와 setter정상1·Cmd메뉴캐시는 현재 보호 상태의 검증이 아닙니다. A1의전송DLL은 기존과같고 변경된BatteryMgr/Power명령도 한정 대조했지만 새보호경로는 확보하지못했습니다. 배포출처와실기Win10/P05지원은별도입니다.
+
+**확인된 사실:** [후속 감사](BATTERY_PROTECTION_ACCESS_FOLLOWUP.md)에서 provider의 SABI 등록 호출21곳/descriptor 후보56개를 복원하고 별도 d32 byte-selector 테이블을 분리했습니다. 기존 소비자4개의 lookup출력11개·다른6모듈8개 offset 후보와 HII의 동적 GUID consumer도 대조했습니다. flags 위치는 interface+30..34=parent+40..44이며 parent+30 dispatch slot과 다릅니다.
+
+**미검증:** 위 후보에65/66은 없지만 동적·외부·opaque 경계가 남습니다. 새 bit3 writer·배터리 설정 필드·현재 보호 상태 read-back은 확보하지 못했습니다. 정적 목록·다른 receiver·import 이름 미관측을 현재 장치의 기능 부재로 확정하지 않습니다. 앱/EXE/ZIP 유지, 이번 빌드·단위 테스트 미실행, 새 실기/자료 요청 없이 Unsupported입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 후속 INI 처리와 실제 설정 재조회의 구분 / 2026-11-06
 
 **확인된 사실:** [새 대조 결과](CONTROL_CONTRACT_CLOSURE_REVIEW.md)에서 현재 SUS 1.0.6.1의 x86/x64 후속 helper를 파일 스트림 타입·열기 모드까지 추적했습니다. 팝업용 `conf.ini` 처리이며 setter 반환1·wrapper 0x63은 검증된 장치 read-back에 조건부가 아닙니다. 저장 P05ACJ의7 FV·466 FFS·390 표준 압축 섹션을 검사해 기존 볼륨 밖232파일/46개 PE를 추가 확인했습니다. USB bit4/67/68의 양측 관계와 Model940X3G 배포 매뉴얼의 전원/보정 문맥도 대조했습니다.

@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 간접 등록·flag 별칭·동적 화면 후속 감사 / 2026-11-06
+
+**추가 공식 원본:** 같은 Model940X3G의 실제 A1/W7 목록4개에서 Settings2.2.0.21/BASW-84270A5H 및2.0.0.78/BASW-83876A1L을 확보했습니다. 원본2개·추출912파일 해시 재검산 완료. private cache는 `20261106/target-legacy-catalog-next` 아래입니다. W7의 CmdServer/SUS1.0.5.7은 SHAaf60885562766d1cbc8d5886b986b9918738dae084c934e511438c7381c3628f로 기존 비교650f와 실제 코드가 다릅니다. 새getter FEC0→CC20의16byte/0B bit3·AL gate→같은buffer65, 정상반환1·소프트웨어0/1/2·Cmd지원메뉴/캐시를 직접 연결했습니다. 동일 버전의 다른 변형/RVA를 혼합하지 않습니다. 새현재계열 과거caller는 확보했지만 Win10/P05ACJ handler/read-back은 여전히 미확정입니다.
+
+A1의 SUS/Sabi3/wsabi는 WB2.2.0.18과 같은 SHA입니다. 바뀐 ModuleBatteryMgr의 새ReInstall은 Windows전원계획/manager복구이며, CommandMNPowerManagement26 factory는 동일하고 관련text차이는rdata주소이동으로 대조했습니다. 원본/서버응답/디스어셈블리는 저장소·배포에 넣지 않습니다. 원본앱의SetCountFile에는조건부setter경로가있어 읽기전용진단으로실행하지않습니다.
+
+[BATTERY_PROTECTION_ACCESS_FOLLOWUP.md](BATTERY_PROTECTION_ACCESS_FOLLOWUP.md)를 먼저 읽습니다. provider 초기화21개+helper2개 본문의 typed 등록 호출21곳에서 main5843 descriptor 후보56개를 복원했고65/66은 없습니다. opaque call/별칭/다른 하위 함수·외부·동적 경계가 남아 실제/전체 등록 부재를 뜻하지 않습니다. d32 프로토콜은 SecSwSmiDispatch의 byte-selector/24바이트 테이블로 SABI의 UInt16 main/sub/16바이트 테이블과 구분했습니다.
+
+known4consumer의 lookup출력11개와 다른6모듈8개 same-offset 호출을 감사했지만 새 typed bit3 writer는 없습니다. flags=interface+30..34=parent+40..44이며 parent+30은dispatch slot입니다. AMITSE의 GUID stack조립 consumer와 HII vendor34개/Setup 동적문자열 helper를 추적했지만 배터리 question/필드/handler 연결은 없습니다. 현재2.2.0.18의158PE ordinary/delay import에도 BLE 이름은 미관측이나 동적/ordinal 부재 증명은 아닙니다.
+
+정적 후보를 실제 설정·지원으로 승격하지 않습니다. 앱/EXE/기존ZIP 미변경, 이번 빌드·단위 테스트 미실행, 기존435/85는 이전 기록입니다. 추가 노트북 시험·재제출·OEM 호출·예약 접근 없이 Unsupported입니다. 다음 실제 구현에는 새 모델별 handler/응답·재조회 계약을 연결하는 구체적 근거가 필요하며, 같은 후보를 반복 세분화해 기능 진전으로 보고하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 현재 SUS 후속 처리·전체 FV·제조사 매뉴얼 대조 / 2026-11-06
 
 [CONTROL_CONTRACT_CLOSURE_REVIEW.md](CONTROL_CONTRACT_CLOSURE_REVIEW.md)를 먼저 읽습니다. 현재 Settings 2.2.0.18의 SUS 1.0.6.1 x86/x64를 각각 해시로 고정해 후속 helper를 대조했습니다. `conf.ini`의 팝업 카운터·다시 묻지 않기 읽기/쓰기이며 setter 반환1·wrapper 0x63은 검증된 보호 상태 재조회에 조건부가 아닙니다. SOSI는 배포 디렉터리이고 실제 로더 선택 이름은 SABI3/WSABI/SABI2.dll입니다. 비교 SUS 1.0.5.7의16바이트 배치를 혼합하지 않습니다.

@@ -1,0 +1,920 @@
+{
+  "date": "2026-11-06",
+  "timezone": "Asia/Seoul",
+  "scope": "Bounded static battery caller, firmware registration/alias/HII analysis and two additional actual Model940X3G public packages; no runtime hardware inventory",
+  "savedCapsuleSha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0",
+  "providerSha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310",
+  "initializerEntries": 21,
+  "additionalHelperBodies": 2,
+  "typedRegistrationCallSites": 21,
+  "staticDescriptorCandidates": 56,
+  "uniqueCandidateSelectors": 56,
+  "target65or66AmongCandidates": 0,
+  "allCallbackArgumentsMatchDescriptorFields": true,
+  "descriptorCandidates": [
+    {
+      "initializerOrHelper": "0xbc8",
+      "site": "0xc49",
+      "descriptorStackOffset": -88,
+      "main": "0x5843",
+      "sub": "0x36",
+      "callbackArgument": "0xacc",
+      "callbackField": "0xacc",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0xbc8",
+      "site": "0xc49",
+      "descriptorStackOffset": -64,
+      "main": "0x5843",
+      "sub": "0x4f",
+      "callbackArgument": "0xafc",
+      "callbackField": "0xafc",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0xbc8",
+      "site": "0xc49",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x52",
+      "callbackArgument": "0xb64",
+      "callbackField": "0xb64",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1330",
+      "site": "0x1485",
+      "descriptorStackOffset": -136,
+      "main": "0x5843",
+      "sub": "0x40",
+      "callbackArgument": "0x1148",
+      "callbackField": "0x1148",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1330",
+      "site": "0x1485",
+      "descriptorStackOffset": -112,
+      "main": "0x5843",
+      "sub": "0x48",
+      "callbackArgument": "0x11b0",
+      "callbackField": "0x11b0",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1330",
+      "site": "0x1485",
+      "descriptorStackOffset": -88,
+      "main": "0x5843",
+      "sub": "0x49",
+      "callbackArgument": "0x1210",
+      "callbackField": "0x1210",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1330",
+      "site": "0x1485",
+      "descriptorStackOffset": -64,
+      "main": "0x5843",
+      "sub": "0x4a",
+      "callbackArgument": "0x1270",
+      "callbackField": "0x1270",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1330",
+      "site": "0x1485",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x4b",
+      "callbackArgument": "0x12d0",
+      "callbackField": "0x12d0",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1500",
+      "site": "0x1569",
+      "descriptorStackOffset": -56,
+      "main": "0x5843",
+      "sub": "0x2f",
+      "callbackArgument": "0x14a8",
+      "callbackField": "0x14a8",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1500",
+      "site": "0x1569",
+      "descriptorStackOffset": -32,
+      "main": "0x5843",
+      "sub": "0x30",
+      "callbackArgument": "0x14d0",
+      "callbackField": "0x14d0",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1ea8",
+      "site": "0x1f6a",
+      "descriptorStackOffset": -136,
+      "main": "0x5843",
+      "sub": "0x35",
+      "callbackArgument": "0x1bc8",
+      "callbackField": "0x1bc8",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1ea8",
+      "site": "0x1f6a",
+      "descriptorStackOffset": -112,
+      "main": "0x5843",
+      "sub": "0x46",
+      "callbackArgument": "0x1bf8",
+      "callbackField": "0x1bf8",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1ea8",
+      "site": "0x1f6a",
+      "descriptorStackOffset": -88,
+      "main": "0x5843",
+      "sub": "0x79",
+      "callbackArgument": "0x1c68",
+      "callbackField": "0x1c68",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1ea8",
+      "site": "0x1f6a",
+      "descriptorStackOffset": -64,
+      "main": "0x5843",
+      "sub": "0x7a",
+      "callbackArgument": "0x1d18",
+      "callbackField": "0x1d18",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x1ea8",
+      "site": "0x1f6a",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x86",
+      "callbackArgument": "0x1e0c",
+      "callbackField": "0x1e0c",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x2108",
+      "site": "0x213d",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x81",
+      "callbackArgument": "0x1f9c",
+      "callbackField": "0x1f9c",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x2438",
+      "site": "0x24cd",
+      "descriptorStackOffset": -56,
+      "main": "0x5843",
+      "sub": "0x1f",
+      "callbackArgument": "0x237c",
+      "callbackField": "0x237c",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x2438",
+      "site": "0x24cd",
+      "descriptorStackOffset": -32,
+      "main": "0x5843",
+      "sub": "0x37",
+      "callbackArgument": "0x2144",
+      "callbackField": "0x2144",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x286c",
+      "site": "0x2902",
+      "descriptorStackOffset": -56,
+      "main": "0x5843",
+      "sub": "0x2d",
+      "callbackArgument": "0x27c4",
+      "callbackField": "0x27c4",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x286c",
+      "site": "0x2902",
+      "descriptorStackOffset": -32,
+      "main": "0x5843",
+      "sub": "0x2e",
+      "callbackArgument": "0x2810",
+      "callbackField": "0x2810",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x2df4",
+      "site": "0x2e29",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x85",
+      "callbackArgument": "0x2920",
+      "callbackField": "0x2920",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x2ebc",
+      "site": "0x2f25",
+      "descriptorStackOffset": -56,
+      "main": "0x5843",
+      "sub": "0x4",
+      "callbackArgument": "0x2e30",
+      "callbackField": "0x2e30",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x2ebc",
+      "site": "0x2f25",
+      "descriptorStackOffset": -32,
+      "main": "0x5843",
+      "sub": "0x27",
+      "callbackArgument": "0x2e64",
+      "callbackField": "0x2e64",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x2fdc",
+      "site": "0x3011",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x45",
+      "callbackArgument": "0x2f44",
+      "callbackField": "0x2f44",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x31e0",
+      "site": "0x3261",
+      "descriptorStackOffset": -88,
+      "main": "0x5843",
+      "sub": "0x57",
+      "callbackArgument": "0x3018",
+      "callbackField": "0x3018",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x31e0",
+      "site": "0x3261",
+      "descriptorStackOffset": -64,
+      "main": "0x5843",
+      "sub": "0x5c",
+      "callbackArgument": "0x30b0",
+      "callbackField": "0x30b0",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x31e0",
+      "site": "0x3261",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x5d",
+      "callbackArgument": "0x310c",
+      "callbackField": "0x310c",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x346c",
+      "site": "0x357c",
+      "descriptorStackOffset": -1112,
+      "main": "0x5843",
+      "sub": "0x6b",
+      "callbackArgument": "0x3280",
+      "callbackField": "0x3280",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x346c",
+      "site": "0x357c",
+      "descriptorStackOffset": -1088,
+      "main": "0x5843",
+      "sub": "0x6c",
+      "callbackArgument": "0x3314",
+      "callbackField": "0x3314",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x346c",
+      "site": "0x357c",
+      "descriptorStackOffset": -1064,
+      "main": "0x5843",
+      "sub": "0x6f",
+      "callbackArgument": "0x33e8",
+      "callbackField": "0x33e8",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3820",
+      "site": "0x38c0",
+      "descriptorStackOffset": -104,
+      "main": "0x5843",
+      "sub": "0x14",
+      "callbackArgument": "0x3620",
+      "callbackField": "0x3620",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3820",
+      "site": "0x38c0",
+      "descriptorStackOffset": -80,
+      "main": "0x5843",
+      "sub": "0x39",
+      "callbackArgument": "0x3664",
+      "callbackField": "0x3664",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3820",
+      "site": "0x38c0",
+      "descriptorStackOffset": -56,
+      "main": "0x5843",
+      "sub": "0x51",
+      "callbackArgument": "0x3684",
+      "callbackField": "0x3684",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3820",
+      "site": "0x38c0",
+      "descriptorStackOffset": -32,
+      "main": "0x5843",
+      "sub": "0x77",
+      "callbackArgument": "0x36f4",
+      "callbackField": "0x36f4",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3b84",
+      "site": "0x3c3d",
+      "descriptorStackOffset": -136,
+      "main": "0x5843",
+      "sub": "0x0",
+      "callbackArgument": "0x38e4",
+      "callbackField": "0x38e4",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3b84",
+      "site": "0x3c3d",
+      "descriptorStackOffset": -112,
+      "main": "0x5843",
+      "sub": "0xb",
+      "callbackArgument": "0x3908",
+      "callbackField": "0x3908",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3b84",
+      "site": "0x3c3d",
+      "descriptorStackOffset": -88,
+      "main": "0x5843",
+      "sub": "0xf",
+      "callbackArgument": "0x3958",
+      "callbackField": "0x3958",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3b84",
+      "site": "0x3c3d",
+      "descriptorStackOffset": -64,
+      "main": "0x5843",
+      "sub": "0x71",
+      "callbackArgument": "0x39ac",
+      "callbackField": "0x39ac",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3b84",
+      "site": "0x3c3d",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x84",
+      "callbackArgument": "0x3a08",
+      "callbackField": "0x3a08",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3d08",
+      "site": "0x3d69",
+      "descriptorStackOffset": -72,
+      "main": "0x5843",
+      "sub": "0x9",
+      "callbackArgument": "0x3c68",
+      "callbackField": "0x3c68",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3de0",
+      "site": "0x3e15",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x1",
+      "callbackArgument": "0x3dac",
+      "callbackField": "0x3dac",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x3f54",
+      "site": "0x3f89",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x47",
+      "callbackArgument": "0x3e1c",
+      "callbackField": "0x3e1c",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -248,
+      "main": "0x5843",
+      "sub": "0x20",
+      "callbackArgument": "0x3f90",
+      "callbackField": "0x3f90",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -224,
+      "main": "0x5843",
+      "sub": "0x21",
+      "callbackArgument": "0x3ff4",
+      "callbackField": "0x3ff4",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -200,
+      "main": "0x5843",
+      "sub": "0x29",
+      "callbackArgument": "0x4054",
+      "callbackField": "0x4054",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -176,
+      "main": "0x5843",
+      "sub": "0x2a",
+      "callbackArgument": "0x40d4",
+      "callbackField": "0x40d4",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -152,
+      "main": "0x5843",
+      "sub": "0x2b",
+      "callbackArgument": "0x416c",
+      "callbackField": "0x416c",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -128,
+      "main": "0x5843",
+      "sub": "0x2c",
+      "callbackArgument": "0x41d0",
+      "callbackField": "0x41d0",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -104,
+      "main": "0x5843",
+      "sub": "0x31",
+      "callbackArgument": "0x4230",
+      "callbackField": "0x4230",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -80,
+      "main": "0x5843",
+      "sub": "0x32",
+      "callbackArgument": "0x42e8",
+      "callbackField": "0x42e8",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -56,
+      "main": "0x5843",
+      "sub": "0x3a",
+      "callbackArgument": "0x43d8",
+      "callbackField": "0x43d8",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x454c",
+      "site": "0x46dd",
+      "descriptorStackOffset": -32,
+      "main": "0x5843",
+      "sub": "0x60",
+      "callbackArgument": "0x44d4",
+      "callbackField": "0x44d4",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x4958",
+      "site": "0x498d",
+      "descriptorStackOffset": -40,
+      "main": "0x5843",
+      "sub": "0x7b",
+      "callbackArgument": "0x472c",
+      "callbackField": "0x472c",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0xed8",
+      "site": "0x1100",
+      "descriptorStackOffset": -96,
+      "main": "0x5843",
+      "sub": "0x78",
+      "callbackArgument": "0xde8",
+      "callbackField": "0xde8",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x17e8",
+      "site": "0x1a48",
+      "descriptorStackOffset": -1168,
+      "main": "0x5843",
+      "sub": "0x67",
+      "callbackArgument": "0x1588",
+      "callbackField": "0x1588",
+      "callbackMatchesField": true
+    },
+    {
+      "initializerOrHelper": "0x17e8",
+      "site": "0x1a48",
+      "descriptorStackOffset": -1144,
+      "main": "0x5843",
+      "sub": "0x68",
+      "callbackArgument": "0x15c8",
+      "callbackField": "0x15c8",
+      "callbackMatchesField": true
+    }
+  ],
+  "knownConsumerModules": 4,
+  "knownLookupOutputsReviewed": 11,
+  "newSameOffsetCallCandidatesReviewed": 8,
+  "newSameOffsetSourceModules": 6,
+  "flagsLayout": {
+    "interfaceFromParent": "0x10",
+    "flagsFromInterface": "0x30..0x34",
+    "flagsFromParent": "0x40..0x44",
+    "parentOffset30": "dispatch function slot"
+  },
+  "dynamicHii": {
+    "vendorGuidRecords": 34,
+    "threeBytePayloadRecords": 20,
+    "fourBytePayloadRecords": 14,
+    "getStringDirectCallers": 13,
+    "newStringDirectCallers": 2,
+    "newBatterySettingFieldRecovered": false
+  },
+  "splitGuidScreen": {
+    "uniquePeHashes": 229,
+    "withoutFullGuid": 195,
+    "exactFourByteChunkMatchesInThoseExecutables": 0,
+    "computedOrSplitGuidAbsenceProved": false
+  },
+  "currentPackageImportScreen": {
+    "allFilePinsRechecked": 260,
+    "peFiles": 158,
+    "peWithDelayImports": 13,
+    "susImporters": 2,
+    "ordinaryImportsPerSusImporter": 5,
+    "namedBatteryLifeExtenderImports": 0,
+    "dynamicOrOrdinalAbsenceProved": false,
+    "version": "2.2.0.18"
+  },
+  "independentReviews": [
+    "Registration count/callback fields and selected machine instruction paths",
+    "Known consumer lookup-output lifetimes and flag object layout",
+    "HII vendor consumer and dynamic string helper context",
+    "Integrated report scope and safety boundaries",
+    "New target-family 2.0.0.78 caller:14 source pins,6 RTTI/vtable links,selected instructions and branches",
+    "A1 2.2.0.21 changed battery-manager body and power command factories"
+  ],
+  "productSourceChanged": false,
+  "productBuildRun": false,
+  "unitTestsRun": false,
+  "vendorCodeExecuted": false,
+  "hardwareOrOemCallsPerformed": false,
+  "markerAccessed": false,
+  "environmentConfigurationChanged": false,
+  "hardwarePermissions": {
+    "queryProtectionState": false,
+    "writeProtectionState": false,
+    "invokeOem": false
+  },
+  "chargeControl": "Unsupported",
+  "limits": [
+    "Static descriptors are candidates; opaque calls may modify data and have unclosed aliases",
+    "Computed/dynamic/external registration and transitive callback behavior are not closed",
+    "Saved firmware bytes are not proof of installed runtime identity",
+    "Exact GUID chunks and import names are narrow selectors, not feature-absence proofs",
+    "No trustworthy current-model protection read-back contract is established",
+    "Model940X3G historical distribution is not exact device SKU,installed-image or Windows10 compatibility",
+    "Same displayed SUS1.0.5.7 version has different bytes and RVAs;do not mix variants",
+    "Changed A1 modules were bounded-reviewed,not the entire package runtime"
+  ],
+  "sourceAcquisition": {
+    "targetCatalogHeaderModel": "Model940X3G",
+    "actualServerOsTokens": [
+      "A1",
+      "W7"
+    ],
+    "successfulBomDocuments": 4,
+    "independentArchives": 2,
+    "deviceSerialUsed": false,
+    "appNetworkAdded": false,
+    "metadataFieldFeatureIsBatterySupportFlag": false,
+    "archives": [
+      {
+        "vendorFilename": "BASW-83876A1L.ZIP",
+        "httpStatus": 200,
+        "bytes": 125452645,
+        "sha256": "137e74dd5d97c1ffa781fc6588147f401022f1f2a2af6fc2c852d501cee9b064",
+        "metadataLengthMatched": true,
+        "redirectCount": 2,
+        "zipEntryCount": 9,
+        "zipUncompressedBytes": 130630638,
+        "zipCrcPassed": true,
+        "pathSafetyPassed": true,
+        "duplicateCasefoldPaths": false,
+        "symbolicLinks": false
+      },
+      {
+        "vendorFilename": "BASW-84270A5H.ZIP",
+        "httpStatus": 200,
+        "bytes": 75249209,
+        "sha256": "0f8aae106c03ee0ffe4645d2f33f48c02855882314bf581aec598015138e6541",
+        "metadataLengthMatched": true,
+        "redirectCount": 2,
+        "zipEntryCount": 7,
+        "zipUncompressedBytes": 77380189,
+        "zipCrcPassed": true,
+        "pathSafetyPassed": true,
+        "duplicateCasefoldPaths": false,
+        "symbolicLinks": false
+      }
+    ],
+    "archivePinsIndependentlyRechecked": 2,
+    "extractedFilePinsIndependentlyRechecked": {
+      "w7Branch": 348,
+      "win8Branch": 302,
+      "a1Package": 262
+    },
+    "extractedFileEntriesNotUniqueBinaries": true
+  },
+  "targetFamilyHistoricalBatteryCaller": {
+    "recovered": true,
+    "catalogVersion": "2.0.0.78",
+    "sourcePins": {
+      "win7:SOSI/x64/SUS.dll": {
+        "bytes": 2365744,
+        "sha256": "d471164bd5a997bed4620121188f0b18d246c1532bd95f76b882d7c4a729d5ac",
+        "machine": "0x8664",
+        "clrRva": 0,
+        "versionInMsi": "1.0.6.1"
+      },
+      "win7:SOSI/x64/Sabi3.dll": {
+        "bytes": 28976,
+        "sha256": "09a9714f0e11734872d60f2966edf8590ca721f0c05b2ca852a0bf20d6c006ae",
+        "machine": "0x8664",
+        "clrRva": 0,
+        "versionInMsi": "3.2.0.0"
+      },
+      "win7:CmdServer/SUS.dll": {
+        "bytes": 1748800,
+        "sha256": "af60885562766d1cbc8d5886b986b9918738dae084c934e511438c7381c3628f",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": "1.0.5.7"
+      },
+      "win7:CmdServer/Sabi3.dll": {
+        "bytes": 27704,
+        "sha256": "74210a431e3cf6c1a68abba8896b44a4d41f8f849ddedf0de162b53bbae9ce93",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": "3.2.0.0"
+      },
+      "win7:SOSI/x86/Sabi3.dll": {
+        "bytes": 25904,
+        "sha256": "d8ac306fa192d1d41591d0c846f1b0dfdfd4c2465752a671797ace2e6d824d3a",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": "3.2.0.0"
+      },
+      "win7:SOSI/x86/SUS.dll": {
+        "bytes": 1741104,
+        "sha256": "c6a3e78ab6a4899c76e2cac5d816f8dc86a3596518bfa8a45c379e2a10b9ee95",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": "1.0.6.1"
+      },
+      "win7:Sabi3.dll": {
+        "bytes": 27704,
+        "sha256": "74210a431e3cf6c1a68abba8896b44a4d41f8f849ddedf0de162b53bbae9ce93",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": "3.2.0.0"
+      },
+      "win7:CmdServer/EasySettingsCmd.dll": {
+        "bytes": 1156416,
+        "sha256": "3f83824c610b50a69fa3f671acbfdd9a776ddecfc6765f3a8f845a96c0bdc1b7",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": ""
+      },
+      "win8:SOSI/x64/SUS.dll": {
+        "bytes": 2365744,
+        "sha256": "d471164bd5a997bed4620121188f0b18d246c1532bd95f76b882d7c4a729d5ac",
+        "machine": "0x8664",
+        "clrRva": 0,
+        "versionInMsi": "1.0.6.1"
+      },
+      "win8:CmdServer/SUS.dll": {
+        "bytes": 1748800,
+        "sha256": "af60885562766d1cbc8d5886b986b9918738dae084c934e511438c7381c3628f",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": "1.0.5.7"
+      },
+      "win8:SOSI/x86/Sabi3.dll": {
+        "bytes": 25904,
+        "sha256": "d8ac306fa192d1d41591d0c846f1b0dfdfd4c2465752a671797ace2e6d824d3a",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": "3.2.0.0"
+      },
+      "win8:SOSI/x64/Sabi3.dll": {
+        "bytes": 28976,
+        "sha256": "09a9714f0e11734872d60f2966edf8590ca721f0c05b2ca852a0bf20d6c006ae",
+        "machine": "0x8664",
+        "clrRva": 0,
+        "versionInMsi": "3.2.0.0"
+      },
+      "win8:SOSI/x86/SUS.dll": {
+        "bytes": 1741104,
+        "sha256": "c6a3e78ab6a4899c76e2cac5d816f8dc86a3596518bfa8a45c379e2a10b9ee95",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": "1.0.6.1"
+      },
+      "win8:CmdServer/EasySettingsCmd.dll": {
+        "bytes": 1156416,
+        "sha256": "3f83824c610b50a69fa3f671acbfdd9a776ddecfc6765f3a8f845a96c0bdc1b7",
+        "machine": "0x14c",
+        "clrRva": 0,
+        "versionInMsi": ""
+      }
+    },
+    "sourcePinCount": 14,
+    "changedSUS1057ComparedTo20089": true,
+    "newSusContract": {
+      "getterExport": "FEC0",
+      "getterHelper": "CC20",
+      "payloadBytes": 16,
+      "initial0B": "00 + 15 zero bytes",
+      "0BCalls": "CC5C",
+      "0BPrecondition": "bit3 clear and returned AL==0; not full HRESULT validation",
+      "65Call": "CC78",
+      "65Input": "same buffer after0B, only byte0 overwritten80; tail remains0B output",
+      "65ReturnIgnored": true,
+      "output": "bit3 set or0B AL nonzero or65 FF ->2;65 byte01 ->1;other first byte ->0",
+      "normalGetterReturn": 1,
+      "setterExport": "FE80",
+      "setterHelper": "CB90",
+      "66Calls": [
+        "CBD1",
+        "CBF1"
+      ],
+      "66Input": "81 if requested nonzero,80 if zero,+15 zero bytes",
+      "normalSetterReturnSite": "CC0F",
+      "normalSetterReturn": 1,
+      "setterApiResultChecked": false,
+      "postHelpers": [
+        "5FB0",
+        "62C0"
+      ],
+      "postDirectConfigEvidence": {
+        "wideConfIniLiteral": "15AA4C",
+        "readPathReference": "60D9",
+        "writePathReference": "63D1",
+        "writeHeaderHelper": "A880",
+        "writeHeaderReference": "A9BF->15AA60",
+        "header": "[BatteryLifeExtender]\nnValue=",
+        "doNotAskPushMinus2": "FF48",
+        "doNotAskCallsSameHelper": "FF4A->62C0"
+      },
+      "wrapperSetter": "107B0",
+      "wrapperNormal63": "107E4",
+      "trustworthyPostSetReadbackEqualityRequiredByNormalReturn": false,
+      "completeTransitivePostHelperGraphClosed": false
+    },
+    "newCommandContract": {
+      "importGetter": "BF624",
+      "importSetter": "BF628",
+      "typeVtables": {
+        "OnEnable": "DB978",
+        "OnDisable": "DB9A0",
+        "GetStatus": "DB9C8",
+        "SetCountFile": "DB9F0",
+        "SupportBLEMenu": "DE24C"
+      },
+      "OnEnable": "5CDE0, push1->setter; if return1 write software cache102CE4",
+      "OnDisable": "5CF30, push0->setter; if return1 write software cache102CE4=0",
+      "GetStatus": "5D0A0, getter return0 sets software state2 then output index0",
+      "SupportBLEMenu": "7EF60, first use getter nonzero and software state!=2 ->menu1, else0, then cache",
+      "SetCountFile": "5D230, if BE50 reads host conf.ini nValue(default0)==-1, getter into initially0 output, if output0 calls setter0; getter result ignored",
+      "IniReaderDirectEvidence": {
+        "api": "GetPrivateProfileIntW",
+        "call": "BF5C",
+        "fileLiteral": "C1C94",
+        "keyLiteral": "C1CA8",
+        "sectionLiteral": "C1CB8"
+      },
+      "verifiedHardwareReadbackUsedToValidateSet": false
+    },
+    "currentWin10CompatibilityVerified": false,
+    "currentP05AcjBatteryHandlerVerified": false,
+    "protectionResponseMeaningVerified": false,
+    "actualNotebookProtectionStateObserved": false
+  },
+  "a1PackageImportScreen": {
+    "version": "2.2.0.21",
+    "filesChecked": 262,
+    "peFilesChecked": 159,
+    "peWithDelayImports": 13,
+    "susImporters": 2,
+    "namedBatteryLifeExtenderImports": 0,
+    "ordinaryDelayedNameScreenOnly": true,
+    "allSourcePinsMatched": true
+  },
+  "a1RelevantDelta": {
+    "version": "2.2.0.21",
+    "transportSourcesSameShaAs22018": [
+      "SUS x86/x64",
+      "Sabi3",
+      "wsabi"
+    ],
+    "moduleSabiTextSame": true,
+    "moduleSabiRdataDifferent": true,
+    "moduleBatteryMgrBytes": 47936,
+    "moduleBatteryMgrSha256": "c5c09c1fcc3dab074209d75859ab5e67022ba06f38d6faf61e2da28099acbfcb",
+    "newBatteryMgrExport": "ReInstallBatteryMgr",
+    "newExportRva": "6160",
+    "newExportBoundedRole": "Windows power scheme and manager registry repair; not protection setting query",
+    "commandPowerFactoryCount": 26,
+    "commandPowerFactoryBytesSame": true,
+    "commandPowerRttiAndMethodSlotsCompared": true,
+    "commandPowerTextDiffBytes": 25,
+    "commandPowerChangedInstructions": 24,
+    "commandPowerTextDifferenceBoundedToExistingRdataAddressRelocation": true,
+    "newProtectionQueryOrSetContractRecovered": false,
+    "wholePackageRuntimeSemanticEquivalenceProved": false
+  },
+  "unchangedReleaseArchivePins": [
+    {
+      "file": "ATIVBatteryGuard-OEM-CALLER-EVIDENCE.zip",
+      "bytes": 137485,
+      "sha256": "f3e80f3d970b860ebc60912d3608182cf3f6a37c05c3833a0e2d22bf52cd48ed",
+      "unchanged": true
+    },
+    {
+      "file": "ATIVBatteryGuard-OEM-CALLER-EVIDENCE-SOURCE.zip",
+      "bytes": 740717,
+      "sha256": "09794cd03a17aba7dac3dc44bd540f8288fd1212cc3f98d51c36d7617750f793",
+      "unchanged": true
+    }
+  ],
+  "documentValidation": {
+    "markdownDocuments": 5,
+    "jsonAudits": 1,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "auditPrivatePathsOrRequestIdentifiers": 0,
+    "gitDiffCheckPassed": true
+  }
+}

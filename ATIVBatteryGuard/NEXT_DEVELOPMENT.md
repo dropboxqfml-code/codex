@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 실제 P04ACJ 원본과 P05ACJ 비교 / 2026-11-06
+
+[P04_P05_FIRMWARE_COMPARISON.md](P04_P05_FIRMWARE_COMPARISON.md)를 먼저 읽습니다. 실제 940X3G W7 목록의 BAIN-A0010A03.ZIP을 확보했습니다. 13,355,153바이트/SHA `7433986a2e29b9ff806300272e6293762227839e3f497d2555550d69a5e0c62f`이며 ZIP CRC·경로와 CAP/BIN/wrapper의 동일 payload를 확인했습니다. 목록 2개와 컨테이너 3개를 독립 펌웨어로 세지 않습니다. Version 공백·NoVerify·BOM 날짜는 현재 설치 BIOS·Windows 10 지원의 검증이 아닙니다. 비공개 원본은 `20261106/manual-catalog-delta-next`, 비교 출력은 `firmware-history-source-next` / `p04-hii-delta-next`, 독립 검산은 `p04-comparison-root`에 있습니다.
+
+Provider/Legacy/AlwaysOn/SwSmi의 선택 코드·데이터와 provider 초기화 포인터 21개가 같지만 전체 이미지에는 timestamp·버전 문자열·unwind 정보 차이가 있습니다. 전체 의미 동일성을 주장하지 않습니다. 실제 코드가 달라진 Wireless와 SetupWin은 P04 경로를 새로 복원했으며 기존 12/13/69/6A 및 7C 등록입니다. 검토한 경로에 새 65/66 처리자나 typed bit3 writer는 없습니다.
+
+P04 HII는 독립 token 복원 후 11 package / 12,415 opcode / 2,640 statement를 확인했고, 보호 문구의 표준 statement 참조는 P05와 같이 0개입니다. Varstore 선언 121개·vendor 원시 opcode 34개는 같고, P05의 544바이트/32 opcode 증가는 PCIe LTR 질문 8개입니다. 동적 화면·callback·현재 변수·전체 기능 부재는 미검증입니다. MHT의 저전압 복귀 항목은 상한 계약이 아니며 개인명·승인 명단·원문은 공개하지 않습니다.
+
+새 버전 자료는 확보했지만 현재 모델 보호 조회·쓰기 계약은 여전히 미확정입니다. code/tests/EXE/ZIP은 미변경이고 이번 빌드·단위 테스트는 미실행입니다. 436/85와 경고·오류 0은 코드 커밋 750994c의 이전 기록입니다. 새 실기 시험·업로드·OEM 호출·예약 접근·BIOS 설치/다운그레이드 없이 Unsupported를 유지합니다. 다음 실제 구현에는 적용 가능한 배터리 처리자와 신뢰할 응답·재조회 근거가 필요합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 남은 직접 호출·삭제 호출자·SSDT 대응 감사 / 2026-11-06
 
 [REMAINING_QUERY_PATHS_REVIEW.md](REMAINING_QUERY_PATHS_REVIEW.md)를 먼저 읽습니다. provider의 열린직접함수8개(DB4,1B94,2150,230C,4C74,5AEC,5B2C,5CC4)를 buffer쓰기/주소유래/호출순서로대조했습니다. 5B2C의30B수신은caller의descriptor와분리돼등록뒤에수행되며,내부30B는WMI16payload규약이아닙니다. sourceI/O함수는실행하지않았습니다. 4C74 key의producer는SecMemoryInfo의기존/25B구성데이터게시로연결했으나전체runtime producer별칭의부재는미검증입니다.

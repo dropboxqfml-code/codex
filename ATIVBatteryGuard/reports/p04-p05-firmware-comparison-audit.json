@@ -1,0 +1,419 @@
+{
+  "date": "2026-11-06",
+  "timezone": "Etc/UTC",
+  "scope": "Newly acquired historical P04 source compared with saved P05 selected SABI paths and fixed HII data;not live-device validation or global absence proof",
+  "softwareCodeBaseCommit": "750994ceb2243943bd7c10fca6dfc6ca4b928401",
+  "acquisition": {
+    "manufacturerCatalogueModel": "940X3G",
+    "osCatalogue": "W7",
+    "duplicateMetadataOccurrences": 2,
+    "independentArchiveCount": 1,
+    "catalogueVersionFieldEmpty": true,
+    "catalogueCheckType": "NoVerify",
+    "catalogueDateIsFirmwareBuildDate": false,
+    "actualInternalMarker": "P04ACJ125140411dg",
+    "httpStatus": 200,
+    "proxyAndTlsVerificationRetained": true,
+    "archive": {
+      "bytes": 13355153,
+      "sha256": "7433986a2e29b9ff806300272e6293762227839e3f497d2555550d69a5e0c62f"
+    },
+    "zipEntries": 9,
+    "zipExpandedBytes": 22129900,
+    "crcSafePathAndDuplicateChecksPassed": true,
+    "manualMatchesExistingSource": true,
+    "manualDownloadedAgain": false,
+    "authenticodeTrustVerified": false,
+    "manualSameSourceCatalogueScope": [
+      "A1",
+      "WB"
+    ],
+    "w7ManualHasDownloadFile": false
+  },
+  "firmwareContainers": {
+    "p04Cap": {
+      "bytes": 5242880,
+      "sha256": "c3d3a9f8eff24a4bc63d58b05bd55745ea869f242f9cdeb0d892460887b9afad"
+    },
+    "p04FullBin": {
+      "bytes": 8388608,
+      "sha256": "f116e3b05e70cced8843f8c5adade74fc1221d042d79da1145794ddbc71ac4cb"
+    },
+    "fullBinBiosRegionExactlyEqualsCap": true,
+    "wrapperCapExactlyEqualsArchiveCap": true,
+    "independentP04FirmwarePayloadCount": 1,
+    "p05Cap": {
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    "identicalFirmwareVolumes": 4,
+    "differentFirmwareVolumes": 3,
+    "newWholeFirmwareCoverageClaim": false
+  },
+  "selectedModuleComparisonsIndependentlyRechecked": [
+    {
+      "module": "SecSabiDispatch.efi",
+      "p04": {
+        "bytes": 29952,
+        "sha256": "19d4aaf023c192a2608ef3d7e860645430a87d225deb4ff11cb045b89ab2446e"
+      },
+      "p05": {
+        "bytes": 29952,
+        "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+      },
+      "sections": [
+        {
+          "section": "unnamed",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".data",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".rdata",
+          "byteEqual": false,
+          "sameRva": true
+        },
+        {
+          "section": ".reloc",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".text",
+          "byteEqual": true,
+          "sameRva": true
+        }
+      ]
+    },
+    {
+      "module": "SecLagacySabi.efi",
+      "p04": {
+        "bytes": 5920,
+        "sha256": "9dd1332be610544e23b4a6d025e52dade05b4a06981b2d26d19ac08108e22b2e"
+      },
+      "p05": {
+        "bytes": 5920,
+        "sha256": "446360f3bea7cb7f6af8331f83ca183ca3316cf26592235931e61b7147c2a961"
+      },
+      "sections": [
+        {
+          "section": "unnamed",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".data",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".rdata",
+          "byteEqual": false,
+          "sameRva": true
+        },
+        {
+          "section": ".reloc",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".text",
+          "byteEqual": true,
+          "sameRva": true
+        }
+      ]
+    },
+    {
+      "module": "SecWirelessDev.efi",
+      "p04": {
+        "bytes": 11296,
+        "sha256": "5a13165c45f36e8b070c1494135daf88f9e5936186f73b5283a7176a777f95ef"
+      },
+      "p05": {
+        "bytes": 11296,
+        "sha256": "300bad958d191cf73719048ca61ad19053c4c7dffc1dcc834a35be4ab8861d7b"
+      },
+      "sections": [
+        {
+          "section": "unnamed",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".data",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".rdata",
+          "byteEqual": false,
+          "sameRva": true
+        },
+        {
+          "section": ".reloc",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".text",
+          "byteEqual": false,
+          "sameRva": true
+        }
+      ]
+    },
+    {
+      "module": "SecSwSmiDispatch.efi",
+      "p04": {
+        "bytes": 11744,
+        "sha256": "529865f3d872ac1294484326fc1870d12a17e56c760398e4b5c6686e42d7d423"
+      },
+      "p05": {
+        "bytes": 11744,
+        "sha256": "fc8d0f6968b18843243dd906104fba88770ccb73c8adf4a8e559bcdd08d11c9a"
+      },
+      "sections": [
+        {
+          "section": "unnamed",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".data",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".rdata",
+          "byteEqual": false,
+          "sameRva": true
+        },
+        {
+          "section": ".reloc",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".text",
+          "byteEqual": true,
+          "sameRva": true
+        }
+      ]
+    },
+    {
+      "module": "SecAlwaysOn.efi",
+      "p04": {
+        "bytes": 6496,
+        "sha256": "5e6f2f9f0cd8d695c8d13f5b4bb648121d8f5e6b93b9cf302e2cd0f8fabd66a9"
+      },
+      "p05": {
+        "bytes": 6496,
+        "sha256": "f550a74df96680ed7a2d0b041c5fbbec62afd899e89d1adfb858671b09419d1b"
+      },
+      "sections": [
+        {
+          "section": "unnamed",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".data",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".rdata",
+          "byteEqual": false,
+          "sameRva": true
+        },
+        {
+          "section": ".reloc",
+          "byteEqual": true,
+          "sameRva": true
+        },
+        {
+          "section": ".text",
+          "byteEqual": true,
+          "sameRva": true
+        }
+      ]
+    },
+    {
+      "module": "SecSetupWin.efi",
+      "p04": {
+        "bytes": 22432,
+        "sha256": "0d25ed100ffad174cada8084e380945a9bf79817556de182049a92d15d4d4146"
+      },
+      "p05": {
+        "bytes": 23552,
+        "sha256": "85746029af1b2beccf415104e866f570f4e627bd568858b7278664c2351df3f8"
+      },
+      "sections": [
+        {
+          "section": "unnamed",
+          "byteEqual": true,
+          "sameRva": false
+        },
+        {
+          "section": ".data",
+          "byteEqual": false,
+          "sameRva": false
+        },
+        {
+          "section": ".rdata",
+          "byteEqual": false,
+          "sameRva": false
+        },
+        {
+          "section": ".reloc",
+          "byteEqual": false,
+          "sameRva": false
+        },
+        {
+          "section": ".text",
+          "byteEqual": false,
+          "sameRva": true
+        }
+      ]
+    }
+  ],
+  "sabiPaths": {
+    "providerInitializerPointersCompared": 21,
+    "providerInitializerPointerBytesEqual": true,
+    "coreDifferenceCategories": [
+      {
+        "module": "SecSabiDispatch.efi",
+        "differentBytes": {
+          "coffTimestamp": 3,
+          "imageVersionString": 1,
+          "validatedUnwindTail": 545,
+          "unclassified": 0
+        }
+      },
+      {
+        "module": "SecLagacySabi.efi",
+        "differentBytes": {
+          "coffTimestamp": 3,
+          "imageVersionString": 1,
+          "validatedUnwindTail": 0,
+          "unclassified": 0
+        }
+      },
+      {
+        "module": "SecSwSmiDispatch.efi",
+        "differentBytes": {
+          "coffTimestamp": 3,
+          "imageVersionString": 1,
+          "validatedUnwindTail": 190,
+          "unclassified": 0
+        }
+      },
+      {
+        "module": "SecAlwaysOn.efi",
+        "differentBytes": {
+          "coffTimestamp": 3,
+          "imageVersionString": 1,
+          "validatedUnwindTail": 0,
+          "unclassified": 0
+        }
+      }
+    ],
+    "providerValidatedUnwindRecords": 52,
+    "swSmiValidatedUnwindRecords": 22,
+    "wholeImageOrExceptionBehaviorEqualityClaim": false,
+    "changedWirelessRegistrationSelectors": [
+      "12",
+      "13",
+      "69",
+      "6A"
+    ],
+    "changedSetupWinRegistrationSelector": "7C",
+    "changedModulesRecoveredFromTheirOwnGuidAndInterfaceFlow": true,
+    "new65or66RegistrationInReviewedPaths": false,
+    "newTypedSabiBit3WriterInReviewedPaths": false,
+    "allDynamicOrExternalAliasesClosed": false
+  },
+  "hii": {
+    "sources": {
+      "P04ACJ": {
+        "sha256": "249de8eafa153d927ff0f78baa7d2b20813a318fe57cc068f59bde7aea946127",
+        "formPackages": 10,
+        "opcodeCount": 12415,
+        "supportedStatementCount": 2640,
+        "varStoreCount": 121,
+        "vendorOpcodeCount": 34,
+        "bytes": 333257,
+        "packages": 11,
+        "batteryProtectionStandardStatementReferences": 0,
+        "protectionTokenIdsIndependentlyDerived": true
+      },
+      "P05ACJ": {
+        "sha256": "53ec78bfce49bf65858d64aaadee9fbb31abf79088ee0c9b60c28783a6ddf527",
+        "formPackages": 10,
+        "opcodeCount": 12447,
+        "supportedStatementCount": 2648,
+        "varStoreCount": 121,
+        "vendorOpcodeCount": 34,
+        "bytes": 333801,
+        "packages": 11,
+        "batteryProtectionStandardStatementReferences": 0,
+        "protectionTokenIdsIndependentlyDerived": true
+      }
+    },
+    "varStoreDeclarationBytesEqual": true,
+    "vendorOpcodeBytesEqual": true,
+    "allVendorParentMetadataEqual": false,
+    "additionalP05PcieLtrQuestions": 8,
+    "additionalP05Opcodes": 32,
+    "additionalP05Bytes": 544,
+    "conditionsOrCallbacksEvaluated": false,
+    "menuVisibilityOrVariableBehaviorProved": false,
+    "batteryFieldOrReadBackContractRecovered": false
+  },
+  "technicalDocument": {
+    "technicalParaphraseOnly": true,
+    "lowBatteryWakeIsChargeCeilingContract": false,
+    "personalNamesOrApprovalRosterIncluded": false,
+    "documentApprovalRequestsFollowed": false
+  },
+  "currentStageValidation": {
+    "sourceHashesAndStaticAssertionsPassed": true,
+    "independentReportReviewPassed": true,
+    "buildRun": false,
+    "unitTestsRun": false,
+    "previousCodeValidationOnly": {
+      "csharpPassed": 436,
+      "pythonPassed": 85,
+      "buildWarnings": 0,
+      "buildErrors": 0
+    }
+  },
+  "productCodeChanged": false,
+  "testsChanged": false,
+  "newExecutableOrSourceZipProvided": false,
+  "originalVendorDataIncluded": false,
+  "vendorCodeExecuted": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "realExperimentMarkerAccessed": false,
+  "firmwareDowngradedOrFlashed": false,
+  "environmentConfigurationChanged": false,
+  "protectionStateObserved": false,
+  "currentInstalledImageIdentityProved": false,
+  "currentP05Windows10ControlCompatibilityProved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "resumeRequirement": "Concrete applicable battery handler or equivalent manufacturer evidence connecting command meaning and trustworthy protection-state read-back;no speculative OEM call or repeated user diagnostic",
+  "documentValidation": {
+    "markdownDocuments": 5,
+    "jsonReports": 1,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "privatePathsOrRequestIdentifiers": 0,
+    "gitDiffCheckPassed": true,
+    "existingProgramAndSourceArchiveHashesUnchanged": 3
+  }
+}

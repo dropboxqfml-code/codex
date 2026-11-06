@@ -1,3 +1,11 @@
+# ATIV Battery Guard — 전송 취소 보강 개발 소스
+
+2026-11-07 한국 시간. [개발 소스 ZIP](ATIVBatteryGuard-WMI-CANCELLATION-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-WMI-CANCELLATION-SHA256SUMS.txt) · [수정·검증 안내](../ATIVBatteryGuard/WMI_CANCELLATION_BOUNDARY_UPDATE.md)
+
+취소 callback이 멈추면 timeout/cancel 결과도 반환하지 못하던 순수 전송 조정 코드의 결함을 수정했습니다. 채널과 callback이 모두 끝날 때까지 다음 요청을 거부합니다. C#437개·Python85개 통과, 전체 WPF 포함 빌드 경고·오류0개입니다. 현재 앱의 실제 장치 경로에는 연결되지 않는 구성 요소이며 충전 제한은 계속 미구현·Unsupported입니다.
+
+**실행 프로그램 교체판이 아닙니다.** 기존 프로그램을 그대로 사용할 수 있고 소스 ZIP을 함께 풀거나 새 노트북 시험·업로드를 할 필요가 없습니다. 삼성 원본·펌웨어·사용자 자료·빌드 EXE/DLL은 포함하지 않습니다. 아래는 기존 프로그램의 배포 기록입니다.
+
 # ATIV Battery Guard — 현재 계열 원본 연결·설명 반영판
 
 2026-11-06 한국 시간. [프로그램 ZIP](ATIVBatteryGuard-OEM-CALLER-EVIDENCE.zip) · [일치 소스 ZIP](ATIVBatteryGuard-OEM-CALLER-EVIDENCE-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-OEM-CALLER-EVIDENCE-SHA256SUMS.txt) · [변경·새 근거·검증](../ATIVBatteryGuard/CURRENT_MODEL_OEM_EVIDENCE_UPDATE.md)

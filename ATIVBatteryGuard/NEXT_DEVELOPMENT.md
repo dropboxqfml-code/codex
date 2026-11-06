@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — 전송 취소 callback 차단 수정 / 2026-11-07 한국 시간
+
+[WMI_CANCELLATION_BOUNDARY_UPDATE.md](WMI_CANCELLATION_BOUNDARY_UPDATE.md)를 먼저 읽습니다. 순수 FrameExchange의 동기 Cancel이 채널 callback에서 막혀 timeout/cancel 결과를 반환하지 못하는 결함을 재현했습니다(새 회귀만 추가한 기존 코드 436통과/1실패). 채널 취소는 worker로 분리하고 `WhenAll(pending,cancellation)` 뒤에 token source와 busy 슬롯을 정리합니다. 결과 게시 전 관측한 caller 취소만 우선하며 늦은 callback 부수 효과를 기다리지 않습니다. 입력·응답·단발 정책·예약·권한·어댑터·앱 연결은 미변경입니다.
+
+최종 C#437/Python85 통과, 전체 WPF 포함 솔루션 빌드 경고·오류0입니다. Linux WindowsDesktop task의 기본 MSB4062/BadImageFormat은 빌드 명령의 COMPlus_ReadyToRun=0 및 DOTNET_ReadyToRun=0으로 해소했습니다. 기존 workspace SDK와 NuGet cache를 재사용하고 DOTNET_CLI_HOME은 workspace 안의 쓰기 가능한 cache로 지정합니다. 독립 코드 검토 완료, fresh 로그는 reports/wmi-cancellation에 보존합니다. 개발 소스만 배포하며 현재 앱은 이 채널에 연결되지 않아 기존 프로그램 교체·새 노트북 시험·업로드가 필요하지 않습니다.
+
+병행 확인한 raw 영역의 P04/P05 차이 10바이트는 새 배터리 명령 근거가 아닙니다. 비공개 cache는 20261107/raw-gap-identity-next 및 cancellation-fix입니다. MICOM/8051/칩 정체성을 추정으로 확정하지 않습니다. 실제 보호 상태·제어는 미구현/Unsupported이며 다음 구현에는 적용 가능한 처리자와 신뢰할 응답·재조회 근거가 필요합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 실제 P04ACJ 원본과 P05ACJ 비교 / 2026-11-06
 
 [P04_P05_FIRMWARE_COMPARISON.md](P04_P05_FIRMWARE_COMPARISON.md)를 먼저 읽습니다. 실제 940X3G W7 목록의 BAIN-A0010A03.ZIP을 확보했습니다. 13,355,153바이트/SHA `7433986a2e29b9ff806300272e6293762227839e3f497d2555550d69a5e0c62f`이며 ZIP CRC·경로와 CAP/BIN/wrapper의 동일 payload를 확인했습니다. 목록 2개와 컨테이너 3개를 독립 펌웨어로 세지 않습니다. Version 공백·NoVerify·BOM 날짜는 현재 설치 BIOS·Windows 10 지원의 검증이 아닙니다. 비공개 원본은 `20261106/manual-catalog-delta-next`, 비교 출력은 `firmware-history-source-next` / `p04-hii-delta-next`, 독립 검산은 `p04-comparison-root`에 있습니다.

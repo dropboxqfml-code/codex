@@ -1,0 +1,454 @@
+
+Welcome to .NET 8.0!
+---------------------
+SDK Version: 8.0.427
+
+----------------
+Installed an ASP.NET Core HTTPS development certificate.
+To trust the certificate, view the instructions: https://aka.ms/dotnet-https-linux
+
+----------------
+Write your first app: https://aka.ms/dotnet-hello-world
+Find out what's new: https://aka.ms/dotnet-whats-new
+Explore documentation: https://aka.ms/dotnet-docs
+Report issues and find source on GitHub: https://github.com/dotnet/core
+Use 'dotnet --help' to see available commands or visit: https://aka.ms/dotnet-cli
+--------------------------------------------------------------------------------------
+PASS unsupported exposes no hardware capability
+PASS unsupported rejects Unknown
+PASS unsupported rejects Unsupported
+PASS unsupported rejects Normal100
+PASS unsupported rejects Protection80
+PASS unsupported rejects invalid enum
+PASS mock transitions remain local and separate
+PASS mock rejects unknown without losing last state
+PASS actual laptop zero percent remains valid
+PASS unknown percentage does not become zero
+PASS unknown flag does not infer charging
+PASS no battery clears otherwise plausible percentage
+PASS charging on disconnected AC is unknown
+PASS charging and discharging decode separately
+PASS reserved flag bits are unknown
+PASS native API failure discards raw measurements
+PASS missing native fields stay unknown
+PASS snapshot rejects out of range percentages
+PASS cross check preserves zero without diagnosis
+PASS multiple batteries do not replace native aggregate
+PASS settings defaults save and reload across stores
+PASS settings repeated save leaves valid atomic result
+PASS settings invalid enum cannot replace file
+PASS settings future schema is preserved and save blocked
+PASS settings malformed JSON preserved as corrupt copy
+PASS settings oversized input preserved and save blocked
+PASS settings externally upgraded file cannot be overwritten
+PASS numeric enum JSON cannot masquerade as desired mode
+PASS settings symlink cannot redirect writes
+PASS log unknown text never captures personal input
+PASS network settings paths rejected
+PASS known device is research candidate but never permits write
+PASS spoofed model prefix is not research match
+PASS report does not expose full paths or enable hardware
+PASS bundle results reject traversal filenames
+PASS report-only bundle remains visibly distinct
+PASS service resolver accepts quoted ProgramDataSamsung location
+PASS service resolver cannot enumerate shared System32
+PASS service resolver rejects \\server\share\app.exe
+PASS service resolver rejects C:\Users\Private\app.exe
+PASS service resolver rejects C:\ProgramData\Samsung\..\Private\app.exe
+PASS service resolver rejects C:\ProgramData\Samsung\app.exe:extra
+PASS service resolver rejects C:\ProgramData\Samsung\NUL.exe
+PASS service resolver rejects %USERPROFILE%\Samsung\app.exe
+PASS service resolver checks path safety before existence
+PASS module policy rejects unconfirmed parent
+PASS module policy rejects malformed PE even for pinned parent
+PASS valid referenced PE is data only with no execution or write rights
+PASS PE parser rejects short and invalid files
+PASS persisted preference and mock never become actual firmware state
+PASS disposed view model disables actions and future changes
+PASS cancelled OEM bundle never calls collector
+PASS bundle confirmation failure never calls collector
+PASS report-only ZIP does not claim OEM copies
+PASS diagnostic refresh blocks stale exports and overlap
+PASS disposed diagnostic completion cannot publish data
+PASS disposed hardware report never saves late result
+PASS disposed bundle completion cannot publish filename
+PASS Support inquiry includes device facts without inventing charge support
+PASS Support inquiry preserves unknown device fields
+PASS Support inquiry excludes raw errors and private paths
+PASS Production review configuration cannot collect OEM files
+PASS Support inquiry copy requires fresh diagnostics and stops on dispose
+PASS Support inquiry blocks stale clipboard content while refreshing
+PASS schema query targets only exact statically confirmed class names
+PASS schema allowlist returned array cannot alter future targets
+PASS schema discovery never grants hardware access
+PASS schema status stays explicit: Found
+PASS schema status stays explicit: ClassNotFound
+PASS schema status stays explicit: NamespaceNotFound
+PASS schema status stays explicit: AccessDenied
+PASS schema status stays explicit: TimedOut
+PASS schema status stays explicit: UnsupportedPlatform
+PASS schema status stays explicit: ReadError
+PASS schema failures are isolated and personal exception text is removed
+PASS schema null and mismatched source responses fail closed
+PASS schema fields disclose identifiers and CIM types only
+PASS schema field and parameter output cannot leak raw input text
+PASS schema property and method collections are bounded
+PASS schema parameter collections are bounded and explicit
+PASS schema errors cannot display stale successful fields
+PASS schema public arrays cannot mutate stored report
+PASS schema unknown enum fails closed
+PASS schema report is included in detailed hardware diagnostic
+PASS Missing Settings location uses only six approved dedicated directories
+PASS Settings fallback cannot bypass registration or a provided path
+PASS Settings fallback deduplicates roots and returns independent arrays
+PASS Settings registration matches only the intended product
+PASS Settings registration excludes unrelated Samsung programs
+PASS Settings registration requires publisher metadata
+PASS Settings directories accept only dedicated vendor app roots
+PASS Settings directory allowlist has strict segment boundaries
+PASS Settings directory policy excludes shared and private roots
+PASS Settings directory policy rejects network and device namespaces
+PASS Settings policy rejects traversal before normalization
+PASS Settings policy rejects alternate data streams
+PASS Settings policy rejects DOS device components
+PASS Settings policy rejects trailing dot and space components
+PASS Settings policy rejects path control and direction characters
+PASS Settings known environment variables resolve within app scope
+PASS Settings unknown or incomplete environment expressions fail closed
+PASS Settings directories support quoted registry values and case
+PASS Settings DisplayIcon accepts only an executable and optional integer index
+PASS Settings DisplayIcon rejects commands and malformed quoting
+PASS Settings DisplayIcon rejects controls outside the quoted path
+PASS Settings DisplayIcon rejects noninteger and trailing index data
+PASS Settings DisplayIcon does not authorize icon DLL or private paths
+PASS Settings module paths permit EXE DLL only within dedicated app scope
+PASS Settings directory containment rejects prefix siblings
+PASS Settings rejected results do not expose personal paths or unsafe tokens
+PASS Settings roots cannot be redefined to network or private locations
+PASS Legacy service locations do not acquire a collection directory
+PASS Settings collection boundary preserves root separately from nested anchor
+PASS Failed service locations discard all local collection paths
+PASS actual laptop flags exclude standard requests without ruling out OEM support
+PASS either advertised request remains separate from percent limit support
+PASS non system and short term batteries cannot establish laptop request support
+PASS incomplete and failed queries never establish absence of standard requests
+PASS detailed diagnosis updates visible interpretation without enabling control
+PASS refresh hides previous request result and failure keeps it unknown
+PASS diagnostic save failure preserves successfully observed request result
+PASS disposed diagnosis cannot publish a late request interpretation
+PASS standard battery query allowlist has only buffered read access
+PASS battery information input preserves tag and leaves level and rate zero
+PASS battery capabilities decode exact SDK response and preserve unknown flag bits
+PASS battery malformed buffers clear prior flags and never accept partial structures
+PASS battery absent flags stay unknown while successful zero is explicit absence
+PASS battery entries reject invalid indices and normalize unknown status
+PASS battery report keeps failures distinct and discards stale successful entries
+PASS battery partial reports preserve each missing result without reusing flags
+PASS battery report rejects duplicate and null device entries
+PASS battery report snapshots inputs and protects returned entry arrays
+PASS battery enumeration stops at eight and exposes the incomplete limit
+PASS battery request flags never authorize writes or imply an 80 percent limit
+PASS battery worker protocol round trips every status and eight flag results
+PASS battery worker protocol rejects malformed packets and invalid fields
+PASS battery worker protocol bounds byte count device count and object graph
+PASS battery worker packets disclose only bounded facts and cannot retain private fields
+PASS SABI name presence is typed metadata and never device or firmware access
+PASS SABI name result rejects unknown missing and old IPC states
+PASS observed x64 Sabi3 metadata prepares architecture without promoting hardware access
+PASS analyzed x64 Sabi3 exports cannot override a missing observed device path
+PASS analyzed x64 Sabi3 distinguishes observed names failures and unperformed lookup
+PASS device path contract is not attributed to other hashes architectures or managed files
+PASS managed and conflicting Sabi3 metadata cannot silently choose a native implementation
+PASS function imports survive immutable inspection snapshot and typed IPC
+PASS function IPC rejects paths invalid ordinals duplicates and oversized lists
+PASS maximum function metadata fits bounded version two protocol
+PASS file inspection parses actual PE import and export tables before reporting metadata
+PASS file inspection rejects malformed PE names and RVAs without retaining partial imports
+PASS file inspection accepts only four fixed target basenames and location labels
+PASS file inspection metadata redacts paths control characters and oversize text
+PASS file inspection failures clear earlier versions PE hashes and signatures
+PASS file inspection success requires bounded size valid PE architecture and SHA256
+PASS file inspection snapshots returned arrays and removes arbitrary PE errors
+PASS file inspection reports bound enumeration and discard stale entries on failure
+PASS file inspection role and signature text never imply verified battery control
+PASS file inspection IPC round trips statuses entries and complete metadata
+PASS file inspection maximum valid metadata fits bounded IPC without discovery truncation
+PASS file inspection IPC rejects missing fields unsupported targets and invalid typed facts
+PASS file inspection IPC rejects malformed framing quotas and invalid UTF8
+PASS file inspection IPC strips unknown private fields without retaining raw uploads
+PASS kernel driver candidate matching is bounded case insensitive and SABI first
+PASS kernel driver states preserve every documented execution condition
+PASS kernel driver startup modes preserve boot system auto manual disabled and unknown
+PASS kernel driver normal no observation differs from incomplete error and timeout
+PASS kernel driver errors discard earlier observations and invalid enums stay conservative
+PASS kernel driver reports snapshot entries and bounded lookahead marks partial
+PASS kernel driver and SABI link comparison never promotes any state into control
+PASS kernel driver IPC roundtrips statuses categories states and startup modes
+PASS kernel driver IPC requires v4 driver result fields and rejects nulls
+PASS kernel driver IPC rejects invalid typed observations quotas and contradictory failures
+PASS kernel driver reports and IPC retain no raw names paths usernames or identifiers
+PASS WMI instance policy permits exactly two fixed property projections
+PASS WMI instance property normalization accepts only exact Boolean and UInt32 types
+PASS WMI normal empty instances differ from class namespace access and timeout failures
+PASS WMI observations snapshot rows bound lookahead and reject method version or wrong class
+PASS WMI failures discard earlier rows without converting them into no-instance success
+PASS WMI multi-instance display preserves false zero unknown max version without choosing a target
+PASS WMI IPC v5 roundtrips nullable values and independent class outcomes
+PASS WMI IPC requires both fixed classes and all fields while rejecting older versions
+PASS WMI IPC rejects wrong class kinds row limits method versions and stale failure rows
+PASS WMI IPC rejects coercible strings numeric booleans and out-of-range versions
+PASS WMI Complete cannot contain unknown required properties
+PASS WMI IPC strips unknown raw instance names paths and identifiers
+PASS observed normal and elevated WMI pair preserves selective enumeration denial without granting OEM access
+PASS access trace null input is unavailable and unknown rather than non-elevated success
+PASS access traces preserve distinct class outcomes and bounded immutable observed values
+PASS access trace wrong class or invalid enums never fabricate a successful phase
+PASS access trace stages and errors explain locations without authorizing any action
+PASS access trace deadline errors clear prior values and retain each failure location
+PASS access trace output has fixed categories and no identity or raw exception fields
+PASS WMI helper captures exact bounded Unicode output without changing content
+PASS WMI helper rejects oversized output at its exact character boundary
+PASS WMI helper capture handles short reads and refuses unreadable channels
+PASS observed stopped manual candidates and denied WMI retain independent meanings
+PASS WMI access denial never depends on a SABI name or the other class outcome
+PASS driver count describes only observed combinations without selecting a service
+PASS transport assessment clears failed inventories and remains unknown before collection
+PASS TXT save success keeps permission denial visible and refresh clears old summary
+PASS save failure preserves assessment while provider error removes previous assessment
+PASS WMI instance observations share the explicit report and cannot enable control
+PASS file inspection missing provider cannot run
+PASS file inspection is explicit and saves metadata without enabling hardware
+PASS file inspection blocks repeats and clears stale displayed result
+PASS file inspection failure hides prior facts and exception details
+PASS driver inventory is saved with SABI link even when Samsung folders are absent
+PASS driver timeout replaces previously running observations in screen and saved report
+PASS file inspection save failure keeps observed metadata available
+PASS disposed file inspection cannot save or publish late metadata
+PASS PE32 and PE32+ resolve actual named import thunks without loading modules
+PASS PE functions preserve module association across import descriptors
+PASS PE ordinal imports preserve zero and maximum ordinal on both architectures
+PASS PE rejects reserved ordinal bits and non RVA 64 bit import pointers
+PASS PE fallback unbound IAT reads names while bound IAT stays explicitly limited
+PASS PE malformed thunk or function name discards earlier import observations
+PASS PE import function list truncates output but validates remaining thunk rows
+PASS PE unterminated import thunks stop at bounded work quota
+PASS PE import deduplication respects module casing and function case sensitivity
+PASS PE import models reject paths and snapshot caller arrays
+PASS Sabi3 x64 query data uses eleven independent bytes without invoking native code
+PASS Sabi3 driver reply requires full length and acknowledgement before copying all eleven bytes
+PASS Sabi3 short failed or unacknowledged driver replies discard stale payload
+PASS Sabi3 zero one and FF are opaque markers rather than protection or support states
+PASS Sabi3 unrecognized byte values never become disabled
+PASS Sabi3 API failure takes precedence over plausible or stale buffer
+PASS Sabi3 x64 buffer requires eleven bytes and rejects the old four byte example
+PASS Sabi3 every decoded byte keeps protection percent and hardware support unknown
+PASS Sabi3 reply decoding does not mutate input or retain a live buffer
+PASS Sabi3 legacy semantic enum values and unchecked payload states cannot forge checked evidence
+PASS wsabi WMI copies all sixteen payload bytes without sharing caller storage
+PASS wsabi WMI rejects S_FALSE errors and malformed array shapes while clearing stale data
+PASS wsabi WMI rejects every acknowledgement other than AA
+PASS wsabi WMI and Sabi3 x64 payload and frame dimensions remain separate
+PASS P05ACJ failure prefix comparison retains structural frame status and grants no hardware meaning
+PASS P05ACJ failure prefix requires every supported payload byte rather than its first marker
+PASS P05ACJ failure prefix is not inspected for failed frames or rejected envelopes
+PASS P05ACJ failure prefix uses isolated validated payload snapshots
+PASS historical FF review explains the firmware source without inventing a complete failure pattern
+PASS wsabi typed reply distinguishes API non-success before every response condition
+PASS wsabi typed reply separates element type from rank and lower-bound errors
+PASS wsabi typed reply refuses all nearby and oversized unsupported frame lengths
+PASS wsabi typed reply classifies every acknowledgement without inventing header requirements
+PASS wsabi typed reply snapshots all payload bytes and returns independent caller copies
+PASS wsabi typed reply leaves every payload marker opaque and grants no hardware observation
+PASS WMI contract metadata compares GUIDs without retaining actual values
+PASS WMI contract method number and embedded class normalization are strict
+PASS WMI metadata failure states remove all earlier method and buffer facts
+PASS WMI metadata distinguishes incomplete fields from observed nonmatching definitions
+PASS WMI metadata class outcomes remain independent and never enable control
+PASS WMI metadata reports no actual GUID names paths or provider text
+PASS observed GUID method one and byte array preserve unresolved input output bindings
+PASS observed reader two resolves both DataBuffer classes through CIMTYPE without enabling calls
+PASS metadata binding accepts CIMTYPE evidence without choosing an OS dispatch mapping
+PASS metadata conflicts partial outcomes and missing dispatch cannot establish full shape binding
+PASS failed or absent method metadata clears detailed qualifier facts without hiding independent buffer
+PASS WMI parameter metadata preserves unresolved legacy object definitions
+PASS WMI parameter binding supports standard CIMTYPE and embedded class representations
+PASS WMI qualifier conflicts stay unresolved and explicit other definitions remain false
+PASS WMI malformed qualifiers cannot be overridden by a matching class qualifier
+PASS WMI parameter shape prevents qualifiers from establishing a mismatched type
+PASS WMI qualifier normalization keeps strict identifier and length boundaries
+PASS WMI parameter metadata has no mutable or raw text state and never permits hardware calls
+PASS WMI parameter metadata rejects impossible enum inputs without producing a match
+PASS offline WMI binding accepts detailed observed CIMTYPE definitions without enabling calls
+PASS offline WMI binding rejects earlier partial observations and bool-only compatibility reports
+PASS offline WMI binding requires both detailed parameter shapes and every fixed contract fact
+PASS offline WMI request packages canonical nested bytes while preserving independent method and command numbers
+PASS offline WMI request snapshots are deeply independent and their dictionaries reject replacement
+PASS offline WMI invalid request clears a previous prepared envelope
+PASS offline WMI method API failure wins without reading any output field
+PASS offline WMI method output distinguishes missing containers members and failed fixed reads
+PASS offline WMI decoder performs only two canonical lookups and ignores unrelated return fields
+PASS offline WMI nested Bytes preserves every structural decoder error instead of treating envelope presence as success
+PASS offline WMI reply copies opaque payloads and retains neither output objects nor raw errors
+PASS bound snapshot channel requires explicit binder and transport dependencies
+PASS bound snapshot request wrapper rejects malformed frames and preserves an independent envelope
+PASS bound snapshot pipeline connects framing metadata envelope and decoder without changing dispatch numbers
+PASS bound snapshot invalid and precancelled requests never enter a transport
+PASS unsupported firmware words cannot bypass encoding through raw frames or frame exchange
+PASS bound snapshot channel preserves every nested envelope failure and structural frame result
+PASS bound snapshot reply conversion rejects provenance replacement and undefined envelope failures
+PASS bound snapshot API errors avoid field reads and leave the byte-only compatibility contract unchanged
+PASS bound snapshot transport faults null tasks null snapshots and unsolicited cancellation remain transport failures
+PASS bound snapshot cancellation tokens survive the boundary and win before decoded results are published
+PASS bound snapshot caller cancellation keeps the exchange busy until uncooperative transport work actually ends
+PASS bound snapshot timeout observes late transport faults and prevents overlap before recovery
+PASS approved one-shot query requires explicit dependencies and rejects every other request shape
+PASS approved one-shot query never prepares or reserves without a confirmed elevated token
+PASS approved one-shot query discards failed preflight facts and never reserves on incomplete preparation
+PASS approved one-shot query refuses unknown or different device matches
+PASS approved one-shot query requires detailed matching schema and the observed dispatch one
+PASS approved one-shot query requires complete enumeration with exactly one active prepared target
+PASS approved one-shot query never dispatches when the durable reservation is refused or unavailable
+PASS approved one-shot query reserves before its one fixed request and reports only a candidate marker
+PASS approved one-shot query atomically rejects concurrent and later reentry without another reservation
+PASS approved one-shot query consumes a dispatch attempt on transport faults without retry or raw errors
+PASS approved one-shot query suppresses candidate markers after every API envelope or byte validation failure
+PASS approved one-shot query never treats opaque zero one FF or other markers as battery protection
+PASS repaired preparation retains the original durable attempt across fresh experiment objects and transport outcomes
+PASS one-shot file reservation durably records only the fixed claim and survives new instances
+PASS one-shot file reservation grants exactly one claim across simultaneous independent objects
+PASS one-shot file reservation refuses empty or arbitrary existing claims without recovery or overwrite
+PASS one-shot file reservation fails closed for unavailable storage and invalid or remote roots
+PASS one-shot file reservation cannot follow an existing file reparse point
+PASS one-shot file reservation cannot redirect its fixed marker through a directory reparse point
+PASS one-shot callback capture suppresses output on failed completion and cancellation
+PASS one-shot callback capture reads exactly one successful object and cleans it before returning
+PASS one-shot callback capture distinguishes empty null duplicate and invalid callback sets without reading
+PASS one-shot callback capture cannot be revived by late objects or repeated completion
+PASS one-shot callback capture keeps an in-flight object alive across late callbacks and disposal
+PASS one-shot callback capture cleans reader failures and tolerates reentrant throwing disposal
+PASS one-shot callback capture disposal closes an uncompleted capture and releases only its owned object
+PASS one-shot failed preparation preserves its fixed location while clearing ready facts and making no claim
+PASS one-shot legacy invalid and thrown preparations remain unknown without leaking raw provider information
+PASS one-shot fixed locations propagate through existing gates and synthetic replies without authorizing another request
+PASS detailed preflight locator issues preserve all historical issue numbers and the unresolved historical result
+PASS preflight inspection classifies only the fixed HRESULT allowlist and treats unknown success codes as errors
+PASS preflight readiness requires every fixed condition and never grants OEM hardware or reservation access
+PASS invalid preflight enums discard readiness while valid failures retain only fixed classifications
+PASS preflight reports are immutable fixed classifications with explicit non-hardware meaning and no raw identity channel
+PASS offline experiment review keeps zero one FF and other markers opaque and cannot authorize hardware
+PASS offline experiment review requires the entire fixed report and rejects missing or repeated required fields
+PASS offline experiment review rejects different revisions scopes numeric enums and unknown enum combinations
+PASS offline experiment review discards contradictory requests preflights replies and markers
+PASS offline experiment review preserves negative complete reports without upgrading absent rejected or faulted replies
+PASS offline experiment review accepts bounded BOM and Windows newlines but rejects oversized or control-bearing text
+PASS offline experiment review retains only immutable classifications and never echoes ignored identities or claims authentication
+PASS static ACPI reader binds the public descriptor to its scoped three-argument method without executing it
+PASS static ACPI opaque data and malformed field lists cannot smuggle a fake descriptor or method
+PASS static ACPI reader never resynchronizes after unsupported or malformed namespace syntax
+PASS static ACPI binding respects namespace and refuses ambiguous duplicate descriptors
+PASS static ACPI descriptor flags length and instance shape are validated independently
+PASS static ACPI method syntax failure discards partial hints while preserving observed definition shape
+PASS static ACPI syntax hints do not infer helper behavior or reinterpret ones as a byte FF
+PASS static ACPI conditional definitions and aliases remain partial and never prove absence
+PASS static ACPI reader checks checksum signature exact length and table limits before exposing facts
+PASS static ACPI recursive depth and definition count are bounded
+PASS static ACPI reports retain no firmware identities strings bytes paths or execution capability
+PASS ACPI collection directly reads an unenumerated DSDT and reads only the first of four SSDT entries
+PASS ACPI collection distinguishes a missing inventory entry from direct DSDT read failures
+PASS ACPI enumeration failures malformed sizes and changing lengths never trigger table reads
+PASS ACPI table size bounds reject undersized or excessive results before allocating a data buffer
+PASS ACPI changed truncated and failed table copies discard bytes instead of exposing partial facts
+PASS ACPI collector clears inventory and table buffers on success exceptions and enumeration failure
+PASS ACPI collector restricts reads to fixed ACPI table IDs and rejects corrupt table headers
+PASS static method flow separates a returned helper and immediate Arg2 syntax from the caller FF hint
+PASS static method flow reports direct Arg2 returns without inventing helper calls or implicit argument aliases
+PASS static method flow aggregates return syntax in conditional branches without choosing an execution path
+PASS static method flow preserves unresolved names as uncertainty rather than zero-argument helpers
+PASS static method flow never treats opaque buffer package or string content as helper calls
+PASS static method flow discards all root flow facts when the root syntax arity or binding is not usable
+PASS static method flow discards unsupported helper hints and does not substitute helper arguments for WMI inputs
+PASS static method flow stops cycles and reuses shared helper definitions without falsely reporting a cycle
+PASS static method flow enforces helper depth definition and call-site bounds separately from root syntax
+PASS static method flow rejects duplicate helper definitions and prevents explicit name parent fallback
+PASS static method flow rejects runtime field creation that could shadow a known local or parent method
+PASS static method flow retains observed syntax under a partial namespace without proving global uniqueness
+PASS static method flow distinguishes reference operands from term argument method calls
+PASS static method flow reports are immutable contain no firmware identifiers and cannot enable execution
+PASS extended static syntax parses Acquire raw Word timeout and Release without interpreting timeout bytes as FF
+PASS extended static syntax records event and timing operands as syntax without executing waits
+PASS extended static reference and target operands never invoke a method with the referenced name
+PASS extended static syntax consumes BCD fixed values debug target CreateField and Fatal raw data without evaluation
+PASS extended syntax rejects value-only statements invalid SimpleName and CreateField method collisions
+PASS extended static analysis keeps table loads and dynamic namespace definitions closed with fixed reasons
+PASS extended syntax classifies unknown root and helper operations without exporting raw opcodes or firmware strings
+PASS extended syntax rejects truncated Acquire Word Fatal raw data and CreateField names without partial facts
+PASS extended flow retains scoped facts from parsed helpers while discarding every unsupported helper prefix fact
+PASS extended failure and helper evidence remains immutable and cannot retain operands identifiers or execution capability
+PASS static object references classify observed literal and synchronization declarations without rewriting old flow counts
+PASS static object references identify direct Arg2 store return and parsed helper references to the same observed object
+PASS static object relations do not propagate Arg2 through locals SizeOf named values or distinct objects
+PASS static Field stores report only observed address space kinds without reading or writing a region
+PASS static Field bit lengths use encoded bit counts independently of remaining table byte counts
+PASS static Field analysis discards typed prefixes when a FieldList is truncated connected or otherwise unsupported
+PASS static object analysis never discovers Field definitions or references inside opaque data
+PASS static object classification respects duplicate opaque and explicitly scoped declarations
+PASS runtime-created fields make static declaration relations uncertain without executing namespace changes
+PASS static named method references are classified without invoking or following the referenced method
+PASS static object analysis discards unsupported root and helper prefix relations
+PASS static object relation limits count unique names while preserving old root syntax and repeated reference counts
+PASS partial namespaces retain observed object relations and unknown references stay indeterminate
+PASS static object reports are immutable and omit names paths addresses operands and hardware capabilities
+PASS Field channel syntax compares one observed input and return declaration with a 21-byte frame
+PASS Field channel width handles mismatch zero and large encoded bit counts without allocating a field buffer
+PASS Field channel width distinguishes repeated declarations multiple equal candidates and mixed widths
+PASS Field Store sources preserve direct Arg0 Arg1 and Arg2 roles without promoting them into each other
+PASS mixed root roles retain unknown and non-Field alternatives instead of selecting a matching Field
+PASS Field Store syntax classifies literals and other expressions without tracing values or counting non-Field targets
+PASS different Field names can reference the same observed Region declaration without proving physical behavior
+PASS Field Region comparison distinguishes declaration identity and mixed candidates from physical address equality
+PASS unknown aliased duplicate and missing Region declarations cannot become a confirmed Field channel
+PASS runtime-created root and parsed helper names invalidate hidden static Field widths and Region relations
+PASS malformed and opaque Field lists discard width prefixes instead of creating frame matches
+PASS unsupported roots helpers and cyclic helper connections never promote incomplete Field relations
+PASS Field channel analysis reuses the unique-name bound without discarding old parsed root facts
+PASS partial namespaces retain local observed Field widths and Region declaration relations
+PASS Field channel reports retain only immutable categories and omit widths addresses paths and execution capabilities
+PASS Store roles classify the extra literal target separately from the input return and helper declarations
+PASS Store roles count immediate literal syntax without resolving names locals or computed values
+PASS Store role identity uses observed definitions rather than store occurrence counts or equal addresses
+PASS Store role widths retain mismatch zero multiple equal and mixed declarations
+PASS Store role literal counts include unknown non-Field and nonnamed targets without selecting a matching subset
+PASS Store roles respect aliases duplicate declarations dynamic creation and opaque parent lookup barriers
+PASS Store role Region relations retain missing and mixed declarations rather than comparing physical addresses
+PASS direct Store layout reports source order including reversed syntax without claiming execution
+PASS missing direct layout roles remain unobserved or unknown without manufacturing a complete pattern
+PASS duplicate direct input literal helper and return sites are multiple candidates even for one declaration
+PASS branches loops and nested blocks cannot be flattened into one direct Store layout
+PASS nested Store calls and complex operands never masquerade as direct helper layout events
+PASS Store layout event limits affect only the new report and preserve old parsed root and relation facts
+PASS unsupported root prefixes are discarded and unsupported or cyclic helpers cannot confirm helper Store relations
+PASS partial namespace observations retain known Store role identity without claiming complete firmware resolution
+PASS Store role reports are immutable omit raw literals identities and positions and cannot grant execution
+PASS offline experiment review cannot change hardware preferences mock state storage or provider calls
+PASS editing rejecting and oversizing pasted experiment text cannot retain a previous validated review
+PASS offline review drops pasted identity text instead of copying it to results diagnostics logs or settings
+PASS offline review clear and disposal discard input without allowing later review actions
+PASS wsabi request encodes exact header little-endian command and sixteen payload bytes
+PASS wsabi request refuses out-of-range commands without truncating or retaining prior output
+PASS wsabi request rejects every nearby wrong length and non-byte zero-based vector shapes
+PASS wsabi request snapshots payload and allocates independent output on every success
+PASS wsabi request framing retains separate ABI and grants no command or hardware access
+PASS frame exchange requires an explicit channel and a finite bounded timeout
+PASS frame exchange encodes a fresh request and returns isolated structural payload
+PASS invalid and already-cancelled frame exchanges never enter a channel
+PASS channel throws null tasks null replies and unsolicited cancellation remain transport failures
+PASS all structural reply outcomes are retained without stale payload or hardware meaning
+PASS caller cancellation retains a busy slot until an uncooperative channel ends
+PASS deadline retains busy state observes late faults and never resurrects a reply
+PASS throwing channel cancellation callbacks do not escape caller cancellation or timeout
+FAIL blocking cancellation callbacks do not delay results or release the operation slot: The operation has timed out.
+PASS caller cancellation triggered by a timeout callback wins before publishing the result
+PASS synchronously blocking channel entry stays off the caller and retains its slot
+PASS observed caller cancellation wins over a concurrently completed reply
+PASS frame exchange instances have independent operation slots
+RESULT 436 passed, 1 failed, 0 skipped (437 registered)

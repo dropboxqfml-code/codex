@@ -1,0 +1,99 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Pure supplied-channel cancellation coordination and synthetic regressions;not a hardware control implementation",
+  "previousSavedCommit": "c480a9a",
+  "changedSources": [
+    {
+      "source": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFrameExchange.cs",
+      "sha256": "7356269c9b85abc667821e88a19565d128c54b92f30f327528ee8ebfeeb865ae"
+    },
+    {
+      "source": "tests/WsabiWmiFrameExchangeTests.cs",
+      "sha256": "eb8280006d74930a24dea6904ba0c1213d81cda0fc5788bd1adf6c898fcba5cc"
+    }
+  ],
+  "reproduction": {
+    "baselineWithNewRegressionOnly": {
+      "passed": 436,
+      "failed": 1,
+      "skipped": 0,
+      "registered": 437,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "expectedFailure": "blocking cancellation callbacks do not delay results or release the operation slot",
+    "failure": "The operation has timed out."
+  },
+  "behavior": {
+    "channelCancellationCallbacksOnWorker": true,
+    "resultWaitsForCancellationCallbackCompletion": false,
+    "slotAndTokenRetainedUntilChannelAndCancellationBothComplete": true,
+    "lateFaultsObserved": true,
+    "publishedResultImmutable": true,
+    "observedCallerCancellationWinsBeforePublication": true,
+    "waitForLaterCallbackSideEffectToChooseStatus": false,
+    "hardNativeTerminationImplemented": false
+  },
+  "validation": {
+    "csharpFinal": {
+      "passed": 437,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 437,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "pythonPassed": 85,
+    "pythonFailed": 0,
+    "pythonSkipped": 0,
+    "fullWpfSolutionBuildPassed": true,
+    "buildWarnings": 0,
+    "buildErrors": 0,
+    "initialDefaultBuildFailed": true,
+    "initialBuildFailure": "WindowsDesktop MSB4062/BadImageFormat",
+    "finalBuildUsesSdkIlMode": true,
+    "independentCodeReviewPassed": true,
+    "windowsGuiOrNotebookRun": false
+  },
+  "additionalStaticReview": {
+    "scope": "Bounded P04/P05 previously opaque raw source comparison",
+    "rawRegionBytes": 262144,
+    "differentBytes": 10,
+    "versionOrDateDifferentBytes": 8,
+    "headerDifferentBytes": 2,
+    "documentedFormatOrMicomArchitectureIdentityProved": false,
+    "newBatteryHandlerOrReadBackContractRecovered": false,
+    "existingVersionStringReportedAsNewDiscovery": false,
+    "privateSourceOnly": true
+  },
+  "mainAppChannelWiringChanged": false,
+  "requestReplyContractsChanged": false,
+  "oneShotPolicyOrReservationChanged": false,
+  "actualExperimentMarkerAccessed": false,
+  "newOemOrHardwareCalls": false,
+  "firmwareOrVendorCodeExecuted": false,
+  "hardwareWriteOrPrivilegeEnabled": false,
+  "driverServiceSecurityOrFirmwareSettingsChanged": false,
+  "runtimeNetworkAdded": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "chargeControl": "Unsupported",
+  "protectionStateObserved": false,
+  "newExecutableProvided": false,
+  "existingProgramStillApplicable": true,
+  "newUserTestOrResubmissionRequired": false,
+  "originalVendorOrUserDataIncluded": false,
+  "sourcePackage": {
+    "file": "ATIVBatteryGuard-WMI-CANCELLATION-SOURCE.zip",
+    "bytes": 779615,
+    "sha256": "cb9f255459312e0c05645f1afb231e85e540ca0a73e7d198f92ea16688cdac0b",
+    "entries": 275,
+    "crcAndAllowlistBytesMatch": true,
+    "executableDistribution": false
+  },
+  "documentValidation": {
+    "markdownDocuments": 5,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "gitDiffCheckPassed": true,
+    "oldReleaseArchiveHashesUnchanged": 3
+  }
+}

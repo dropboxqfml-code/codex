@@ -118,6 +118,7 @@ internal static partial class Program
                     caller.Cancel();
                     var cancelled = await pending;
                     AssertFrameExchangeFailure(cancelled, WsabiWmiFrameExchangeStatus.Cancelled);
+                    await FrameExchangeCancellationRequested(channel);
                     Check(channel.LastToken.IsCancellationRequested && exchange.IsBusy, "channel cancellation or retained slot missing");
                     AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
                     Equal(1, channel.Calls);
@@ -141,6 +142,7 @@ internal static partial class Program
                 await channel.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
                 var expired = await pending.WaitAsync(TimeSpan.FromSeconds(2));
                 AssertFrameExchangeFailure(expired, WsabiWmiFrameExchangeStatus.TimedOut);
+                await FrameExchangeCancellationRequested(channel);
                 Check(channel.LastToken.IsCancellationRequested && exchange.IsBusy, "timeout did not retain operation");
                 AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
                 Equal(1, channel.Calls);
@@ -174,6 +176,7 @@ internal static partial class Program
                         if (callerCancels) caller.Cancel();
                         AssertFrameExchangeFailure(await pending.WaitAsync(TimeSpan.FromSeconds(2)),
                             callerCancels ? WsabiWmiFrameExchangeStatus.Cancelled : WsabiWmiFrameExchangeStatus.TimedOut);
+                        await FrameExchangeCancellationRequested(channel);
                         Check(exchange.IsBusy && channel.LastToken.IsCancellationRequested, "callback error released active work");
                         completion.SetResult(FrameExchangeReply());
                         await FrameExchangeIdle(exchange);
@@ -182,15 +185,79 @@ internal static partial class Program
                 }
             }
         });
-        AddAsync("caller cancellation triggered by a timeout callback wins before publishing the result", async () =>
+        AddAsync("blocking cancellation callbacks do not delay results or release the operation slot", async () =>
         {
+            foreach (bool callerCancels in new[] { true, false })
             using (var caller = new CancellationTokenSource())
+            using (var release = new ManualResetEventSlim())
             {
                 var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var cancelling = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var channelFinished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var completion = FrameExchangeCompletion();
+                var channel = new FakeFrameChannel { Handler = async (request, token) =>
+                {
+                    token.Register(() =>
+                    {
+                        cancelling.TrySetResult(true);
+                        release.Wait();
+                    });
+                    registered.TrySetResult(true);
+                    var reply = await completion.Task.ConfigureAwait(false);
+                    channelFinished.TrySetResult(true);
+                    return reply;
+                }};
+                var exchange = new WsabiWmiFrameExchange(channel,
+                    callerCancels ? TimeSpan.FromSeconds(2) : TimeSpan.FromMilliseconds(100));
+                try
+                {
+                    var pending = exchange.ExchangeAsync(0x34, FrameExchangePayload(), caller.Token);
+                    await registered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    if (callerCancels) caller.Cancel();
+                    await cancelling.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    var result = await pending.WaitAsync(TimeSpan.FromSeconds(2));
+                    var expected = callerCancels ? WsabiWmiFrameExchangeStatus.Cancelled : WsabiWmiFrameExchangeStatus.TimedOut;
+                    AssertFrameExchangeFailure(result, expected);
+
+                    // Ending the channel alone must not dispose its token source
+                    // or admit work while the old cancellation callback is active.
+                    completion.SetResult(FrameExchangeReply());
+                    await channelFinished.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    await Task.Delay(50);
+                    AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
+                    Equal(1, channel.Calls);
+                    release.Set();
+                    await FrameExchangeIdle(exchange);
+                    AssertFrameExchangeFailure(result, expected);
+                    channel.Handler = (request, token) => Task.FromResult(FrameExchangeReply());
+                    Check((await exchange.ExchangeAsync(0x34, FrameExchangePayload())).IsValidFrame,
+                        "completed cancellation callback retained the operation slot");
+                }
+                finally
+                {
+                    release.Set();
+                    completion.TrySetResult(FrameExchangeReply());
+                    await FrameExchangeIdle(exchange);
+                }
+            }
+        });
+        AddAsync("late caller cancellation from a blocked timeout callback cannot change a published result", async () =>
+        {
+            using (var caller = new CancellationTokenSource())
+            using (var release = new ManualResetEventSlim())
+            {
+                var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var cancelling = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var completion = FrameExchangeCompletion();
                 var channel = new FakeFrameChannel { Handler = (request, token) =>
                 {
-                    token.Register(() => caller.Cancel());
+                    token.Register(() =>
+                    {
+                        cancelling.TrySetResult(true);
+                        release.Wait();
+                        caller.Cancel();
+                        throw new Exception("private late cancellation failure");
+                    });
                     registered.TrySetResult(true);
                     return completion.Task;
                 }};
@@ -199,12 +266,23 @@ internal static partial class Program
                 {
                     var pending = exchange.ExchangeAsync(0x34, FrameExchangePayload(), caller.Token);
                     await registered.Task.WaitAsync(TimeSpan.FromSeconds(2));
-                    AssertFrameExchangeFailure(await pending.WaitAsync(TimeSpan.FromSeconds(2)), WsabiWmiFrameExchangeStatus.Cancelled);
-                    Check(caller.IsCancellationRequested && exchange.IsBusy, "callback cancellation lost its priority or retained slot");
+                    await cancelling.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    var expired = await pending.WaitAsync(TimeSpan.FromSeconds(2));
+                    AssertFrameExchangeFailure(expired, WsabiWmiFrameExchangeStatus.TimedOut);
+                    Check(!caller.IsCancellationRequested && exchange.IsBusy, "result waited for a blocked cancellation side effect");
+                    release.Set();
+                    await FrameExchangeCancellationRequestedBy(caller);
+                    Check(exchange.IsBusy, "callback completion released an unfinished channel");
                     completion.SetResult(FrameExchangeReply());
                     await FrameExchangeIdle(exchange);
+                    AssertFrameExchangeFailure(expired, WsabiWmiFrameExchangeStatus.TimedOut);
                 }
-                finally { completion.TrySetResult(FrameExchangeReply()); }
+                finally
+                {
+                    release.Set();
+                    completion.TrySetResult(FrameExchangeReply());
+                    await FrameExchangeIdle(exchange);
+                }
             }
         });
         AddAsync("synchronously blocking channel entry stays off the caller and retains its slot", async () =>
@@ -290,6 +368,26 @@ internal static partial class Program
         while (exchange.IsBusy)
         {
             if (elapsed.Elapsed > TimeSpan.FromSeconds(2)) throw new Exception("exchange slot did not become idle");
+            await Task.Yield();
+        }
+    }
+
+    private static async Task FrameExchangeCancellationRequested(FakeFrameChannel channel)
+    {
+        var elapsed = Stopwatch.StartNew();
+        while (!channel.LastToken.IsCancellationRequested)
+        {
+            if (elapsed.Elapsed > TimeSpan.FromSeconds(2)) throw new Exception("channel cancellation was not requested");
+            await Task.Yield();
+        }
+    }
+
+    private static async Task FrameExchangeCancellationRequestedBy(CancellationTokenSource caller)
+    {
+        var elapsed = Stopwatch.StartNew();
+        while (!caller.IsCancellationRequested)
+        {
+            if (elapsed.Elapsed > TimeSpan.FromSeconds(2)) throw new Exception("caller cancellation side effect was not observed");
             await Task.Yield();
         }
     }

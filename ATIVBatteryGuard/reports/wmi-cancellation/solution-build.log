@@ -1,0 +1,13 @@
+  ATIVBatteryGuard.Core -> src/ATIVBatteryGuard.Core/bin/Release/net48/ATIVBatteryGuard.Core.dll
+  ATIVBatteryGuard.App -> src/ATIVBatteryGuard.App/bin/Release/net48/ATIVBatteryGuard.exe
+  ATIVBatteryGuard.WmiAccessCheck -> src/ATIVBatteryGuard.WmiAccessCheck/bin/Release/net48/ATIVBatteryGuard.WmiAccessCheck.exe
+  ATIVBatteryGuard.WmiContractCheck -> src/ATIVBatteryGuard.WmiContractCheck/bin/Release/net48/ATIVBatteryGuard.WmiContractCheck.exe
+  ATIVBatteryGuard.WmiOneShotQuery -> src/ATIVBatteryGuard.WmiOneShotQuery/bin/Release/net48/ATIVBatteryGuard.WmiOneShotQuery.exe
+  ATIVBatteryGuard.WmiPreflightCheck -> src/ATIVBatteryGuard.WmiPreflightCheck/bin/Release/net48/ATIVBatteryGuard.WmiPreflightCheck.exe
+  ATIVBatteryGuard.AcpiRoutingCheck -> src/ATIVBatteryGuard.AcpiRoutingCheck/bin/Release/net48/ATIVBatteryGuard.AcpiRoutingCheck.exe
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:05.09

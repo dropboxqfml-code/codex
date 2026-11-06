@@ -35,6 +35,7 @@ namespace ATIVBatteryGuard.Core.Services
                 return Result(WsabiWmiFrameExchangeStatus.Busy);
 
             Task<WsabiWmiReplyResult> pending = null;
+            Task cancellation = null;
             var operation = new CancellationTokenSource();
             var deadline = new CancellationTokenSource();
             var cancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -55,12 +56,14 @@ namespace ATIVBatteryGuard.Core.Services
                 Task winner = await Task.WhenAny(pending, delay, cancelled.Task).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    TryCancel(operation);
+                    cancellation = CancelChannelOffThread(operation);
                     return Result(WsabiWmiFrameExchangeStatus.Cancelled);
                 }
                 if (!ReferenceEquals(winner, pending))
                 {
-                    TryCancel(operation);
+                    cancellation = CancelChannelOffThread(operation);
+                    // Only cancellation already observed before publishing wins.
+                    // Never wait for channel callbacks to create cancellation.
                     return Result(cancellationToken.IsCancellationRequested
                         ? WsabiWmiFrameExchangeStatus.Cancelled : WsabiWmiFrameExchangeStatus.TimedOut);
                 }
@@ -88,9 +91,11 @@ namespace ATIVBatteryGuard.Core.Services
                 }
                 else
                 {
-                    // Timeout/cancel does not mean an uncooperative channel has
-                    // stopped. Keep its slot and observe any late fault first.
-                    _ = pending.ContinueWith(completed =>
+                    // Neither channel completion nor a published timeout proves
+                    // that cancellation callbacks have stopped. Retain the source
+                    // and slot until both finish, observing any late channel fault.
+                    Task cleanup = cancellation == null ? pending : Task.WhenAll(pending, cancellation);
+                    _ = cleanup.ContinueWith(completed =>
                     {
                         _ = completed.Exception;
                         operation.Dispose();
@@ -102,6 +107,12 @@ namespace ATIVBatteryGuard.Core.Services
 
         // Cooperative wait/cancellation only, not hard native termination.
         // A future live channel must impose its own independent process limit.
+        private static Task CancelChannelOffThread(CancellationTokenSource source)
+            => Task.Run(() => TryCancel(source));
+
+        // Only the private deadline source is cancelled on the returning path.
+        // Channel cancellation can run arbitrary blocking callbacks, so it must
+        // always use the worker above and participate in deferred cleanup.
         private static void TryCancel(CancellationTokenSource source)
         {
             try { source.Cancel(); } catch { }

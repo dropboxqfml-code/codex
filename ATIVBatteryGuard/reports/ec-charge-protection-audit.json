@@ -1,0 +1,170 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Conditional static EC charge-protection policy reconstruction from pinned source bytes and public register vocabulary;not an approved device interface or hardware observation",
+  "softwareCodeBaseCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+  "previousAnalysisCommit": "79a26fd",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "P05ACJ CAP",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "source": "AMITSE/0.efi",
+      "bytes": 567808,
+      "sha256": "8a353ee2a2ef589790042aa3776ef1b9aabdbb7fb681d4bb5a139e11831d0991"
+    },
+    {
+      "source": "SecSabiDispatch.efi",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    },
+    {
+      "source": "SecSetupValueToEc.efi",
+      "bytes": 4416,
+      "sha256": "4481748d3e15f926dab77682341493fa81554975059f669e21567991cd5d1f28"
+    },
+    {
+      "source": "Setup HII",
+      "bytes": 333801,
+      "sha256": "53ec78bfce49bf65858d64aaadee9fbb31abf79088ee0c9b60c28783a6ddf527"
+    },
+    {
+      "source": "EC-region raw slice",
+      "bytes": 98304,
+      "sha256": "2c8aeabe90b844b9d5bc09a05656aa08be1ef927b2d80006e6bd4fb0cc983d04"
+    }
+  ],
+  "publicReferences": [
+    {
+      "source": "Public Linux v6.6 BQ24735 register reference",
+      "url": "https://raw.githubusercontent.com/torvalds/linux/v6.6/drivers/power/supply/bq24735-charger.c",
+      "bytes": 12661,
+      "sha256": "b3ec95ef2beaec5f43897374820f116cd366eb57c41d0b46287871015dd805a1",
+      "usedOnlyForRegisterMeaning": true,
+      "currentModelOrWindowsCompatibilityProved": false
+    },
+    {
+      "source": "Public Linux v6.6 SBS register reference",
+      "url": "https://raw.githubusercontent.com/torvalds/linux/v6.6/drivers/power/supply/sbs-battery.c",
+      "bytes": 33386,
+      "sha256": "a30159b1afaf3adc8e875a16165b25e9da9e9ef83d28eaab7fc0fad13a54eb64",
+      "usedOnlyForRegisterMeaning": true,
+      "currentModelOrWindowsCompatibilityProved": false
+    }
+  ],
+  "interpretationModel": {
+    "assumedIsa": "Intel8051 compatible",
+    "fixedLowRegionBytes": 49152,
+    "bankWindowBytes": 16384,
+    "bankGatesAndUpdateAddressRelationObservedInSource": true,
+    "resetVersionAndUsbWakeRoleAnchorsConsistent": true,
+    "manufacturerChipIsaOrAddressDefinitionVerified": false,
+    "liveInstalledImageIdentityVerified": false,
+    "decoderIsOurDataOnlyRenderer": true,
+    "decoderSha256": "da1d3a88f9bdf8a1d6bb4e16709e200c14d21d70e4cf9730decfad5337f3ac94",
+    "vendorInstructionsExecutedOrEmulated": false
+  },
+  "conditionalPolicy": {
+    "candidateFound": true,
+    "modeSetsUpperAndLowerThresholds": true,
+    "upperSocPercent": 80,
+    "lowerSocPercent": 75,
+    "pollTableItems": 14,
+    "numericPollMapsSameCacheFieldToSbsRelativeSoc": true,
+    "fieldToUpperAndLowerConsumersConnected": true,
+    "stopComparison": "SOC >= 80 while the selected protection mode is active",
+    "resumeComparison": "SOC <= 75 with valid data and additional battery-status guards",
+    "requestedStopSetsInhibitBitAndZeroCurrentAndVoltage": true,
+    "requestedResumeClearsInhibitBitAndRestoresPreparedValues": true,
+    "wordByteOrderIndependentlyChecked": true,
+    "capacityHealthRatioSeparatedFromSocThreshold": true,
+    "specificChargerModelEstablished": false,
+    "electricalStopOrResumeObserved": false
+  },
+  "readBackLimits": {
+    "writeStatusCheckedBySelectedPolicyCallers": false,
+    "softwareLastActionBitsProveAppliedSettings": false,
+    "echoedSetterInputProvesActualMode": false,
+    "dedicatedTrustworthyModeReadBackRecovered": false,
+    "rebootPersistenceProved": false,
+    "pastFirstFfMeaningResolved": false
+  },
+  "sourceBridge": {
+    "typedSabiGenericEcRegistrationRecovered": true,
+    "dataSelectedCommandInsteadOfFixedLiteralCaller": true,
+    "softwareGateIsHardwareSupportOrUserAuthorization": false,
+    "callbackSnapshotBytes": 20,
+    "internalEcMessageBytes": 30,
+    "selectedInputDataCopyBytes": 10,
+    "selectedReturnCopyBytes": 10,
+    "projectWmiPayloadBytes": 16,
+    "fullWmiToCallbackLengthContractProved": false,
+    "currentRuntimeGateAndRegistrationObserved": false,
+    "firstSendStatusCheckedBeforeSecondWait": false,
+    "freshReplyEstablishedByNormalCompletionOrAck": false,
+    "internalEcCommandNumbersAreWmiCommandNumbers": false,
+    "windowsInvocationProved": false,
+    "newRequestFrameConstructed": false
+  },
+  "biosAndAcpiChecks": {
+    "knownUsbWakeSenderFirstMessageByteClarified": true,
+    "protocolStructureOffsetsTreatedAsMessageOffsets": false,
+    "cpuSavingAndUsbChargingSeparatedFromBatteryProtection": true,
+    "batteryHostFieldsDirectlyEquatedWithCandidateXram": false,
+    "namedStandardBatteryChargeControlMethodObserved": false,
+    "scope": "Saved DSDT and selected Setup-to-EC source only;not global hardware absence"
+  },
+  "sourceValidation": {
+    "modePathExactByteAssertions": 27,
+    "modePathSelectedConditionalRows": 312,
+    "busAndChargerAssertions": 19,
+    "busAndChargerSelectedConditionalRows": 522,
+    "pollProducerAssertions": 50,
+    "pollProducerSelectedConditionalRows": 464,
+    "rootIntegratedSelectedAssertions": 66,
+    "sourceBridgeSelectedX64Rows": 274,
+    "rootAdditionalBridgeAssertions": 12,
+    "publicRegisterDefinitionsMatched": true,
+    "independentComponentReviewsPassed": true,
+    "publicReportReviewsPassed": true,
+    "theseAreAppUnitTestsOrFirmwareCoveragePercent": false
+  },
+  "buildRun": false,
+  "unitTestsRun": false,
+  "previousCodeValidationOnly": {
+    "csharpPassed": 437,
+    "pythonPassed": 85,
+    "buildWarnings": 0,
+    "buildErrors": 0
+  },
+  "productCodeChanged": false,
+  "testsChanged": false,
+  "newExecutableOrSourceZipProvided": false,
+  "originalVendorDataIncluded": false,
+  "vendorCodeExecutedOrLoaded": false,
+  "firmwareEmulated": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "actualExperimentMarkerAccessed": false,
+  "driverServiceSecurityOrFirmwareSettingsChanged": false,
+  "runtimeNetworkAdded": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "newUserTestOrResubmissionRequired": false,
+  "publicReferenceFilesRetrieved": 2,
+  "publicRepositorySearchEndpointWasUnavailable": true,
+  "newManufacturerBinaryDownloaded": false,
+  "currentProtectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "nextImplementationRequirement": "Close the current Windows/firmware delivery contract and an independent trustworthy protection-state read-back;do not invoke the internal setter or generic bridge from guessed WMI frames",
+  "documentValidation": {
+    "markdownFiles": 5,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "privatePathsIdentifiersOrOperationalAddressesIncluded": false,
+    "oldReleaseArchivesUnchanged": 4,
+    "gitDiffCheckPassed": true
+  }
+}

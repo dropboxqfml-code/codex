@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 조건부 EC 해석에서 80/75 충전 보호 사슬 연결 / 2026-11-07 한국 시간
+
+[EC_CHARGE_PROTECTION_CANDIDATE.md](EC_CHARGE_PROTECTION_CANDIDATE.md)를 먼저 읽습니다. 8051 호환 ISA와 하위48KiB 공통/상위16KiB bank 모델을 가정한 데이터 전용 해석입니다. 전환 stub, 업데이트 주소, 버전 응답, 별도로 확인한 USBwake sender의 역할이 모델과 맞지만 공식 chip/ISA 정의나 live image 검증은 아닙니다. 원본 명령어 실행·에뮬레이션은 하지 않았습니다.
+
+내부 mailbox setter의 모드1→상한80/하한75, SBS0D 수치 polling→field0 cache, 동일 field0의>=80 억제/<=75+상태조건 재개, charger option/current/voltage 요청까지 연결했습니다. F151은 별도DesignCapacity/FCC 비율 경로라SOC와 구분합니다. charger word 바이트 순서를 독립 확인했고 공개 Linux v6.6 SBS/BQ24735 레지스터 정의와 대조했으나 해당 부품/Windows 호환성을 확정하지 않습니다. 쓰기 status를 검사하지 않는 software last-action flags는 실제 적용/read-back 증거가 아닙니다.
+
+내부EC 메시지와WMI/SABI 번호는다릅니다. 현재SABI의generic 중계callback도등록지도와연결했지만 gate/길이/실행경로/신선한read-back은미확정입니다. 새 프레임·live backend·실험·제어코드를 추가하지 않았고 기존 단발예약은 접근하지 않습니다. 모드echo/ACK/일반완료를 보호상태로 표시하지 않습니다.
+
+private cache는20261107/charge-payload-evidence-next,charge-smbus-trace-next(하위sbs-table-crosscheck),charge-controller-identity-next,charge-bios-ec-bridge-next,charge-version-anchor-next,charge-public-controller-sources-next입니다. 선택 구문 검산은모드27단언/312행,버스19/522,poll50/464,root통합66입니다. 앱·테스트·EXE·기존ZIP은미변경,이번빌드·단위테스트미실행,437/85 및경고오류0은직전5d77df5기록입니다. 실제제어Unsupported,추가노트북시험·재제출·OEM·예약·드라이버/서비스/보안·펌웨어변경없음. 다음은정확한Windows전달계약과안전한독립상태재조회가핵심입니다. 아래는이전기록입니다.
+
 ## 최신 — 미분류 영역의 EC 업데이트 분류 연결 / 2026-11-07 한국 시간
 
 [EC_UPDATE_REGION_RESULT.md](EC_UPDATE_REGION_RESULT.md)를 먼저 읽습니다. 보유 P05 wrapper의 CAP 선택/전체 파일 전달→실제 AFU EC 옵션의 type3 선택과, 펌웨어 SMIFlash/1의16B header+1280개9B block-info 생산을 연결했습니다. type3인31개4KiB 페이지는 별도24B ROM-layout의124KiB 영역과 정확히 같고 분석대상96KiB를 포함합니다. 두 표는 독립 생산자이며24B→9B변환으로 부르지 않습니다. 주소관계도 원본16개entry에서 독립 검산했습니다. 실제 노트북의 runtime block-info/현재이미지 동일성은 미검증입니다.

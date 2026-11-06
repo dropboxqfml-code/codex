@@ -49,6 +49,10 @@ namespace ATIVBatteryGuard.Core.Models
             switch (Status)
             {
                 case WsabiWmiExperimentReviewStatus.NotLoaded:
+                    text.AppendLine("940X3G 계열의 Settings 2.2.0.18 원본에서 기존 분석과 같은 x64 Sabi3 DLL을 확인했습니다.");
+                    text.AppendLine("비교용 Settings 2.0.0.89의 배터리 조회·메뉴 분석도 반영했습니다.");
+                    text.AppendLine("현재 모델의 지원·실제 보호 설정은 아직 확인되지 않았습니다.");
+                    text.AppendLine("화면 변경이나 함수 성공 반환만으로 충전 설정 적용을 확인할 수 없습니다.");
                     text.AppendLine("이미 받은 실험 결과를 붙여넣고 검토할 수 있습니다.");
                     break;
                 case WsabiWmiExperimentReviewStatus.InvalidInput:
@@ -69,6 +73,8 @@ namespace ATIVBatteryGuard.Core.Models
                         text.AppendLine("분석한 P05ACJ 이미지에는 ACK AA와 FF로 시작하는 공통 실패 응답 경로가 있습니다.");
                         text.AppendLine("명령 등록 부재·처리 오류 등 여러 조건이 같은 응답을 만들 수 있습니다.");
                         text.AppendLine("이 기록은 첫 바이트만 남겨 전체 실패 패턴·현재 펌웨어 일치·실패 원인을 확정할 수 없습니다.");
+                        text.AppendLine("비교 OEM의 지원 분류에는 FF와 선행 조건 불충족이 함께 포함됩니다. 이는 현재 노트북의 지원 판정이 아닙니다.");
+                        text.AppendLine("비교 OEM은 선행 조회 뒤 버퍼를 재사용하므로 이 기록과 전체 입력이 같다고 확인되지 않았습니다.");
                     }
                     break;
             }

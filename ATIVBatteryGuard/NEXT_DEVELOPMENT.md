@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 현재 계열2.2.0.18 원본 확보·설명 반영판 / 2026-11-06
+
+[CURRENT_MODEL_OEM_EVIDENCE_UPDATE.md](CURRENT_MODEL_OEM_EVIDENCE_UPDATE.md)를 먼저 읽습니다. 실제 OS응답A1/W7/WB를근거로문서화된WB카탈로그를조회해 Model940X3G의 Settings2.2.0.18→BASW-84270A4N.ZIP을받았습니다. 원본73237618바이트/SHAa709e49804b02f3441ef063a849c11c4c16a632a3cdf2eb6c5667bfe30d5a216. privatecache는 /workspace/.cache/ativ-command-research/20261106/target-settings-2.2.0.18, 카탈로그원문은인접swupdate/target-os-resolution입니다. 원본실행·기기/SN/예약접근·환경변경없음.
+
+x64Sabi3는기존사용자제공SHA09a971...와일치합니다. ModuleBatteryMgr는Windows전원계획/설치/WOL,ModuleBatteryToast는타이머ID관리,ModuleSABI는별도lazyCore전송으로확인범위에서BLE처리계약을복구하지못했습니다. server/eventplugin13/16개·289명령중일부미해결은전체기능부재로확대하지않습니다. 새배포원본과현장치지원·실제Win10선택은별도입니다.
+
+앱기본오프라인설명에현재계열원본연결과비교2.0분석을표시하고검증된FF의분류/입력동등성미확정설명을추가했습니다. parser/상태/opaque디코더/요청/하드웨어권한/실험/제어는미변경. 최종C#435·Python85통과,솔루션/portable빌드경고오류0. 새프로그램/일치소스/체크섬은OEM-CALLER-EVIDENCE 이름으로제공,원본DLL은제외합니다.
+
+P05새추적에서도bit3 writer/배터리처리자는확정못했고generic5byte setter가열려초기7F불변을입증못합니다. 다음제어구현에는현재firmware처리·지원flag·신뢰할read-back의추가정적근거가필요합니다. 기존자료/노트북/OEM반복·예약·드라이버/서비스/보안변경을요청하지않고Unsupported유지. 아래는이전기록입니다.
+
 ## 최신 — OEM 메뉴·상태·전송의 한정 연결 완료 / 2026-11-06
 
 [OEM_UI_SUPPORT_CONTRACT_REVIEW.md](OEM_UI_SUPPORT_CONTRACT_REVIEW.md)를 먼저 읽습니다. 저장ZIP과주요모듈SHA일치·SUS실바이트독립감사를완료했습니다. 지원판정은getter반환/상태2→지원캐시→SUB_PM_BLE→PROGRAM_PRIVILIGE/MUITEST 로컬속성→PM_BLE비영의child뷰/헤더생성으로연결됩니다. PROGRAM_PRIVILIGE 생성자는미확정이며관리자조건으로명명하지않습니다. 상태2는ViewUpdate와별도nonzero-flag setter분기에서다르게그려질수있고(후자의lifecycle미확정), UI선택값도명령핸들없어도로컬에기록돼read-back증거가아닙니다.

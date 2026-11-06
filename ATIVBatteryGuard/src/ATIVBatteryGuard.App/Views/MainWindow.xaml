@@ -82,7 +82,7 @@
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Text="과거 WMI 실험 결과 검토" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="이미 받은 콘솔 출력을 붙여넣어 검토합니다. 이 검토를 위해 실험을 다시 실행할 필요는 없습니다."
+                    <TextBlock Text="현재 분석 내용을 확인하고, 필요하면 이미 받은 과거 콘솔 출력도 검토할 수 있습니다. 실험을 다시 실행할 필요는 없습니다."
                                Style="{StaticResource Detail}" />
                     <TextBlock Text="추가 장치 조회·OEM 호출·예약 파일 접근 없이 텍스트만 검토하며, 현재 배터리 보호 상태를 확인하는 기능은 아닙니다."
                                Style="{StaticResource Detail}" />

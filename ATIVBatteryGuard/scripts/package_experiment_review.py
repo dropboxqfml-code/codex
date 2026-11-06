@@ -120,6 +120,14 @@ def main():
         "historicalReviewContainsFullResponsePayload": False,
         "native11ByteReplyUsesOpaqueMarkersOnly": True,
         "nativeMarkerInfersProtectionOrSupport": False,
+        "comparisonOemCallerStaticallyReviewed": True,
+        "comparisonPackageSha256": "a501fde3b9870e3840d1b4561255c70e3cece4e9426c1070ff8481446d8ba3b7",
+        "targetFamilyCatalogAndPackageIdentified": True,
+        "targetFamilyPackageSha256": "a709e49804b02f3441ef063a849c11c4c16a632a3cdf2eb6c5667bfe30d5a216",
+        "targetFamilyPackageProvesWindows10ChargeControl": False,
+        "comparisonCallerApplicableToCurrentModelVerified": False,
+        "historicalPayloadEquivalenceEstablished": False,
+        "oemSetterReturnProvesAppliedSetting": False,
         "mainApplicationBatteryAndReadOnlyDiagnosticsRemainAvailable": True,
         "mainApplicationInvokesOemMethods": False,
         "mainApplicationLaunchesExperiment": False,
@@ -143,14 +151,15 @@ def main():
         "matchingSourceZipSha256": sha(args.source_zip.read_bytes()),
     }
     files["BUILD-INFO.json"] = json.dumps(info, ensure_ascii=False, indent=2).encode("utf-8")
-    instructions = """ATIV Battery Guard — OEM 호출자 계약 대조 반영판
+    instructions = """ATIV Battery Guard — 비교 OEM 근거 설명 반영판
 
-이 파일은 일반 배터리 표시 앱에 기존 실험 결과 검토를 추가한 개발판입니다.
+이 파일은 배터리 표시 앱의 오프라인 설명에 확인한 비교 OEM 근거를 반영한 개발판입니다.
 ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 관리자 권한은 필요하지 않습니다.
 새 노트북 실험이나 OEM 호출을 할 필요가 없으며 실험 실행 파일도 포함하지 않습니다.
 
 1. ZIP 전체를 새 로컬 폴더에 압축 해제하고 ATIVBatteryGuard.exe를 실행합니다.
-2. 원하는 경우 앱의 '과거 WMI 실험 결과 검토'에 이미 받은 콘솔 출력을 붙여넣고 검토합니다.
+2. 앱의 '과거 WMI 실험 결과 검토'에 현재 계열 원본 연결과 비교 분석의 기본 설명이 표시됩니다.
+   원하는 경우 이미 받은 콘솔 출력을 붙여넣고 검토할 수 있습니다.
    결과를 새로 만들기 위해 1회 실험 프로그램을 다시 실행하지 마세요.
 3. 검토는 붙여넣은 텍스트를 고정 상태로 해석합니다. 원문 입력은 검토 후 비우며 저장하지 않습니다.
    과거 TXT·삼성 DLL·EXE·기존 진단을 다시 제출할 필요가 없습니다.
@@ -160,8 +169,13 @@ ValidFrame은 전송 응답 형식 검증이며 FF와 0/1은 보호 OFF/ON 또�
 분석한 P05ACJ 이미지에는 여러 실패 조건에서 ACK AA와 FF+0 데이터를 만드는 공통 경로가 있습니다.
 기존 기록에는 첫 바이트만 있어 전체 패턴·현재 펌웨어 일치·실패 원인은 확정할 수 없습니다.
 전체 응답을 받은 순수 디코더의 패턴 일치도 특정 원인이나 충전 보호 상태를 입증하지 않습니다.
-기존 native11바이트 순수 디코더도 0/1/FF를 보호 OFF/ON·미지원으로 해석하지 않도록 수정했습니다.
-이 디코더는 실제 삼성 DLL 호출이나 제어 경로에 연결돼 있지 않습니다.
+비교용 삼성 Settings2.0.0.89는 FF와 선행 조건 불충족을 같은 지원 분류로 처리합니다.
+그 OEM은 선행 조회 뒤 같은 버퍼를 재사용하며, 과거 단발 기록과 전체 입력 동등성은 미확정입니다.
+비교 모델의 분류를 현재 노트북의 지원 여부로 사용하지 않습니다.
+새로 확보한 940X3G 계열 Settings2.2.0.18 원본에는 이전에 분석한 x64 Sabi3와 같은 파일이 있습니다.
+같은 DLL의 포함은 현재 장치 식별·Windows10 지원·충전 보호 설정의 검증이 아닙니다.
+화면 변경·초기화 반환·설정 함수의 성공 반환은 실제 충전 설정의 확인이 아닙니다.
+native11바이트 순수 디코더는 계속 0/1/FF를 opaque 표식으로만 처리합니다.
 배터리 보호 상태와 후보 명령 지원 여부는 아직 미확정이고 실제 충전 제어는 미지원입니다.
 검토 결과로 실제 제어를 활성화하거나 사용자 선택값·현재 배터리 상태를 바꾸지 않습니다.
 

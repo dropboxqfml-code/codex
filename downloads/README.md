@@ -1,3 +1,15 @@
+# ATIV Battery Guard — 현재 계열 원본 연결·설명 반영판
+
+2026-11-06 한국 시간. [프로그램 ZIP](ATIVBatteryGuard-OEM-CALLER-EVIDENCE.zip) · [일치 소스 ZIP](ATIVBatteryGuard-OEM-CALLER-EVIDENCE-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-OEM-CALLER-EVIDENCE-SHA256SUMS.txt) · [변경·새 근거·검증](../ATIVBatteryGuard/CURRENT_MODEL_OEM_EVIDENCE_UPDATE.md)
+
+**프로그램 ZIP 하나만** 새 폴더에 전부 풀고 `ATIVBatteryGuard.exe`를 일반 권한으로 실행합니다. 소스 ZIP은 개발용이며 함께 풀 필요가 없습니다. 기본 오프라인 설명에940X3G 계열 Settings2.2.0.18과 기존 x64 Sabi3의 연결을 표시하고, 과거FF 해석에 비교 OEM 분류와 입력 동등성 미확정 설명을 보완했습니다. 새 노트북 시험·관리자 비교·파일 재제출·OEM 반복은 필요하지 않습니다.
+
+실제 충전 제어는 **Unsupported**입니다. 새 원본의 확보나 같은 DLL의 포함을 현재 장치·Windows10 지원·보호 설정 확인으로 사용하지 않습니다. parser·요청·하드웨어 권한·제어 어댑터는 유지합니다. 삼성 원본 DLL/EXE·펌웨어·실험 실행 파일은 포함하지 않았고 기존 다운로드 파일도 보존했습니다.
+
+최종 C#435개·Python85개 통과, 솔루션/portable 빌드 경고·오류0개입니다. 프로그램6항목과 현재 소스269항목, CRC·내부 체크섬·빌드 바이트·소스 일치를 검증했습니다. asInvoker/uiAccess=false 경계를 확인했고 새 설명이 실제 Core에 포함됐습니다. 미서명 개발판이며 새 GUI의 Windows 실기는 미검증입니다.
+
+아래는 이전 단계의 배포·분석 기록입니다.
+
 # ATIV Battery Guard — Settings BOM 조사 소스
 
 **최신 후속 — 분석 재개 / 2026-11-06:** [OEM 메뉴·상태·전송 대조](../ATIVBatteryGuard/OEM_UI_SUPPORT_CONTRACT_REVIEW.md)를 완료했습니다. 현재 모델의 지원·충전 설정 확인으로 확대하지 않으며 코드/테스트/프로그램·기존 ZIP은 그대로입니다. 이번에는 분석 문서만 갱신해 새 다운로드·시험·업로드는 필요하지 않습니다. 아래는 이전 배포 검증 기록입니다.

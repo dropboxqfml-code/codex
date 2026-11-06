@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 미분류 영역의 EC 업데이트 분류 연결 / 2026-11-07 한국 시간
+
+[EC_UPDATE_REGION_RESULT.md](EC_UPDATE_REGION_RESULT.md)를 먼저 읽습니다. 보유 P05 wrapper의 CAP 선택/전체 파일 전달→실제 AFU EC 옵션의 type3 선택과, 펌웨어 SMIFlash/1의16B header+1280개9B block-info 생산을 연결했습니다. type3인31개4KiB 페이지는 별도24B ROM-layout의124KiB 영역과 정확히 같고 분석대상96KiB를 포함합니다. 두 표는 독립 생산자이며24B→9B변환으로 부르지 않습니다. 주소관계도 원본16개entry에서 독립 검산했습니다. 실제 노트북의 runtime block-info/현재이미지 동일성은 미검증입니다.
+
+AMITSE는 같은 영역을복사하고 현재getter의6+3바이트를raw P05ACJ062와직접비교한뒤조건부갱신합니다. 갱신버퍼내바이트변환과I/O쓰기·조각처리가있어원본전체가그대로기록된다고가정하지않고읽기전용query로실행하지않습니다. 6+3 getter는구성요소버전이지보호설정이아닙니다. helper112A8의300/301은graphics좌표문맥이며HII토큰으로해석하지않습니다.
+
+Wrapper의ENE/SMSC라벨이나8051유사열은chip/ISA/bank/codebase증명이아닙니다. 실제AFU EC option callback은인접AMIEC검사함수가아니므로CAP의marker부재로갱신실패를판정하지않습니다. 현재자료로충전보호handler/read-back/Windows안전명령은미확정이며실제제어구현은막혀있습니다. 추측명령·갱신으로공백을채우거나유사자료재세분화를제어성공으로보고하지않습니다.
+
+private cache는20261107/updater-component-selection-next,payload-component-consumers-next,firmware-component-consumers-next,updater-component-independent-next입니다. wrapper834행/22단언,AFU364행및독립261행,SBIOSIO559행,AMITSE7함수368행과ROM/block-info producer근거를보존했습니다. 제품/테스트/EXE/ZIP미변경,이번빌드·단위테스트미실행,437/85와경고오류0은직전5d77df5기록입니다. 추가실기·업로드·OEM/예약/드라이버·서비스/보안·BIOS변경없이Unsupported입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 보유 x64 native SABI 드라이버 본문 검토 / 2026-11-07 한국 시간
 
 [NATIVE_SABI_DRIVER_REVIEW.md](NATIVE_SABI_DRIVER_REVIEW.md)를 먼저 읽습니다. 같은 940X3G W7 Settings2.0.0.78의 SABI3x64/Sabi.sys(13,824B/SHA7a53b3fba3f82ede6fa688e531fbe7ec9e1ae329090c0afe0dcd64f65bd90f21)는 이미 보유한 원본이며 이번에는 미검토 driverbody를 분석했습니다. x64 Sabi3 DLL의 IOCTL과 연결한 분기는 입력>=26/출력>=16, 프레임16복사이며 정상 복사 경로의 Information16/완료 NTSTATUS는 buffer retrieval 성공 결과입니다. 길이·버퍼 조회 실패는 별도 오류로 완료됩니다. ACK/main/sub/배터리 상태는 driver가 판정하지 않습니다. DLL26/16/11과 WMI21/16을 구분합니다.

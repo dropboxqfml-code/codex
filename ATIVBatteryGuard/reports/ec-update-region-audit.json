@@ -1,0 +1,174 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Bounded saved-source connection from wrapper/EC option and independent firmware block-info/ROM-layout producers to raw-region version/update consumers;not live hardware validation",
+  "softwareCodeBaseCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+  "previousAnalysisCommit": "d948bce",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "P05 wrapper",
+      "bytes": 5822368,
+      "sha256": "374c768a09211ce8da6e0812bde870e3b90957bf8b38e2289cac4dc52857e7fd"
+    },
+    {
+      "source": "P04 wrapper",
+      "bytes": 5750792,
+      "sha256": "7f35cddce44d06e8e48f5ebc8deb34c64357a34fa07a567e5da0454e56e58155"
+    },
+    {
+      "source": "afuwin.exe",
+      "bytes": 302192,
+      "sha256": "612292c6466682c46aa2dc7cf35d71a1c56b89922c20d00a59021b6339dc68b0"
+    },
+    {
+      "source": "afuwinx64.exe",
+      "bytes": 370288,
+      "sha256": "5383b4b19d7ac00d37be9abe1f8ea146580a6d22ed0fef9fff2cb3130aed61c4"
+    },
+    {
+      "source": "P05ACJ.cap",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "source": "SBIOSIO32.sys",
+      "bytes": 16368,
+      "sha256": "b3d1bdd4ad819b99870b6e2ed3527dfc0e3ce27b929ad64382b9c3d4e332315c"
+    },
+    {
+      "source": "SBIOSIO64.sys",
+      "bytes": 17928,
+      "sha256": "442d506c1ac1f48f6224f0cdd64590779aee9c88bdda2f2cc3169b862cba1243"
+    },
+    {
+      "source": "AMITSE/0.efi",
+      "bytes": 567808,
+      "sha256": "8a353ee2a2ef589790042aa3776ef1b9aabdbb7fb681d4bb5a139e11831d0991"
+    },
+    {
+      "source": "ReFlash/0.efi",
+      "bytes": 13152,
+      "sha256": "a108e29be6fbc45f2db7cc07b7350147ccdb73a88ea5d099883b41ce255086b2"
+    },
+    {
+      "source": "SecFlashUpdDxe.efi",
+      "bytes": 4448,
+      "sha256": "f7e6414814189f445d2ac8131bdd723c52637d60d0c3ca061f8675a28fc4e5da"
+    },
+    {
+      "source": "SecSMIFlash.efi",
+      "bytes": 13120,
+      "sha256": "05ac8e9a8ce6f6eb62d311087b587f761ebd4a46d0aa71b058475536c599e2c5"
+    },
+    {
+      "source": "SMIFlash/1.efi",
+      "bytes": 41888,
+      "sha256": "beb8334326f74622b80185089c492493509abbb76ca449d4d854318b95b6c7c2"
+    }
+  ],
+  "stageOutcome": "Source-defined EC update-region classification established;charge-protection implementation remains blocked",
+  "wrapper": {
+    "selectedWholeRomOrCapFile": true,
+    "readOnlyWholeFileMappingObserved": true,
+    "wholeFileNameAndSavedDefaultsForwardedToAmiTool": true,
+    "savedDefaultsIncludeRegisteredEcBlockOption": true,
+    "selectedSourceRows": 834,
+    "selectedAssertions": 22,
+    "allRuntimeOptionsAndNotebookSelectionObserved": false,
+    "privatePackageValuesIncluded": false
+  },
+  "hostEcConsumer": {
+    "registeredOptionExplicitlyNamesEmbeddedControllerBlock": true,
+    "actualRegisteredCallbacksFollowed": true,
+    "selectedDynamicLayoutType": 3,
+    "layoutHeaderBytes": 16,
+    "layoutRecordBytes": 9,
+    "matchingLengthsSummed": true,
+    "selectedSourceRows": 364,
+    "separateActualSelectionRowsReviewed": 261,
+    "adjacentAmiecScannerIsSelectedEcCallback": false,
+    "markerAbsenceProvesEcUpdateFailureOrSkip": false,
+    "wholeOriginalBufferProvenAcrossAllSubsequentStages": false,
+    "allOemOptionEffectsAndFallbacksClosed": false
+  },
+  "firmwareBlockInfo": {
+    "headerBytes": 16,
+    "records": 1280,
+    "recordBytes": 9,
+    "eachBlockBytes": 4096,
+    "ecCategory": 3,
+    "ecBlocks": 31,
+    "ecRegionBytes": 126976,
+    "producerAndRegistrationObservedInSavedCode": true,
+    "liveBlockInfoObserved": false
+  },
+  "romLayout": {
+    "records": 16,
+    "recordBytes": 24,
+    "selectedRegionBytes": 126976,
+    "targetRawBytes": 98304,
+    "allSourceAddressOffsetPairsMatchOneRelation": true,
+    "rangeExactlyMatchesEcCategoryPages": true,
+    "isExact96KiBOnlyRecord": false,
+    "twentyFourByteTableConvertedToNineByteRecords": false
+  },
+  "componentConsumer": {
+    "selectedAmitseFunctions": 7,
+    "selectedAmitseInstructionRows": 368,
+    "regionCopyBytes": 126976,
+    "sourceVersionPrefixBytes": 6,
+    "sourceVersionSuffixBytes": 3,
+    "versionComparisonMatchesObservedRawVersion": true,
+    "copyBufferIsTransformedBeforeUpdate": true,
+    "originalRawWrittenUnchangedProved": false,
+    "updatePathContainsHardwareWrites": true,
+    "readOnlyBatteryQueryEstablished": false,
+    "graphicsCoordinateNumbersTreatedAsHiiTokenEvidence": false,
+    "micomHiiTokenProducerConnected": false
+  },
+  "genericTransportReview": {
+    "selectedSbiosioRows": 559,
+    "componentMeaningDeterminedByGenericDriver": false,
+    "readOnlyBatteryBackendEstablished": false
+  },
+  "validation": {
+    "sourceHashesAndIntegratedSourceAssertionsPassed": true,
+    "independentComponentReviewsPassed": true,
+    "publicReportReviewsPassed": true,
+    "buildRun": false,
+    "unitTestsRun": false,
+    "previousCodeValidationOnly": {
+      "csharpPassed": 437,
+      "pythonPassed": 85,
+      "buildWarnings": 0,
+      "buildErrors": 0
+    }
+  },
+  "controllerChipInstructionArchitectureAndAddressModelProved": false,
+  "currentInstalledImageIdentityProved": false,
+  "batteryProtectionHandlerOrCommandReadBackContractRecovered": false,
+  "protectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "productCodeChanged": false,
+  "testsChanged": false,
+  "newExecutableOrSourceZipProvided": false,
+  "originalVendorDataIncluded": false,
+  "vendorCodeExecutedOrLoaded": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "actualExperimentMarkerAccessed": false,
+  "driverServiceSecurityOrFirmwareSettingsChanged": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "newManufacturerDownloadPerformed": false,
+  "newNotebookTestOrResubmissionRequired": false,
+  "chargeControl": "Unsupported",
+  "implementationBlocker": "Controller/ISA/bank/address identity and an applicable protection command with trustworthy read-back remain unproved;do not substitute firmware updating or guessed EC calls",
+  "documentValidation": {
+    "markdownFiles": 5,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "privatePathsIdentifiersOrHardwareAddressesAndUpdateCommandsIncluded": false,
+    "oldReleaseArchivesUnchanged": 4,
+    "gitDiffCheckPassed": true
+  }
+}

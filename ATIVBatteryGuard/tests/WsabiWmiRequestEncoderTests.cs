@@ -10,7 +10,7 @@ internal static partial class Program
         Add("wsabi request encodes exact header little-endian command and sixteen payload bytes", () =>
         {
             var payload = WsabiRequestPayload();
-            foreach (int command in new[] { 0, 1, 255, 256, 257, 0x1234, 0x7fff, 0x8000, 0xffff })
+            foreach (int command in new[] { 0, 1, 0x34, 0x65, 0x7f, 0x80, 0xff })
             {
                 byte[] request;
                 Check(WsabiWmiRequestEncoder.TryEncode(command, payload, out request), "valid framing rejected");
@@ -25,9 +25,9 @@ internal static partial class Program
         {
             var payload = WsabiRequestPayload();
             byte[] request;
-            Check(WsabiWmiRequestEncoder.TryEncode(0xffff, payload, out request), "setup frame rejected");
-            foreach (int command in new[] { int.MinValue, -65536, -1, 65536, 65537, int.MaxValue })
+            foreach (int command in new[] { int.MinValue, -65536, -1, 0x100, 0x165, 0xffff, 65536, 65537, int.MaxValue })
             {
+                Check(WsabiWmiRequestEncoder.TryEncode(0xff, payload, out request), "setup frame rejected");
                 Check(!WsabiWmiRequestEncoder.TryEncode(command, payload, out request), "command truncated");
                 Equal(0, request.Length);
             }
@@ -60,8 +60,8 @@ internal static partial class Program
         {
             byte[] payload = WsabiRequestPayload();
             byte[] first, second;
-            Check(WsabiWmiRequestEncoder.TryEncode(0x1234, payload, out first), "first frame rejected");
-            Check(WsabiWmiRequestEncoder.TryEncode(0x1234, payload, out second), "second frame rejected");
+            Check(WsabiWmiRequestEncoder.TryEncode(0x34, payload, out first), "first frame rejected");
+            Check(WsabiWmiRequestEncoder.TryEncode(0x34, payload, out second), "second frame rejected");
             Check(!ReferenceEquals(first, second) && !ReferenceEquals(first, payload), "shared output storage");
             first[5] = 19;
             Equal((byte)0, payload[0]); Equal((byte)0, second[5]);
@@ -73,6 +73,7 @@ internal static partial class Program
         Add("wsabi request framing retains separate ABI and grants no command or hardware access", () =>
         {
             Equal(WsabiWmiReplyValidator.AnalyzedSha256, WsabiWmiRequestEncoder.AnalyzedSha256);
+            Equal(0xff, WsabiWmiRequestEncoder.MaximumSupportedCommand);
             Equal(16, WsabiWmiRequestEncoder.PayloadBytes);
             Equal(21, WsabiWmiRequestEncoder.FrameBytes);
             byte[] request;

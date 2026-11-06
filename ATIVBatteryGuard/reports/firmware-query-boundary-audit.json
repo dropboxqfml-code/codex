@@ -1,0 +1,193 @@
+{
+  "date": "2026-11-06",
+  "timezone": "Asia/Seoul",
+  "scope": "Bounded saved-firmware query/response evidence and conservative offline framing subset;no protection-setting observation",
+  "firmwareProvider": {
+    "bytes": 29952,
+    "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310",
+    "mainGroupCapacityFromKnownInitializer": 1,
+    "selectorSlotsPerGroup": 256,
+    "slotBytes": 16,
+    "publicUnregisterCanClearMatchingSlot": true,
+    "lookupUsesWordSubWithoutLocalUpperBoundCheck": true,
+    "selectedLegacyBridgeDoesNotMaskUpperSubByte": true,
+    "exactMainOneLookupNoFallbackInReviewedBody": true,
+    "commonFailureDataBytes": "FF followed by19 zero bytes",
+    "commonFailureAcknowledgement": "AA",
+    "normalFirmwareReturn": 0,
+    "windowsHresultOrReturnValueMappingProved": false,
+    "runtimeVulnerabilityReproduced": false,
+    "allMutationAliasesClosed": false,
+    "coreBoundedBodies": 10,
+    "coreInstructionRows": 344
+  },
+  "requestPreparation": {
+    "maximumSupportedCommand": 255,
+    "wireCommandFieldBits": 16,
+    "payloadBytes": 16,
+    "frameBytes": 21,
+    "windowsMethodIdBits": 32,
+    "sharedEncoderUsedByPrepareAndRawWrap": true,
+    "rejectedIntegrationCases": [
+      256,
+      357,
+      65535
+    ],
+    "injectedDependencyCallsForRejectedCases": 0,
+    "validBoundaryAfterRejectedRequests": 255,
+    "isCommandAllowlistOrHardwareAuthorization": false,
+    "applicationLiveBackendAdded": false
+  },
+  "capsuleAcpi": {
+    "templates": 16,
+    "dsdt": 1,
+    "ssdt": 15,
+    "isActualLoadedNamespace": false,
+    "capsuleDsdtBytes": 71849,
+    "capsuleDsdtSha256": "e65919be72fd7e7bd51ca6561a6a94754ea22c929743a04727188f4638dda7a5",
+    "publicDsdtSha256": "d3e7aa7172ee20b1762aae5b941e1fdf3bd90ef8ed74043d37de57a69537676a",
+    "wholeDsdtDifferentBytes": 133,
+    "selectedMethodPacketPairsCompared": 9,
+    "selectedMethodPacketPairsAllByteEqual": true,
+    "selectedPacketComparisons": [
+      {
+        "method": "SBIX",
+        "capsuleBytes": 981,
+        "publicBytes": 981,
+        "rawMethodPacketEqual": true,
+        "capsulePacketSha256": "0d874a55e75467c987ff6285b2a4709b0b999ffcc11bc2c8eb4642c17f6fa584",
+        "publicPacketSha256": "0d874a55e75467c987ff6285b2a4709b0b999ffcc11bc2c8eb4642c17f6fa584",
+        "scope": "BAT1"
+      },
+      {
+        "method": "_BIF",
+        "capsuleBytes": 16,
+        "publicBytes": 16,
+        "rawMethodPacketEqual": true,
+        "capsulePacketSha256": "a48a4919a0a6556dff8676618edc5600e900dd889be001f0d77f7765cc704600",
+        "publicPacketSha256": "a48a4919a0a6556dff8676618edc5600e900dd889be001f0d77f7765cc704600",
+        "scope": "BAT1"
+      },
+      {
+        "method": "_BIX",
+        "capsuleBytes": 16,
+        "publicBytes": 16,
+        "rawMethodPacketEqual": true,
+        "capsulePacketSha256": "eebd60c29195f5c0813d77ddac17ffdf7430e82b8c977c52e3cb8f6cf590b19e",
+        "publicPacketSha256": "eebd60c29195f5c0813d77ddac17ffdf7430e82b8c977c52e3cb8f6cf590b19e",
+        "scope": "BAT1"
+      },
+      {
+        "method": "_BST",
+        "capsuleBytes": 520,
+        "publicBytes": 520,
+        "rawMethodPacketEqual": true,
+        "capsulePacketSha256": "12a21abb3507e63f3798514e8456cbf4f6989109ac8187ff2e408a5e1f37dcac",
+        "publicPacketSha256": "12a21abb3507e63f3798514e8456cbf4f6989109ac8187ff2e408a5e1f37dcac",
+        "scope": "BAT1"
+      },
+      {
+        "method": "_BTP",
+        "capsuleBytes": 94,
+        "publicBytes": 94,
+        "rawMethodPacketEqual": true,
+        "capsulePacketSha256": "83a92dca2ba0f022e351bbb8662a56cff36e786c9365e76687f13589362c4769",
+        "publicPacketSha256": "83a92dca2ba0f022e351bbb8662a56cff36e786c9365e76687f13589362c4769",
+        "scope": "BAT1"
+      },
+      {
+        "method": "_STA",
+        "capsuleBytes": 75,
+        "publicBytes": 75,
+        "rawMethodPacketEqual": true,
+        "capsulePacketSha256": "bbbdd4e54ae3060d7afc10336589e5ab8fad019554b7f276fff8cd7cbdc2ac35",
+        "publicPacketSha256": "bbbdd4e54ae3060d7afc10336589e5ab8fad019554b7f276fff8cd7cbdc2ac35",
+        "scope": "BAT1"
+      },
+      {
+        "method": "_PCL",
+        "capsuleBytes": 12,
+        "publicBytes": 12,
+        "rawMethodPacketEqual": true,
+        "capsulePacketSha256": "8297148e485943a9fc0fb7f3f3b87dc806786101ef8ad31358e50af8bae02b6d",
+        "publicPacketSha256": "8297148e485943a9fc0fb7f3f3b87dc806786101ef8ad31358e50af8bae02b6d",
+        "scope": "BAT1"
+      },
+      {
+        "method": "WM00",
+        "capsuleBytes": 28,
+        "publicBytes": 28,
+        "rawMethodPacketEqual": true,
+        "capsulePacketSha256": "2f010456fadf994ba10e67c9c5df1182812492e65743ddbb8bdc15f26be1b1d9",
+        "publicPacketSha256": "2f010456fadf994ba10e67c9c5df1182812492e65743ddbb8bdc15f26be1b1d9",
+        "scope": "unique recognized MethodOp packet"
+      },
+      {
+        "method": "WQ00",
+        "capsuleBytes": 10,
+        "publicBytes": 10,
+        "rawMethodPacketEqual": true,
+        "capsulePacketSha256": "d8298d3a05d5703d6b03fd24afdac7fd477e1129fdadd0c1600999b38e505e11",
+        "publicPacketSha256": "d8298d3a05d5703d6b03fd24afdac7fd477e1129fdadd0c1600999b38e505e11",
+        "scope": "unique recognized MethodOp packet"
+      }
+    ],
+    "packetIdentityProvesGlobalResourcesOrExecutionIdentity": false,
+    "iaslVersion": "20250404",
+    "staticDisassemblySuccesses": 16,
+    "unresolvedSmartConnectEcmd": true,
+    "newProtectionPathRecovered": false
+  },
+  "guidIndirection": {
+    "pinnedGuidBearingSources": 34,
+    "previousDirectReferenceModules": 6,
+    "nonbaselineSourcesReviewed": 28,
+    "newTypedConsumerRecovered": false,
+    "exactPointerAndLocalAffineFormsOnly": true,
+    "allIndirectReferencesOrFeatureAbsenceProved": false
+  },
+  "validation": {
+    "portableTests": {
+      "passed": 436,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 436,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "pythonTestsPassed": 85,
+    "fullBuildWarnings": 0,
+    "fullBuildErrors": 0,
+    "portableBuildWarnings": 0,
+    "portableBuildErrors": 0,
+    "independentReviews": [
+      "Firmware table lookup/unregister/dispatch and selected legacy bridge",
+      "GUID representation/reference crosscheck",
+      "Capsule ACPI and public raw MethodOp packet boundaries",
+      "Offline encoder guard and bypass/cancellation/MethodId test boundaries"
+    ],
+    "windowsGuiOrProtectionSettingTestedThisStage": false
+  },
+  "distribution": {
+    "sourceOnly": true,
+    "newExecutableZipProvided": false,
+    "originalVendorBinariesIncluded": false,
+    "userUploadsIncluded": false,
+    "sourceArchive": "ATIVBatteryGuard-P05ACJ-QUERY-BOUNDARY-SOURCE.zip",
+    "sourceBytes": 763920,
+    "sourceSha256": "2b1262f1a16a7f107606b31b202ac037224bc65761b3dfa3e65dcb9543444925",
+    "sourceEntries": 272,
+    "sourceAllowlistExactlyMatched": true,
+    "sourceZipCrcPassed": true
+  },
+  "safety": {
+    "vendorCodeExecuted": false,
+    "amlEvaluated": false,
+    "deviceOrOemCallsPerformed": false,
+    "realExperimentMarkerAccessed": false,
+    "environmentConfigurationChanged": false,
+    "actualProtectionStateObserved": false,
+    "hardwarePermanentUnsupportedProved": false,
+    "chargeControl": "Unsupported",
+    "protectionStateMeaningOrExecutionPermissionsWidened": false
+  }
+}

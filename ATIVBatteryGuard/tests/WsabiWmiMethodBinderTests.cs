@@ -98,13 +98,13 @@ internal static partial class Program
             byte[] payload = new byte[16];
             for (int index = 0; index < payload.Length; index++) payload[index] = (byte)(index * 11 + 3);
             WsabiWmiMethodRequest request;
-            Check(binder.TryPrepareRequest(0x1234, payload, out request), "valid structural request rejected");
+            Check(binder.TryPrepareRequest(0x34, payload, out request), "valid structural request rejected");
             Equal((uint)1, request.ObservedMethodId);
-            Equal((ushort)0x1234, request.FirmwareCommand);
+            Equal((ushort)0x34, request.FirmwareCommand);
             byte[] frame = request.Frame;
             Equal(21, frame.Length);
             Equal((byte)0x43, frame[0]); Equal((byte)0x58, frame[1]);
-            Equal((byte)0x34, frame[2]); Equal((byte)0x12, frame[3]); Equal((byte)0, frame[4]);
+            Equal((byte)0x34, frame[2]); Equal((byte)0, frame[3]); Equal((byte)0, frame[4]);
             for (int index = 0; index < payload.Length; index++) Equal(payload[index], frame[index + 5]);
             var arguments = request.Arguments;
             Equal(1, arguments.Count);
@@ -122,7 +122,7 @@ internal static partial class Program
             var binder = BinderCreate();
             byte[] payload = new byte[16]; payload[0] = 7;
             WsabiWmiMethodRequest request;
-            Check(binder.TryPrepareRequest(0x1234, payload, out request), "request rejected");
+            Check(binder.TryPrepareRequest(0x34, payload, out request), "request rejected");
             var first = request.Arguments;
             var firstBuffer = (IReadOnlyDictionary<string, object>)first["inData"];
             byte[] firstBytes = (byte[])firstBuffer["Bytes"];
@@ -142,16 +142,16 @@ internal static partial class Program
         {
             var binder = BinderCreate();
             WsabiWmiMethodRequest request;
-            Check(binder.TryPrepareRequest(0, new byte[16], out request), "baseline request rejected");
-            foreach (int command in new[] { -1, int.MinValue, ushort.MaxValue + 1, int.MaxValue })
+            foreach (int command in new[] { -1, int.MinValue, 0x100, 0x165, 0xffff, ushort.MaxValue + 1, int.MaxValue })
             {
+                Check(binder.TryPrepareRequest(0xff, new byte[16], out request), "baseline request rejected");
                 Check(!binder.TryPrepareRequest(command, new byte[16], out request), "out of range command accepted");
                 Check(request == null, "invalid command retained earlier request");
             }
             foreach (object payload in new object[] { null, "private bytes", new int[16], new byte[15], new byte[17], new byte[1, 16],
                 Array.CreateInstance(typeof(byte), new[] { 16 }, new[] { 1 }) })
             {
-                Check(binder.TryPrepareRequest(ushort.MaxValue, new byte[16], out request), "valid boundary request rejected");
+                Check(binder.TryPrepareRequest(0xff, new byte[16], out request), "valid boundary request rejected");
                 Check(!binder.TryPrepareRequest(1, payload, out request), "invalid payload accepted");
                 Check(request == null, "invalid payload retained earlier request");
             }

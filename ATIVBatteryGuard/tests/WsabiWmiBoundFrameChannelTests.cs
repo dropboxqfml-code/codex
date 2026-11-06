@@ -46,7 +46,7 @@ internal static partial class Program
             }
             Check(binder.TryWrapFrame(valid, out wrapped), "valid frame rejected");
             Equal((uint)1, wrapped.ObservedMethodId);
-            Equal((ushort)0x1234, wrapped.FirmwareCommand);
+            Equal((ushort)0x34, wrapped.FirmwareCommand);
             byte expected = valid[5]; valid[5] ^= 0xff;
             Equal(expected, wrapped.Frame[5]);
             byte[] exposed = wrapped.Frame; exposed[5] ^= 0xff;
@@ -63,7 +63,7 @@ internal static partial class Program
                 Task.FromResult(new WsabiWmiMethodSnapshot(0, output)) };
             var exchange = new WsabiWmiFrameExchange(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), TimeSpan.FromSeconds(2));
             byte[] payload = BoundChannelPayload();
-            var pending = exchange.ExchangeAsync(0x1234, payload);
+            var pending = exchange.ExchangeAsync(0x34, payload);
             payload[0] ^= 0xff;
             var result = await pending;
             Equal(WsabiWmiFrameExchangeStatus.ReplyReceived, result.Status);
@@ -72,10 +72,10 @@ internal static partial class Program
             Check(result.IsValidFrame && !result.IsHardwareObservation && !result.CanInvokeMethods &&
                 !result.CanReadHardware && !result.CanWriteHardware, "synthetic pipeline enabled hardware");
             Equal((uint)1, transport.LastRequest.ObservedMethodId);
-            Equal((ushort)0x1234, transport.LastRequest.FirmwareCommand);
+            Equal((ushort)0x34, transport.LastRequest.FirmwareCommand);
             Equal((byte)3, transport.LastRequest.Frame[5]);
             Equal((byte)0x34, transport.LastRequest.Frame[2]);
-            Equal((byte)0x12, transport.LastRequest.Frame[3]);
+            Equal((byte)0, transport.LastRequest.Frame[3]);
             byte expected = replyBytes[5];
             byte[] exposed = result.Payload; exposed[0] ^= 0xff;
             replyBytes[5] ^= 0xff;
@@ -96,10 +96,55 @@ internal static partial class Program
                 caller.Cancel();
                 await BoundChannelThrowsAsync<OperationCanceledException>(() => channel.ExchangeAsync(BoundChannelRequest(), caller.Token));
                 var exchange = new WsabiWmiFrameExchange(channel, TimeSpan.FromSeconds(1));
-                var result = await exchange.ExchangeAsync(0x1234, BoundChannelPayload(), caller.Token);
+                var result = await exchange.ExchangeAsync(0x34, BoundChannelPayload(), caller.Token);
                 BoundChannelAssertExchangeFailure(result, WsabiWmiFrameExchangeStatus.Cancelled);
             }
             Equal(0, transport.Calls);
+        });
+        AddAsync("unsupported firmware words cannot bypass encoding through raw frames or frame exchange", async () =>
+        {
+            WsabiWmiMethodBinder binder;
+            Check(WsabiWmiMethodBinder.TryCreate(BinderCompleteMetadata(uint.MaxValue), out binder), "metadata fixture rejected");
+            var transport = new BoundChannelTransport();
+            var channel = new WsabiWmiBoundFrameChannel(binder, transport);
+            var frameChannel = new FakeFrameChannel();
+            var exchange = new WsabiWmiFrameExchange(frameChannel, TimeSpan.FromSeconds(1));
+            byte[] payload = BoundChannelPayload();
+
+            foreach (int command in new[] { 0x100, 0x165, 0xffff })
+            {
+                byte[] encoded;
+                Check(!WsabiWmiRequestEncoder.TryEncode(command, payload, out encoded), "unsupported word encoded");
+                Equal(0, encoded.Length);
+                WsabiWmiMethodRequest request;
+                Check(binder.TryPrepareRequest(0xff, payload, out request), "boundary fixture rejected");
+                Equal(uint.MaxValue, request.ObservedMethodId);
+                Check(!binder.TryPrepareRequest(command, payload, out request) && request == null,
+                    "unsupported word prepared or retained a prior envelope");
+
+                // A caller can supply a complete UInt16 frame without using the
+                // encoder. Its upper command byte must still be rejected here.
+                byte[] raw = BoundChannelRequest();
+                raw[2] = (byte)(command & 0xff); raw[3] = (byte)(command >> 8);
+                Check(!binder.TryWrapFrame(raw, out request) && request == null, "raw word bypassed preparation");
+                await BoundChannelThrowsAsync<ArgumentException>(() => channel.ExchangeAsync(raw, CancellationToken.None));
+                BoundChannelAssertExchangeFailure(await exchange.ExchangeAsync(command, payload),
+                    WsabiWmiFrameExchangeStatus.InvalidRequest);
+                Equal((byte)(command >> 8), raw[3]);
+                Equal(0, transport.Calls); Equal(0, frameChannel.Calls);
+                Check(transport.LastRequest == null && frameChannel.LastRequest == null && !exchange.IsBusy,
+                    "rejected word entered a dependency or retained an exchange slot");
+            }
+
+            WsabiWmiMethodRequest boundary;
+            Check(binder.TryPrepareRequest(0xff, payload, out boundary), "maximum supported fixture rejected");
+            Check((await channel.ExchangeAsync(boundary.Frame, CancellationToken.None)).IsValidFrame,
+                "rejection poisoned a later supported frame");
+            Equal(uint.MaxValue, transport.LastRequest.ObservedMethodId);
+            Equal((ushort)0xff, transport.LastRequest.FirmwareCommand);
+            Equal((byte)0xff, transport.LastRequest.Frame[2]); Equal((byte)0, transport.LastRequest.Frame[3]);
+            Check((await exchange.ExchangeAsync(0xff, payload)).IsValidFrame, "rejection poisoned a later frame exchange");
+            Equal(1, transport.Calls); Equal(1, frameChannel.Calls);
         });
         AddAsync("bound snapshot channel preserves every nested envelope failure and structural frame result", async () =>
         {
@@ -198,11 +243,11 @@ internal static partial class Program
             foreach (var failure in failures)
             {
                 transport.Handler = failure;
-                BoundChannelAssertExchangeFailure(await exchange.ExchangeAsync(0x1234, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.TransportFailure);
+                BoundChannelAssertExchangeFailure(await exchange.ExchangeAsync(0x34, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.TransportFailure);
                 await BoundChannelIdle(exchange);
             }
             transport.Handler = (request, token) => Task.FromResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
-            Check((await exchange.ExchangeAsync(0x1234, BoundChannelPayload())).IsValidFrame, "transport failure poisoned the next operation");
+            Check((await exchange.ExchangeAsync(0x34, BoundChannelPayload())).IsValidFrame, "transport failure poisoned the next operation");
             await BoundChannelIdle(exchange);
         });
         AddAsync("bound snapshot cancellation tokens survive the boundary and win before decoded results are published", async () =>
@@ -239,17 +284,17 @@ internal static partial class Program
                 var completion = BoundChannelCompletion();
                 var transport = new BoundChannelTransport { Handler = (request, token) => completion.Task };
                 var exchange = new WsabiWmiFrameExchange(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), TimeSpan.FromSeconds(2));
-                Task<WsabiWmiFrameExchangeResult> pending = exchange.ExchangeAsync(0x1234, BoundChannelPayload(), caller.Token);
+                Task<WsabiWmiFrameExchangeResult> pending = exchange.ExchangeAsync(0x34, BoundChannelPayload(), caller.Token);
                 await BoundChannelAwait(transport.Entered.Task);
                 caller.Cancel();
                 BoundChannelAssertExchangeFailure(await pending, WsabiWmiFrameExchangeStatus.Cancelled);
                 Check(exchange.IsBusy && transport.LastToken.IsCancellationRequested, "cancelled transport lost its active slot or token");
-                BoundChannelAssertExchangeFailure(await exchange.ExchangeAsync(0x1234, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.Busy);
+                BoundChannelAssertExchangeFailure(await exchange.ExchangeAsync(0x34, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.Busy);
                 Equal(1, transport.Calls);
                 completion.SetResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
                 await BoundChannelIdle(exchange);
                 transport.Handler = (request, token) => Task.FromResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
-                Check((await exchange.ExchangeAsync(0x1234, BoundChannelPayload())).IsValidFrame, "late cancelled reply poisoned the next operation");
+                Check((await exchange.ExchangeAsync(0x34, BoundChannelPayload())).IsValidFrame, "late cancelled reply poisoned the next operation");
                 await BoundChannelIdle(exchange);
             }
         });
@@ -258,16 +303,16 @@ internal static partial class Program
             var completion = BoundChannelCompletion();
             var transport = new BoundChannelTransport { Handler = (request, token) => completion.Task };
             var exchange = new WsabiWmiFrameExchange(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), TimeSpan.FromMilliseconds(100));
-            var pending = exchange.ExchangeAsync(0x1234, BoundChannelPayload());
+            var pending = exchange.ExchangeAsync(0x34, BoundChannelPayload());
             await BoundChannelAwait(transport.Entered.Task);
             BoundChannelAssertExchangeFailure(await pending, WsabiWmiFrameExchangeStatus.TimedOut);
             Check(exchange.IsBusy && transport.LastToken.IsCancellationRequested, "timeout released unfinished transport work");
-            BoundChannelAssertExchangeFailure(await exchange.ExchangeAsync(0x1234, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.Busy);
+            BoundChannelAssertExchangeFailure(await exchange.ExchangeAsync(0x34, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.Busy);
             Equal(1, transport.Calls);
             completion.SetException(new InvalidOperationException("private late provider detail"));
             await BoundChannelIdle(exchange);
             transport.Handler = (request, token) => Task.FromResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
-            Check((await exchange.ExchangeAsync(0x1234, BoundChannelPayload())).IsValidFrame, "late fault prevented a fresh operation");
+            Check((await exchange.ExchangeAsync(0x34, BoundChannelPayload())).IsValidFrame, "late fault prevented a fresh operation");
             await BoundChannelIdle(exchange);
         });
     }
@@ -293,7 +338,7 @@ internal static partial class Program
     private static byte[] BoundChannelRequest()
     {
         byte[] request;
-        Check(WsabiWmiRequestEncoder.TryEncode(0x1234, BoundChannelPayload(), out request), "test request encoding failed");
+        Check(WsabiWmiRequestEncoder.TryEncode(0x34, BoundChannelPayload(), out request), "test request encoding failed");
         return request;
     }
 

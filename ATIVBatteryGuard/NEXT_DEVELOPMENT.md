@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 조회 테이블·캡슐 ACPI와 요청 범위 보강 / 2026-11-06
+
+[FIRMWARE_QUERY_BOUNDARY_UPDATE.md](FIRMWARE_QUERY_BOUNDARY_UPDATE.md)를 먼저 읽습니다. provider 생성자A04는 main-group capacity1/그룹당256슬롯을 준비하고 lookup8F4는 sub WORD 상한 검사 없이 계산합니다. 공개unregister954는 callback/context 일치 후 슬롯을 지우며, 실패 데이터FF/ACKAA와 펌웨어 정상0은 Windows HRESULT와 별도입니다. 선택된SecLagacySabi81 중계에도 sub상위byte검사는 없습니다. 실기취약점/실제이미지/전체alias 증명으로 확대하지 않습니다.
+
+이 근거로 순수 encoder의 MaximumSupportedCommand를0xFF로 줄였습니다. UInt16 wire field·payload16·frame21·WMI MethodId32는 유지하고 binder/raw frame/FrameExchange의 공유 준비 경계에서0x100/165/FFFF를 가짜 의존성 호출 전에 거부합니다. 새 통합 회귀1개를 추가했고 기존 범위 밖 성공 fixture만 허용 범위로 바꿨습니다. decoder/단발정책/예약/권한/컨트롤러/앱 연결은 미변경입니다. 허용 범위가 명령 승인이나 실제 지원을 뜻하지 않습니다.
+
+캡슐 ACPI DSDT1/SSDT15를 새로 분리했으며 공개 DSDT와 전체133byte가 달라도 배터리7+WMI2 MethodOp packet9쌍은 정확히 같습니다. PNOT는CPU알림,ECMD는미해결입니다. GUID 미복구28개에 대한 포인터/RIP/한정상수주소 전파에서도 새 소비자는 없습니다. 기존범위/복구를 실제 조회 성공으로 재보고하지 않습니다. private cache: provider-table-mutations-next,guid-indirection-next,battery-acpi-alternative-next(iasl은tools/iasl).
+
+최종C#436/Python85통과,솔루션/portable빌드경고오류0입니다. 현재 보호 상태와65 handler/read-back은 여전히 미확정입니다. source-only 배포로 기존 프로그램을 유지하고 추가 노트북 시험·재제출·OEM 호출·예약 접근 없이 Unsupported입니다. 아래435/85 등은 이전 기록입니다. 아래는 이전 작업입니다.
+
 ## 최신 — 간접 등록·flag 별칭·동적 화면 후속 감사 / 2026-11-06
 
 **추가 공식 원본:** 같은 Model940X3G의 실제 A1/W7 목록4개에서 Settings2.2.0.21/BASW-84270A5H 및2.0.0.78/BASW-83876A1L을 확보했습니다. 원본2개·추출912파일 해시 재검산 완료. private cache는 `20261106/target-legacy-catalog-next` 아래입니다. W7의 CmdServer/SUS1.0.5.7은 SHAaf60885562766d1cbc8d5886b986b9918738dae084c934e511438c7381c3628f로 기존 비교650f와 실제 코드가 다릅니다. 새getter FEC0→CC20의16byte/0B bit3·AL gate→같은buffer65, 정상반환1·소프트웨어0/1/2·Cmd지원메뉴/캐시를 직접 연결했습니다. 동일 버전의 다른 변형/RVA를 혼합하지 않습니다. 새현재계열 과거caller는 확보했지만 Win10/P05ACJ handler/read-back은 여전히 미확정입니다.

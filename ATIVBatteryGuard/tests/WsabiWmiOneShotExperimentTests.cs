@@ -27,7 +27,7 @@ internal static partial class Program
             Check(binder.TryPrepareRequest(0x65, WsabiWmiOneShotPolicy.CreatePayload(), out request), "candidate fixture failed");
             Check(WsabiWmiOneShotPolicy.IsApprovedRequest(request), "fixed candidate rejected");
             Check(!WsabiWmiOneShotPolicy.IsApprovedRequest(null), "missing request accepted");
-            foreach (int command in new[] { 0, 1, 0x64, 0x66, 0xffff })
+            foreach (int command in new[] { 0, 1, 0x64, 0x66, 0xff })
             {
                 Check(binder.TryPrepareRequest(command, WsabiWmiOneShotPolicy.CreatePayload(), out request), "structural fixture failed");
                 Check(!WsabiWmiOneShotPolicy.IsApprovedRequest(request), "another firmware command accepted");

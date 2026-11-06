@@ -7,6 +7,11 @@ namespace ATIVBatteryGuard.Core.Services
     {
         public const string AnalyzedSha256 = WsabiWmiReplyValidator.AnalyzedSha256;
         public const ushort HeaderMagic = 0x5843;
+        // Retain the UInt16 wire field, but support a conservative subset here.
+        // The inspected P05ACJ lookup indexes a 256-slot group using the command
+        // word without checking that bound. This is not the general wsabi ABI
+        // range or approval/safety evidence for any individual command.
+        public const int MaximumSupportedCommand = 0xff;
         public const int PayloadBytes = WsabiWmiReplyValidator.PayloadBytes;
         public const int FrameBytes = WsabiWmiReplyValidator.InputFrameBytes;
         public static bool CanInvokeMethods => false;
@@ -16,9 +21,8 @@ namespace ATIVBatteryGuard.Core.Services
         public static bool TryEncode(int command, object payload, out byte[] request)
         {
             request = new byte[0];
-            // The inspected DLL truncates its caller's command to UInt16.
-            // Reject out-of-range input instead of silently choosing another command.
-            if (command < 0 || command > ushort.MaxValue || payload == null ||
+            // Reject unsupported input instead of truncating it to another command.
+            if (command < 0 || command > MaximumSupportedCommand || payload == null ||
                 payload.GetType() != typeof(byte[])) return false;
             var bytes = (byte[])payload;
             if (bytes.Rank != 1 || bytes.GetLowerBound(0) != 0 || bytes.Length != PayloadBytes) return false;

@@ -24,7 +24,7 @@ internal static partial class Program
             var channel = new FakeFrameChannel();
             var exchange = new WsabiWmiFrameExchange(channel, TimeSpan.FromSeconds(2));
             byte[] payload = FrameExchangePayload();
-            Task<WsabiWmiFrameExchangeResult> pending = exchange.ExchangeAsync(0x1234, payload);
+            Task<WsabiWmiFrameExchangeResult> pending = exchange.ExchangeAsync(0x34, payload);
             payload[0] = 255;
             var result = await pending;
             Equal(WsabiWmiFrameExchangeStatus.ReplyReceived, result.Status);
@@ -33,12 +33,12 @@ internal static partial class Program
             byte[] firstRequest = channel.LastRequest;
             Equal(21, firstRequest.Length);
             Equal((byte)0x43, firstRequest[0]); Equal((byte)0x58, firstRequest[1]);
-            Equal((byte)0x34, firstRequest[2]); Equal((byte)0x12, firstRequest[3]); Equal((byte)0, firstRequest[4]);
+            Equal((byte)0x34, firstRequest[2]); Equal((byte)0, firstRequest[3]); Equal((byte)0, firstRequest[4]);
             for (int i = 0; i < 16; i++) Equal((byte)(i * 17), firstRequest[i + 5]);
             byte[] copy = result.Payload; copy[0] = 255;
             Equal((byte)3, result.Payload[0]);
             await FrameExchangeIdle(exchange);
-            var second = await exchange.ExchangeAsync(0xffff, FrameExchangePayload());
+            var second = await exchange.ExchangeAsync(0xff, FrameExchangePayload());
             Check(second.IsValidFrame && !ReferenceEquals(firstRequest, channel.LastRequest), "request buffers reused");
             firstRequest[20] = 0;
             Equal((byte)255, channel.LastRequest[20]);
@@ -48,15 +48,15 @@ internal static partial class Program
         {
             var channel = new FakeFrameChannel();
             var exchange = new WsabiWmiFrameExchange(channel, TimeSpan.FromSeconds(2));
-            foreach (int command in new[] { -1, 65536, int.MinValue, int.MaxValue })
+            foreach (int command in new[] { -1, 0x100, 0x165, 0xffff, 65536, int.MinValue, int.MaxValue })
                 AssertFrameExchangeFailure(await exchange.ExchangeAsync(command, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.InvalidRequest);
             foreach (object payload in new object[] { null, new byte[0], new byte[11], new byte[15], new byte[17],
                 new byte[21], new sbyte[16], new byte[1, 16], "private payload" })
-                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x1234, payload), WsabiWmiFrameExchangeStatus.InvalidRequest);
+                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, payload), WsabiWmiFrameExchangeStatus.InvalidRequest);
             using (var caller = new CancellationTokenSource())
             {
                 caller.Cancel();
-                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x1234, FrameExchangePayload(), caller.Token), WsabiWmiFrameExchangeStatus.Cancelled);
+                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, FrameExchangePayload(), caller.Token), WsabiWmiFrameExchangeStatus.Cancelled);
             }
             Equal(0, channel.Calls); Check(!exchange.IsBusy, "invalid request retained slot");
         });
@@ -75,11 +75,11 @@ internal static partial class Program
             foreach (var failure in failures)
             {
                 channel.Handler = failure;
-                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x1234, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.TransportFailure);
+                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.TransportFailure);
                 await FrameExchangeIdle(exchange);
             }
             channel.Handler = (request, token) => Task.FromResult(FrameExchangeReply());
-            Check((await exchange.ExchangeAsync(0x1234, FrameExchangePayload())).IsValidFrame, "failure poisoned future call");
+            Check((await exchange.ExchangeAsync(0x34, FrameExchangePayload())).IsValidFrame, "failure poisoned future call");
         });
         AddAsync("all structural reply outcomes are retained without stale payload or hardware meaning", async () =>
         {
@@ -96,7 +96,7 @@ internal static partial class Program
             foreach (var reply in replies)
             {
                 channel.Handler = (request, token) => Task.FromResult(reply);
-                var result = await exchange.ExchangeAsync(0x1234, FrameExchangePayload());
+                var result = await exchange.ExchangeAsync(0x34, FrameExchangePayload());
                 Equal(WsabiWmiFrameExchangeStatus.ReplyReceived, result.Status);
                 Equal(reply.Status, result.Reply.Status); Equal(reply.IsValidFrame, result.IsValidFrame);
                 Equal(reply.IsValidFrame ? 16 : 0, result.Payload.Length);
@@ -113,19 +113,19 @@ internal static partial class Program
             {
                 try
                 {
-                    Task<WsabiWmiFrameExchangeResult> pending = exchange.ExchangeAsync(0x1234, FrameExchangePayload(), caller.Token);
+                    Task<WsabiWmiFrameExchangeResult> pending = exchange.ExchangeAsync(0x34, FrameExchangePayload(), caller.Token);
                     await channel.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
                     caller.Cancel();
                     var cancelled = await pending;
                     AssertFrameExchangeFailure(cancelled, WsabiWmiFrameExchangeStatus.Cancelled);
                     Check(channel.LastToken.IsCancellationRequested && exchange.IsBusy, "channel cancellation or retained slot missing");
-                    AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x1234, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
+                    AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
                     Equal(1, channel.Calls);
                     completion.SetResult(FrameExchangeReply());
                     await FrameExchangeIdle(exchange);
                     AssertFrameExchangeFailure(cancelled, WsabiWmiFrameExchangeStatus.Cancelled);
                     channel.Handler = (request, token) => Task.FromResult(FrameExchangeReply());
-                    Check((await exchange.ExchangeAsync(0x1234, FrameExchangePayload())).IsValidFrame, "cancelled slot never released");
+                    Check((await exchange.ExchangeAsync(0x34, FrameExchangePayload())).IsValidFrame, "cancelled slot never released");
                 }
                 finally { completion.TrySetResult(FrameExchangeReply()); }
             }
@@ -137,18 +137,18 @@ internal static partial class Program
             var exchange = new WsabiWmiFrameExchange(channel, TimeSpan.FromMilliseconds(100));
             try
             {
-                var pending = exchange.ExchangeAsync(0x1234, FrameExchangePayload());
+                var pending = exchange.ExchangeAsync(0x34, FrameExchangePayload());
                 await channel.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
                 var expired = await pending.WaitAsync(TimeSpan.FromSeconds(2));
                 AssertFrameExchangeFailure(expired, WsabiWmiFrameExchangeStatus.TimedOut);
                 Check(channel.LastToken.IsCancellationRequested && exchange.IsBusy, "timeout did not retain operation");
-                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x1234, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
+                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
                 Equal(1, channel.Calls);
                 completion.SetException(new Exception("private late fault"));
                 await FrameExchangeIdle(exchange);
                 AssertFrameExchangeFailure(expired, WsabiWmiFrameExchangeStatus.TimedOut);
                 channel.Handler = (request, token) => Task.FromResult(FrameExchangeReply());
-                Check((await exchange.ExchangeAsync(0x1234, FrameExchangePayload())).IsValidFrame, "late fault poisoned next operation");
+                Check((await exchange.ExchangeAsync(0x34, FrameExchangePayload())).IsValidFrame, "late fault poisoned next operation");
             }
             finally { completion.TrySetResult(FrameExchangeReply()); }
         });
@@ -169,7 +169,7 @@ internal static partial class Program
                 {
                     try
                     {
-                        var pending = exchange.ExchangeAsync(0x1234, FrameExchangePayload(), caller.Token);
+                        var pending = exchange.ExchangeAsync(0x34, FrameExchangePayload(), caller.Token);
                         await registered.Task.WaitAsync(TimeSpan.FromSeconds(2));
                         if (callerCancels) caller.Cancel();
                         AssertFrameExchangeFailure(await pending.WaitAsync(TimeSpan.FromSeconds(2)),
@@ -197,7 +197,7 @@ internal static partial class Program
                 var exchange = new WsabiWmiFrameExchange(channel, TimeSpan.FromMilliseconds(100));
                 try
                 {
-                    var pending = exchange.ExchangeAsync(0x1234, FrameExchangePayload(), caller.Token);
+                    var pending = exchange.ExchangeAsync(0x34, FrameExchangePayload(), caller.Token);
                     await registered.Task.WaitAsync(TimeSpan.FromSeconds(2));
                     AssertFrameExchangeFailure(await pending.WaitAsync(TimeSpan.FromSeconds(2)), WsabiWmiFrameExchangeStatus.Cancelled);
                     Check(caller.IsCancellationRequested && exchange.IsBusy, "callback cancellation lost its priority or retained slot");
@@ -219,10 +219,10 @@ internal static partial class Program
                 var exchange = new WsabiWmiFrameExchange(channel, TimeSpan.FromMilliseconds(100));
                 try
                 {
-                    var pending = exchange.ExchangeAsync(0x1234, FrameExchangePayload());
+                    var pending = exchange.ExchangeAsync(0x34, FrameExchangePayload());
                     await channel.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
                     AssertFrameExchangeFailure(await pending.WaitAsync(TimeSpan.FromSeconds(2)), WsabiWmiFrameExchangeStatus.TimedOut);
-                    AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x1234, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
+                    AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
                     Equal(1, channel.Calls);
                 }
                 finally { release.Set(); }
@@ -239,7 +239,7 @@ internal static partial class Program
                     return Task.FromResult(FrameExchangeReply());
                 }};
                 var exchange = new WsabiWmiFrameExchange(channel, TimeSpan.FromSeconds(2));
-                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x1234, FrameExchangePayload(), caller.Token),
+                AssertFrameExchangeFailure(await exchange.ExchangeAsync(0x34, FrameExchangePayload(), caller.Token),
                     WsabiWmiFrameExchangeStatus.Cancelled);
                 await FrameExchangeIdle(exchange);
                 Equal(1, channel.Calls);
@@ -254,9 +254,9 @@ internal static partial class Program
             var second = new WsabiWmiFrameExchange(secondChannel, TimeSpan.FromSeconds(2));
             try
             {
-                var pending = first.ExchangeAsync(0x1234, FrameExchangePayload());
+                var pending = first.ExchangeAsync(0x34, FrameExchangePayload());
                 await firstChannel.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
-                Check((await second.ExchangeAsync(0x1234, FrameExchangePayload())).IsValidFrame, "unrelated exchange was globally blocked");
+                Check((await second.ExchangeAsync(0x34, FrameExchangePayload())).IsValidFrame, "unrelated exchange was globally blocked");
                 Check(first.IsBusy, "first operation disappeared");
                 completion.SetResult(FrameExchangeReply());
                 Check((await pending).IsValidFrame, "first operation failed");

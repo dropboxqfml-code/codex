@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 같은 자원 재진입 수정·worker 입력 수명 / 2026-11-07 한국 시간
+
+[SHARED_CHANNEL_COORDINATION_UPDATE.md](SHARED_CHANNEL_COORDINATION_UPDATE.md)와 [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. FrameExchange의 인스턴스별 active는 같은 channel을 새 교환 객체로 감싸 우회할 수 있어 CWT reference별 공유 slot으로 수정했습니다. sealed BoundFrameChannel은 내부 readonly snapshot transport reference, 다른 channel은 자기 reference가 key입니다. 기존 pending+취소 callback 모두 끝난 뒤 release·late fault 관측을 유지합니다. metadata가 같은 별도 transport는 독립적입니다. 직접 channel 호출/임의 다른 wrapper/외부 프로세스·OEM/물리 endpoint 전체의 lock은 아닙니다.
+
+회귀4개(같은 channel timeoutpeer, 늦은 취소 callbackpeer, 같은 transport의 두 wrapper, 별도 transport)를 추가했습니다. 기존 취소 검사2개는 off-thread 취소 관측을 기다리도록 정밀화했습니다. 안정화한 수정 전 baseline438pass/3fail(441total), 수정 후441pass/0fail/0skip입니다. 전체 솔루션 Release 빌드 경고0·오류0도 현재 재검증했습니다. 개발 SDK8.0.427의 WindowsDesktop task는 ReadyToRun 이미지 오류가 있어 빌드에 DOTNET_ReadyToRun=0·COMPlus_ReadyToRun=0을 적용하고 쓰기 가능한 DOTNET_CLI_HOME·기존 NuGet cache를 사용합니다. SDK 패치/XAML 단계 생략·새 package 설치 없이 IL 경로로 빌드합니다. Python 도구는 미변경·88개는e7b067a 과거 기록입니다.
+
+선택 CF34-active worker는 원본 input→local staging→byte/bit 계산을 inline 실행한 뒤 terminal request가return1합니다. 확인한 입력 범위는 query upload와 분리됩니다. 반환 이후 실제 입증된 software continuation은 기존 readiness-gated polled finalizer이며 새 IRQ를 발견한 것이 아닙니다. helper가 바꾼DPTR 때문에 statuswriter로 볼 수 없던 후보도 정정했습니다. 실제 외부status/IRQ 생산과 관련 hardware/alias/scratch 수명은 미완료이며 전체 worker/전역writer 부재를 요구하거나 성공으로 주장하지 않습니다.
+
+private cache: 20261107/shared-exchange-slot-fix(테스트 전후·solution-build-il.log), deferred-worker-input-lifecycle-next(하위 irq-entry-independent), wmi-exchange-coordination-code-audit-next. source14새/8문맥·pointer불변식1개를지지하는2검사/15문맥은 앱 테스트·고유 coverage가 아닙니다. source/코드 독립 검토와 실제 테스트·빌드 결과를 구분합니다. 변경은 Core2파일·테스트2파일·문서/정제 기록이며 기존 배포ZIP은 미갱신입니다. 실제 OneShot backend/Program·사용 완료 예약·정책/encoder·앱 등록·새 OEM/frame/배터리 명령·실기 호출은 추가하지 않았습니다. synthetic fixture만 테스트합니다.
+
+다음은 외부 참여자의 전체 WMI 교환 보호와 관련 hardware/status/IRQ 입력 수명·응답 귀속에 실제 새 연결이 있는지 판단합니다. 같은 slot/inline 소비/기존 tag·GUID검색 반복을 새 성공으로 세지 않습니다. live pointer/EC전체hash/모든writer 부재를 절대조건으로 추가하지 않습니다. 실제 제어는 Unsupported이며 현재 앱 흐름·기존 실기 결과는 그대로입니다. 원본 실행/로딩/에뮬레이션·하드웨어/OEM/기존 실기 예약 접근·드라이버/서비스/보안/펌웨어 변경 없음, 과거 차단 실행 시도 재현 없음. 새 노트북 실행·동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — late-clear gate·주소 소비·전체 교환 경계 / 2026-11-07 한국 시간
 
 [EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md](EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md)와 [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. descriptor 하위 작업의 시작 성공→active·완료 대기 상태 생산→readiness/정리 gate를 새로 연결했습니다. 같은 byte의 다른 ISR bit와 active bit를 혼동하지 않으며 실패 rollback도 구분합니다. 선택 staging/알려진 복사는 query mailbox와 다른 영역이나 관련 하위 작업이 계속 소비할 입력을 조회 upload가 훼손하지 않는지는 미완료입니다. 현재 Windows overlap·하드웨어 기능명·startup/flash/shutdown 전용을 단정하지 않습니다.

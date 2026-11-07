@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 같은 전송 자원의 조정과 inline 입력 소비 / 2026-11-07 한국 시간
+
+[후속 결과](SHARED_CHANNEL_COORDINATION_UPDATE.md)에서 FrameExchange의 active 상태를 동일 resource reference별로 공유하도록 수정했습니다. 같은 channel·같은 snapshot transport의 별도 래퍼는 실제 작업과 취소 callback이 모두 끝나기 전 재진입하지 못합니다. 별도 자원은 독립적입니다. 프로세스 내부의 FrameExchange 범위이며 외부 OEM mutex·직접 channel 호출·모든 WMI 참여자 보호가 아닙니다. 소모된 OneShot backend/Program/예약/승인·요청 encoder는 변경하지 않았습니다.
+
+선택 EC worker의 원본 입력과 local byte/bit 소비는 terminal 요청 반환 전에 동기 실행되고 식별된 입력 영역은 query upload와 분리됩니다. 후속으로 입증된 것은 기존 polled finalizer이며 새 IRQ/status 생산자를 확보한 것은 아닙니다. helper 이후 pointer 상태를 반영해 잘못된 status-writer 후보를 제외했습니다. 관련 hardware/미확인 IRQ/alias/scratch까지 전체 비훼손은 미확정입니다. C#441개 통과·전체 솔루션 빌드 경고/오류0, source 선택 검산·독립 검토 통과입니다. 실제 제어 Unsupported·새 실기/OEM/예약 접근·자료 제출 없이 개발 소스만 제공합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 작업 상태 생산자·읽기 소비 시점·Field Lock / 2026-11-07 한국 시간
 
 [후속 검토](EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md)에서 descriptor 하위 작업의 시작 성공이 active·완료 대기 상태를 생산하고 후처리 gate로 연결됨을 확인했습니다. 선택 staging/복사와 query mailbox 영역은 구분하지만 관련 하위 작업이 계속 소비할 입력을 조회 upload가 훼손하지 않는지는 미완료입니다. 이 특정 정리를 초기화/flash/종료 전용으로 이름 붙이거나 현재 Windows 겹침으로 관측하지 않습니다.

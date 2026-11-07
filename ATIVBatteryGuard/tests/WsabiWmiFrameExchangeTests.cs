@@ -323,7 +323,84 @@ internal static partial class Program
                 Equal(1, channel.Calls);
             }
         });
-        AddAsync("frame exchange instances have independent operation slots", async () =>
+        AddAsync("a new exchange cannot bypass unfinished work on the same channel after timeout", async () =>
+        {
+            var completion = FrameExchangeCompletion();
+            var channel = new FakeFrameChannel { Handler = (request, token) => completion.Task };
+            var first = new WsabiWmiFrameExchange(channel, TimeSpan.FromMilliseconds(100));
+            try
+            {
+                var pending = first.ExchangeAsync(0x34, FrameExchangePayload());
+                await channel.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                AssertFrameExchangeFailure(await pending.WaitAsync(TimeSpan.FromSeconds(2)), WsabiWmiFrameExchangeStatus.TimedOut);
+
+                var second = new WsabiWmiFrameExchange(channel, TimeSpan.FromSeconds(2));
+                Check(first.IsBusy && second.IsBusy, "rewrapping the channel hid unfinished work");
+                AssertFrameExchangeFailure(await second.ExchangeAsync(0x34, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
+                Equal(1, channel.Calls);
+                completion.SetException(new Exception("private late channel failure"));
+                await FrameExchangeIdle(first);
+                Check(!second.IsBusy, "peer retained a completed shared operation");
+                channel.Handler = (request, token) => Task.FromResult(FrameExchangeReply());
+                Check((await second.ExchangeAsync(0x34, FrameExchangePayload())).IsValidFrame, "completed work blocked its peer");
+                await FrameExchangeIdle(second);
+            }
+            finally
+            {
+                completion.TrySetResult(FrameExchangeReply());
+                await FrameExchangeIdle(first);
+            }
+        });
+        AddAsync("peer exchanges stay busy while a completed channel still has a cancellation callback", async () =>
+        {
+            using (var caller = new CancellationTokenSource())
+            using (var release = new ManualResetEventSlim())
+            {
+                var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var cancelling = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var completion = FrameExchangeCompletion();
+                Task<WsabiWmiReplyResult> channelWork = null;
+                var channel = new FakeFrameChannel { Handler = (request, token) =>
+                {
+                    token.Register(() =>
+                    {
+                        cancelling.TrySetResult(true);
+                        release.Wait();
+                    });
+                    channelWork = completion.Task;
+                    registered.TrySetResult(true);
+                    return channelWork;
+                }};
+                var first = new WsabiWmiFrameExchange(channel, TimeSpan.FromSeconds(2));
+                var second = new WsabiWmiFrameExchange(channel, TimeSpan.FromSeconds(2));
+                try
+                {
+                    var pending = first.ExchangeAsync(0x34, FrameExchangePayload(), caller.Token);
+                    await registered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    caller.Cancel();
+                    AssertFrameExchangeFailure(await pending.WaitAsync(TimeSpan.FromSeconds(2)), WsabiWmiFrameExchangeStatus.Cancelled);
+                    await cancelling.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    completion.SetResult(FrameExchangeReply());
+                    await channelWork;
+                    Check(first.IsBusy && second.IsBusy, "peer ignored the old cancellation callback");
+                    AssertFrameExchangeFailure(await second.ExchangeAsync(0x34, FrameExchangePayload()), WsabiWmiFrameExchangeStatus.Busy);
+                    Equal(1, channel.Calls);
+                    release.Set();
+                    await FrameExchangeIdle(first);
+                    Check(!second.IsBusy, "finished cancellation retained the peer slot");
+                    channel.Handler = (request, token) => Task.FromResult(FrameExchangeReply());
+                    Check((await second.ExchangeAsync(0x34, FrameExchangePayload())).IsValidFrame, "peer could not reuse completed cancellation");
+                    await FrameExchangeIdle(second);
+                }
+                finally
+                {
+                    release.Set();
+                    completion.TrySetResult(FrameExchangeReply());
+                    await FrameExchangeIdle(first);
+                }
+            }
+        });
+        AddAsync("different channel resources retain independent operation slots", async () =>
         {
             var completion = FrameExchangeCompletion();
             var firstChannel = new FakeFrameChannel { Handler = (request, token) => completion.Task };

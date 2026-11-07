@@ -85,6 +85,60 @@ internal static partial class Program
             await BoundChannelIdle(exchange);
             Equal(1, transport.Calls);
         });
+        AddAsync("different bound channel wrappers share the unfinished snapshot transport slot", async () =>
+        {
+            var completion = new TaskCompletionSource<WsabiWmiMethodSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var transport = new BoundChannelTransport { Handler = (request, token) => completion.Task };
+            var first = new WsabiWmiFrameExchange(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), TimeSpan.FromMilliseconds(100));
+            try
+            {
+                var pending = first.ExchangeAsync(0x34, BoundChannelPayload());
+                await BoundChannelAwait(transport.Entered.Task);
+                BoundChannelAssertExchangeFailure(await pending.WaitAsync(TimeSpan.FromSeconds(2)), WsabiWmiFrameExchangeStatus.TimedOut);
+                var second = new WsabiWmiFrameExchange(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), TimeSpan.FromSeconds(2));
+                Check(first.IsBusy && second.IsBusy, "a new bound wrapper bypassed the underlying transport");
+                BoundChannelAssertExchangeFailure(await second.ExchangeAsync(0x34, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.Busy);
+                Equal(1, transport.Calls);
+                completion.SetResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
+                await BoundChannelIdle(first);
+                Check(!second.IsBusy, "completed snapshot retained a peer wrapper");
+                transport.Handler = (request, token) => Task.FromResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
+                Check((await second.ExchangeAsync(0x34, BoundChannelPayload())).IsValidFrame, "completed transport was not reusable");
+                await BoundChannelIdle(second);
+                Equal(2, transport.Calls);
+            }
+            finally
+            {
+                completion.TrySetResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
+                await BoundChannelIdle(first);
+            }
+        });
+        AddAsync("different snapshot transports remain independent despite equal bound metadata", async () =>
+        {
+            var completion = new TaskCompletionSource<WsabiWmiMethodSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var firstTransport = new BoundChannelTransport { Handler = (request, token) => completion.Task };
+            var secondTransport = new BoundChannelTransport();
+            var binder = BoundChannelBinder();
+            var first = new WsabiWmiFrameExchange(new WsabiWmiBoundFrameChannel(binder, firstTransport), TimeSpan.FromSeconds(2));
+            var second = new WsabiWmiFrameExchange(new WsabiWmiBoundFrameChannel(binder, secondTransport), TimeSpan.FromSeconds(2));
+            try
+            {
+                var pending = first.ExchangeAsync(0x34, BoundChannelPayload());
+                await BoundChannelAwait(firstTransport.Entered.Task);
+                Check(!second.IsBusy && (await second.ExchangeAsync(0x34, BoundChannelPayload())).IsValidFrame,
+                    "shared metadata serialized unrelated transports");
+                Equal(1, firstTransport.Calls); Equal(1, secondTransport.Calls);
+                completion.SetResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
+                Check((await pending).IsValidFrame, "independent work affected the first transport");
+                await BoundChannelIdle(first);
+                await BoundChannelIdle(second);
+            }
+            finally
+            {
+                completion.TrySetResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
+                await BoundChannelIdle(first);
+            }
+        });
         AddAsync("bound snapshot invalid and precancelled requests never enter a transport", async () =>
         {
             var transport = new BoundChannelTransport();
@@ -288,7 +342,8 @@ internal static partial class Program
                 await BoundChannelAwait(transport.Entered.Task);
                 caller.Cancel();
                 BoundChannelAssertExchangeFailure(await pending, WsabiWmiFrameExchangeStatus.Cancelled);
-                Check(exchange.IsBusy && transport.LastToken.IsCancellationRequested, "cancelled transport lost its active slot or token");
+                await BoundChannelCancellationRequested(transport);
+                Check(exchange.IsBusy, "cancelled transport lost its active slot");
                 BoundChannelAssertExchangeFailure(await exchange.ExchangeAsync(0x34, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.Busy);
                 Equal(1, transport.Calls);
                 completion.SetResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
@@ -306,7 +361,8 @@ internal static partial class Program
             var pending = exchange.ExchangeAsync(0x34, BoundChannelPayload());
             await BoundChannelAwait(transport.Entered.Task);
             BoundChannelAssertExchangeFailure(await pending, WsabiWmiFrameExchangeStatus.TimedOut);
-            Check(exchange.IsBusy && transport.LastToken.IsCancellationRequested, "timeout released unfinished transport work");
+            await BoundChannelCancellationRequested(transport);
+            Check(exchange.IsBusy, "timeout released unfinished transport work");
             BoundChannelAssertExchangeFailure(await exchange.ExchangeAsync(0x34, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.Busy);
             Equal(1, transport.Calls);
             completion.SetException(new InvalidOperationException("private late provider detail"));
@@ -381,6 +437,16 @@ internal static partial class Program
         while (exchange.IsBusy)
         {
             if (elapsed.Elapsed > TimeSpan.FromSeconds(2)) throw new Exception("bound exchange did not release the completed transport");
+            await Task.Yield();
+        }
+    }
+
+    private static async Task BoundChannelCancellationRequested(BoundChannelTransport transport)
+    {
+        var elapsed = Stopwatch.StartNew();
+        while (!transport.LastToken.IsCancellationRequested)
+        {
+            if (elapsed.Elapsed > TimeSpan.FromSeconds(2)) throw new Exception("transport cancellation was not requested");
             await Task.Yield();
         }
     }

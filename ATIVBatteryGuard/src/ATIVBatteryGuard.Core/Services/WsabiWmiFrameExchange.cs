@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using ATIVBatteryGuard.Core.Models;
@@ -10,10 +11,12 @@ namespace ATIVBatteryGuard.Core.Services
     public sealed class WsabiWmiFrameExchange
     {
         public static readonly TimeSpan MaximumTimeout = TimeSpan.FromSeconds(10);
+        private static readonly ConditionalWeakTable<object, ExchangeSlot> Slots =
+            new ConditionalWeakTable<object, ExchangeSlot>();
         private readonly IWsabiWmiFrameChannel channel;
         private readonly TimeSpan timeout;
-        private int active;
-        public bool IsBusy => Volatile.Read(ref active) != 0;
+        private readonly ExchangeSlot slot;
+        public bool IsBusy => Volatile.Read(ref slot.Active) != 0;
 
         public WsabiWmiFrameExchange(IWsabiWmiFrameChannel channel, TimeSpan timeout)
         {
@@ -22,6 +25,12 @@ namespace ATIVBatteryGuard.Core.Services
                 throw new ArgumentOutOfRangeException(nameof(timeout));
             this.channel = channel;
             this.timeout = timeout;
+            // A second coordinator must not bypass unfinished work on the same
+            // supplied channel. Bound wrappers share their transport reference;
+            // other channels share only their own object identity. This is an
+            // in-process scope, not an OS/OEM mutex or a live transport lease.
+            object identity = (channel as WsabiWmiBoundFrameChannel)?.ExchangeIdentity ?? channel;
+            slot = Slots.GetValue(identity, _ => new ExchangeSlot());
         }
 
         public async Task<WsabiWmiFrameExchangeResult> ExchangeAsync(int command, object payload,
@@ -31,7 +40,7 @@ namespace ATIVBatteryGuard.Core.Services
             byte[] request;
             if (!WsabiWmiRequestEncoder.TryEncode(command, payload, out request))
                 return Result(WsabiWmiFrameExchangeStatus.InvalidRequest);
-            if (Interlocked.CompareExchange(ref active, 1, 0) != 0)
+            if (Interlocked.CompareExchange(ref slot.Active, 1, 0) != 0)
                 return Result(WsabiWmiFrameExchangeStatus.Busy);
 
             Task<WsabiWmiReplyResult> pending = null;
@@ -87,7 +96,7 @@ namespace ATIVBatteryGuard.Core.Services
                 if (pending == null)
                 {
                     operation.Dispose();
-                    Interlocked.Exchange(ref active, 0);
+                    Interlocked.Exchange(ref slot.Active, 0);
                 }
                 else
                 {
@@ -99,7 +108,7 @@ namespace ATIVBatteryGuard.Core.Services
                     {
                         _ = completed.Exception;
                         operation.Dispose();
-                        Interlocked.Exchange(ref active, 0);
+                        Interlocked.Exchange(ref slot.Active, 0);
                     }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                 }
             }
@@ -120,5 +129,10 @@ namespace ATIVBatteryGuard.Core.Services
 
         private static WsabiWmiFrameExchangeResult Result(WsabiWmiFrameExchangeStatus status)
             => new WsabiWmiFrameExchangeResult(status);
+
+        private sealed class ExchangeSlot
+        {
+            internal int Active;
+        }
     }
 }

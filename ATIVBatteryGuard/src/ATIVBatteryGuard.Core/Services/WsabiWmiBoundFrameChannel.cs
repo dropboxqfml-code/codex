@@ -7,11 +7,14 @@ namespace ATIVBatteryGuard.Core.Services
 {
     // Connects pure framing, fixed method binding and an explicitly supplied
     // snapshot source. No WMI connection, native object or OEM call exists here.
-    // Per-exchange concurrency and cooperative deadlines belong to FrameExchange.
+    // Shared-resource concurrency and cooperative deadlines belong to FrameExchange.
     public sealed class WsabiWmiBoundFrameChannel : IWsabiWmiFrameChannel
     {
         private readonly WsabiWmiMethodBinder binder;
         private readonly IWsabiWmiMethodSnapshotTransport transport;
+        // Only FrameExchange uses this stable reference to coordinate wrappers.
+        // No external key, OS object or hardware capability is exposed.
+        internal object ExchangeIdentity => transport;
         public bool CanInvokeMethods => false;
         public bool CanReadHardware => false;
         public bool CanWriteHardware => false;

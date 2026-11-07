@@ -1,0 +1,322 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Bounded external-registration and indirect-return source review; no new safe protected-state query or program feature",
+  "previousAnalysisCommit": "05026b9a8c28e25d4fb1c196ba3010b4c7f49dfa",
+  "softwareCodeBaseCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "SecReliabilityTest.efi",
+      "bytes": 4416,
+      "sha256": "09ee11162834b36a42e4b4fa2055ff79f41155948afff7f8d2eb69112336d3d4"
+    },
+    {
+      "source": "SecPwdEncoder.efi",
+      "bytes": 5152,
+      "sha256": "2bc6621ef79d23a07c75834992ccca5847b89164a43f52384cfe151a959549ce"
+    },
+    {
+      "source": "SecSetupValueToEc.efi",
+      "bytes": 4416,
+      "sha256": "4481748d3e15f926dab77682341493fa81554975059f669e21567991cd5d1f28"
+    },
+    {
+      "source": "SecEcDxe.efi",
+      "bytes": 13632,
+      "sha256": "1da5cb1ad47c92f6e16c5a823401da53fc4af92495580b0d09f143c514293ed4"
+    },
+    {
+      "source": "HardwareSignatureManagement.efi",
+      "bytes": 12416,
+      "sha256": "c197649fa551330e3151de888be37a141581c262e0e59a776adafeb2db6ce21f"
+    },
+    {
+      "source": "I2CHID.efi",
+      "bytes": 14976,
+      "sha256": "95d769497b0674e5e19fbb59e6f6057a6529ecb6969d5000d0c981b5b9a7aefc"
+    },
+    {
+      "source": "SecLcdInfo.efi",
+      "bytes": 4576,
+      "sha256": "4455d958d63c9e616aabf14fe8582cd6414a517a6cc30114f5ada470d107ac96"
+    },
+    {
+      "source": "SecWirelessDev.efi",
+      "bytes": 11296,
+      "sha256": "300bad958d191cf73719048ca61ad19053c4c7dffc1dcc834a35be4ab8861d7b"
+    },
+    {
+      "source": "SecPurchasedDate.efi",
+      "bytes": 8512,
+      "sha256": "e4c9c4e21e94b7745e646c53148fef9a1f673159db8a1e20869fbf8076dfa18a"
+    },
+    {
+      "source": "SecSmmBootMode.efi",
+      "bytes": 6272,
+      "sha256": "3eee7e53488df762a5ef8c1ad1eff424f71486fb8a89f86fa02ff5d2c6d79794"
+    },
+    {
+      "source": "SecPtpCtrl.efi",
+      "bytes": 9728,
+      "sha256": "1d51231eb2d1f161a182438511b94201a3f72adf96af7d1e38167ec064c26a54"
+    },
+    {
+      "source": "SecSabiDispatch.efi",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    },
+    {
+      "source": "SecLcdBrightnessCtrl.efi",
+      "bytes": 6208,
+      "sha256": "b2d989d4ffe5e3a4fee0f6dac960d76c928ecd1714fb026551f9f3ef70a71bf2"
+    },
+    {
+      "source": "SecThermalDxe.efi",
+      "bytes": 4928,
+      "sha256": "ed350fd67003e81ceca61a3cac20c1c287c8da13ed555e8a2013de2682889b66"
+    },
+    {
+      "source": "SecLcdPanelInfo.efi",
+      "bytes": 3712,
+      "sha256": "fb29aa451d1a5c3a59c298d1be9e539f08bf26de9adc4b504627d3e384d1249b"
+    },
+    {
+      "source": "SecEcSmiDispatch.efi",
+      "bytes": 7168,
+      "sha256": "1ee192c743f6e2af1908f861e1bd426a842a123542aa30d81751b02716015674"
+    },
+    {
+      "source": "SecWinXp.efi",
+      "bytes": 3840,
+      "sha256": "ad1737cee0dce6ab2c8ea6fbe5a791be6da4d764dffba5e50ef317f57dbee27a"
+    },
+    {
+      "source": "SecNvsArea.efi",
+      "bytes": 4608,
+      "sha256": "e18b71a2d7fc7007aef4847569616d25bfe5584ffa9f161dc9c758f815ff3a34"
+    },
+    {
+      "source": "SecWin7.efi",
+      "bytes": 4768,
+      "sha256": "dc992f12a23895e8e29f431d58e58783b65a80f00134d0fedd226b54a080f390"
+    },
+    {
+      "source": "SecSwSmiDispatch.efi",
+      "bytes": 11744,
+      "sha256": "fc8d0f6968b18843243dd906104fba88770ccb73c8adf4a8e559bcdd08d11c9a"
+    },
+    {
+      "source": "Runtime.efi",
+      "bytes": 83776,
+      "sha256": "10a6f228664bada8eaad309879ab3b17d007ce8d5ccb5561a9038d89adb3840a"
+    },
+    {
+      "source": "SecSxSmiDispatch.efi",
+      "bytes": 6368,
+      "sha256": "c412d6fe6c703a7a9fdb147731f784fe18316b1ce039a32951281b3099d11cc3"
+    },
+    {
+      "source": "AhciSmm.efi",
+      "bytes": 11424,
+      "sha256": "99e2aef5c7b8c97437d5a2f0ad722f988aa6006501593268e5ec82b17de9f45a"
+    },
+    {
+      "source": "SecAlwaysOn.efi",
+      "bytes": 6496,
+      "sha256": "f550a74df96680ed7a2d0b041c5fbbec62afd899e89d1adfb858671b09419d1b"
+    },
+    {
+      "source": "SecSmbiosInfo.efi",
+      "bytes": 4192,
+      "sha256": "629a5735e373a51b1ba5ba4748e9b576c536c1eca2129bcc0813ddeeca3347f8"
+    },
+    {
+      "source": "SecBootMode.efi",
+      "bytes": 4160,
+      "sha256": "ce9578545be4e2fef44b1a9021c8855d1d04ad69f59d193d37d3b8e22b285d13"
+    },
+    {
+      "source": "MouseDriver.efi",
+      "bytes": 20288,
+      "sha256": "4b8af9180b8da17ae8c53efc016364db54ad8afaa794af76a63f337d10bb1a1f"
+    },
+    {
+      "source": "DeviceLock.efi",
+      "bytes": 3840,
+      "sha256": "2aea3b26dcb3cd8585cb50b4fbf240a5e87e552ac1b65c10a848f4144051de6b"
+    },
+    {
+      "source": "SecLagacySabi.efi",
+      "bytes": 5920,
+      "sha256": "446360f3bea7cb7f6af8331f83ca183ca3316cf26592235931e61b7147c2a961"
+    },
+    {
+      "source": "SecSetupWin.efi",
+      "bytes": 23552,
+      "sha256": "85746029af1b2beccf415104e866f570f4e627bd568858b7278664c2351df3f8"
+    },
+    {
+      "source": "SMIFlash/1.efi",
+      "bytes": 41888,
+      "sha256": "beb8334326f74622b80185089c492493509abbb76ca449d4d854318b95b6c7c2"
+    },
+    {
+      "source": "Setup/0.efi",
+      "bytes": 79296,
+      "sha256": "7ed22cc366deecc0ac22fb6e62e3724931dab0c43e3326b5f6ff4dc66daa4657"
+    },
+    {
+      "source": "CORE_DXE/0.efi",
+      "bytes": 1393056,
+      "sha256": "1ee7e16301f8432cf96cf6ff30422cfaa2d46fd8e2e28ce5cfa9f97099d24126"
+    },
+    {
+      "source": "AMITSE/0.efi",
+      "bytes": 567808,
+      "sha256": "8a353ee2a2ef589790042aa3776ef1b9aabdbb7fb681d4bb5a139e11831d0991"
+    },
+    {
+      "source": "Current native x64 Sabi3.dll",
+      "bytes": 28976,
+      "sha256": "09a9714f0e11734872d60f2966edf8590ca721f0c05b2ca852a0bf20d6c006ae"
+    },
+    {
+      "source": "Current WSABI x86",
+      "bytes": 22920,
+      "sha256": "b68452579a3f5f898ad8ccf63d655aed62c5be221784b799cdf471da674fbdcc"
+    },
+    {
+      "source": "Current WSABI SOSI x64",
+      "bytes": 24368,
+      "sha256": "99fc3a6a93987706bb161550f70a3739590e3571134aebb60eaeb3fb5328df58"
+    },
+    {
+      "source": "Current WSABI installer x64",
+      "bytes": 24968,
+      "sha256": "8e655ede2559c986a120d2bd4c48256c35fb2a1bd13baceecb167f7b4a6b21c9"
+    },
+    {
+      "source": "P05ACJ CAP",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "source": "EC-region raw slice",
+      "bytes": 98304,
+      "sha256": "2c8aeabe90b844b9d5bc09a05656aa08be1ef927b2d80006e6bd4fb0cc983d04"
+    }
+  ],
+  "interpretationModel": {
+    "assumedEcIsa": "Intel8051 compatible",
+    "fixedLowRegionBytes": 49152,
+    "bankWindowBytes": 16384,
+    "manufacturerChipOrCurrentAddressMapVerified": false,
+    "decoderIsOurDataOnlyRenderer": true,
+    "decoderSha256": "da1d3a88f9bdf8a1d6bb4e16709e200c14d21d70e4cf9730decfad5337f3ac94"
+  },
+  "externalGuidWindow": {
+    "sourceFiles": 34,
+    "sharedWindowBytes": 192,
+    "guidShapedCells": 12,
+    "sharedWindowSha256": "a498f0781fc99ea029a4bdb03448392b878f7dd8b6860c4af6f6d84491f35322",
+    "allInDataSection": true,
+    "windowIsProvedCompleteObjectOrTable": false,
+    "presenceProvesRegistrationOrUnusedData": false,
+    "selectedRipReferences": 83,
+    "selectedSabiCellReferences": 19,
+    "oldDirectSabiReferenceModules": 6,
+    "selectedNeighborCellReferences": 64,
+    "selectedSeedsHavePreFirstCallAliasCopyOrArithmetic": false,
+    "allPreexistingAliasesOpaqueCalleesAndExternalConsumersExcluded": false,
+    "priorPointerAffineNegativeWorkCountedAsNew": false,
+    "newTypedSabiRegistrationRecovered": false,
+    "independentCustomPeAndSuppliedReferenceCrosscheckPassed": true,
+    "independentCrosscheckProvesInventoryCompleteness": false
+  },
+  "publicationAndNamespace": {
+    "selectedEntryCallThroughResolvesPriorInitializer": true,
+    "newLateRegistrationOrProtectedGetterRecovered": false,
+    "registrarMainComesFromDescriptorWord": true,
+    "ordinaryNativeWrapperFixedMainSeparatedFromEx": true,
+    "nativeExAcceptsCallerSelectedMainWord": true,
+    "currentThreeWsabiNamedExExportPresent": false,
+    "allOtherMainGroupsProvedImpossibleOrSafeToTry": false,
+    "narrowDataRecordScreenSourcesRehashed": 231,
+    "amd64SourcesScreened": 183,
+    "specificAlignedRecordShapeMatches": 0,
+    "recordScreenExcludesStackOtherLayoutsOrComputedRecords": false,
+    "historicalDescriptorInventoryCountedAsNew": false
+  },
+  "indirectEcReturns": {
+    "responseProducingPageExchangeWritesNewByteBeforeReturningOld": true,
+    "exchangeAcceptedAsReadOnlyQuery": false,
+    "adjacentWriteOnlyCandidateExcluded": true,
+    "pureByteAndGenericReadBodiesReachStoredResponseCallback": true,
+    "savedRequestPointerProducerRecovered": false,
+    "storedResponseCallbackPublisherRecovered": false,
+    "recordPositionOrResponsePresenceProvesQueryContract": false,
+    "newFixedProtectedStateOrWindowsBindingRecovered": false
+  },
+  "selectedInitializerFamily": {
+    "wrappers": 11,
+    "maskUpdateRecords": 41,
+    "codeTableConsumerAndTypedDestinationConnected": true,
+    "familyIsBlindSequentialCopy": false,
+    "selectedTargetsCoverModeThresholdsOrRequestResponsePointer": false,
+    "allInitializersRangeCopiesOrExternalWritersExcluded": false,
+    "externalOrRomProducerEstablishedByLackOfSelectedWrites": false
+  },
+  "sourceValidation": {
+    "guidSourceIdentityAndLayoutAssertions": 102,
+    "guidFirstTransferGroupedChecks": 8,
+    "guidSelectedUniqueRows": 379,
+    "independentGuidSourceFilesChecked": 34,
+    "independentSuppliedRipReferencesChecked": 83,
+    "independentSuppliedContextInstructionByteRecordsChecked": 913,
+    "publicationNamespaceAssertions": 35,
+    "publicationNamespaceRows": 179,
+    "indirectReturnAssertions": 27,
+    "indirectReturnRows": 151,
+    "initializerAssertions": 66,
+    "initializerRows": 249,
+    "rootIndependentSelectedGroupedChecks": 25,
+    "publicComponentReviewsPassed": 3,
+    "theseAreAppUnitTestsOrFirmwareCoveragePercent": false
+  },
+  "implementationBlockedByMissingVerifiedQueryContract": true,
+  "newSafeProtectionQueryContractEstablished": false,
+  "productCodeChanged": false,
+  "testCodeChanged": false,
+  "buildRun": false,
+  "unitTestsRun": false,
+  "previousCodeValidationOnly": {
+    "csharpPassed": 437,
+    "pythonPassed": 85,
+    "buildWarnings": 0,
+    "buildErrors": 0
+  },
+  "vendorCodeExecutedLoadedOrEmulated": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "actualExperimentMarkerAccessed": false,
+  "driverServiceSecurityFirmwareSettingsChanged": false,
+  "newRequestOrRunnableHardwareCodeConstructed": false,
+  "newExecutableOrZipProvided": false,
+  "originalVendorDataOrExecutionRecipesIncluded": false,
+  "newUserTestOrResubmissionRequired": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "newNetworkResearchOrBinaryDownloadPerformed": false,
+  "currentProtectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "resumptionRequirement": "New current-model source evidence directly connecting protection-state producer, fixed query, preserved errors, fresh request correspondence and Windows return; do not repeat identified GUID/flag/generic-reader candidates as program feature progress",
+  "documentValidation": {
+    "markdownFiles": 5,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "newReportAndAuditPrivacyCheckPassed": true,
+    "oldReleaseArchivesUnchanged": 4,
+    "gitDiffCheckPassed": true,
+    "publicComponentReviewsPassed": 3
+  }
+}

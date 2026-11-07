@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 외부·간접 후보 검토와 구현 보류 경계 / 2026-11-07 한국 시간
+
+[EXTERNAL_INDIRECT_CONTRACT_BOUNDARIES.md](EXTERNAL_INDIRECT_CONTRACT_BOUNDARIES.md)를 먼저 읽습니다. 이번에도 새 보호 조회 계약은 확보하지 못했습니다. 34개 PE의 동일 192바이트 .data 구간은 공통 창이며 완전한 객체·등록표·미사용 증명이 아닙니다. 선택 참조 83개 중 19개는 기존 SABI 직접 참조 6개 모듈, 64개는 이웃 GUID입니다. 구간의 첫 호출 전 별칭 복사 등을 못 찾은 것은 전역 부재가 아닙니다. 과거 20261106 pointer/affine 음성 분석은 반복 성과로 세지 않았습니다.
+
+게시 간접 호출은 기존 초기화로 연결했고 새 late 등록은 미확정입니다. 일반 native wrapper의 그룹 고정과 별도 CallBIOSInterfaceEx의 호출자 UInt16 main을 구분합니다. 현재 WSABI 세 변형에는 named Ex export가 없지만 다른 모든 그룹 불가능/임의 그룹 시험의 근거로 삼지 않습니다. 좁은 data-record 탐색 0건도 stack/다른 배치/계산된 소비자 부재가 아닙니다.
+
+간접 반환 EC 후보의 페이지 교환은 old byte를 반환하기 전에 새 byte를 써 조회에서 제외했습니다. 순수 읽기 본문들의 저장된 요청 포인터·응답 callback 공급자는 미연결입니다. 선택한 표 기반 초기화 11개 wrapper/41개 mask-update 기록은 다른 페이지 쓰기이며 모드·반환 포인터 생산자는 아닙니다. 전체 초기화·외부 ROM 부재를 주장하지 않습니다.
+
+현재 확인 범위로 실제 조회·제어 코드를 추가할 근거가 부족해 구현을 보류합니다. 다음 착수는 현재 모델의 보호 상태 생산자→고정 조회→실패 보존·새 요청 대응→Windows 반환을 직접 잇는 새 등록/호출자/응답 근거 확보입니다. 동일 GUID·flag·범용 읽기의 반복 분류는 기능 진전으로 세지 않습니다. 새 연결 없으면 보류 유지, 하드웨어 영구 미지원 판정 아님. 추가 실기·동일 자료 재제출·OEM/단발 예약 접근은 하지 않습니다.
+
+private cache는 20261107/external-guid-alias-next(하위 shared-pool-independent), sabi-registration-publishers-next, indirect-ec-state-getters-next(하위 pointer-independent), external-indirect-integration-next입니다. 앱·테스트·EXE·기존 ZIP 미변경, 이번 빌드·단위 테스트 미실행이며 437/85·경고오류0은 이전 5d77df5 기록입니다. 실제 제어 Unsupported, 드라이버/서비스/보안·펌웨어 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — 고정 조회의 소비자·실패 경계 대조 / 2026-11-07 한국 시간
 
 [FIXED_QUERY_CONSUMER_REVIEW.md](FIXED_QUERY_CONSUMER_REVIEW.md)를 먼저 읽습니다. 이번에는 새 보호 조회 계약을 확보하지 못했습니다. 현재 Settings 2.2.0.18의 ModuleSABI EcoMode_GetPowerData와 CommandMNPowerManagement의 CmdGetCurrentPowerData를 export·동적 API·RTTI/vtable/import로 연결했습니다. 고정 query의 두 word는 SBS 전류·전압 캐시이며 숫자 소비자는 조회 반환을 무시합니다. gate 서명은 물리 기능 지원이 아닙니다. 이 전력 표시 경로를 보호 모드 후보로 다시 세지 않습니다.

@@ -1,5 +1,7 @@
 # Runtime 변수 서비스와 EC 이미지 근거 — 2026-11-07 한국 시간
 
+후속 [Runtime 중계·고정 조회 검토](RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md)에서 초기 구성 생산자와 나중의 host 함수 교체를 연결했습니다. 아래의 “별도 SMM adapter”는 SMM 전용이 아니며 host 초기화도 선택하는 주소 보정 adapter로 정정합니다. 가상주소 전환은 당시 현재 함수를 변환하며 초기 직접 함수를 복원하지 않습니다. 아래 수치는 당시 검사 기록으로 유지합니다.
+
 **OS에 게시되는 변수 저장 진입점에서 EC 게시 후크까지 이어지는 조건부 소스 경로를 연결했습니다.** 이전의 runtime 보존만으로 추정하던 단계를 넘었지만, 현재 Windows의 실제 호출·경합을 관측한 것은 아닙니다. 실제 보호 설정 조회·충전 제어는 아직 미완료이며 제어는 Unsupported입니다.
 
 [명령 소유권·최소 조회 설계](EC_COMMAND_OWNERSHIP_REVIEW.md)의 후속입니다. 기존 P05 원본과 저장 기록을 분석했고 하드웨어/OEM 호출·펌웨어 변수 쓰기는 하지 않았습니다. 새 실행용 요청이나 backend도 추가하지 않았습니다.
@@ -13,7 +15,7 @@
 | 구간 | 새로 확인한 연결과 조건 |
 | --- | --- |
 | OS에 게시된 SetVariable → 저장소 | 입력 검증·callback 조건을 통과한 nonvolatile 속성의 변수가 NV 저장 backend를 선택 |
-| 구성에 따른 backend 선택 | flash adapter와 RAM adapter가 다름. SMM 쪽의 별도 adapter도 같은 표로 취급하지 않음 |
+| 구성에 따른 backend 선택 | flash adapter와 RAM adapter가 다름. 후속 분석에서 주소 보정 adapter도 host 초기화가 선택함을 확인했으며 SMM 전용으로 분류하지 않음 |
 | 새 변수 추가 | 선택한 backend가 인수 전달을 거쳐 실제 begin/write/end 메서드에 사용됨 |
 | 선택된 재구성 fallback | 임시 RAM 저장 뒤 선택한 persistence backend로 commit. 모든 기존 변수 수정이 이 fallback을 탄다는 뜻은 아님 |
 | flash adapter → EC 후크 | 정확한 GUID 조회 결과와 메서드 receiver가 같고, 실제 게시 표의 begin/end가 앞서 연결한 조건부 EC 후크로 이어짐 |

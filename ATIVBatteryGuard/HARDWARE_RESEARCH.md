@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 후속 Runtime 교체·EC 효과·고정 조회 조건 / 2026-11-07 한국 시간
+
+[새 분석](RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md)에서 정확한 PEI HOB 생산자→Runtime 구성, 후반 host adapter 선택, BDS 알림 생산자→NvramSmi의 실제 host 함수 교체를 연결했습니다. VA 전환은 현재 함수를 변환합니다. 주소 보정 adapter는 host에서도 쓰이므로 SMM 전용 해석을 정정합니다. 선택한 EC 후크 두 개는 같은 플래그 한 비트만 바꾸며 mailbox 입력·응답을 직접 쓰지 않습니다. 명령 게시 뒤 완료 대기가 없으므로 다른 정상 작업 보존·관련 indexed 접근 조건은 여전히 남습니다. 플랫폼의 조건부 SMI_LOCK 위치 writer는 현재 잠금·마스크 효과를 입증하지 않습니다.
+
+[비실행 고정 조회 검토안](FIXED_MODE_READ_PROPOSAL.md)은 임시 CandidateProfile과 저장 모드 한 바이트 1회 범위를 정의합니다. 전체 live EC 해시는 제안 검토의 절대 전제가 아니지만, 현재 이미지 일치·최종 host 경로·통신의 정상 SMM domain·안전한 교환이 확정된 것은 아닙니다. 실제 backend·새 시험·새 승인·코드 변경 없이 Unsupported입니다. 문서·정적 기록만 변경, 이번 빌드·단위 테스트 미실행, 추가 자료 제출은 불필요합니다. 분석 중 잘못 전달한 PE 실행 시도 1건은 OS에서 차단됐고 원본 실행·권한 변경·재시도는 없습니다. 아래는 이전 기록입니다.
+
 ## 최신 — OS 변수 저장 경로와 EC 버전 메타데이터 / 2026-11-07 한국 시간
 
 **새로 연결한 근거:** [후속 분석](RUNTIME_VARIABLE_AND_EC_IDENTITY_REVIEW.md)에서 host RuntimeServices의 SetVariable 게시→조건부 NV backend→새 변수 추가·선택 rebuild fallback→실제 flash receiver→기존 EC 후크를 연결했습니다. host/SMM 표와 RAM/flash/별도 SMM adapter는 구분했습니다. SBDXE와 SMIFlash의 외부 소비자도 실제 lookup·receiver·게시 표로 연결했습니다. guard의 SMI 제어 의도는 공개 Lynxpoint 헤더와 저장 삼성 base로 교차 확인했습니다.

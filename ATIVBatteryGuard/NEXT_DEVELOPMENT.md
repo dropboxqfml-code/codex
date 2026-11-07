@@ -1,5 +1,19 @@
 # 다음 개발 재개 메모
 
+## 최신 — Runtime 중계 수명과 고정 조회 비실행 검토 / 2026-11-07 한국 시간
+
+[RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md](RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md)와 [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. 저장된 CORE_PEI의 정상 HOB producer는 초기화된 결정 바이트로 flash 계열을 선택합니다. Runtime 후반 초기화의 할당 성공은 주소 보정 adapter, 실패는 직접 flash adapter를 선택하며 둘의 begin/end는 기존 flash 후크로 연결됩니다. 주소 보정 adapter를 SMM 전용이라고 부르던 표현은 정정했습니다.
+
+NvramSmi의 알림 callback은 실제 host SetVariable을 proxy로 교체하고 CRC를 다시 계산합니다. 게시된 BDS entry의 고정 함수 목록에서 같은 알림 marker 생산자를 연결했습니다. VA 전환은 그때 현재 슬롯 값을 변환하며 초기 함수를 복원하지 않습니다. 실제 알림 순서·등록/lookup 성공·최종 target은 미관측입니다. host proxy→GUID별 SMM handler→private RT core 연결과 normal entry의 같은 순차 domain 증명은 구분합니다. normal default 순회는 nonNULL typed handler를 직접 호출하지 않습니다. 표준 통신 제공자→normal entry→typed manage edge는 미완료입니다. 별도 legacy SW fallback을 표준 통신·SWDispatch2와 합치지 않습니다.
+
+PchInitDxe의 조건부 SMI_LOCK 위치 writer와 같은 notify GUID의 임시 publisher는 source positive이나 현재 policy/lock/마스크 수용 여부·이미 실행 중인 SMM 정지·모든 CPU 배제를 입증하지 않습니다. 알림을 ReadyToLock/flash lock으로 바꾸어 부르지 않습니다. 선택한 두 EC 후크의 전체 body는 같은 상태 플래그 한 비트 RMW 후 반환하며 payload/result를 소비·쓰기하지 않습니다. 따라서 알려진 RT 게시자를 범용 주소 writer로 가정하지 않습니다. sender는 준비 후 명령만 게시하고 완료를 기다리지 않으며 local flag도 실제 완료 증거가 아닙니다. 후크 명령·정상 전이 보존과 CPU indexed selector 무결성은 별도로 남습니다.
+
+임시 CandidateProfile로 고정 저장 모드 한 바이트 1회 비실행 제안을 검토할 근거는 충분합니다. 현재 EC 전체 hash를 제안 검토의 절대조건으로 요구하지 않습니다. 하지만 실제 backend 조건은 미완료이며 원인은 최종 host 경로·통신 domain·관련 indexed 접근·다른 정상 작업 보존입니다. 다음은 저장 원본의 실제 통신 provider→GUID별 dispatch 및 BDS 알림 순서를 좁게 검토합니다. 닫지 못한 edge는 그대로 남기고 같은 GUID/표/기존 decode를 반복 성과로 세지 않습니다. broad continue는 새 실기 승인도 기존 단발 재사용 허가도 아닙니다. 새 호출 code/요청값/시험/수집/자료 재제출 없이 Unsupported입니다.
+
+private cache: 20261107/runtime-backend-configuration-next(하위 runtime-field-subset), runtime-service-lifetime-next(하위 nvram-consumer-independent/smm-server-followup), smi-guard-lock-lifecycle-next, ec-flash-hook-effects-next, communication-root-domain-next, smm-communication-provider-split-guid-next. 구성322/하위84는 겹치는 byte+decode, 수명31block/134동일block decode, 하위installer67/server43, guard52, EC효과8새/11문맥을 합산·기능수·분석률로 바꾸지 않습니다. 문서·정제 기록만 변경, C#/WPF·Python 도구·EXE·기존ZIP 미변경, 이번 빌드·단위 테스트 미실행입니다. 437/경고오류0은5d77df5, Python88은e7b067a 과거 검증입니다.
+
+분석 중 bare PE 경로를 셸 명령으로 잘못 전달한 시도1건이 Permission denied로 차단됐습니다. 원본 실행·권한 변경·재시도는 없으며 숫자 종료코드는 미확보라 추정하지 않습니다. exact command·stat/hash는 runtime-service-lifetime-next/blocked-attempt.private.json/md에만 보존합니다. 실행을 재현해서 검증하지 않습니다. 이후 trusted parser의 바이트 읽기만 수행했습니다. 하드웨어/OEM·기존예약·드라이버/서비스/보안·펌웨어 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — Runtime OS 소비자·현재 EC 이미지 근거 / 2026-11-07 한국 시간
 
 [RUNTIME_VARIABLE_AND_EC_IDENTITY_REVIEW.md](RUNTIME_VARIABLE_AND_EC_IDENTITY_REVIEW.md)를 먼저 읽습니다. 실제 host RuntimeServices SetVariable wrapper 게시부터 NV 속성·구성 선택·backend 전달·flash receiver를 연결했습니다. NV flash adapter와 RAM adapter·SMM 별도 adapter를 혼합하지 않습니다. 새 변수 append가 주 경로이고 RAM staging 뒤 persistence backend를 쓰는 것은 선택 rebuild fallback이며 모든 기존 변수 수정의 일반 경로가 아닙니다. 현재 Windows 호출·probe·구성·동시 실행은 미관측입니다. 이전 Runtime 보존/EC hook 분석 수치를 새 성과로 다시 세지 않습니다.

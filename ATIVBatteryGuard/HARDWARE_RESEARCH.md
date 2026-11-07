@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 명령 게시자 문맥과 조건부 소유권 / 2026-11-07 한국 시간
+
+**연결한 근거:** [명령 소유권 검토](EC_COMMAND_OWNERSHIP_REVIEW.md)에서 대체 EC poll을 같은 main scheduler로 연결하고, 포인터 writer의 capability와 실제 선택 전 개입을 구분했습니다. 펌웨어의 boot 초기화·알림과 SMM callback·forwarder를 분류했으며, 과거 서비스 WSABI도 기존 세 변형과 같은 Global 협력 잠금을 쓰는 것을 확인했습니다. 초기화 완료·관련 전역 상태 안정·정상 CPU context를 전제로 정상 SMM 세대의 하나의 root 실행을 설명하고, 새 GPI/SW 제공자를 실제 같은 root/child 호출로 연결했습니다.
+
+**미완료:** 조건부 root 연결과 실제 장치 조건을 구분합니다. Runtime의 게시된 flash interface→전후 hook→EC 게시와 virtual-address 전환 보존을 연결했지만 현재 probe 선택·실제 OS 소비자·경합은 미확정입니다. busy 확인은 소유권 예약이 아니고, WMI 협력 잠금은 다른 native/직접 호출자까지 포함하지 않습니다. 현재 모델·입력·소유권 조건이 미확정인 상태에서 실제 호출 backend를 추가하지 않습니다. 최소 조회 설계는 검토 문서이며 실제 보호 상태 조회·충전 제어 성공이 아닙니다. 앱·기존 ZIP·예약 그대로, 이번 빌드·단위 테스트 미실행, 추가 실기·자료 재제출·하드웨어 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — EC 생산자 진입과 실제 AP 작업 분류 / 2026-11-07 한국 시간
 
 **새로 연결한 근거:** [후속 검토](EC_QUERY_INTERFERENCE_REVIEW.md)에서 첫 바이트 결과 작성자를 별도 high-command handler로, 다른 clear를 같은 main thread의 조건부 후처리로 연결했습니다. 선택 명령이 유지될 때의 알려진 ISR 분기와 중복 pending guard도 좁혔습니다. 실제 AP 소비자 네 모듈·여섯 호출·열 고정 작업은 CPU 복원·열 관리 등으로 분류했고, 일반 callback을 포함한 13함수의 직접 호출 사슬에는 AP pump가 없습니다. 입력 복사 완료 뒤에는 local 명령·메시지를 사용합니다.

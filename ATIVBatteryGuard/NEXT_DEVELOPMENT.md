@@ -1,5 +1,21 @@
 # 다음 개발 재개 메모
 
+## 최신 — 명령 게시·선택 무결성과 최소 조회 설계 / 2026-11-07 한국 시간
+
+[EC_COMMAND_OWNERSHIP_REVIEW.md](EC_COMMAND_OWNERSHIP_REVIEW.md)를 먼저 읽습니다. EC의 포인터 writer는 명령 슬롯에 쓸 capability가 있지만 복원한 진입에서는 자신의 선택 뒤에 store합니다. 대체 poll도 같은 main scheduler 후속 경로로 연결돼 독립적인 ISR 재진입으로 세지 않습니다. 직접 literal 목록의 zero clear·기존 class/index 두 읽기는 문맥이며 새 nonzero 자율 재게시자를 확보한 것이 아닙니다. 다른 handler가 reader의 미사용 입력을 쓰기 데이터로 해석할 수 있으므로 사후 응답 거부로 실행 전 명령·대상 안전성을 대체하지 않습니다.
+
+펌웨어 게시자는 초기화·등록·제공자·실제 helper를 연결해 boot와 SMM 문맥을 분류했습니다. SecEcDxe는 dual-domain이며 EC event registry와 SW registry를 혼합하지 않습니다. SecEcSmiDispatch의 새 handler는 GPI Dispatch2 등록이지 SW 호출로 분류하지 않습니다. SecSwSmiDispatch 등록·게시와 SABI 제공자, SetupValueToEc/TouchPad의 boot lifecycle, Legacy의 같은 SABI forwarder를 구분합니다. 같은 literal·helper 사본·모듈 수는 동시 작성자 수가 아닙니다. busy 대기는 흐름 제어이며 소유권 예약이 아닙니다.
+
+새 정상 SMM 세대 논증은 초기화 entry 상태 완료·private control 안정·고유하고 비재진입인 CPU context가 전제입니다. 늦은 CPU나 전체 도착 대기 한도 소진만으로 두 번째 root가 만들어지는 것은 아닙니다. 초기화 gate는 root 전체를 잠그지 않으므로 reset/stale-init 상태까지 같은 정리로 확대하지 않습니다. 새 Base2 getter→실제 child 서비스 테이블→root 등록→같은 callback 목록→child SW/GPI 분기의 연결도 별도 검산했습니다. 등록 성공과 정상 세대가 전제인 source positive이며 WMI 입력/반환·다른 직접 host 접근을 포함하지 않습니다. 정상 framework 전제를 악성 memory writer 전역 부재 요구로 바꾸지도 않습니다.
+
+Runtime은 실제 boot/SMM 초기화가 flash interface를 게시하고 그 메서드가 선택 flash 장치의 전후 hook을 거쳐 EC 명령을 게시합니다. virtual-address-change callback이 hook을 포함한 함수 포인터 표를 변환하므로 단순 boot dead library로 제외하지 않습니다. 현재 probe 선택·OS Runtime Services/Windows 소비자→해당 메서드·실제 동시 실행은 이번에 연결하지 못했습니다. 이 다음에는 이 구체 소비자 경계와 현재 EC 이미지 적합성을 우선하며 같은 literal 스캔이나 이미 분류한 SMM handler를 반복 성과로 세지 않습니다. firmware flash 기능을 실제 시험·대체 조회로 사용하지 않습니다.
+
+제조사에서 확보한 서비스 WSABI의 정확한 SHA564b 원본을 새로 잠금 범위까지 검산했습니다. Call export는 helper에 CALL하는 wrapper이며 direct JMP가 아닙니다. 같은 Global mutex를 쓰는 저장 원본은 기존 세 개와 합해 네 개입니다. 정상 획득에서만 일반 교환에 들어가 응답 copy 뒤 해제하지만 무한 대기·abandoned 처리 누락은 그대로 재현하지 않습니다. runtime DLL·권한·실제 참여는 미관측이고 native의 다른 잠금·직접 WMI/ACPI는 자동 포함되지 않습니다.
+
+최소 조회 설계는 고정 저장 모드 한 바이트, 실행 전 입력·소유권 검증, 응답 귀속, 같은 worker의 유한 lock 대기·실제 하위 완료까지 소유권 유지, 저장 후보값과 충전기 적용 구분입니다. 현재 조건 미확정이면 메서드 호출을 하지 않습니다. 실행용 요청·표식·frame generator·실제 backend는 추가하지 않았습니다. 추가 실기·동일 자료 재제출·기존 단발 재사용 없이 Unsupported를 유지합니다.
+
+private cache: 20261107/ec-command-slot-writers-next(하위 alternate-poll-independent), firmware-command-publishers-next(하위 setup-legacy), service-wsabi-coordination-next, normal-epoch-command-serialization-next, root-domain-binding-next, runtime-command-publisher-lifecycle-next. 새 호출 관계와 기존 문맥 재검산은 정제 audit에 분리합니다. 문서·정적 기록만 변경, C#/WPF·Python 도구·EXE·기존 ZIP 미변경, 이번 빌드·단위 테스트 미실행입니다. C#437/빌드경고오류0은5d77df5, Python88은e7b067a 과거 기록입니다. 하드웨어/OEM·단발 예약·드라이버/서비스/보안·펌웨어 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — 조회 간섭 후보의 실행 순서·역할 연결 / 2026-11-07 한국 시간
 
 [EC_QUERY_INTERFERENCE_REVIEW.md](EC_QUERY_INTERFERENCE_REVIEW.md)를 먼저 읽습니다. 다른 첫 바이트 작성자는 같은 분배표의 별도 명령 handler로 연결됐으며 자율 background writer로 입증한 것이 아닙니다. 조회 명령이 유지되는 단일 분배에서는 선택 reader를 실행합니다. 다른 완료 clear는 같은 main thread의 조건부 scheduler 후처리입니다. 새 host post를 나중에 지울 조건부 취소 구간은 남지만 선택 clear block은 결과 바이트·tail을 바꾸지 않으며 단순 취소는 input echo 거부 대상입니다. 실제 race·상위 전체 간접 효과는 미입증입니다. 정확한 주소·명령값·호출 관계는 비공개 원본 기록에 보존합니다.

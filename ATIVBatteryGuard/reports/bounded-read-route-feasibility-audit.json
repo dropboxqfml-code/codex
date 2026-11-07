@@ -1,0 +1,115 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Conditional feasibility of a fixed-target generic protection-state read and selected SMM synchronization boundaries; static source only",
+  "previousRepositoryCommit": "e7b067a47e129bc7b1212fdc398d08e45aad366e",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "P05ACJ.cap",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "source": "SmmDispatcher.efi",
+      "bytes": 24096,
+      "sha256": "56fb1eb673e12d524f9be5670a8e0f640035f3b73409a27acbe518840f1d6bb7"
+    },
+    {
+      "source": "SecSabiDispatch.efi",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    },
+    {
+      "source": "Saved capsule DSDT",
+      "sha256": "e65919be72fd7e7bd51ca6561a6a94754ea22c929743a04727188f4638dda7a5",
+      "checksumValid": true
+    }
+  ],
+  "routeAssessment": {
+    "staticWindowsToGenericEcReaderConnectionExists": true,
+    "ecInterpretationRequiresExistingConditionalIsaAndBankModel": true,
+    "fixedOemGetterIsOnlyPossibleSolution": false,
+    "fixedTargetGenericReaderCouldBeConsideredIfEquivalentContractProven": true,
+    "currentBootRegistrationGateAndImageCompatibilityObserved": false,
+    "safeCurrentWindowsProtectionReadContractCompleted": false,
+    "actualProtectionModeReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "hardwarePermanentlyUnsupportedProven": false
+  },
+  "requestComparisonAssessment": {
+    "selectedReaderWritesOneResultByteAndPreservesTail": true,
+    "tailIsEcGeneratedCompletionSequence": false,
+    "hostTagCouldRejectSkippedUploadStalePathUnderExplicitPremises": true,
+    "premises": [
+      "Tag differs from preexisting mailbox contents",
+      "Tag is not reused",
+      "No competing actor writes that tag during the exchange"
+    ],
+    "nonReuseAloneProvesTagAbsentFromUnobservedPriorContents": false,
+    "inputEchoRejectionClosesUnchangedInputCase": true,
+    "comparisonAloneProvesSelectedHandlerCompletionOrReadSafety": false,
+    "otherFirstByteProducersAndMessagePreservingPostsExistInSavedSource": true,
+    "competingProducerActuallyReachedDuringSelectedExchangeProven": false,
+    "wrongProducerCountermodelsAreObservedRaces": false,
+    "exclusiveOwnershipOrWrongProducerExclusionProven": false,
+    "genericRouteImpossibleProven": false,
+    "readerUnusedTailProvesSafetyForAllOtherHandlers": false
+  },
+  "smmSynchronizationAssessment": {
+    "savedSourceHasCpuArrivalCounterLeaderWorkerAndBarriers": true,
+    "sameRegisteredHandlerListTraversedSynchronously": true,
+    "selectedSmmRegistrationAndRootChildSabiDispatchProvenanceChecked": true,
+    "ordinarySiblingListAdvanceInterleavesSelectedCallback": false,
+    "allConfiguredCpuArrivalWaitsHaveContinueAfterExhaustionBranches": true,
+    "participatingApCanExecuteWorkSlotFunctions": true,
+    "ecWriterRegisteredThroughApWorkApiProven": false,
+    "allHostCpusAndAllMailboxActorsExcludedThroughoutExchangeProven": false,
+    "wmiInputStagingAndFinalReturnInsideSmmCallback": false,
+    "wmiReplyExposesCpuArrivalBarrierCounts": false,
+    "hostCpuSynchronizationStopsAutonomousEcProducers": false,
+    "actualLaptopCpuArrivalOrRaceObserved": false
+  },
+  "stateSemantics": {
+    "oneByteModeAndMultipleThresholdQueriesAreDifferentContracts": true,
+    "separateSuccessfulQueriesAutomaticallyFormAtomicSnapshot": false,
+    "storedModeOrThresholdsProveAppliedChargerWrites": false,
+    "sameActiveModeSetterAlwaysRewritesThresholds": false,
+    "selectedChargerWritesAlwaysCheckBusSuccess": false
+  },
+  "remainingSupportSourceReview": {
+    "savedMatchingModelCatalogs": 6,
+    "catalogItems": 233,
+    "unretainedGeneralSupportPackages": 3,
+    "selectedRetainedSupportCenterCaller": "Application detection, window activation and process launch",
+    "newBatteryProtectionGetterOrJustifiedDownloadLeadEstablished": false,
+    "unretainedPackageFeatureAbsenceProven": false,
+    "newDownloadPerformed": false
+  },
+  "verification": {
+    "boundedReaderSelectedSourceAssertionsPassed": 42,
+    "smmSelectedSourceAssertionsPassed": 425,
+    "smmIndependentReviewSnapshotAssertionsPassed": 386,
+    "supportCallerSelectedSourceAssertionsPassed": 24,
+    "independentIntegrationSelectedSourceAssertionsPassed": 22,
+    "overlappingStaticCountsNotSummedOrReportedAsAppTests": true,
+    "conditionalLogicalClaimsAndPublicDocumentIndependentlyReviewed": true,
+    "appBuildOrUnitTestsRerunThisChange": false,
+    "historicalCsharpTestsPassed": 437,
+    "historicalBuildWarnings": 0,
+    "historicalBuildErrors": 0,
+    "historicalCsharpCodeCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+    "historicalPythonTestsPassed": 88,
+    "historicalPythonCodeCommit": "e7b067a47e129bc7b1212fdc398d08e45aad366e"
+  },
+  "changeBoundary": {
+    "documentationAndSanitizedAuditOnly": true,
+    "csharpWpfAndPythonToolCodeChanged": false,
+    "existingExecutableOrArchivesChanged": false,
+    "tagValueRequestFrameGeneratorValidatorOrLiveBackendAdded": false,
+    "vendorCodeExecutedLoadedOrEmulated": false,
+    "hardwareOemOrExistingExperimentMarkerAccessed": false,
+    "driverServiceTaskSecurityOrFirmwareChanged": false,
+    "additionalLaptopTrialOrRepeatedUploadRequested": false,
+    "cloudEnvironmentPublished": false
+  }
+}

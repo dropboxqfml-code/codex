@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 보호 상태 조회 경로의 성립 조건 / 2026-11-07 한국 시간
+
+[BOUNDED_READ_ROUTE_FEASIBILITY.md](BOUNDED_READ_ROUTE_FEASIBILITY.md)를 먼저 읽습니다. WMI→일반 callback→조건부 EC 모드 저장값 읽기의 정적 경로는 이미 있습니다. ‘경로 없음’과 ‘현재 장치의 안전한 최신 응답 계약 미완료’를 구분합니다. 전용 OEM getter는 유일한 해법이 아니며 기존 범용 읽기를 고정 대상에 제한해 같은 계약을 입증할 가능성도 열어 둡니다. 아래 과거 메모의 고정 getter 조건을 배타적인 요구로 적용하지 않습니다.
+
+선택 reader의 미갱신 tail을 이용한 새 표식은 기존 mailbox에 없고 재사용·경쟁 작성자가 없다는 전제에서 업로드 생략 stale 응답을 거부할 수 있습니다. echo 거부도 무변화 입력을 닫습니다. 비재사용만으로 기존 내용 불일치를 보장하지 않으며 tag는 EC 생성 완료번호가 아닙니다. 다른 결과 생산자의 동시 개입은 실제 도달·race를 입증한 것이 아니고, 배제도 미완료입니다. 요청·tag값·프레임·실제 backend는 만들지 않았습니다.
+
+새 SmmDispatcher 소스는 CPU rendezvous·같은 handler 목록의 동기 순회를 보여주지만 모든 CPU 도착을 기다리는 두 구간은 한도 소진 뒤 계속 진행합니다. 참여 AP도 작업 슬롯 함수를 실행할 수 있습니다. 실제 EC writer의 해당 API 사용은 미입증입니다. WM00 입력 저장/반환은 SMM 바깥이므로 전체 교환 독점으로 확대하지 않습니다. 다음 근거는 고정 대상/처리자와 현재 이미지의 적합성, 요청 준비→선택 처리→결과 복사 사이 작성자 관계·결과 귀속입니다. 특정 미해결 분기만 반복 분류해 기능 진전으로 세지 않습니다.
+
+모드 한 바이트 조회와 여러 임계값 조회의 비원자성을 구분합니다. 이미 같은 활성 모드인 setter는 임계값을 다시 쓰지 않고 일부 충전기 쓰기 성공도 미검사이므로 저장값을 실제 적용으로 승격하지 않습니다. 남은 지원 패키지 세 개는 새 배터리 API 근거가 없고, 기존 Support Center caller는 설치 파일·창 활성화·프로그램 실행입니다. 새 다운로드나 OEM 실행은 하지 않았습니다.
+
+private cache: 20261107/bounded-route-feasibility-next, smm-route-serialization-next, current-model-route-sources-next, route-feasibility-independent-review-next, bounded-route-integration-next. 문서·정적 감사만 변경, C#/WPF·Python 도구·EXE·기존 ZIP 미변경, 이번 빌드/단위 테스트 미실행. C#437/빌드경고오류0은5d77df5, Python88은e7b067a 이전 기록입니다. 실제 조회·제어 Unsupported. 추가 실기·동일 자료 재제출·OEM/예약 접근·드라이버/서비스/보안·펌웨어 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — 새 Amor3 공식 원본 확보·오프라인 pin 추가 / 2026-11-07 한국 시간
 
 [AMOR3_OEM_SOURCE_ACQUISITION.md](AMOR3_OEM_SOURCE_ACQUISITION.md)를 먼저 읽습니다. 기존 펌웨어 후보 반복 대신 모델 일치 목록 6개와 미검토 구성요소를 대조했습니다. WB 두 BOM이 같은 SamsungSystemConfiguration for Amor3 1.0.0.7/BASW-A0141A02.ZIP을 가리켜 정상 제조사 redirect로 새로 받았습니다. 3,771,257바이트/SHA1681f1a5a10b3d758ce1b925efbe7ec4360d3ed33c7d3fb189a5bf69fff699c2, 10파일/비압축7,585,067·CRC·안전 경로 일치. 원본·카탈로그는 비공개이며 사용자 시리얼/장치정보 전송·환경 설정 변경 없음.

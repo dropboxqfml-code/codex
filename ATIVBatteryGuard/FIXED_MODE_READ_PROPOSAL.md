@@ -1,5 +1,7 @@
 # 고정 보호 저장 byte의 조건부 시험안 — 비실행 문서
 
+**현재 entry 적용:** [시작·중단 조건 구현](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md)에서 공개 SDK 시험 entry는 실제 고정 읽기 명세 부재로 사전 차단됩니다. 내부 기계 연결의 synthetic 회귀는 이 A/B의 실행 허가나 실제 요청 명세가 아닙니다. 아래 A/B의 횟수·gate 영향·조건부 의미는 유지합니다.
+
 **host 후속:** [RunAndCloseAsync 구현](INVOCATION_HOST_LIFETIME_UPDATE.md)은 bounded 결과 표시 뒤에도 관련 close를 기다립니다. 실제 WMI source·Main 연결·아래 A/B의 선택·호출 수·승인 범위를 변경하지 않았습니다. B의 연속 소유권을 두 단발 세션으로 대신하지 않습니다.
 
 **시험안 검토 가능 / 실제 코드 연결·실행 보류.** [WMI·ACPI 반환과 EC 재사용 검토](WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md)와 [현재 판정](FIXED_MODE_READ_DECISION.md)을 반영한 구체 안입니다. 실행용 주소·command·표식 값·프레임·generator·backend는 포함하지 않으며 사용자가 지금 수행할 작업은 없습니다.

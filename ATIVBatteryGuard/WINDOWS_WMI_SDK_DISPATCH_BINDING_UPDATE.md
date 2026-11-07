@@ -1,5 +1,7 @@
 # SDK 대상·관찰자·입력의 단일 시도 연결 — 2026-11-08 한국 시간
 
+**후속:** [실기 읽기 시작·중단 조건](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md)에서 public PrepareSdkAsync가 ReadSpecificationUnavailable로 사전 차단되도록 변경했습니다. 기존 기계적 경로는 internal PrepareSdkBindingAsync에서 stand-in 검증만 이어가며 공개 entry의 Ready 경로·실기 허가는 없습니다. 아래는 SDK 기계 연결 시점의 기록입니다.
+
 **공급된 SDK target·observer·parameters/buffer를 private binding에 고정하고 typed 비동기 호출 한 곳으로 연결했습니다.** [입력 소유권·정리](WINDOWS_WMI_OWNED_INPUT_LIFETIME_UPDATE.md)의 후속입니다. 새 연결은 SDK stand-in으로만 실행 검증하며 실제 노트북 호출이나 보호 조회 명령/template·앱 활성화를 추가한 작업이 아닙니다. 보호 설정 조회·충전 제어는 Unsupported입니다.
 
 ## 같은 시도에 고정한 객체

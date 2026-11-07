@@ -27,7 +27,8 @@ namespace ATIVBatteryGuard.WmiInterop
 
     public enum WsabiWmiSingleReadPreparationStatus
     {
-        Ready, PlanMissing, AttemptAlreadyUsed, TargetMismatch, RequestMismatch, PreparationNotReady, InputNotReady, SdkBindingNotReady
+        Ready, PlanMissing, AttemptAlreadyUsed, TargetMismatch, RequestMismatch, PreparationNotReady,
+        InputNotReady, SdkBindingNotReady, ReadSpecificationUnavailable
     }
 
     public sealed class WsabiWmiSingleReadPreparationResult
@@ -94,27 +95,59 @@ namespace ATIVBatteryGuard.WmiInterop
                 exchangeGate, acquireTimeout, responseTimeout, cancellationToken);
         }
 
-        // Concrete SDK overload binding, without any target discovery, firmware
-        // recipe or app registration. Caller supplies all materialized objects.
+        // Real read-trial entry. A valid envelope/SDK binding is not a reviewed
+        // firmware read specification. None is available in this build, so no
+        // caller-supplied bytes can reach SDK preparation here. There is no
+        // runtime approval flag or fallback to the internal mechanism below.
         public static Task<WsabiWmiSingleReadPreparationResult> PrepareSdkAsync(WsabiWmiSingleReadPlan plan,
             WsabiWmiWindowsSdkBinding binding, WsabiWmiMethodRequest fixedRequest,
             IWsabiWmiExchangeGate exchangeGate, TimeSpan acquireTimeout, TimeSpan responseTimeout,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (binding == null) throw new ArgumentNullException(nameof(binding));
-            var trialBinding = binding.CreateTrialBinding();
-            ValidateArguments(trialBinding, exchangeGate, acquireTimeout, responseTimeout);
+            WsabiWmiWindowsReadTrialBinding trialBinding;
             WsabiWmiMethodRequest frozen;
+            var rejected = StartSdkPreparation(plan, binding, fixedRequest, exchangeGate,
+                acquireTimeout, responseTimeout, cancellationToken, out trialBinding, out frozen);
+            return Task.FromResult(rejected ?? new WsabiWmiSingleReadPreparationResult(
+                WsabiWmiSingleReadPreparationStatus.ReadSpecificationUnavailable));
+        }
+
+        // Mechanical SDK integration only, kept internal while the public
+        // trial entry has no reviewed fixed read specification. Stand-in tests
+        // exercise this path without representing a permitted hardware trial.
+        internal static Task<WsabiWmiSingleReadPreparationResult> PrepareSdkBindingAsync(WsabiWmiSingleReadPlan plan,
+            WsabiWmiWindowsSdkBinding binding, WsabiWmiMethodRequest fixedRequest,
+            IWsabiWmiExchangeGate exchangeGate, TimeSpan acquireTimeout, TimeSpan responseTimeout,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            WsabiWmiWindowsReadTrialBinding trialBinding;
+            WsabiWmiMethodRequest frozen;
+            var rejected = StartSdkPreparation(plan, binding, fixedRequest, exchangeGate,
+                acquireTimeout, responseTimeout, cancellationToken, out trialBinding, out frozen);
+            if (rejected != null) return Task.FromResult(rejected);
+            return ValidateSdkAndPrepareAsync(plan, binding, trialBinding, frozen,
+                exchangeGate, acquireTimeout, responseTimeout, cancellationToken);
+        }
+
+        private static WsabiWmiSingleReadPreparationResult StartSdkPreparation(WsabiWmiSingleReadPlan plan,
+            WsabiWmiWindowsSdkBinding binding, WsabiWmiMethodRequest fixedRequest,
+            IWsabiWmiExchangeGate exchangeGate, TimeSpan acquireTimeout, TimeSpan responseTimeout,
+            CancellationToken token, out WsabiWmiWindowsReadTrialBinding trialBinding, out WsabiWmiMethodRequest frozen)
+        {
+            trialBinding = null;
+            frozen = null;
+            if (binding == null) throw new ArgumentNullException(nameof(binding));
+            trialBinding = binding.CreateTrialBinding();
+            ValidateArguments(trialBinding, exchangeGate, acquireTimeout, responseTimeout);
             var status = Begin(plan, trialBinding, fixedRequest, out frozen);
-            if (status != WsabiWmiSingleReadPreparationStatus.Ready) return Rejected(status);
+            if (status != WsabiWmiSingleReadPreparationStatus.Ready) return new WsabiWmiSingleReadPreparationResult(status);
             if (!plan.MatchesTargetIdentity(binding.Target))
                 return SdkRejected(WsabiWmiWindowsSdkBindingStatus.IdentityMismatch);
             if (!binding.TryClaim()) return SdkRejected(WsabiWmiWindowsSdkBindingStatus.BindingAlreadyUsed);
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromResult(new WsabiWmiSingleReadPreparationResult(
-                    WsabiWmiSingleReadPreparationStatus.PreparationNotReady, WsabiWmiWindowsPreparationStatus.Cancelled));
-            return ValidateSdkAndPrepareAsync(plan, binding, trialBinding, frozen,
-                exchangeGate, acquireTimeout, responseTimeout, cancellationToken);
+            if (token.IsCancellationRequested)
+                return new WsabiWmiSingleReadPreparationResult(WsabiWmiSingleReadPreparationStatus.PreparationNotReady,
+                    WsabiWmiWindowsPreparationStatus.Cancelled);
+            return null;
         }
 
         private static async Task<WsabiWmiSingleReadPreparationResult> ValidateSdkAndPrepareAsync(WsabiWmiSingleReadPlan plan,
@@ -204,9 +237,9 @@ namespace ATIVBatteryGuard.WmiInterop
         private static Task<WsabiWmiSingleReadPreparationResult> Rejected(WsabiWmiSingleReadPreparationStatus status)
             => Task.FromResult(new WsabiWmiSingleReadPreparationResult(status));
 
-        private static Task<WsabiWmiSingleReadPreparationResult> SdkRejected(WsabiWmiWindowsSdkBindingStatus status)
-            => Task.FromResult(new WsabiWmiSingleReadPreparationResult(WsabiWmiSingleReadPreparationStatus.SdkBindingNotReady,
-                sdkStatus: status));
+        private static WsabiWmiSingleReadPreparationResult SdkRejected(WsabiWmiWindowsSdkBindingStatus status)
+            => new WsabiWmiSingleReadPreparationResult(WsabiWmiSingleReadPreparationStatus.SdkBindingNotReady,
+                sdkStatus: status);
 
         private sealed class Attempt { internal int Claimed; }
     }

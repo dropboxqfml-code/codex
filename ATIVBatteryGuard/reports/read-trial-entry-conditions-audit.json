@@ -1,0 +1,164 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "068936c",
+  "scope": "Block public SDK read-trial entry before all lower work while no reviewed fixed-read specification exists; retain internal mechanical SDK stand-in regressions",
+  "sourcePins": [
+    {
+      "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs",
+      "bytes": 20867,
+      "sha256": "63c183f8f915a789a25f05ff247bd19a6047cf1790c9dcbabd7c7ef1f35b7cde"
+    },
+    {
+      "projectFile": "tests/WsabiWmiReadTrialEntryTests.cs",
+      "bytes": 12670,
+      "sha256": "62284c71df4a15837ea0a5e3a3b8327b415165e52a46057249bb38c1a7a10bd5"
+    },
+    {
+      "projectFile": "tests/WsabiWmiSdkBindingTests.cs",
+      "bytes": 26063,
+      "sha256": "1fe3ba503cf82dc9e410c51e82653bc6e60b5288c51674dcfbc6d3e9ae59ce25"
+    },
+    {
+      "projectFile": "tests/WsabiWmiSdkBindingLifetimeTests.cs",
+      "bytes": 29170,
+      "sha256": "2c3846b7511cb7843243a713b6c6d816bc5923d0e37801d6f13f3eca24be3328"
+    },
+    {
+      "projectFile": "tests/Program.cs",
+      "bytes": 33696,
+      "sha256": "cd1dd7357a06684e013e9ab54c30894ea50bc94508e3f01904deb8d16bc7e664"
+    },
+    {
+      "projectFile": "tests/ATIVBatteryGuard.PortableTests.csproj",
+      "bytes": 5423,
+      "sha256": "639fe63807fe0324ce1ec540a8822a92502adb8c1c5ee78533bc46800d3a5412"
+    }
+  ],
+  "savedEvidenceDocumentPinsReused": [
+    {
+      "projectFile": "EC_READBACK_AND_WINDOWS_BRIDGE.md",
+      "bytes": 7455,
+      "sha256": "781584b7d20db07b76ea81d866006f1cdb08af523baedc214a6563ae0ca585d6"
+    },
+    {
+      "projectFile": "SHARED_CHANNEL_COORDINATION_UPDATE.md",
+      "bytes": 7898,
+      "sha256": "039783eca7489c9697c79cde2bd5cebf1b025ec30727e0f3352fb39b55cbcb02"
+    },
+    {
+      "projectFile": "EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md",
+      "bytes": 8489,
+      "sha256": "32675fc805bc4ef8830d8cf644e17867a0d18799237a0d9a6fe7ce65d55274e9"
+    },
+    {
+      "projectFile": "WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md",
+      "bytes": 9759,
+      "sha256": "2c203487b3198ba73a585afaf04969bfa78d1e4aef30e3b00f537e993e7361cd"
+    },
+    {
+      "projectFile": "EC_FRESHNESS_AND_ERROR_PATHS.md",
+      "bytes": 7509,
+      "sha256": "af8782ddbfe47a4e0aadac742ad67ff455f3044d4de23ccf42038bac62e14cfa"
+    }
+  ],
+  "publicEntry": {
+    "method": "WsabiWmiWindowsSingleReadPreparation.PrepareSdkAsync",
+    "sharedStartOrder": [
+      "Structural arguments",
+      "Plan attempt and target/request validation",
+      "Actual target reference identity",
+      "SDK bundle attempt claim",
+      "Pre-cancellation"
+    ],
+    "afterValidStartStatus": "ReadSpecificationUnavailable",
+    "opaqueStructurallyValidBytesAuthorizeFirmwareRead": false,
+    "runtimeApprovalFlagEmptyRegistryNoneSupplierOrHypotheticalReadyBranchAdded": false,
+    "fallbackFromPublicEntryToInternalSdkMechanism": false,
+    "sdkTargetMetadataInputClaimSettersSubscriptionsGateSessionTypedInvokeOrDisposeOnSpecificationRejection": false,
+    "specificationRejectionState": "Invocation/InputStatus/InputCleanupStatus/RegistrationStatus/SdkStatus null, IsReady false, ownership false",
+    "earlierIdentityOrBundleErrorMayHaveLocalSdkStatus": true,
+    "preCancellationAndArgumentMismatchPrioritiesPreserved": true,
+    "samePlanOrBundleRearmedAfterSpecificationRejection": false,
+    "suppliedInputsRemainUnclaimedAndUnderOriginalOwnership": true,
+    "softwareAttemptConsumptionIsPhysicalOemExecutionOrPersistentApprovalConsumption": false,
+    "rejectionMeansDriverAbsentOrPermanentHardwareUnsupported": false,
+    "noDispatchFindingAppliesToThisEntryNotAllExternalActors": true
+  },
+  "evidenceApplication": {
+    "conditionalStoredByteReaderWithoutTargetWriteRetained": true,
+    "knownInlineInputConsumptionSeparationAndIsrPreservationRetained": true,
+    "sourceNormalReturnAndThreeMailboxReuseCasesRetained": true,
+    "realFixedRequestToReaderAndTargetSpecificationEstablished": false,
+    "relatedParticipantCommandAddressInputAndReuseContractClosedForTrial": false,
+    "readResultAttributionAndConservativeInterpretationSpecificationClosed": false,
+    "gateOpenLiveMeasurementAllWritersAllIrqsOrWholeEcHashMadeAbsoluteRequirement": false,
+    "allTerminalsGuaranteedOrEveryResponseFreshRequired": false,
+    "newFirmwareSourceEdgeCurrentDeviceObservationOrExecutionAuthority": false,
+    "priorConsumedCandidatePayloadGeneratorMarkerOrApprovalReused": false
+  },
+  "stopAndOutcome": {
+    "aDeclaredMaxReadMethodCalls": 1,
+    "aDeclaredHandshakeInitializationRetrySettingWriteFallbackCalls": 0,
+    "bSelectedOrHiddenAsFallback": false,
+    "gateUnknownRemainsUtilityLimitNotStandalonePermanentBlocker": true,
+    "existingOwnerRejectsDeniedTimedOutAbandonedOrUncertainAcquireAndPreAdmissionStop": true,
+    "unknownRelatedEndRetainsExistingSourceLeaseInputsAndClose": true,
+    "knownApplicableTerminalCaptureAndCallExitUseExistingCleanupContract": true,
+    "sdkThrowUiTimeoutOrStopAloneInventsTerminalOrNoDispatch": false,
+    "newClassifierInfersSdkZeroFromGenericTransportFailure": false,
+    "ackFfEchoTailOrValidFramePromotedToProtectionOrChargingSuccess": false
+  },
+  "internalMechanism": {
+    "method": "WsabiWmiWindowsSingleReadPreparation.PrepareSdkBindingAsync",
+    "accessibility": "internal",
+    "currentConsumers": "stand-in tests only",
+    "existingBinding12AndLifetime7GroupsAdapted": true,
+    "mechanicalReadyRepresentsApprovedHardwareReadTrial": false,
+    "genericSuppliedDelegateApisRemovedOrSystemWideSecurityBoundaryClaimed": false,
+    "sdkTypedDispatchLifetimeAndOwnedCleanupImplementationChanged": false
+  },
+  "testHarness": {
+    "readReviewFinding": "Assertions before fake terminal could leave the success-hook regression pending on failure",
+    "hookCapturesArgumentsAndSuppliesFakeTerminalBeforePostRunAssertions": true,
+    "finallySuppliesFakeCleanupAndJoinsRunClose": true,
+    "productFailureReproductionOrLiveTerminalGuaranteeClaimed": false
+  },
+  "verification": {
+    "newRegisteredGroups": 8,
+    "finalResult": {
+      "passed": 617,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 617,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "publicOpaquePayloadPoisonMetadataPriorityBudgetOwnershipAndConcurrencyChecks": true,
+    "windowsProductionSourcesLinkedWithStandins": 8,
+    "portableDependencyLibraries": [
+      "ATIVBatteryGuard.PortableTests/1.0.0"
+    ],
+    "actualSystemManagementRuntimeProviderOrHardwareExecuted": false,
+    "existingSyntheticFixturesOnly": true,
+    "controlledGatesAndRelevantTasksJoinedInFinally": true,
+    "privateStaticChecksAddedToRegisteredCount": false,
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0,
+      "actualSdkReferenceApiCompiled": true
+    },
+    "independentSourceAndRegressionReadReviewCompleted": true,
+    "independentReviewerReranSuite": false
+  },
+  "boundary": {
+    "actualFirmwareCommandTemplateAddressNonceOrGeneratorAdded": false,
+    "coreAppDefaultControllerOldBackendProgramEncoderMarkerOrReleaseArchiveChanged": false,
+    "protectionReadAndChargeControl": "Unsupported",
+    "actualWmiOemHardwareGlobalObjectVendorOriginalOrConsumedMarkerAccessed": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "newDependencyInstallOrSourceDownload": false,
+    "newLaptopRunRepeatedUploadOrExecutionApprovalRequested": false
+  },
+  "next": "Narrow evidence linking the real fixed request/reader/target, related input and reuse participants, and applicable completion plus inconclusive-result interpretation; keep public entry closed until reviewed specification and separate execution authorization exist."
+}

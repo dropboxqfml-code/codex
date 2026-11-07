@@ -10,6 +10,7 @@ using ATIVBatteryGuard.WmiInterop;
 internal static partial class Program
 {
     // Production typed SDK binding compiled against test-only SDK stand-ins.
+    // Internal mechanical seam only, not permission for a real read trial.
     // No System.Management runtime, discovery, device or reservation executes.
     private static void RegisterWsabiWmiSdkBindingLifetimeTests()
     {
@@ -361,7 +362,7 @@ internal static partial class Program
         WsabiWmiSingleReadTarget facts, ManagementObject target, ManagementOperationObserver sdk,
         InputPreparationPair pair, CooperativeTestGate gate, TimeSpan? responseTimeout = null,
         CancellationToken token = default(CancellationToken))
-        => WsabiWmiWindowsSingleReadPreparation.PrepareSdkAsync(plan,
+        => WsabiWmiWindowsSingleReadPreparation.PrepareSdkBindingAsync(plan,
             new WsabiWmiWindowsSdkBinding(facts, target, sdk, pair.Parameters, pair.Buffer), InputPreparationRequest(),
             gate, TimeSpan.FromMilliseconds(200), responseTimeout ?? TimeSpan.FromSeconds(3), token);
 

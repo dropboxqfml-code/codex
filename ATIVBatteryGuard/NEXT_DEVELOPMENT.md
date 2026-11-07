@@ -1,5 +1,25 @@
 # 다음 개발 재개 메모
 
+## 최신 — 실제 고정 읽기 명세 부재 시 public SDK entry 차단 / 2026-11-08 한국 시간
+
+기준 커밋 `068936c` 다음 작업입니다. [READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. SDK의 구조상 valid 요청을 실제 보호 읽기로 허용할 근거가 없어 public PrepareSdkAsync를 ReadSpecificationUnavailable로 끝내도록 변경했습니다. 실제 명세·frame·명령 recipe·runtime 승인 토글은 만들지 않았습니다.
+
+StartSdkPreparation으로 기존 구조 인자→Begin(plan CAS/대상·요청)→actual target 참조 identity→binding CAS→pre-cancel 순서를 공유합니다. 공개 경로는 이 다음 고정 차단만 반환하며 SDK target metadata·input claim/setter·observer 등록·gate/session·typed Invoke/Dispose는 모두 진입하지 않습니다. 해당 결과의 Invocation/null 하위 상태와 ownership=false를 유지합니다. 선행 IdentityMismatch/BindingAlreadyUsed의 SdkStatus는 기존 로컬 분류이며 SDK 조회가 아닙니다.
+
+같은 plan/bundle의 software attempt 소모는 유지되며 public 차단 뒤 internal seam으로 같은 객체를 재무장하지 못합니다. 이는 실제 OEM 호출·옛 승인/예약의 소모나 복원 증거가 아닙니다. 기존 기계 연결은 internal PrepareSdkBindingAsync로 옮기고 old SDK binding12/lifetime7 회귀의 helper만 그쪽으로 적응했습니다. 다른 generic supplied-delegate API는 그대로이므로 시스템 전체 보안 경계로 표시하지 않습니다. 현재 internal seam의 소비자는 테스트뿐이며 public fallback/Ready branch는 없습니다.
+
+저장 근거에서 조건부 reader의 target-write0·모드 저장값과 충전 적용의 구분, 선택 worker inline 소비/영역 분리·알려진 ISR 보존, source별 미게시/ready/게시 후 오류는 유지합니다. 실제 고정 요청↔reader/대상, 관련 참여자 command/address·입력/재사용 보호, 적용 terminal/capture/귀속·신선함 불충족 거부를 명세로 묶어야 합니다. 첫 차단은 고정 요청 명세 부재이며 뒤 조건을 충족으로 표시하지 않습니다.
+
+A의 gate 초기닫힘/현재미관측은 유용성 한계이지 gate-open 실측을 절대 시작조건으로 요구하는 근거가 아닙니다. handshake/초기화/재시도/write/B fallback0, old consumed 권한 불변입니다. live EC 전체 hash·allwriter/IRQ·독립 SDK 정리 전체·동결 mapper 재분석을 새 blocker로 두지 않았습니다. 실제 terminal이 항상 와야 한다거나 모든 응답이 반드시 fresh여야 한다고 요구하지 않으며, 불명 귀속을 후보값으로 받지 않는 계약을 요구합니다.
+
+SDK 뒤 stop/throw/timeout은 관련 terminal/capture/call-exit이 불명이면 Unknown 보유, 알려진 경우 기존 완료 규약대로 기다립니다. FrameExchange의 TransportFailure만 보고 SDK0을 추론하는 classifier는 추가하지 않았습니다. FF/ACK/echo/tail/잔량이나 구조상 valid frame은 보호 모드·충전 성공이 아닙니다. 실제 read 결과 해석/성공 분류는 추가하지 않았습니다.
+
+새 공개 entry 8개 포함 617개 통과·실패 0·skip 0, 전체 net48 참조 Release 빌드 경고/오류 0입니다. production Windows 소스 8개와 Core를 SDK 대역에서 실행했고 실제 System.Management runtime/provider는 실행하지 않았습니다. 새 8개는 완전 사전차단/우선순위/예산/미인계/동시 시도를 검사합니다. 기존 성공 OnInvoke hook은 기록+가짜 terminal/finally 합류만 하고 assertion을 Run 뒤로 옮겨 harness hang 위험을 보강했습니다. 이는 읽기 검토 지적 수정이며 실제 제품 실패 재현·실기 terminal 보장은 아닙니다.
+
+변경은 Windows factory 1개·테스트 관련 5개(새 entry1/기존 SDK2/등록/project)와 문서/정제 기록입니다. Core·SDK typed dispatch/owner/source·앱 UI/default backend·기존 실험 backend/Program·encoder·소모 예약·배포 ZIP은 그대로입니다. 새 원문/의존성 획득·삼성 원본/실제 WMI/OEM/hardware/Global 객체·driver/service/security/firmware/cloud 환경 접근/변경은 없습니다. 보호 조회·제어 Unsupported·새 노트북 실행/동일 자료 제출 불필요입니다.
+
+다음은 세 조건을 실제 고정 읽기 명세로 대응시킬 근거를 좁히는 일입니다. 검토된 명세도 실기 승인을 대신하지 않으며 현재 public 차단을 runtime flag로 열지 않습니다. 이미 연결한 SDK/같은 metadata/FF를 재검산해 실행 허가로 삼지 않습니다. Private cache: `20261108/read-trial-entry-validation`의 final JSON/log, solution-build.log, execution/source pins입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 고정 SDK 대상·observer·입력의 typed 호출 연결 / 2026-11-08 한국 시간
 
 기준 커밋 `d86fb4e` 다음 작업입니다. [WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md](WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. supplied ManagementObject/observer/parameters/buffer를 private readonly binding에 고정하고 typed async InvokeMethod 한 곳에 연결했습니다. 실제 노트북 호출·보호 조회 command/template·앱 활성화는 없습니다.

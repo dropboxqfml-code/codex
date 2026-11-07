@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 실기 읽기 명세 부재의 공개 entry 차단 / 2026-11-08 한국 시간
+
+**구현:** [시작·중단 조건](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md)은 기존 인자/plan/identity/단발 claim/pre-cancel 뒤 public SDK entry를 ReadSpecificationUnavailable로 끝냅니다. SDK metadata/input claim/등록/호출/Dispose는 시작하지 않습니다. 기존 typed 기계 경로는 internal로 유지하며 승인 bool·빈 registry·미구현 Ready 분기는 추가하지 않았습니다.
+
+**근거:** 조건부 target-write 없는 reader, 알려진 inline 입력 소비·영역 분리·ISR 보존과 관련 정상 반환은 유지합니다. 실제 고정 요청↔reader/대상, 관련 참여자 입력/재사용, 적용 가능한 완료·귀속/불명 결과 거부의 세 묶음은 아직 실기 명세로 닫지 못했습니다. gate-open 실측·모든 writer/IRQ·현재 EC 전체 hash를 새 필수조건으로 추가하지 않았습니다. 새 펌웨어 source edge나 실기 관측도 아닙니다.
+
+**검증:** 새 8개 포함 617개 통과·실제 net48 참조 전체 Release 빌드 경고/오류 0입니다. 기존 SDK 19개 회귀는 internal seam에서 대역으로 검증하며 공개 entry의 실행 허가가 아닙니다. 실제 보호 조회·충전 제어는 Unsupported·새 실기/동일 자료 제출 불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 같은 SDK 대상·observer·입력으로 typed 호출 연결 / 2026-11-08 한국 시간
 
 **구현:** [SDK binding](WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md)은 계획의 opaque identity와 supplied ManagementObject를 참조 비교한 뒤 exact type·연결된 local scope·instance/class를 worker에서 검사합니다. readonly target/observer/parameters와 private options로 typed InvokeMethod 한 곳에 최대 한 번 진입하도록 연결했습니다. target은 borrowed이며 input pair의 정리/출력 alias 보호는 target 참조도 포함합니다.

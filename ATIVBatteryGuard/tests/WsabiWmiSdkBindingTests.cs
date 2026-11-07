@@ -201,19 +201,28 @@ internal static partial class Program
             ManagementBaseObject embedded;
             var output = WindowsOutputFixture(BoundChannelReply(), out embedded);
             int handoffs = 0;
+            ManagementOperationObserver observedObserver = null;
+            ManagementBaseObject observedParameters = null;
+            InvokeMethodOptions observedOptions = null;
+            string observedMethod = null;
+            byte[] bytesAtHandoff = null;
+            object bufferAtHandoff = null;
             originalTarget.OnInvoke = (observer, method, parameters, options) =>
             {
-                handoffs++;
-                Check(ReferenceEquals(observer, originalObserver) && ReferenceEquals(parameters, originalPair.Parameters),
-                    "typed dispatch substituted the supplied observer or parameter root");
-                Equal("CallSabiFunction", method); Check(options != null, "typed dispatch omitted its SDK method options");
-                Check(ReferenceEquals(assignedBuffer, originalPair.Buffer) && assignedBytes.SequenceEqual(BoundChannelRequest()),
-                    "typed dispatch did not use its populated fixed input pair");
-                observer.EmitObjectReady(output); observer.EmitCompleted(ManagementStatus.NoError);
+                Interlocked.Increment(ref handoffs);
+                observedObserver = observer; observedParameters = parameters;
+                observedMethod = method; observedOptions = options;
+                bytesAtHandoff = assignedBytes == null ? null : (byte[])assignedBytes.Clone();
+                bufferAtHandoff = assignedBuffer;
+                // Hook assertions must not turn a harness failure into a
+                // missing-terminal invocation. Always finish the fake attempt.
+                try { originalObserver.EmitObjectReady(output); }
+                finally { originalObserver.EmitCompleted(ManagementStatus.NoError); }
             };
             // Replacing caller-side holders cannot redirect private bundle refs.
             fixture.Pair = InputPreparationPair.Create();
             var ready = await SdkBindingPrepare(fixture);
+            Task<WsabiWmiFrameExchangeResult> run = null;
             try
             {
                 Check(ready.IsReady && ready.Invocation != null, "SDK stand-in binding did not become ready");
@@ -221,12 +230,18 @@ internal static partial class Program
                 Equal<WsabiWmiWindowsInputPreparationStatus?>(WsabiWmiWindowsInputPreparationStatus.Populated, ready.InputStatus);
                 Check(ready.InputOwnershipTransferred && ready.InputCleanupStatus == null, "SDK readiness misreported input ownership");
                 int reports = 0;
-                var result = await ready.Invocation.RunAndCloseAsync(value =>
-                {
-                    reports++; Check(value.IsValidFrame && !value.IsHardwareObservation && !value.CanReadHardware &&
-                        !value.CanWriteHardware && !value.CanInvokeMethods, "synthetic SDK output became hardware authority");
-                });
-                Check(result.IsValidFrame, "fixed SDK stand-in result did not reach the existing decoder");
+                WsabiWmiFrameExchangeResult shown = null;
+                run = ready.Invocation.RunAndCloseAsync(value => { reports++; shown = value; });
+                await CooperativeAwait(run);
+                var result = await run;
+                Check(result.IsValidFrame && ReferenceEquals(shown, result), "fixed SDK stand-in result did not reach the existing decoder");
+                Check(!result.IsHardwareObservation && !result.CanReadHardware && !result.CanWriteHardware && !result.CanInvokeMethods,
+                    "synthetic SDK output became hardware authority");
+                Check(ReferenceEquals(observedObserver, originalObserver) && ReferenceEquals(observedParameters, originalPair.Parameters),
+                    "typed dispatch substituted the supplied observer or parameter root");
+                Equal("CallSabiFunction", observedMethod); Check(observedOptions != null, "typed dispatch omitted its SDK method options");
+                Check(ReferenceEquals(bufferAtHandoff, originalPair.Buffer) && bytesAtHandoff != null &&
+                    bytesAtHandoff.SequenceEqual(BoundChannelRequest()), "typed dispatch did not use its populated fixed input pair");
                 Equal(1, reports); Equal(1, handoffs); Equal(1, originalTarget.InvokeCalls);
                 OwnedInputAssertDisposed(originalPair); InputPreparationAssertUntouched(fixture.Pair); InputPreparationAssertBorrowed(fixture.Pair);
                 Equal(1, output.ConcreteDisposeCalls); Equal(1, embedded.ConcreteDisposeCalls);
@@ -234,7 +249,12 @@ internal static partial class Program
                 BatteryThrows<InvalidOperationException>(() => ready.Invocation.RunAndCloseAsync(value => { }));
                 Equal(1, originalTarget.InvokeCalls); OwnedInputAssertUnsubscribed(originalObserver);
             }
-            finally { if (ready.Invocation != null) await CooperativeAwait(ready.Invocation.RequestCloseAsync()); }
+            finally
+            {
+                originalObserver.EmitCompleted(ManagementStatus.AccessDenied); // Fake-only failure cleanup.
+                if (ready.Invocation != null) await CooperativeAwait(ready.Invocation.RequestCloseAsync());
+                if (run != null) await InvocationSettled(run);
+            }
         });
 
         AddAsync("SDK preparation shares the old plan budget while early plan rejection leaves its bundle unused", async () =>
@@ -302,7 +322,7 @@ internal static partial class Program
     private static Task<WsabiWmiSingleReadPreparationResult> SdkBindingCall(WsabiWmiSingleReadPlan plan,
         WsabiWmiWindowsSdkBinding binding, WsabiWmiMethodRequest request, IWsabiWmiExchangeGate gate,
         CancellationToken token = default(CancellationToken))
-        => WsabiWmiWindowsSingleReadPreparation.PrepareSdkAsync(plan, binding, request, gate,
+        => WsabiWmiWindowsSingleReadPreparation.PrepareSdkBindingAsync(plan, binding, request, gate,
             TimeSpan.FromMilliseconds(200), TimeSpan.FromSeconds(3), token);
 
     private static void SdkBindingAssertRejected(WsabiWmiSingleReadPreparationResult result, WsabiWmiWindowsSdkBindingStatus sdkStatus)

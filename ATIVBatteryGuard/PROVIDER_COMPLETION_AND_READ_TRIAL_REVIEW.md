@@ -1,5 +1,7 @@
 # 완료 경계와 조건부 고정 읽기 시험안 — 2026-11-07 한국 시간
 
+**후속:** [선택 WMI 경로·gate·완료 계약](SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md)에서 조회 진입과 별도 Runtime 통신, host WMI 프레임과 EC mailbox, 정상 최종 성공과 SDK 취소를 더 구분했습니다. 아래는 당시 검토 기록입니다.
+
 **고정 보호 저장 바이트의 비실행 시험안을 구체화했습니다. 실제 호출 연결은 계속 보류합니다.** 이전 판정에서 실행 준비 조건이 시험안 작성 시점까지 확대될 수 있던 표현을 정정했습니다. 미확인 IRQ 전체나 모든 외부 활동의 정지는 제안의 절대 전제가 아닙니다. 실제 보호 설정 조회·충전 제어는 여전히 미구현·Unsupported입니다.
 
 [이전 협력 소유권 구현](COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md)의 후속입니다. 이번에는 잠금 코드를 더 늘리지 않고 기존 provider 완료의 의미와 고정 읽기에 필요한 조건을 독립 재검토했습니다. [구체 시험안](FIXED_MODE_READ_PROPOSAL.md)과 [실제 호출 연결 판정](FIXED_MODE_READ_DECISION.md)을 구분합니다.

@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 선택 조회 경로·gate 호출자·두 공유 버퍼 / 2026-11-07
+
+[선택 WMI 경로 검토](SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md)에서 보존한 AML trigger와 PCH legacy SW 등록을 교차 대조했습니다. 조회는 이 경로를 거치며 별도 Runtime 변수 서비스의 typed 통신 미연결을 조회 진입 자체의 필수조건에서 제외합니다. 관련 EC 후크 게시자의 순서 문제까지 해소한 것은 아닙니다.
+
+저장된 keyboard/jog caller는 조건부 조회에서 handshake와 응답 검증을 먼저 수행합니다. 이는 배터리 getter나 현재 gate 관측이 아니며 사후 handshake로 이전 응답의 신선함을 인증할 수도 없습니다. 선택 callback의 host snapshot/response copy와 EC command/data mailbox 재사용을 분리했습니다. 공식 WMI 문서3개도 정상 최종 성공과 클라이언트 취소를 구분합니다. 취소 통지는 provider 정지 근거가 아니지만 기존 단발 backend가 이 SDK 취소를 실행했다는 주장도 하지 않습니다.
+
+실제 backend·새 시험·초기화 없이 Unsupported를 유지합니다. 문서·정제 기록만 변경했고 전체 앱 테스트/빌드는 반복하지 않았습니다. C#463개·빌드 경고/오류0은1790a4b 기록이며 이번 정적 검산과 합산하지 않습니다. 새 실행·동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 관련 완료와 비실행 시험안의 비례적 조건 / 2026-11-07 한국 시간
 
 [후속 재검토](PROVIDER_COMPLETION_AND_READ_TRIAL_REVIEW.md)는 비실행 제안의 조건을 실제 코드/실행 준비와 구분합니다. known worker 입력 소비·버퍼 분리·ISR 보존은 이미 위험을 좁혔으며 미확인 status/IRQ 전체를 독립 필수조건으로 되돌리지 않습니다. 실제 연결의 세 조건은 선택 경로/고정 대상/gate, 관련 전체 교환 소유권, 관련 완료/입력 비훼손/결과 귀속입니다. 실제 간섭 actor를 새로 확보한 것은 아닙니다.

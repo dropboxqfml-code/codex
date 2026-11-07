@@ -1,6 +1,6 @@
 # 고정 보호 저장 byte의 조건부 시험안 — 비실행 문서
 
-**시험안 검토 가능 / 실제 코드 연결·실행 보류.** [완료 경계·근거 재검토](PROVIDER_COMPLETION_AND_READ_TRIAL_REVIEW.md)와 [현재 판정](FIXED_MODE_READ_DECISION.md)을 반영한 구체 안입니다. 실행용 주소·command·표식 값·프레임·generator·backend는 포함하지 않으며 사용자가 지금 수행할 작업은 없습니다.
+**시험안 검토 가능 / 실제 코드 연결·실행 보류.** [선택 WMI 경로·gate·완료 검토](SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md)와 [현재 판정](FIXED_MODE_READ_DECISION.md)을 반영한 구체 안입니다. 실행용 주소·command·표식 값·프레임·generator·backend는 포함하지 않으며 사용자가 지금 수행할 작업은 없습니다.
 
 ## 목표와 횟수
 
@@ -22,7 +22,7 @@
 
 보존된940X3G/930X3G 계열 관측, BIOS P05ACJ.128.140819.dg, 제조사 원본의 EC 배치·주소 관계와 독립 해석 anchor를 묶습니다. 조건부 ISA/bank 해석·현재 이미지 미관측은 가정으로 명시하고 다른 모델/BIOS로 확대하지 않습니다. live EC 전체 hash나 host 함수 포인터 관측은 제안 작성의 절대 전제가 아닙니다.
 
-호출 전에는 선택 Windows/provider 분기·등록 callback·고정 저장 대상·정상 실행 영역과 관련 게시자 순서를 연결해야 합니다. legacy 경로 근거로 다른 표준 typed 통신을 입증하지 않지만 선택하지 않는 모든 대안 경로의 완전 해명을 요구하지도 않습니다. source byte와 현재 장치의 지원 확정을 구분합니다.
+선택 WMI 조회의 AML→PCH legacy SW 등록→SABI generic callback은 저장 소스로 연결했습니다. 별도 Runtime 변수 proxy의 표준 typed 통신 미연결을 이 조회 진입 자체의 필수조건으로 두지 않습니다. 관련 EC 후크 게시자의 실행 순서·고정 대상·정상 전달과 재사용 계약은 별도 평가합니다. source byte와 현재 장치의 지원 확정을 구분하며 선택하지 않는 모든 대안 경로의 완전 해명을 요구하지 않습니다.
 
 ## 제안된 한 번의 흐름과 중단선
 
@@ -32,7 +32,7 @@
 4. **회수·분류:** 해당 요청의 공유 준비·trigger·응답 소비가 끝났다는 계약 안에서 detached 결과만 분류합니다. 아래 모호한 경우는 성공으로 받지 않습니다.
 5. **정리:** UI timeout과 실제 관련 작업 종료를 구분합니다. 완료 불명이면 새 요청을 허용하지 않고 process 종료나 잠금 해제를 provider 정지로 해석하지 않습니다. 사용 완료된 과거 단발 예약을 읽거나 초기화·삭제·재사용·우회하지 않습니다.
 
-독립 private SDK cleanup이나 모든 EC 백그라운드 활동의 정지를 요구하는 것은 아닙니다. 해당 입력·명령·응답에 계속 접근하는 관련 작업이 있는지를 평가합니다. 기존 backend의 Task를 전체 callback drain이나 firmware 완료로 그대로 간주하지 않습니다.
+host WMI 프레임의 snapshot/copy 수명과 EC command/data mailbox의 후속 재사용을 구분합니다. 확인한 callback closure에는 반환 뒤 host 프레임을 다시 쓰는 예약이 없습니다. 독립 SDK cleanup·모든 EC 활동의 정지를 요구하지 않고 각 관련 입력·명령·응답의 마지막 접근을 평가합니다. 정상 최종 성공은 API 완료 근거이며, 취소로 생성된 완료 알림은 provider 정지 근거가 아닙니다. 기존 backend에는 이 SDK 취소 호출이 없고 이번에도 연결하지 않습니다.
 
 ## 결과 분류
 

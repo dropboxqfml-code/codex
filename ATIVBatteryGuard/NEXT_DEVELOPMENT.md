@@ -1,5 +1,19 @@
 # 다음 개발 재개 메모
 
+## 최신 — 선택 WMI 경로 분리와 완료 계약 / 2026-11-07
+
+[SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md](SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md), [시험안](FIXED_MODE_READ_PROPOSAL.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. 보존된 WMI→AML→PCH legacy SW→SABI callback 경로를 교차 대조했습니다. 별도 Runtime SetVariable proxy의 표준 typed 통신 미연결을 조회 진입 자체의 필수조건에서 제외합니다. 그 분기는 관련 Runtime EC 게시자의 실행 순서와 입력 보존에 영향을 주는 범위만 남깁니다. 새 typed provider 발견이나 현재 전달 성공 관측으로 세지 않습니다.
+
+저장된 keyboard/jog OnIdle caller가 조건을 만족하면 imported query가 매번 사전 local handshake→API/서명 검증→별도 generic query를 수행합니다. Initialize의 성공 stub을 gate-open으로 보지 않습니다. 이 caller는 배터리 명령 근거가 아니고 사후 handshake도 직전 gate 통과·EC 실행·신선함을 소급 인증하지 못합니다. 현재 gate는 미관측이며 old FF 원인을 새로 확정하지 않습니다.
+
+host WMI 프레임과 EC command/data mailbox를 구분합니다. 선택 callback은 snapshot/upload/download/copy 후 반환하며 확인한 closure에 host frame을 EC로 넘기거나 반환 뒤 재접근하도록 예약하는 경로가 없습니다. 선택 entry thunk도 callback 반환 뒤 복귀하지만 실제 전달 trace는 아닙니다. 미게시의 stale 결과와 게시 후 EC mailbox 재사용을 구분하고, 무효 응답 거부를 남은 공유 접근 종료로 취급하지 않습니다. 모든 callback/private Dispose/IRQ 종료를 독립 조건으로 추가하지 않습니다.
+
+Microsoft 공식 WMI API 문서3개·선택 텍스트 관계6개를 검산하고 독립 검토했습니다. 즉시 반환/출력/최종 상태는 다르며, method CancelAsyncCall은 client만 취소하고 provider는 통지 없이 계속할 수 있습니다. WMI가 생성한 취소 SetStatus도 provider 정지 증거가 아닙니다. 정상 최종 성공은 API 완료의 유용한 근거로 유지합니다. 현재.NET48 구현·provider/AML/EC 종료는 이 문서로 직접 입증하지 않습니다. 기존 backend에는 observer.Cancel 호출이 없고 experiment는 CancellationToken.None이며 old 실기의 취소 발생을 추정하지 않습니다.
+
+다음은 선택 provider의 method→AML 반환 계약과 미게시/지연/생략·모호한 dispatch fault에서 마지막 공유 접근/다음 재사용의 경계를 검토합니다. 기존 source의 정상 순서를 활용하고 현재 trace나 모든 Runtime/IRQ 해명을 절대조건으로 만들지 않습니다. gate를 여는 추가 호출은 유용성·상태 영향·횟수를 별도로 검토할 대상이며 현재 최대1WMI/고정 대상 샘플0~1/초기화0 안에 숨겨 넣지 않습니다. 실제 backend/프레임/표식/시험·승인 요청은 추가하지 않았습니다.
+
+private cache: 20261107/selected-provider-path-next, gate-caller-lifecycle-next, wmi-shared-completion-next, wmi-api-completion-contract-next. 이번 source 재검산과 이전 문맥·공식 텍스트 검산을 구분하며 앱 테스트 수·분석률에 합산하지 않습니다. 문서·정제 기록만 변경, 앱/Core/테스트/EXE/배포 ZIP 미변경·전체 suite/solution 빌드 미반복입니다. C#463/빌드0은1790a4b 기록입니다. 원본 실행/로딩/에뮬레이션·실제 WMI/OEM/하드웨어/기존 실기 예약 접근·드라이버/서비스/보안/펌웨어 변경은 없습니다. 실제 제어 Unsupported·새 노트북 실행/동일 자료 제출 불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — provider 완료 경계·조건부 시험안 구체화 / 2026-11-07 한국 시간
 
 [PROVIDER_COMPLETION_AND_READ_TRIAL_REVIEW.md](PROVIDER_COMPLETION_AND_READ_TRIAL_REVIEW.md), [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. **비실행 제안 검토 가능 / 실제 backend 연결·호출 보류**로 정밀화했습니다. 실행 준비 조건을 제안 작성 자체에 확대하지 않습니다. 미확인 status/IRQ 전체나 모든 외부 활동 정지는 독립 필수조건이 아닙니다. 조회 명령/주소/계속 쓰는 입력/결과에 직접 영향을 주는 연결이 생긴 범위만 조사합니다. 이미 연결한 inline 소비·buffer 분리·known ISR 보존을 전체 hardware 미확인으로 되돌리지 않습니다.

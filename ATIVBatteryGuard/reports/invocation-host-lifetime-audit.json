@@ -1,0 +1,159 @@
+{
+  "dateUtc": "2026-11-07",
+  "previousRepositoryCommit": "846951f",
+  "scope": "Existing managed session consumer joins close after bounded publication; no live WMI source or device trial",
+  "implementation": {
+    "sourcePins": [
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiInvocationSession.cs",
+        "bytes": 6341,
+        "sha256": "605390fff4663dfe802ca3d652545c1432fe758bc1a99efc260fd7470c184acd"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFrameExchange.cs",
+        "bytes": 8054,
+        "sha256": "96b795772fbd5275f00a491112148f9dd3b9f607e8965a1ec0edccc65e5d0796"
+      },
+      {
+        "projectFile": "tests/WsabiWmiInvocationHostTests.cs",
+        "bytes": 11422,
+        "sha256": "b00b26a15161d942010fb570e1a0ec0b2dcde60b9fadb07f902579e3e38c037a"
+      },
+      {
+        "projectFile": "tests/Program.cs",
+        "bytes": 32941,
+        "sha256": "0150b2d26a99ffcb497466761da1543b6b7aa73dec73335e8ab61fec409f6ccc"
+      },
+      {
+        "projectFile": "tests/ATIVBatteryGuard.PortableTests.csproj",
+        "bytes": 3257,
+        "sha256": "731205294dd21f37648c3b17d6edcd169aacaaa71a7ed1e97672d73b319fd82d"
+      }
+    ],
+    "coreFilesChanged": 2,
+    "coreFunctionalFilesChanged": 1,
+    "coreCommentOnlyFilesChanged": 1,
+    "testFilesIncludingRegistrationAndProjectChanged": 3,
+    "hostMethod": "WsabiWmiInvocationSession.RunAndCloseAsync",
+    "newLifetimeTrackerIntroduced": false,
+    "nullReporterRejectedBeforeSessionEntry": true,
+    "closeAdmissionAndStopIntentStartedBeforeReporter": true,
+    "boundedResultPublishedBeforeUnboundedCloseWait": true,
+    "finallyJoinsSameCloseAfterReporterFailure": true,
+    "callerCancellationOrSecondTimeoutCanCancelCloseWait": false,
+    "unknownCanKeepHostTaskPendingIndefinitely": true,
+    "lateCleanupRewritesPublishedFailureAsSuccess": false,
+    "successfulReturnOrReporterFaultPublishedBeforeClose": false,
+    "reporterContract": "Short synchronous callback; host Main invokes once; async void and UI dispatch work not tracked",
+    "reportOnceIsGlobalAcrossRepeatedHostMethodCalls": false,
+    "capabilitiesOrHardwareAuthorityChanged": false,
+    "actualMainGuiOrProcessExitHookConnected": false,
+    "hostTaskPreventsForcedProcessDeath": false
+  },
+  "verification": {
+    "newRegisteredRegressions": 6,
+    "firstRun": {
+      "passed": 490,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 490,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "finalResult": {
+      "passed": 490,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 490,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "testTimingReviewCorrection": "Explicitly observe transport Unknown after fake Returned and bounded publication; no product lifetime change",
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0
+    },
+    "sameProductionHostMethodUsedByTests": true,
+    "sourceGateAndLeaseFakesOnly": true,
+    "existingSyntheticRequestAndReplyFixturesReused": true,
+    "independentReviewApprovedImplementationAndTimingCorrection": true,
+    "independentReviewerReranPortableSuite": false,
+    "regressionGroups": [
+      "Reporter guard and admission closure before publication",
+      "Local rejection and pre-cancellation without dispatch",
+      "Unknown timeout publication with host lifetime retained",
+      "Repeated caller stop without cancelling cleanup",
+      "Reporter exception joined through terminal and blocked lease release",
+      "Busy peer joins original canonical owner cleanup"
+    ],
+    "existingSdkAndCachedDependenciesUsed": true,
+    "newDependencySdkPatchOrSkippedXamlStep": false
+  },
+  "privateConsoleProof": {
+    "finalAssertionsPassed": 48,
+    "joinedOwnChildProcesses": 2,
+    "linkedCurrentCoreSourceFiles": 96,
+    "coreEditedByHarness": false,
+    "restoreBuildAndParentRunExitCodes": [
+      0,
+      0,
+      0
+    ],
+    "releaseBuildWarnings": 0,
+    "releaseBuildErrors": 0,
+    "childExitCodesAfterCleanup": [
+      1,
+      2
+    ],
+    "childExitCodesAreParentProofFailures": false,
+    "mainConsumesProductionRunAndCloseAsync": true,
+    "boundedDiagnosticPrecedesMainReturn": true,
+    "repeatedStopCountPerChild": 2,
+    "sourceInvocationCountPerChild": 1,
+    "explicitFakeTerminalAndCaptureRequiredForPassingCase": true,
+    "eofOnlyCleanupAcceptedAsPass": false,
+    "oldPassingProofCanSurviveFailedRerun": false,
+    "handlerRemovedAfterCloseAndOwnerThreadReleaseObserved": true,
+    "actualOsCtrlCSignalOrWindows10EventDeliveryObserved": false,
+    "syntheticFinalIsActualSdkProviderTerminationEvidence": false,
+    "forceKillExitOrFailFastUsed": false,
+    "assertionsAddedToMainAppSuiteOrOldPrivateSdkProof": false,
+    "independentSourceAndProofReadReviewApproved": true
+  },
+  "sourceSelectionReview": {
+    "choice": "Retain asynchronous observer final-status semantics",
+    "cachedReferenceImplementation": "dotnet/runtime v8.0.0",
+    "existingInputPins": 9,
+    "newOfficialSourcesOrRuntimeFacts": 0,
+    "exactTargetNet48ImplementationProven": false,
+    "synchronousTypedNormalReturnReinterpretedAsOriginalTerminalZero": false,
+    "methodReturnValueAndFrameAckAreTerminalStatus": false,
+    "typedCallbackCaptureSourceImplementedThisTurn": false,
+    "sdkSinkLossOrMissingTerminalRecovered": false,
+    "nextSourceBoundary": "Own selected typed object, validate and detach bounded bytes, settle selected capture after reader and selected cleanup; preserve missing terminal",
+    "sourceInvokeOnceAuthenticatesActualSdkMethodCountOrHardwarePermission": false,
+    "preSourcePreparationFailureAndPostEntryUnknownMustRemainDistinct": true
+  },
+  "decision": {
+    "hostManagedConsumerImplemented": true,
+    "actualSdkSourceOrEventAdapterConnected": false,
+    "mainAppHardwareBackendEnabled": false,
+    "actualProtectionReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "aOrBSelectionCallLimitsGateStateEffectsOrApprovalChanged": false,
+    "twoIndependentSingleUseSessionsSubstituteForBContinuousOwnership": false,
+    "hardwareExecutionApprovalRequested": false
+  },
+  "changeBoundary": {
+    "mainAppUiRegistrationOrOldBackendProgramEncoderChanged": false,
+    "consumedReservationReadResetDeletedReusedOrBypassed": false,
+    "actualWmiSdkOemHardwareOrOemGlobalObjectExercised": false,
+    "vendorOriginalExecutedLoadedOrEmulated": false,
+    "newHardwareFrameNonceOrFirmwareControlCodeCreated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "applicationNetworkCodeAdded": false,
+    "mainAppOrDeviceToolExecuted": false,
+    "ownPortableTestsAndPrivateFakeConsoleExecuted": true,
+    "existingDistributionArchiveUpdated": false,
+    "newNotebookExecutionOrRepeatedUploadRequested": false
+  }
+}

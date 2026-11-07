@@ -1,5 +1,21 @@
 # 다음 개발 재개 메모
 
+## 최신 — RunAndCloseAsync와 fake 콘솔 host 검증 / 2026-11-07
+
+[INVOCATION_HOST_LIFETIME_UPDATE.md](INVOCATION_HOST_LIFETIME_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. HEAD846951f의 Session에 RunAndCloseAsync를 추가했습니다. 별도 tracker 없이 ExchangeAsync bounded 결과→RequestCloseAsync 시작→짧은 동기 publishResult→finally 같은 close Task await 흐름입니다. null callback은 진입 전 거부하고 caller token/두 번째 timeout으로 close 대기를 취소하지 않습니다. unknown은 표시 후에도 host task pending, 표시 예외도 close 뒤 task fault입니다. Main은 method를 한 번 호출해 수명으로 await해야 하며 async void callback/UI 자동 전환·전역 report1회 보장은 없습니다.
+
+새6회귀 포함490통과0실패0skip·전체 net48 Release 빌드 경고0/오류0입니다. 독립 검토가 fake Returned와 transport callExited 게시의 테스트 race를 찾아 상태를 명시적으로 기다리도록 테스트만 보강했고490개를 다시 통과했습니다. 제품 종료/소유권 조건 변경0입니다. 기존 SDK8.0.427/cache/IL task 설정·no-restore·UseSharedCompilation=false·m1이며 새 dependency/SDK 패치/XAML skip은 없습니다.
+
+private fake 콘솔 harness는 변경하지 않은 Core96파일을 링크해 production method를 실제 Main에서 소비했습니다. timeout/caller-stop child2개의 bounded 표시→Main/lease 유지→반복 stop2회/source1회→명시적 합성 terminal/capture→owner thread release1회→handler 해제→exit를48검산했습니다. restore/build/run exit0·시험 build 경고/오류0이며 앱490에 합산하지 않습니다. 명시적 finish를 소비한 case만 pass이고 시작/실패 때 권위 proof를 무효화해 stale pass를 막습니다. 실제 OS Ctrl+C는 보내지 않았고 Win10 이벤트 전달·실제 SDK/provider 종료 검증이 아닙니다. Console.CancelKeyPress는 e.Cancel=true+짧은 신호만, 실제 cancel/close는 Main 흐름에서 수행합니다. 창 X/OS shutdown·kill·crash/Exit는 보장 밖이고 ProcessExit로 처음 정리를 시작하지 않습니다. 원본/SDK/OEM/Global/marker/강제kill 접근0입니다.
+
+source 설계는 저장된 참조를 재사용해 async Completed.Status 계약을 유지하는 방향으로 좁혔습니다. sync typed-output는 참조에서 비음수 HR을 버리므로 정상 반환을 기존 terminal0으로 정규화하는 대체를 하지 않습니다. 새 원문/현재 .NET48 runtime 사실0이며 원문 pins와 이번 선택 추론을 구분했습니다. source 신호는 공급자 계약이며 Invoke1회가 실제 SDK method 수·하드웨어 권한을 인증하지 않습니다.
+
+다음 구현은 명시적 dispatch/typed callback source에서 선택 객체의 개수/소유·형식/길이 확인·bounded 분리·선택 정리를 구현하는 일입니다. transport에는 terminal int+byte[]/고정 capture 실패만 전달하며 비영 terminal이면 reader0, 없음/복수/reader나선택Dispose실패는 capture 실패, 동일/상충 terminal과 SDK throw 뒤 terminal 소실을 구분해야 합니다. 준비 실패는 가능하면 source 진입 전 분류하며 진입 뒤 throw를 미호출이나 terminal로 바꾸지 않습니다. callback bridge가 SDK sink 제거·missingterminal을 복구한다고 하지 않습니다. 실제 SDKsource/event adapter/장치 profile/frame/승인 질문은 이번에 추가하지 않았습니다.
+
+현재 변경은 Core2파일(method/주석)·tests3파일(새6회귀/등록/프로젝트)·문서/정제 기록입니다. 실제 Main/UI hook·old Backend/Program/사용 완료된 예약·encoder·배포 ZIP은 그대로입니다. A최대1read/handshake0, B별도handshake1+조건부read1/최대2method·gate 상태 영향·승인 상태 유지이며 B의 연속 소유권을 두 단발 세션으로 대신하지 않습니다. 보호 조회/충전 제어 Unsupported·새 실기/동일 자료 제출 불필요입니다.
+
+private cache: 20261107/invocation-host-run-validation(tests.json/log,final.json/log,solution-build.log), invocation-console-host-proof-next(proof/private execution/source/artifact pins), invocation-host-lifetime-review-next, async-source-capture-contract-next. 아래는 이전 기록입니다.
+
 ## 최신 — 공통 invocation transport와 세션 구현 / 2026-11-07
 
 [MANAGED_INVOCATION_SESSION_UPDATE.md](MANAGED_INVOCATION_SESSION_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. private helper만 두던 단계에서 기존 Bound/owner/FrameExchange가 소비하는 WsabiWmiInvocationSnapshotTransport와 WsabiWmiInvocationSession을 구현했습니다. 실제 SDK 기본 구현·OEM method·모델 profile·GUI 등록은 없습니다.

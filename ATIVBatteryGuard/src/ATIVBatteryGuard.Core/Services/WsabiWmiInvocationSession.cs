@@ -61,6 +61,40 @@ namespace ATIVBatteryGuard.Core.Services
             }
         }
 
+        // A host calls this once and keeps its main lifetime alive until this
+        // task ends. The bounded result is published before waiting for close;
+        // timeout, caller cancellation and reporting failures never skip that
+        // wait. publishResult is a short synchronous notification, not async
+        // void work, a UI dispatcher or permission to exit the process.
+        public Task<WsabiWmiFrameExchangeResult> RunAndCloseAsync(int command, object payload,
+            Action<WsabiWmiFrameExchangeResult> publishResult,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            if (publishResult == null) throw new ArgumentNullException(nameof(publishResult));
+            return RunAndCloseCoreAsync(command, payload, publishResult, cancellationToken);
+        }
+
+        private async Task<WsabiWmiFrameExchangeResult> RunAndCloseCoreAsync(int command, object payload,
+            Action<WsabiWmiFrameExchangeResult> publishResult, CancellationToken cancellationToken)
+        {
+            Task close = null;
+            try
+            {
+                var result = await ExchangeAsync(command, payload, cancellationToken).ConfigureAwait(false);
+                // Close admission and request stop before entering host code.
+                // Reporting can fail without leaving this attempt open.
+                close = RequestCloseAsync();
+                publishResult(result);
+                return result;
+            }
+            finally
+            {
+                // Deliberately no caller token or second timeout: an unknown
+                // invocation may keep both close and this host task pending.
+                await (close ?? RequestCloseAsync()).ConfigureAwait(false);
+            }
+        }
+
         public Task RequestCloseAsync()
         {
             TaskCompletionSource<bool> closed;

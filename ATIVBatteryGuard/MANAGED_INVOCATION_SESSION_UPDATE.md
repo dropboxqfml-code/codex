@@ -1,5 +1,7 @@
 # 공통 호출 세션과 닫기 경계 구현 — 2026-11-07
 
+**후속:** [host 종료 대기 구현](INVOCATION_HOST_LIFETIME_UPDATE.md)에서 bounded 결과를 먼저 표시하고 close까지 기다리는 RunAndCloseAsync 소비 흐름을 추가했습니다. 새6개 포함490회귀·전체 빌드 경고/오류0이며 실제 SDK source·GUI 연결은 아직 없습니다. 아래는 당시 세션 구현 기록입니다.
+
 **시험도구가 사용할 공통 관리 세션을 구현하고, 같은 코드에 가짜 호출 원본을 주입해 검증했습니다.** private 상태 모델만 두던 단계에서 기존 Bound/owner/FrameExchange가 소비하는 snapshot transport와 세션으로 옮겼습니다. 실제 System.Management source·OEM method·장치 profile·새 하드웨어 frame은 연결하지 않았으며 실제 보호 조회·충전 제어는 Unsupported입니다.
 
 [이전 SDK 수명 증명](SDK_INVOCATION_LIFETIME_REVIEW.md)의 후속입니다. [정제 기록](reports/managed-invocation-session-audit.json)에 구현 파일·테스트·빌드·한계를 남겼습니다.

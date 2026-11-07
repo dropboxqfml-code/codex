@@ -131,8 +131,9 @@ namespace ATIVBatteryGuard.Core.Services
             }
         }
 
-        // Cooperative wait/cancellation only, not hard native termination.
-        // A future live channel must impose its own independent process limit.
+        // Cooperative UI wait/cancellation only, not hard native termination.
+        // A host must join actual cleanup before returning from its main
+        // lifetime; killing a process does not establish provider completion.
         private static Task CancelChannelOffThread(CancellationTokenSource source)
             => Task.Run(() => TryCancel(source));
 

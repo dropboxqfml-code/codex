@@ -413,6 +413,7 @@ internal static partial class Program
         RegisterWsabiWmiFrameExchangeTests();
         RegisterWsabiWmiCooperativeChannelTests();
         RegisterWsabiWmiInvocationSessionTests();
+        RegisterWsabiWmiInvocationHostTests();
         RegisterWsabiWmiWindowsMutexGateTests();
     }
 

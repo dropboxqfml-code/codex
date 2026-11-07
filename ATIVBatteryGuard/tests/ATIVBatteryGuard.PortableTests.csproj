@@ -51,6 +51,7 @@
     <Compile Include="WsabiWmiFrameExchangeTests.cs" />
     <Compile Include="WsabiWmiCooperativeChannelTests.cs" />
     <Compile Include="WsabiWmiInvocationSessionTests.cs" />
+    <Compile Include="WsabiWmiInvocationHostTests.cs" />
     <Compile Include="WsabiWmiWindowsMutexGateTests.cs" />
   </ItemGroup>
 </Project>

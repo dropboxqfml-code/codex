@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — host 결과 표시와 종료 대기 / 2026-11-07
+
+**구현:** [RunAndCloseAsync](INVOCATION_HOST_LIFETIME_UPDATE.md)는 bounded 결과 뒤 admission을 닫고 표시 callback을 실행하며 finally에서 source/자기·공유 owner의 정리를 기다립니다. 시간 초과·취소·표시 예외가 Main의 조기 반환을 허용하지 않습니다. 새 tracker·실제 SDK source·앱 hook은 추가하지 않았습니다.
+
+**검증:** 새6개 포함490개 통과·전체 net48 Release 빌드 경고/오류0입니다. 별도 fake-only 콘솔 child2개의 Main 생존·반복 stop·정리 뒤 exit를48검산으로 확인했으며 앱 수에 합산하지 않습니다. 합성 terminal 정리이며 실제 OS Ctrl+C·WMI/provider 종료 관측은 아닙니다.
+
+**source 선택과 한계:** 저장된 SDK의 sync typed-output 경로는 비음수 즉시 상태를 보존하지 않으므로 기존 async Completed.Status 계약을 유지하는 방향입니다. 이것은 다음 구현의 선택이며 새 runtime 사실이 아닙니다. 다음은 선택 객체의 소유/형식 확인/분리/정리 source이며 SDK throw·terminal 소실을 source가 임의 완료로 바꾸지 않습니다. 기존 Backend/예약·A/B 횟수/상태 영향·권한은 유지하고 실제 보호 조회·충전 제어는 Unsupported입니다. 새 노트북 실행/재제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 공통 managed 호출 세션 / 2026-11-07
 
 **구현한 소프트웨어:** [새 세션](MANAGED_INVOCATION_SESSION_UPDATE.md)은 명시적으로 공급한 source의 call exit·적용 가능한 terminal·선택 capture 종료를 기다리는 snapshot transport와 host입니다. 같은 source 참조의 단발 상태·identity를 공유하고 capture는 byte[] 복사와 앱 소유 고정 map으로 제한했습니다. terminal status가 권위 있는 값이며 source 신호는 실제 종료를 스스로 인증하는 기능이 아닙니다.

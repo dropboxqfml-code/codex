@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — A 선언 scope와 고정 요청 이행 경로 / 2026-11-08 한국 시간
+
+**구현:** [단발 plan/binding](SINGLE_READ_PLAN_BINDING_UPDATE.md)은 정확한 관측Name/전체BIOS·선언한platform·local method target·상세metadata/MethodId1·완료열거/단일Active를 검사합니다. opaque token을 참조 비교하고 기존 요청을 복사·재구성해 prepared Run에 고정합니다. 공급 사실/참조 일치이며 실제 SDK target/read semantic/권한의 인증이 아닙니다.
+
+**검증:** plan9/binding6/lifetime6의 신규21개 포함562개 통과·실제 net48 참조 전체 Release 빌드 경고/오류0입니다. 동시 같은plan 준비·alias재시도·SDK등록전 거부·고정 byte 전달과 기존 Unknown/lease/close를 SDK stand-in으로 검증했습니다. 실제 SDK method 수·현재gate·데이터신선함을 관측한 작업이나 새 펌웨어 근거는 아닙니다.
+
+**범위:** A의선언budget을softwarehandoff1·자체추가경로0으로대응했으며opaqueframe의write0/read의미는입증하지않았습니다. B·oldOneShotcandidate/예약·실제SDKdispatch·앱등록·배포ZIP은그대로이고보호조회/제어Unsupported·새실기/재제출불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — WMI 등록 준비를 세션 전으로 분리 / 2026-11-08 한국 시간
 
 **구현:** [Preparation factory/handle](WINDOWS_WMI_PREPARATION_UPDATE.md)은 등록과 필요한 실패 정리를 Core 밖에서 끝내고 성공 handle만 단발 Run/Close를 제공합니다. raw source는 internal이며 미사용 close가 먼저면 session을 만들지 않습니다. += 시도 기록·등록 종료·early callback 정리를 join하고 준비 오류를 다음 조회의 terminal/출력으로 replay하지 않습니다.

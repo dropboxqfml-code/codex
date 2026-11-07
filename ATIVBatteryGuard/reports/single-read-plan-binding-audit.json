@@ -1,0 +1,172 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "1713c3e",
+  "scope": "A declared detached target scope plus opaque fixed-request binding to prepared host; synthetic handoff tests, no actual read template or SDK invocation",
+  "implementation": {
+    "sourcePins": [
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiSingleReadPlan.cs",
+        "bytes": 6000,
+        "sha256": "61ba4197891de8733b4015f61eb0c5070dfc7698bb4875d0d4957c2793c44a13"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs",
+        "bytes": 8248,
+        "sha256": "8da702d9208a1f1c0b5e817a3118ad7b32a57434097f7244e9dc94ddeb81b58f"
+      },
+      {
+        "projectFile": "tests/WsabiWmiSingleReadPlanTests.cs",
+        "bytes": 15564,
+        "sha256": "eb1182be0a5431900589f47ec45d64ebabc2f9da96ba1b6ac6caba724314ff93"
+      },
+      {
+        "projectFile": "tests/WsabiWmiSingleReadBindingTests.cs",
+        "bytes": 10631,
+        "sha256": "aec796ab5509cad7a9be6fe7b46c020cf9b09af8f0dfbb96c10f7e3f3c0722cd"
+      },
+      {
+        "projectFile": "tests/WsabiWmiSingleReadLifetimeTests.cs",
+        "bytes": 23504,
+        "sha256": "87744bb676b64982e31eb247faf7a0bb5b7dd40a7e01d99c1601b16349fcb3f4"
+      },
+      {
+        "projectFile": "tests/Program.cs",
+        "bytes": 33394,
+        "sha256": "e0e11e1515fd80f19e83bb1e2ed33413d421e19aab99fa9c6cac19a58f618b21"
+      },
+      {
+        "projectFile": "tests/ATIVBatteryGuard.PortableTests.csproj",
+        "bytes": 4630,
+        "sha256": "ebd61d693bf9c17b96b0e74f76f7c974d063da42d608010baf690d9fbf14c55f"
+      }
+    ],
+    "coreFilesAdded": 1,
+    "windowsAdapterFilesAdded": 1,
+    "testFilesIncludingThreeGroupsRegistrationAndProjectChanged": 5,
+    "consumer": "SingleReadPlan -> fixed target/request validation -> WindowsPreparation -> prepared fixed-input Run -> existing session and guarded supplied dispatch",
+    "actualFirmwareTemplateCommandOrSdkInvocationImplementationAdded": false,
+    "oldOneShotCandidatePolicyOrPayloadGeneratorReused": false,
+    "genericBinderEncoderCanonicalCopyAndReconstructionReused": true,
+    "newSdkTargetDiscoveryOrLiveDeviceProbeAdded": false,
+    "allPlanAndBoundInvocationHardwareCapabilitiesFalse": true
+  },
+  "targetPlan": {
+    "variantAccepted": "SingleReadWithoutHandshake only",
+    "bHandshakeVariantOrUnknownVariantAccepted": false,
+    "deviceComparison": "Single observed full WMI Name and full BIOS, raw length at most128, Trim and OrdinalIgnoreCase",
+    "uiModelPrefixOrTwoModelOrAlternativeUsed": false,
+    "windows10X64IsSupplierDeclarationNotLiveProbe": true,
+    "requiresFixedLocalNamespaceClassMethod": true,
+    "requiresCompleteEnumerationOneInstanceActiveTrueAndNonNullOpaqueIdentity": true,
+    "opaqueIdentityUsesReferenceNotProviderEqualityOrText": true,
+    "existingDetailedMetadataBinderAlternativesPreserved": true,
+    "windowsMethodIdSeparatelyRequired": 1,
+    "candidateScopeMatchProvesSupportApprovalOrHardwareObservation": false
+  },
+  "requestAndBudget": {
+    "declaredAHandoffUpperBound": 1,
+    "declaredHandshakeCalls": 0,
+    "declaredRetries": 0,
+    "declaredSettingWrites": 0,
+    "opaqueRequestReadOrWriteSemanticsAuthenticated": false,
+    "validatedReferencesBundledImmutably": true,
+    "bundleAuthenticatesDelegateClosureBehaviorOrActualSdkTarget": false,
+    "samePlanReferenceBudgetClaimedBeforeTargetRequestCancellationOrRegistrationOutcome": true,
+    "nullDependencyOrInvalidTimeoutConsumesPlan": false,
+    "targetOrRequestMismatchStartsLowerPreparationOrAdditionalSubscriptions": false,
+    "cancelFailureCloseUnknownOrWrapperAliasRearmsSamePlan": false,
+    "budgetCoversNewPlanOtherProcessDirectLowerApiOrPersistentReservation": false,
+    "boundRunArguments": "Short publish callback and run token only",
+    "boundRunAcceptsCommandPayloadTargetOrVariant": false,
+    "privateCommandPayloadCopiedFromSuppliedExistingCanonicalRequest": true,
+    "handoffChecksObserverReferenceMethodIdCommandAndAllFrameBytes": true,
+    "guardAtMostOneSuppliedDelegateHandoff": true,
+    "handoffCountCertifiesSdkMethodCountOrReadOnlyFirmwareEffect": false,
+    "newRetryHandshakeWriteResetOrFallbackPathImplemented": false,
+    "lowLevelGenericApiRemovedOrSystemWideBypassPreventionClaimed": false
+  },
+  "lifetime": {
+    "existingPreparedRegistrationAndCoreRunCloseReused": true,
+    "unknownRetainsSubscriptionLeaseAndHostWait": true,
+    "softwareBudgetOrCancellationInventsProviderTerminal": false,
+    "lateSyntheticFinalIsActualSdkCompletionGuarantee": false,
+    "requestOrArgumentsArrayMutationChangesFrozenHandoff": false,
+    "callerTargetVariableReassignmentChangesFrozenBinding": false,
+    "reporterExceptionWaitsForOwnerCleanup": true
+  },
+  "verification": {
+    "newRegisteredRegressions": 21,
+    "planGroups": 9,
+    "bindingGroups": 6,
+    "lifetimeGroups": 6,
+    "initialTestCompile": {
+      "succeeded": false,
+      "error": "CS0165",
+      "cause": "Short-circuit out variable in a test; corrected to two explicit assertions",
+      "productFailureReproductionClaimed": false
+    },
+    "basicRun": {
+      "passed": 556,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 556,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "finalResult": {
+      "passed": 562,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 562,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "sameProductionWindowsSourceFilesLinkedWithSdkStandins": 5,
+    "portableDependencyLibraries": [
+      "ATIVBatteryGuard.PortableTests/1.0.0"
+    ],
+    "actualSystemManagementRuntimeOrProviderExecuted": false,
+    "existingSyntheticRequestAndReplyFixturesOnly": true,
+    "testGroups": [
+      "Exact scope and target facts",
+      "Detailed binder alternatives and method id one",
+      "Opaque reference identity and immutable request",
+      "Pre-registration target and request mismatch",
+      "Full byte single-use dispatch guard",
+      "Concurrent same-plan preparations and failure alias blocking",
+      "Cancellation close and unknown lifetime",
+      "Gate owner cleanup and report failure"
+    ],
+    "controlledGatesAndCallbackTasksJoinedInFinally": true,
+    "subcaseAssertionsOrPriorPrivateProofAddedToRegisteredCount": false,
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0,
+      "actualSystemManagementReferenceApiCompiled": true
+    },
+    "independentSourceAndRegressionReadReviewApproved": true,
+    "independentReviewerReranSuite": false,
+    "newDependencyInstallSdkPatchOrSkippedXamlStep": false
+  },
+  "decision": {
+    "declaredAEnvelopeAndOpaqueRequestConnectedToPreparation": true,
+    "fixedProtectionByteReadSpecificationImplemented": false,
+    "actualSdkTargetCallCountDataFreshnessOrFirmwareReadMeaningEstablished": false,
+    "bAlternativeSelectedOrABudgetsGateStateEffectsApprovalChanged": false,
+    "actualProtectionReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "newHardwareExecutionApprovalRequested": false,
+    "oldConsumedReservationAccessedResetReusedOrBypassed": false
+  },
+  "changeBoundary": {
+    "mainAppUiDefaultBackendOldSdkBackendProgramEncoderOrReleaseArchiveChanged": false,
+    "mainAppOrDeviceToolExecuted": false,
+    "ownPortableStandinSafetySuiteExecuted": true,
+    "actualWmiSdkOemHardwareGlobalObjectOrConsumedMarkerAccessed": false,
+    "vendorOriginalExecutedLoadedOrEmulated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "newOfficialSourceRuntimeHardwareFactsOrFirmwareAnalysisPercentageClaimed": false,
+    "applicationNetworkCodeAdded": false,
+    "additionalNotebookRunOrRepeatedUploadRequested": false
+  }
+}

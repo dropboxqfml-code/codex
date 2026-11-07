@@ -1,6 +1,6 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
-**판정: 공통 세션·host·Windows 타입 연결과 세션 전 등록 준비 구현·stand-in 검증 완료, 실제 장치 호출·실행은 보류.** [등록 준비 분리](WINDOWS_WMI_PREPARATION_UPDATE.md)를 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
+**판정: 준비 경로에 A의 공급 scope·고정 요청·software 단발 제한을 결합하고 stand-in 검증 완료, 실제 장치 호출·실행은 보류.** [단발 plan/binding](SINGLE_READ_PLAN_BINDING_UPDATE.md)을 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
 
 | 조건 | 확인된 범위 | 남은 조건 |
 | --- | --- | --- |
@@ -9,6 +9,8 @@
 | 관련 하위 완료 | Windows 타입·handler/구독 정리와 세션 전 준비 factory/단발 handle 구현. 동일 소스 stand-in 회귀 포함541개·실제 net48 참조 빌드0/0 | 실제 SDK 이벤트/terminal 적용성과 소실·cutoff 뒤 late 정리·COM threading은 미관측. Run 예약 뒤 외부 위반은 Unknown일 수 있고 실제 Main/GUI도 별도 |
 | 기존 EC 작업 입력 보존 | 식별된 입력은 요청 반환 전에 inline 소비하고 query upload·reader 쓰기와 분리됨 | 조회 자원과 교차하는 구체 근거가 생긴 IRQ/status만 조사. 전체 생산자 발견은 비실행 제안의 필수조건 아님 |
 | 선택 실행 영역·gate·결과 귀속 | WMI→AML→PCH legacy SW→SABI generic 경로 연결. 별도 typed 변수 경로와 분리. gate는 초기닫힘/현재미관측 | 관련 게시자 순서·전체 교환·응답 귀속 필요. handshake0의 유용성 미확정. 다른 기능 caller의 사전 handshake를 보호 조회 지원으로 확대하지 않음 |
+
+최신 software plan은 정확한 대상 사실·상세 metadata/MethodId1을 비교하고 observer 등록 전에 opaque 요청을 동결합니다. 같은 plan 참조의 첫 준비에서 예산을 소모해 취소/실패 뒤 새 wrapper도 재준비하지 않으며 Run은 publish/token만 받습니다. 신규21개 포함562회귀·실제 net48 참조 빌드0/0입니다. 이는 supplied handoff1회/자체 추가 경로0의 이행 검증이고 실제 template의 read/write 의미·delegate 내부 SDK 횟수·대상 현재성·실행 승인을 인증하지 않습니다. B/실제 명령·프레임/소모 예약은 변경하지 않았습니다.
 
 모델·BIOS·제조사 원본과 여러 해석 anchor는 임시 CandidateProfile 근거로 유지합니다. live 함수 포인터·EC 전체 hash를 직접 관측하지 못했다는 사실 하나만을 절대 중단 조건으로 쓰지 않습니다. 동시에 위 실제 미완료 연결을 정상성 가정이나 사후 내용 비교만으로 메우지 않습니다.
 

@@ -1,5 +1,23 @@
 # 다음 개발 재개 메모
 
+## 최신 — 단발 조회안의 대상·요청을 준비 경로에 결합 / 2026-11-08 한국 시간
+
+[SINGLE_READ_PLAN_BINDING_UPDATE.md](SINGLE_READ_PLAN_BINDING_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 기준 커밋 `1713c3e` 다음으로 Core의 `WsabiWmiSingleReadPlan`과 Windows의 고정 요청 준비 경로를 추가했습니다. 기존 합성 요청으로 연결을 검증했으며 실제 보호 조회 명령이나 SDK 호출 구현은 추가하지 않았습니다.
+
+공급된 대상 정보는 단일 WMI Name `940X3G/930X3G`, 전체 BIOS `P05ACJ.128.140819.dg`, Windows 10 x64 선언, 고정된 로컬 namespace/class/method와 비교합니다. 모델·BIOS는 원문 길이 128 이내에서 Trim/OrdinalIgnoreCase를 사용합니다. 열거 완료·instance 1개·Active=true·nonnull opaque identity와 기존 상세 Binder/Windows MethodId 1도 요구합니다. 기존 qualifier 대안은 유지하며 UI의 prefix 판정이나 두 모델의 OR 조건을 사용하지 않습니다. 이 비교는 실제 장치 관측·지원·실행 승인을 뜻하지 않고 모든 하드웨어 capability는 false입니다. B와 알 수 없는 variant는 거부합니다.
+
+Windows binding은 target/observer/dispatch 참조를 고정합니다. 같은 plan 참조의 첫 유효 인자 준비 시도에서 target/request 검사·취소·등록 실패 전에 예산을 소모합니다. 불일치는 lower preparation과 추가 subscription을 시작하지 않습니다. 실패·취소·close·Unknown 뒤에 새 binding/observer를 공급해도 같은 plan은 AttemptAlreadyUsed입니다. 새 plan·다른 프로세스·직접 lower API까지 막는 영구 단발 제한은 아닙니다. 사용 완료된 옛 예약에는 접근하지 않았습니다.
+
+기존 opaque 요청은 MethodId·frame 형식·command 관계를 검사하고 기존 Binder/encoder로 복사·재구성합니다. Run은 publish/token만 받으며 command/payload/target/variant를 다시 선택하지 않습니다. 공급 dispatch로 넘기기 직전에 observer 참조·MethodId·command·전체 frame을 비교하고 최대 한 번만 전달합니다. 고정된 참조와 합성 요청 검증은 delegate의 내부 행동·실제 SDK 대상·SDK method 수·읽기 의미를 인증하지 않습니다.
+
+A의 선언 상한은 read 1회·handshake 0·write 0·retry 0입니다. 현재 구현이 보장하는 범위는 공급 delegate로의 handoff 최대 1회와 자체 추가 경로 없음입니다. 실제 보호 byte 읽기 template·SDK dispatch·현재 gate·데이터 신선함·실행 승인은 미확정입니다. B나 실패 후 handshake fallback은 추가하지 않았습니다. 준비·Run/Close·Unknown·lease·보고 예외는 기존 경로를 재사용합니다.
+
+새 21개 그룹(plan 9/binding 6/lifetime 6)을 포함해 562개 통과·실패 0·skip 0입니다. 전체 솔루션은 실제 net48 참조 Release 빌드 경고 0·오류 0입니다. 최초 테스트 컴파일의 short-circuit out 변수 오류를 수정한 뒤 기본 556개, 수명 테스트 통합 후 562개가 통과했습니다. 그 컴파일 오류를 제품 기능 실패 재현으로 세지 않습니다. Windows 연결 계층의 production 소스 5개는 stand-in과 실행했고 실제 System.Management runtime/provider는 실행하지 않았습니다. 이전 private 검산은 합산하지 않았습니다.
+
+변경은 Core 새 파일 1개·Windows 새 파일 1개·테스트 관련 5개와 문서/정제 기록입니다. SDK 8.0.427과 기존 cache를 사용했고 새 의존성·SDK 패치·XAML 생략은 없습니다. 앱 UI/default backend·기존 SDK backend/Program·encoder·소모 예약·배포 ZIP은 변경하지 않았습니다. 실제 WMI/OEM/하드웨어/Global 객체·삼성 원본·드라이버/서비스/보안/펌웨어·클라우드 환경도 변경하지 않았습니다. 보호 설정 조회·제어는 Unsupported이며 새 노트북 실행이나 같은 자료 재제출은 필요하지 않습니다.
+
+다음은 실제 고정 대상·요청의 읽기 의미와 구체 SDK dispatch를 저장 근거와 대조해 실행 가능한 시험안으로 승격할 조건을 정리하는 일입니다. A/B 유용성·관련 소유권·완료·귀속·실기 승인은 별도이며 새 marker/frame으로 옛 승인 범위를 우회하지 않습니다. Private cache는 `20261108/single-read-plan-validation`입니다. `first.log`은 컴파일 오류, `basic`/`integrated` JSON과 로그는 실행 결과이며 `solution-build.log`와 execution/pins도 보관했습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 세션 전 WMI 등록 준비 factory / 2026-11-08 한국 시간
 
 [WINDOWS_WMI_PREPARATION_UPDATE.md](WINDOWS_WMI_PREPARATION_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. HEADe6ae652 다음 public WsabiWmiWindowsPreparation.PrepareAsync(observer,dispatch,binder,gate,acquireTimeout,responseTimeout,prepareToken)→Result(Status,Invocation)를 구현했습니다. 성공 handle만 RunAndCloseAsync/RequestCloseAsync를 제공하고 raw WindowsSource는 internal입니다. Core/앱 참조·실제 SDK method/target/profile/frame은 추가하지 않았습니다.

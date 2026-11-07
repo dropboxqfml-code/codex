@@ -1,5 +1,7 @@
 # 세션 시작 전 WMI 등록 준비 분리 — 2026-11-08 한국 시간
 
+**후속:** [단발 plan·고정 요청 결합](SINGLE_READ_PLAN_BINDING_UPDATE.md)은 supplied 대상/요청을 준비 전에 검사하고 command/payload 없는 Run으로 고정했습니다. 새21개 포함562회귀·net48 참조 빌드 경고/오류0이며 실제 read semantic/SDK 호출·승인은 추가하지 않았습니다. 아래는 당시 준비 분리 기록입니다.
+
 **이벤트 등록 실패를 Core 호출의 Unknown으로 넘기던 정상 준비 경로를 분리했습니다.** 새 `WsabiWmiWindowsPreparation.PrepareAsync`가 등록과 필요한 실패 정리를 먼저 끝내고, 성공한 경우에만 `WsabiWmiWindowsPreparedInvocation`을 반환합니다. 기존 raw source는 internal로 바꿔 public 사용자가 준비를 건너뛰어 세션에 넣지 못하게 했습니다. [Windows 타입·이벤트 연결](WINDOWS_WMI_TYPED_BINDING_UPDATE.md)의 후속이며 실제 OEM 호출·앱 등록·보호 조회·충전 제어는 추가하지 않았습니다.
 
 ## 준비와 실행의 경계

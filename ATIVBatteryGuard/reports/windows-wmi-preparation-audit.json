@@ -1,0 +1,192 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "e6ae652",
+  "scope": "Registration preparation outside Core; successful single-use handle is the only public route to session creation; no actual SDK/device invocation",
+  "implementation": {
+    "sourcePins": [
+      {
+        "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsCallbackSource.cs",
+        "bytes": 13947,
+        "sha256": "118b2a8c86d1f03f98ed0038a060a284278cf2bec9b0e78b220eeec92cde8eb5"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsPreparation.cs",
+        "bytes": 7701,
+        "sha256": "578aad27ab2ac1eb1e7a34a2227a334f35640029108e8e17305d32b72883481e"
+      },
+      {
+        "projectFile": "tests/Fakes/ManagementSdkFakes.cs",
+        "bytes": 8473,
+        "sha256": "9b24661e659740f372d2663851c3e4d2188a2c921b03d49a22441200595b0a68"
+      },
+      {
+        "projectFile": "tests/WsabiWmiWindowsBindingTests.cs",
+        "bytes": 25278,
+        "sha256": "8e380a0d5fd8a09a8c7ffcda6576d838e9137bce8382d7c347ffa5e69149e701"
+      },
+      {
+        "projectFile": "tests/WsabiWmiWindowsPreparationTests.cs",
+        "bytes": 14677,
+        "sha256": "19a77aeb4d2c42e65651c964a8f42afbf1a96e3d82676b415573ac97395ee382"
+      },
+      {
+        "projectFile": "tests/WsabiWmiWindowsPreparationLifetimeTests.cs",
+        "bytes": 19714,
+        "sha256": "f21111c22cf33c48bad1eb91ae8494e48bac856e00b60b594c46459900d4864f"
+      },
+      {
+        "projectFile": "tests/Program.cs",
+        "bytes": 33246,
+        "sha256": "7972d587649fca39b0e8c3290755d021c376f5f613e184d2e450ea85997f8705"
+      },
+      {
+        "projectFile": "tests/ATIVBatteryGuard.PortableTests.csproj",
+        "bytes": 4293,
+        "sha256": "659223d5b8cd3fec26be62bff0414f6381420443bffb6f22670edf18b9f450a6"
+      }
+    ],
+    "windowsSourceFilesChanged": 2,
+    "testFilesIncludingStandinsExistingBindingRegistrationAndProjectChanged": 6,
+    "rawWindowsCallbackSourcePublic": false,
+    "publicEntry": "WsabiWmiWindowsPreparation.PrepareAsync -> local result -> successful Invocation.RunAndCloseAsync/RequestCloseAsync",
+    "sourceOrSessionGetterExposedByHandle": false,
+    "dependencyAndTimeoutValidationBeforeObserverClaim": true,
+    "preCancelledFactoryClaimsObserverOrRegistersHandlers": false,
+    "registrationAttemptsRecordedBeforeExternalAddIncludingMutationThenThrow": true,
+    "registrationStackExitBeforeFailureCleanupClaim": true,
+    "earlyFaultOrObservedCancellationSkipsUnneededNextAdd": true,
+    "preparationWorkerAndAdmittedEarlyHandlerAccessJoinedBeforeFailureResult": true,
+    "preparationAlwaysFinishesInFiniteTimeEvenIfLocalOperationsBlock": false,
+    "sdkAddRemoveGetterDisposeOrCallbacksExecutedUnderOwnGate": false,
+    "unusedCloseSdkCleanupOnCallerThread": false,
+    "allPreparedHardwareCapabilitiesAdvertisedFalse": true
+  },
+  "localOutcomes": {
+    "states": [
+      "Ready",
+      "Cancelled",
+      "ObserverUnavailable",
+      "RegistrationFailed",
+      "UnexpectedCallback",
+      "CleanupFailed"
+    ],
+    "priorityBeforeAdmissionCutoff": [
+      "CleanupFailed",
+      "RegistrationFailed",
+      "UnexpectedCallback",
+      "Cancelled",
+      "Ready"
+    ],
+    "cleanupFailureCanBeHiddenByCancellationOrRegistrationError": false,
+    "nonReadyDecisionAndPrimaryAdmissionCutoffAtomic": true,
+    "earlyObjectsReplayedOrReadAsCurrentOutput": false,
+    "earlyCompletedStatusContextOrStatusObjectReadAsCurrentTerminal": false,
+    "earlyCallbackRootCleanupCanonicalByRawReference": true,
+    "failedResultExposesInvocation": false,
+    "sameObserverCanBeReusedAfterAttemptedRegistrationOrFailedCleanup": false,
+    "prepareTokenRegistersSdkCancellationCallbacks": false,
+    "prepareTokenHasUnsubscribeAuthorityAfterReady": false,
+    "preparationStateIsProviderTerminalOrHardwareSupportFact": false
+  },
+  "preparedHost": {
+    "runAndUnusedCloseClaimUnderOneGate": true,
+    "sessionPublishedBeforeRunReleasesGate": true,
+    "sessionCreatedByFailedFactoryOrUnusedCloseBeforeRun": false,
+    "sessionZeroClaimBasis": "API and Core session construction location; runtime observes null handle, gate/dispatch zero and refused run",
+    "sourceReadinessRecheckedBeforeSessionConstruction": true,
+    "unusedRegistrationCleanupAfterCoreNoInvokeResultOrReportingException": true,
+    "closeTaskSharedAndResultIncludesCleanupFailure": true,
+    "runTaskReportsFixedFailureIfOwnCleanupFails": true,
+    "unknownEnteredInvocationCanBeDetachedOrCompletedByHandleClose": false,
+    "sessionSourceOwnerLeaseJoinPreserved": true,
+    "runReservationThenExternalPreInvokeContractViolationGuaranteedSessionZeroOrFiniteClose": false,
+    "newCoreTerminalOrNoDispatchProtocolIntroduced": false,
+    "sourceOrObserverSingleUseAuthenticatesActualSdkMethodCountOrPermission": false
+  },
+  "verification": {
+    "newRegisteredRegressions": 15,
+    "factoryGroups": 9,
+    "lifetimeGroups": 6,
+    "existingBindingGroupsAdaptedNotAdded": 12,
+    "basicRun": {
+      "passed": 535,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 535,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "firstIntegratedRun": {
+      "passed": 541,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 541,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "afterFailureFinallyJoinHygiene": {
+      "passed": 541,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 541,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "afterAtomicClassificationCutoffAndEarlyCancelPriority": {
+      "passed": 541,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 541,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "classificationRaceFoundByIndependentReadReviewNotClaimedRuntimeReproduction": true,
+    "correction": "Non-ready classification and callback admission cutoff under the same gate",
+    "standinAfterAddRunsAfterDelegateMutationAndOutsideFakeLock": true,
+    "matchingAttemptCleanupTestsCoverBeforeAddAndAfterMutationThrows": true,
+    "controlledBlocks": [
+      "In-flight add",
+      "Early object disposal",
+      "Unused remove",
+      "Core gate acquisition",
+      "Missing terminal until explicit fake final"
+    ],
+    "controlledTasksAndGatesJoinedIncludingFailedAssertionFinallyPaths": true,
+    "sameProductionWindowsFilesCompiledAgainstTestOnlySdkStandins": 4,
+    "portableDependencyLibraries": [
+      "ATIVBatteryGuard.PortableTests/1.0.0"
+    ],
+    "actualSdkRuntimeObjectsOrProviderExecutedByPortableSuite": false,
+    "syntheticTerminalCleanupEstablishesActualSdkLateCompletion": false,
+    "disconnectedRecorderZeroCountersUsedAsProviderEndEvidence": false,
+    "priorPrivateProofOrSubcaseAssertionCountsAddedToAppRegisteredCount": false,
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0,
+      "actualSystemManagementReferenceApiCompiled": true
+    },
+    "independentSourceAndRegressionReadReviewApproved": true,
+    "independentReviewerReranSuite": false,
+    "newRuntimeToolInstallDependencyVersionSdkPatchOrSkippedXamlStep": false
+  },
+  "decision": {
+    "normalRegistrationFailureSeparatedBeforeCoreSession": true,
+    "actualSdkEventComThreadingLateLocalIndependenceOrProviderEndProven": false,
+    "actualInvocationTargetFrameBackendOrAppRegistrationConnected": false,
+    "actualProtectionReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "abCallLimitsGateStateEffectsOrExecutionApprovalChanged": false,
+    "oldConsumedBackendReconnectedOrReservationAccessed": false,
+    "hardwareExecutionApprovalRequested": false
+  },
+  "changeBoundary": {
+    "coreSessionProtocolDefaultControllerAppUiOldBackendProgramOrEncoderChanged": false,
+    "mainAppOrDeviceToolsExecuted": false,
+    "ownPortableStandinSafetySuiteExecuted": true,
+    "actualWmiSdkProviderOemHardwareGlobalObjectOrConsumedMarkerAccessed": false,
+    "vendorOriginalExecutedLoadedOrEmulated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "newOfficialSourceRuntimeHardwareFactsOrFirmwareAnalysisPercentageClaimed": false,
+    "applicationNetworkCodeAdded": false,
+    "distributionArchiveUpdated": false,
+    "additionalNotebookRunOrRepeatedUploadRequested": false
+  }
+}

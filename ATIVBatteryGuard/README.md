@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 세션 시작 전 WMI 등록 준비 / 2026-11-08 한국 시간:** [구현·검증](WINDOWS_WMI_PREPARATION_UPDATE.md)은 등록/취소/실패 정리 뒤에만 단발 실행 handle을 반환합니다. Run/미사용 닫기를 한 번 결정하며 실제 호출의 Unknown은 기존 잠금·구독 대기를 유지합니다. 새15개 포함541개 통과·실제 net48 참조 전체 Release 빌드 경고/오류0입니다. 실행 검증은 SDK stand-in이며 실제 OEM 호출·앱 연결·배포 ZIP 변경은 없습니다. 보호 조회/제어 Unsupported·새 노트북 실행/재제출 불필요입니다. 아래는 이전 기록입니다.
+
 **최신 — Windows WMI 타입 검사·이벤트 연결 / 2026-11-08 한국 시간:** [구현·검증](WINDOWS_WMI_TYPED_BINDING_UPDATE.md)에 공급된 System.Management observer/결과용 library를 추가했습니다. exact byte[]·concrete Dispose와 raw handler/구독 해제 join을 구현했고 새21개 포함526회귀·실제 net48 참조 전체 Release 빌드 경고/오류0입니다. 회귀는 동일 소스를 SDK stand-in으로 실행했으며 실제 SDK/provider·장치 호출·앱 연결·배포 ZIP 변경은 없습니다. 보호 조회/제어 Unsupported·새 노트북 실행/재제출 불필요입니다. 아래는 이전 기록입니다.
 
 **최신 — callback 결과 객체 연결 / 2026-11-07:** [구현·검증](CALLBACK_SOURCE_CAPTURE_UPDATE.md)에서 명시적 dispatch/reader의 객체 선택·bounded 복사·정리를 기존 세션에 연결했습니다. 관련 정리 완료 전 capture를 게시하지 않고 완료 불명은 pending으로 유지합니다. 새15개 포함505개 통과·전체 net48 Release 빌드 경고/오류0입니다. 실제 SDK reader/event adapter·앱 연결·배포 ZIP은 그대로이며 보호 조회/충전 제어는 Unsupported입니다. 새 노트북 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.

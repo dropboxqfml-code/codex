@@ -32,6 +32,7 @@ internal static partial class Program
             BatteryThrows<ArgumentNullException>(() => source.Invoke(null, new CallbackRecordingObserver()));
             BatteryThrows<ArgumentNullException>(() => source.Invoke(InvocationRequest(), null));
             Check(!source.CanReadHardware && !source.CanWriteHardware && !source.CanInvokeMethods, "binding became hardware authority");
+            await WindowsPrepareRawSource(source);
             var channel = new WsabiWmiBoundFrameChannel(BoundChannelBinder(), new WsabiWmiInvocationSnapshotTransport(source));
             Check((await channel.ExchangeAsync(BoundChannelRequest(), CancellationToken.None)).IsValidFrame, "valid stand-in output did not reach the existing decoder");
             Equal(1, calls); Equal(0, sdk.ObjectReadySubscriberCount); Equal(0, sdk.CompletedSubscriberCount);
@@ -55,6 +56,7 @@ internal static partial class Program
             {
                 observer.EmitObjectReady(objectArgs); observer.EmitCompleted(completedArgs);
             });
+            await WindowsPrepareRawSource(source);
             var snapshot = await new WsabiWmiInvocationSnapshotTransport(source).ExchangeAsync(InvocationRequest(), CancellationToken.None);
             Equal((int)ManagementStatus.AccessDenied, snapshot.ApiResult); Check(snapshot.Output == null, "error status retained output");
             Equal(0, objectArgs.ContextReads); Equal(0, completedArgs.ContextReads); Equal(0, completedArgs.StatusObjectReads);
@@ -74,6 +76,7 @@ internal static partial class Program
                     calls++; observer.EmitObjectReady(root); entered.TrySetResult(true);
                     throw new InvalidOperationException("PRIVATE-SDK dispatch detail");
                 });
+                await WindowsPrepareRawSource(source);
                 var gate = new CooperativeTestGate();
                 var session = WindowsBindingSession(source, gate, callerStops ? TimeSpan.FromSeconds(3) : TimeSpan.FromMilliseconds(500));
                 var published = CooperativeCompletion(); WsabiWmiFrameExchangeResult shown = null;
@@ -109,6 +112,7 @@ internal static partial class Program
                 var sdk = new ManagementOperationObserver(); var ready = CooperativeCompletion(); var getter = CooperativeCompletion();
                 ManagementBaseObject embedded; var root = WindowsOutputFixture(BoundChannelReply(), out embedded);
                 var source = new WsabiWmiWindowsCallbackSource(sdk, (observer, request) => ready.TrySetResult(true));
+                await WindowsPrepareRawSource(source);
                 var transport = new WsabiWmiInvocationSnapshotTransport(source);
                 var pending = transport.ExchangeAsync(InvocationRequest(), CancellationToken.None);
                 Task objectHandler = null;
@@ -143,6 +147,7 @@ internal static partial class Program
                 observer.EmitObjectReady(new ObjectReadyEventArgs(null) { OnGetNewObject = () => throw new InvalidOperationException("PRIVATE-SDK event getter") });
                 observer.EmitCompleted(ManagementStatus.NoError);
             });
+            await WindowsPrepareRawSource(source);
             await InvocationFailure(new WsabiWmiInvocationSnapshotTransport(source).ExchangeAsync(InvocationRequest(), CancellationToken.None));
             Equal(0, sdk.ObjectReadySubscriberCount); Equal(0, sdk.CompletedSubscriberCount);
         });
@@ -151,6 +156,7 @@ internal static partial class Program
         {
             var sdk = new ManagementOperationObserver(); var ready = CooperativeCompletion();
             var source = new WsabiWmiWindowsCallbackSource(sdk, (observer, request) => ready.TrySetResult(true));
+            await WindowsPrepareRawSource(source);
             var transport = new WsabiWmiInvocationSnapshotTransport(source);
             var pending = transport.ExchangeAsync(InvocationRequest(), CancellationToken.None);
             try
@@ -174,6 +180,7 @@ internal static partial class Program
                 sdk.BeforeRemove = name => { if (name == "ObjectReady") { removing.TrySetResult(true); WindowsBindingWait(release); } };
                 ManagementBaseObject embedded; var root = WindowsOutputFixture(BoundChannelReply(), out embedded);
                 var source = new WsabiWmiWindowsCallbackSource(sdk, (observer, request) => ready.TrySetResult(true));
+                await WindowsPrepareRawSource(source);
                 var gate = new CooperativeTestGate(); var session = WindowsBindingSession(source, gate);
                 var published = CooperativeCompletion();
                 var run = session.RunAndCloseAsync(0x34, BoundChannelPayload(), value => published.TrySetResult(true));
@@ -210,6 +217,7 @@ internal static partial class Program
             {
                 queued = observer.ObjectReadySnapshot; observer.EmitObjectReady(root); observer.EmitCompleted(ManagementStatus.NoError);
             });
+            await WindowsPrepareRawSource(source);
             await InvocationFailure(new WsabiWmiInvocationSnapshotTransport(source).ExchangeAsync(InvocationRequest(), CancellationToken.None));
             Equal(2, removals); Equal(1, sdk.ObjectReadySubscriberCount); Equal(0, sdk.CompletedSubscriberCount);
             queued(sdk, new ObjectReadyEventArgs(root));
@@ -219,13 +227,15 @@ internal static partial class Program
             Equal(1, late.ConcreteDisposeCalls); Equal(2, removals);
         });
 
-        Add("Windows event binding cleans partial subscription failure without dispatch or synthetic terminal", () =>
+        AddAsync("Windows event binding cleans partial subscription preparation failure before dispatch or synthetic terminal", async () =>
         {
             var sdk = new ManagementOperationObserver(); int calls = 0;
             sdk.BeforeAdd = name => { if (name == "Completed") throw new InvalidOperationException("PRIVATE-SDK subscribe detail"); };
             var source = new WsabiWmiWindowsCallbackSource(sdk, (observer, request) => calls++);
             var output = new CallbackRecordingObserver();
-            BatteryThrows<InvalidOperationException>(() => source.Invoke(InvocationRequest(), output));
+            Equal(WsabiWmiWindowsPreparationStatus.RegistrationFailed, await source.PrepareAsync(CancellationToken.None));
+            Check(!source.TryReserve(), "failed preparation admitted a Core invocation");
+            Equal(WsabiWmiWindowsCleanupStatus.Complete, await source.CloseUnusedAsync());
             Equal(0, calls); Equal(0, sdk.ObjectReadySubscriberCount); Equal(0, sdk.CompletedSubscriberCount);
             Equal(0, output.Terminals.Count); Equal(0, output.Captures); Equal(0, output.Failures);
         });
@@ -239,6 +249,7 @@ internal static partial class Program
                 embedded.Properties["Bytes"].OnGetValue = () => { reading.TrySetResult(true); WindowsBindingWait(release); return bytes; };
                 ObjectReadyEventHandler queued = null;
                 var source = new WsabiWmiWindowsCallbackSource(sdk, (observer, request) => { queued = observer.ObjectReadySnapshot; ready.TrySetResult(true); });
+                await WindowsPrepareRawSource(source);
                 var transport = new WsabiWmiInvocationSnapshotTransport(source);
                 var pending = transport.ExchangeAsync(InvocationRequest(), CancellationToken.None);
                 Task terminal = null;
@@ -280,6 +291,7 @@ internal static partial class Program
                     if (status == 0) { forwarding.TrySetResult(true); WindowsBindingWait(allowTerminal); }
                 }};
                 var source = new WsabiWmiWindowsCallbackSource(sdk, (observer, request) => { });
+                await WindowsPrepareRawSource(source);
                 // Invoke really returned before the independent event tasks.
                 source.Invoke(InvocationRequest(), output);
                 sdk.EmitObjectReady(rootA);
@@ -319,6 +331,7 @@ internal static partial class Program
                 calls++; observer.EmitObjectReady(root); observer.EmitCompleted(ManagementStatus.NoError);
                 throw new InvalidOperationException("PRIVATE-SDK throw after final");
             });
+            await WindowsPrepareRawSource(source);
             var gate = new CooperativeTestGate(); var session = WindowsBindingSession(source, gate);
             var result = await session.RunAndCloseAsync(0x34, BoundChannelPayload(), value => { });
             AssertFrameExchangeFailure(result, WsabiWmiFrameExchangeStatus.TransportFailure);
@@ -327,6 +340,13 @@ internal static partial class Program
             Equal(0, sdk.ObjectReadySubscriberCount); Equal(0, sdk.CompletedSubscriberCount);
             Equal(1, gate.LastLease.DisposeCalls); Equal(gate.AcquireThread, gate.LastLease.DisposeThread);
         });
+    }
+
+    private static async Task WindowsPrepareRawSource(WsabiWmiWindowsCallbackSource source)
+    {
+        Equal(WsabiWmiWindowsPreparationStatus.Ready, await source.PrepareAsync(CancellationToken.None));
+        Check(source.TryReserve(), "successful registration could not reserve its first invocation");
+        Check(!source.TryReserve(), "registration allowed more than one invocation reservation");
     }
 
     private static WsabiWmiInvocationSession WindowsBindingSession(IWsabiWmiInvocationSource source,

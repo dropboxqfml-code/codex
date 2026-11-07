@@ -58,9 +58,12 @@
     <Compile Include="../src/ATIVBatteryGuard.WmiInterop/OwnedWmiResult.cs" Link="WmiInterop/OwnedWmiResult.cs" />
     <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsOutputReader.cs" Link="WmiInterop/WsabiWmiWindowsOutputReader.cs" />
     <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsCallbackSource.cs" Link="WmiInterop/WsabiWmiWindowsCallbackSource.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsPreparation.cs" Link="WmiInterop/WsabiWmiWindowsPreparation.cs" />
     <Compile Include="Fakes/ManagementSdkFakes.cs" />
     <Compile Include="WsabiWmiWindowsOutputTests.cs" />
     <Compile Include="WsabiWmiWindowsBindingTests.cs" />
+    <Compile Include="WsabiWmiWindowsPreparationTests.cs" />
+    <Compile Include="WsabiWmiWindowsPreparationLifetimeTests.cs" />
     <Compile Include="WsabiWmiWindowsMutexGateTests.cs" />
   </ItemGroup>
 </Project>

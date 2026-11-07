@@ -179,16 +179,17 @@ namespace System.Management
         private ObjectReadyEventHandler objectReady;
         private CompletedEventHandler completed;
         public Action<string> BeforeAdd;
+        public Action<string> AfterAdd;
         public Action<string> BeforeRemove;
 
         public event ObjectReadyEventHandler ObjectReady
         {
-            add { BeforeAdd?.Invoke(nameof(ObjectReady)); lock (gate) objectReady += value; }
+            add { BeforeAdd?.Invoke(nameof(ObjectReady)); lock (gate) objectReady += value; AfterAdd?.Invoke(nameof(ObjectReady)); }
             remove { BeforeRemove?.Invoke(nameof(ObjectReady)); lock (gate) objectReady -= value; }
         }
         public event CompletedEventHandler Completed
         {
-            add { BeforeAdd?.Invoke(nameof(Completed)); lock (gate) completed += value; }
+            add { BeforeAdd?.Invoke(nameof(Completed)); lock (gate) completed += value; AfterAdd?.Invoke(nameof(Completed)); }
             remove { BeforeRemove?.Invoke(nameof(Completed)); lock (gate) completed -= value; }
         }
         public int ObjectReadySubscriberCount

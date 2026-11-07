@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — WMI 등록 준비를 세션 전으로 분리 / 2026-11-08 한국 시간
+
+**구현:** [Preparation factory/handle](WINDOWS_WMI_PREPARATION_UPDATE.md)은 등록과 필요한 실패 정리를 Core 밖에서 끝내고 성공 handle만 단발 Run/Close를 제공합니다. raw source는 internal이며 미사용 close가 먼저면 session을 만들지 않습니다. += 시도 기록·등록 종료·early callback 정리를 join하고 준비 오류를 다음 조회의 terminal/출력으로 replay하지 않습니다.
+
+**검증:** 새factory9/수명6 포함541개 통과·실제 net48 참조 전체 Release 빌드 경고/오류0입니다. 실제 실행은 동일 소스의 SDK stand-in이며 prepare failure의 gate/dispatch0·null handle·Run/Close 경합·Unknown 유지와 구독 정리를 검증했습니다. session0은 API/생성 위치의 코드 근거와 구분하며 합성 terminal을 실제 SDK 완료로 세지 않습니다.
+
+**남은 경계:** Run 예약 후 실제 Invoke 전 외부 이벤트 위반은 기존 Core Unknown에 남을 수 있습니다. Ready/단발 delegate는 실제 SDK 횟수·지원·권한이나 COM/provider 종료를 인증하지 않습니다. 실제 호출·old Backend/예약·A/B 범위·배포 ZIP은 그대로이며 보호 조회/제어 Unsupported·새 실기/재제출 불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — Windows SDK 타입 reader/event binding / 2026-11-08 한국 시간
 
 **구현한 코드:** [Windows library](WINDOWS_WMI_TYPED_BINDING_UPDATE.md)는 scalar outData/DataBuffer와 UInt8 선언·exact runtime byte[]를 검사하고, 복사 후 concrete embedded/root Dispose를 분리합니다. dedicated observer의 raw handler 입장·completion phase와 capture proxy가 관련 handoff/구독 해제 시도를 실제 capture 전에 join합니다. 실제 InvokeMethod/Connect/Get·대상/명령/프레임은 없습니다.

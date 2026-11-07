@@ -1,5 +1,7 @@
 # Windows WMI 타입 검사와 이벤트 연결 — 2026-11-08 한국 시간
 
+**후속:** [등록 준비 분리](WINDOWS_WMI_PREPARATION_UPDATE.md)에서 준비 실패를 세션 전으로 분리하고 성공 handle만 Run/Close를 제공하도록 변경했습니다. 새15개 포함541회귀·실제 net48 참조 빌드 경고/오류0이며 실제 OEM 호출은 없습니다. 아래는 당시 SDK 타입 연결 기록입니다.
+
 **실제 System.Management 타입을 사용하는 reader와 이벤트 연결 라이브러리를 구현했습니다.** 새 `ATIVBatteryGuard.WmiInterop`는 Core의 기존 callback source/세션을 소비하며 앱에는 등록하지 않았습니다. 준비된 observer와 명시적 dispatch delegate만 받습니다. InvokeMethod·Connect·Get·대상 선택·명령/프레임 생성은 없으며 실제 보호 설정 조회·충전 제어는 Unsupported입니다. [이전 callback source](CALLBACK_SOURCE_CAPTURE_UPDATE.md)의 후속입니다.
 
 ## 타입과 소유권

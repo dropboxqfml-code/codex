@@ -418,6 +418,8 @@ internal static partial class Program
         RegisterWsabiWmiCallbackSourceLifetimeTests();
         RegisterWsabiWmiWindowsOutputTests();
         RegisterWsabiWmiWindowsBindingTests();
+        RegisterWsabiWmiWindowsPreparationTests();
+        RegisterWsabiWmiWindowsPreparationLifetimeTests();
         RegisterWsabiWmiWindowsMutexGateTests();
     }
 

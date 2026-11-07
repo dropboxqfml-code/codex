@@ -1,5 +1,23 @@
 # 다음 개발 재개 메모
 
+## 최신 — 세션 전 WMI 등록 준비 factory / 2026-11-08 한국 시간
+
+[WINDOWS_WMI_PREPARATION_UPDATE.md](WINDOWS_WMI_PREPARATION_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. HEADe6ae652 다음 public WsabiWmiWindowsPreparation.PrepareAsync(observer,dispatch,binder,gate,acquireTimeout,responseTimeout,prepareToken)→Result(Status,Invocation)를 구현했습니다. 성공 handle만 RunAndCloseAsync/RequestCloseAsync를 제공하고 raw WindowsSource는 internal입니다. Core/앱 참조·실제 SDK method/target/profile/frame은 추가하지 않았습니다.
+
+준비는 validated dependencies→observer1회claim→별도worker등록→등록종료→Readycommit 또는 local cleanup을 기다린 실패 결과입니다. +=시도를 외부call전에 기록해mutate-then-throw도제거시도하고등록stack종료전cleanup을시작하지않습니다. 상태우선순위는CleanupFailed>RegistrationFailed>UnexpectedCallback>Cancelled>Ready입니다. token은poll만하고Ready뒤준비token은등록해제권한이없으며Run token은별도입니다. 이미취소면observerclaim/add0,earlyfault/cancel뒤불필요secondadd를생략합니다.
+
+prearm callback은stickypreparationFault·localcanonicalDispose로처리하고object/status를replay하지않습니다. earlyCompleted Status/Context/StatusObject는읽지않습니다. Source.CloseUnused는caller/lock밖worker에서SDKcleanup을시도하고regDone/입장한관련handler종료를join합니다. local작업이막히면prepare/close도pending일수있으며cleanup실패는우선보존하고observer재사용을금지합니다. -=가실제제거성공/SDK전체drain이라는보장은없고cutoff뒤독립local정리계약을유지합니다.
+
+handleRun/미사용Close는같은gate1회claim입니다. source.TryReserve재확인뒤CoreSession을생성·게시하고밖에서Core.RunAndClose를소비합니다. Close가먼저면Session을만들지않고정리만합니다. Run후invalid/pre-cancel/gateDenied로SourceInvoke가안돼도Coreclose뒤unused구독을정리합니다. 실제Invokeentered면SourceClose로임의detach하지않고기존capturejoin/TCS를기다립니다. Unknown은구독/선택T/lease/hostpending을유지하며가짜terminal/NoDispatch프로토콜은추가하지않았습니다.
+
+Ready상태외부이벤트는Run전이면source준비무효화로Session없이거부할수있으나Run예약후Invoke전위반까지Session0으로확대하지않습니다. 그뒤CoreInvokeguardthrow는Unknown에남을수있습니다. 전용observer/단발source는실제SDKmethod수·물리독점·권한을인증하지않습니다. factorysession0은API/생성위치코드근거이며runtime계측은nullhandle/gate0/dispatch0입니다.
+
+신규15그룹(factory9/lifetime6)포함541통과0실패0skip·실제net48참조전체Release빌드경고0/오류0입니다. 첫기본9포함535통과,수명6통합541통과,실패시finallyjoin보강후frozen541통과,비Ready분류/입장차단원자화와earlyfault+cancel우선순위보강후after-cutoff541통과입니다. 기존binding12등록수는유지하며명시PrepareReady/TryReserve후Invoke로적응했습니다. SDKfakeAfterAdd는필드변경후lock밖hook으로mutate-then-throw를검증합니다. 테스트는productionWindows4소스를standin과컴파일,실제SDK/provider/COM실행이아니며이전private검산수합산0입니다. gate/Taskfinallyjoin과정상/unknown/reportthrow경로를검증했습니다.
+
+변경은Windows2(기존source/새factory)+tests6(새2/기존binding/fake/등록/project)+문서/정제기록입니다. Core/앱UI/defaultbackend/oldBackend/Program/encoder/사용완료예약/배포ZIP은그대로입니다. SDK8.0.427·기존cache·ILtask설정/no-restore/UseSharedCompilation=false/m1이며새설치/SDK패치/XAMLskip없음입니다. 실제WMI/OEM/hardware/Global객체·삼성원본·marker/driver/service/security/firmware/cloud환경변경0,보호조회/제어Unsupported·새실기/동일자료제출불필요입니다.
+
+다음은검토할단발조회안의대상/호출상한/준비조건과prepared실행경로의접점을확정합니다. A/B의호출수·gate상태영향·승인상태유지,실제SDKevent/getter/COMthreading·독립late정리·실기승인은별도입니다. private cache: 20261108/windows-wmi-preparation-validation(first/final/frozen/after-cutoff json·logs,solution-build/solution-cutoff-build.log,execution/pins). 아래는 이전 기록입니다.
+
 ## 최신 — Windows WMI 타입 reader/event binding / 2026-11-08 한국 시간
 
 [WINDOWS_WMI_TYPED_BINDING_UPDATE.md](WINDOWS_WMI_TYPED_BINDING_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. HEADf6e54ac 다음 새 net48 classlibrary ATIVBatteryGuard.WmiInterop를 solution에 추가했습니다. Core/app에는 새참조·등록이 없고 실제 InvokeMethod/Connect/Get/target/command/frame은 없습니다. supplied ManagementOperationObserver와 dispatch delegate만 받으며 source.Invoke1회나 observer CWT1회 소유는 SDK method 수·물리 독점·권한 인증이 아닙니다.

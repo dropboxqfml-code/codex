@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 부팅 순서와 legacy 정상 실행 영역 / 2026-11-07 한국 시간
+
+[새 검토](EC_READ_HANDOFF_AND_BOOT_ORDER.md)에서 Nvram 복합 모듈의 DXE 의존성과 dispatch→BDS 호출 순서를 대조해, 발견·의존성·시작·등록 성공 조건의 알림 선행을 구체화했습니다. 별도 SMM 의존성과 혼합하거나 dispatch 반환을 전체 성공으로 바꾸지 않습니다. legacy SW fallback은 정확한 PCH 제공자·default root·수신 인수·선택 private Runtime 표까지 동기 연결했습니다. SmmBase legacy Communicate의 별도 deferred 입력 전달도 복원했지만 표준 typed 통신 제공자 증거로 합치지 않습니다.
+
+Runtime 후크와 generic 조회 helper는 같은 주소 선택·명령 슬롯·zero-ready·오류 게시 생략 규약입니다. 같은 정상 SMM 순서라면 관련 CPU 접근 중첩을 좁힐 수 있지만 준비 0을 이전 효과 완료·EC 양쪽 작업 보존으로 승격하지 않습니다. 표준 통신 분기, EC 늦은 clear·인계, WMI 전체 교환·응답 귀속은 남습니다. live 포인터나 EC 전체 해시 미관측 하나를 제안 검토의 절대 조건으로 반복하지 않습니다. [조회 검토안](FIXED_MODE_READ_PROPOSAL.md)만 갱신, 앱·EXE·기존 ZIP 미변경·이번 빌드/단위 테스트 미실행, 실제 제어 Unsupported입니다. 원본·하드웨어 실행·변경이나 추가 실기·자료 제출은 없습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 후속 Runtime 교체·EC 효과·고정 조회 조건 / 2026-11-07 한국 시간
 
 [새 분석](RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md)에서 정확한 PEI HOB 생산자→Runtime 구성, 후반 host adapter 선택, BDS 알림 생산자→NvramSmi의 실제 host 함수 교체를 연결했습니다. VA 전환은 현재 함수를 변환합니다. 주소 보정 adapter는 host에서도 쓰이므로 SMM 전용 해석을 정정합니다. 선택한 EC 후크 두 개는 같은 플래그 한 비트만 바꾸며 mailbox 입력·응답을 직접 쓰지 않습니다. 명령 게시 뒤 완료 대기가 없으므로 다른 정상 작업 보존·관련 indexed 접근 조건은 여전히 남습니다. 플랫폼의 조건부 SMI_LOCK 위치 writer는 현재 잠금·마스크 효과를 입증하지 않습니다.

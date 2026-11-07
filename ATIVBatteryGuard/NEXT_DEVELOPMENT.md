@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 부팅 알림 선행·legacy domain·EC 준비 규약 / 2026-11-07 한국 시간
+
+[EC_READ_HANDOFF_AND_BOOT_ORDER.md](EC_READ_HANDOFF_AND_BOOT_ORDER.md)와 갱신한 [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. NvramSmi는 복합 SMM/DXE FFS이며 DXE DEPEX는 SmmBase2만 요구합니다. 별도 SMM DEPEX와 합치지 않습니다. CORE의 복합 모듈 열거·DXE DEPEX 처리·dispatch 반환→BDS receiver를 연결했습니다. 발견·의존성·비재진입 Load/Start·notify 등록 성공 조건이면 BDS marker보다 등록이 선행합니다. dispatch 완료는 미발견/미충족/시작 실패 모듈 성공을 보장하지 않습니다. 정상 소스 조건과 현재 포인터 미관측은 구분하며 live pointer/전체 EC hash 하나를 절대 proposal blocker로 되돌리지 않습니다.
+
+Nvram legacy SW fallback은 정확한 PCH GUID/interface·context 생산/비교·동기 child→같은 default-root legacy 순회→server의 선택 privateRT로 연결했습니다. Runtime의 legacy SMST 게시와 Nvram native SMST 조회는 실제 공유 config backing으로 결합합니다. lookup이0으로 이전 포인터를 유지한 경우는 private 성공이 아닙니다. SmmBase legacy Communicate의 shared input·deferred job→leader 특별 callback→같은 legacy-list buffer/size 입력도 연결했습니다. 이 별도 legacy job은 typed GUID 선택을 하지 않으며 Nvram legacySW나 표준 communication과 합치지 않습니다. 표준 제공자→normal entry→typed handler는 여전히 미완료, 동일 GUID/분할 검색 반복은 하지 않았습니다.
+
+Runtime/조회의 8개 complete helper pair는 call역할·localbranch 기준 정규화 동일이며 같은 indexed endpoint·command slot·zero-ready·오류 admission을 씁니다. 같은 정상 비재진입 domain 조건이면 CPU selector 중첩·후크 postwait 부재만을 근거로 한 overwrite 추론을 좁힙니다. readyzero는 효과 완료 token이 아니며 EC의 늦은 clear·이전/다음 작업 보존은 별도입니다. WMI staging/snapshot/return 소유권·첫 송신 오류 가림·응답 귀속도 미완료입니다.
+
+다음은 고정 조회의 실행 전 입력·EC 명령 인계·양쪽 작업 보존·응답 귀속의 구체 예외에 집중합니다. 표준 통신은 제공자/caller→typed dispatch의 실제 새 연결이 있을 때만 갱신하며 기존 legacy/준비 규약/부팅 성공 조건을 반복 성과로 세지 않습니다. 모든 플랫폼 writer 부재·전체 live EC hash를 필수화하지 않습니다. 실제 요청/frame/tag값/backend/하드웨어시험·기존예약 접근·새 승인 없이 Unsupported입니다.
+
+private cache: 20261107/nvram-bds-notify-order-next, communication-entry-dataflow-next(하위 leader-subset), nvram-legacy-sw-domain-next, runtime-query-handoff-next. 기존 개별 source/helper 검산과 새 cross-module 관계를 분리하며 전체 분석률로 합산하지 않습니다. 문서·정제 기록만 변경, C#/WPF·Python 개발 도구·EXE·기존ZIP 미변경, 이번 빌드·단위 테스트 미실행. C#437/빌드경고오류0은5d77df5, Python88은e7b067a 과거 기록입니다. 원본 실행/로딩/에뮬레이션·하드웨어/OEM/예약·드라이버/서비스/보안/펌웨어 변경 없음. 과거 차단된 실행 시도 기록은 보존하며 재현하지 않았습니다. 새 노트북 실행·동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — Runtime 중계 수명과 고정 조회 비실행 검토 / 2026-11-07 한국 시간
 
 [RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md](RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md)와 [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. 저장된 CORE_PEI의 정상 HOB producer는 초기화된 결정 바이트로 flash 계열을 선택합니다. Runtime 후반 초기화의 할당 성공은 주소 보정 adapter, 실패는 직접 flash adapter를 선택하며 둘의 begin/end는 기존 flash 후크로 연결됩니다. 주소 보정 adapter를 SMM 전용이라고 부르던 표현은 정정했습니다.

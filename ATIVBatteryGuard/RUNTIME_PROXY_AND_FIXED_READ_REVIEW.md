@@ -1,5 +1,7 @@
 # Runtime 중계와 고정 조회 준비 조건 — 2026-11-07 한국 시간
 
+후속 [부팅 순서·EC 인계 검토](EC_READ_HANDOFF_AND_BOOT_ORDER.md)에서 정상 성공 조건의 BDS 알림 선행, legacy SW fallback의 같은 default-root 실행 영역, Runtime/조회 helper의 같은 준비 규약을 연결했습니다. 특별 callback의 선택 사례는 legacy Communicate 입력 전달이며 표준 typed 통신으로 해석하지 않습니다. 아래는 당시 분석과 검사 기록입니다.
+
 **변수 저장 경로의 초기 선택과 부팅 후 SMM 중계 교체를 연결했고, EC 후크의 실제 효과를 좁혔습니다.** 고정 보호 모드 한 바이트 조회를 비실행 제안으로 검토할 근거는 있지만, 실제 호출 backend를 추가할 조건은 아직 충족하지 못했습니다. 실제 보호 설정 조회·충전 제어는 미구현이며 제어는 Unsupported입니다.
 
 [이전 OS 소비자 분석](RUNTIME_VARIABLE_AND_EC_IDENTITY_REVIEW.md)의 후속입니다. 기존 제조사 원본을 데이터로 읽었으며 새 노트북 시험·자료 재제출은 요구하지 않습니다. [고정 조회 검토안](FIXED_MODE_READ_PROPOSAL.md)은 실행용 입력이나 코드가 없는 설계입니다.

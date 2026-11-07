@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 부팅 알림·EC 명령 인계 / 2026-11-07 한국 시간:** [후속 결과](EC_READ_HANDOFF_AND_BOOT_ORDER.md)에서 정상 성공 조건의 중계 설치 순서, legacy software-SMI fallback의 같은 SMM root 호출, Runtime/조회의 같은 준비 규약을 연결했습니다. 표준 통신 경로·EC 양쪽 작업 보존·전체 교환의 응답 귀속은 아직 미완료입니다. [고정 조회 검토안](FIXED_MODE_READ_PROPOSAL.md)을 갱신했으며 실제 보호 조회·충전 제어는 미구현·Unsupported입니다. 문서·정제 기록만 변경, 앱·기존 ZIP은 그대로이고 추가 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 **최신 — Runtime 중계·고정 조회 검토 / 2026-11-07 한국 시간:** [후속 분석](RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md)에서 정상 초기 구성의 flash 선택, 부팅 후 host 변수 함수의 SMM 중계 교체, EC 후크의 flag-only 효과를 연결했습니다. [고정 모드 한 바이트 조회 검토안](FIXED_MODE_READ_PROPOSAL.md)은 비실행 문서이며 실제 호출 준비는 미완료입니다. 통신의 정상 SMM 실행 영역·관련 indexed 접근·다른 작업 보존이 남았습니다. 실제 제어 Unsupported, 앱·기존 ZIP은 그대로이고 추가 실행·동일 자료 제출은 필요하지 않습니다. 원본 실행 시도 1건이 OS에서 차단됐으며 원본 실행·권한 변경·재시도는 없었습니다. 상세 사건 기록은 후속 분석에 있습니다. 아래는 이전 기록입니다.
 
 **최신 — Runtime OS 소비자와 EC 메타데이터 경계 / 2026-11-07 한국 시간:** [새 분석 결과](RUNTIME_VARIABLE_AND_EC_IDENTITY_REVIEW.md)에서 OS 변수 저장 진입점→선택한 NV backend→EC 게시 후크를 조건부 소스 경로로 연결했습니다. SMBIOS EC 필드는 변수에서 채워지며 현재 EC 본문 직접 조회·동일성 증거가 아닙니다. 실제 장치 호출·보호 설정 조회·충전 제어 성공은 미관측이고 제어는 Unsupported입니다. 문서·정적 기록만 변경했으며 앱·기존 ZIP은 그대로입니다. 새 수집·실기·동일 자료 재제출은 필요하지 않습니다. 아래는 이전 기록입니다.

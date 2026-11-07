@@ -1,0 +1,132 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Conditional static source reconstruction of bus-response read candidate and activity snapshot projection; no device query, current state or charging control established",
+  "previousAnalysisCommit": "23baecba9c02e58926d3470bf938c6351424bbb9",
+  "softwareCodeBaseCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "P05ACJ CAP",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "source": "EC-region raw slice",
+      "bytes": 98304,
+      "sha256": "2c8aeabe90b844b9d5bc09a05656aa08be1ef927b2d80006e6bd4fb0cc983d04"
+    },
+    {
+      "source": "Saved capsule DSDT",
+      "bytes": 71849,
+      "sha256": "e65919be72fd7e7bd51ca6561a6a94754ea22c929743a04727188f4638dda7a5"
+    }
+  ],
+  "interpretationModel": {
+    "assumedIsa": "Intel8051 compatible",
+    "fixedLowRegionBytes": 49152,
+    "bankWindowBytes": 16384,
+    "manufacturerChipOrLiveAddressMapVerified": false,
+    "decoderIsOurDataOnlyRenderer": true,
+    "decoderSha256": "da1d3a88f9bdf8a1d6bb4e16709e200c14d21d70e4cf9730decfad5337f3ac94"
+  },
+  "genericBusWordRead": {
+    "highTableBankStubAndBodyConnectedUnderModel": true,
+    "deviceAndRegisterSelectedByInput": true,
+    "receivedWordCopiedOnlyOnBusStatusZero": true,
+    "replyWordLowThenHighByte": true,
+    "producedReplyBytes": 2,
+    "replyIsModeSetterEchoOrSoftwareLastAction": false,
+    "canExpressChargerRegisterFamilyUnderModel": true,
+    "fixedProtectedStateQueryEstablished": false,
+    "failureReplacedWithAllBitsOneWord": true,
+    "failureShapeDistinctFromEverySuccessfulWord": false,
+    "separateDetailedStatusOrRequestSequence": false,
+    "allOuterCopiedBytesAreNewBusResults": false,
+    "genericBridgeFreshnessGapResolved": false,
+    "arbitraryBusDeviceReadsProvedSideEffectFree": false,
+    "actualChipOrElectricalStopProved": false,
+    "errorPreservingFixedWindowsRouteToResultRecovered": false
+  },
+  "activityProjection": {
+    "policyActionFlagsToDirtyRefreshToSnapshotConnected": true,
+    "ecFixedPageReaderCanReturnSelectedSnapshot": true,
+    "knownFourStrictWindowsCallbacksSelectThisSnapshot": false,
+    "snapshotDirectlyMirrorsProtectionModeAndThresholds": false,
+    "selectedPolicyChecksEachChargerWriteStatus": false,
+    "multipleConditionsCanProduceSameSnapshot": true,
+    "snapshotProvesAppliedChargerState": false,
+    "savedAcpiBatteryStatusNormalizationSeparatelyChecked": true,
+    "rawHostOffsetEquatedWithInternalAddress": false,
+    "apparentModePointerDisambiguatedAsCodeMemory": true,
+    "allComputedCopiesAliasesAndExternalMirrorsExcluded": false
+  },
+  "fixedManufacturerProbe": {
+    "selectedDirectCallerRequestsManufacturerIdentity": true,
+    "busStatusCheckedBeforeScratchUse": false,
+    "probeProvesCurrentChipOrChargerOptionReadback": false,
+    "fixedErrorPreservingProtectionStateProjectionRecovered": false
+  },
+  "separateCallbackRecords": {
+    "recordCount": 128,
+    "recordBytes": 4,
+    "callbackRecordConsumerAndIndexRecovered": false,
+    "finalRecordByteProvedArgumentCount": false,
+    "positionProvesCommandNumber": false,
+    "savedArgumentPointerProducerRecovered": false,
+    "externalOrRomConsumerEstablished": false,
+    "selectedAdjacentBodiesAreFlagSettersRatherThanModeGetters": true,
+    "newWmiOrSabiBindingEstablished": false
+  },
+  "sourceValidation": {
+    "projectionAssertions": 12,
+    "projectionSelectedRows": 173,
+    "independentPolicyAssertions": 25,
+    "independentPolicyUniqueRows": 326,
+    "busReadAssertions": 15,
+    "busReadSelectedRows": 126,
+    "independentReadIndexAssertions": 20,
+    "independentReadIndexRows": 116,
+    "callbackRecordAssertions": 19,
+    "callbackRecordSelectedRows": 96,
+    "independentConsumerAssertions": 23,
+    "independentConsumerSelectedRows": 137,
+    "rootIndependentSelectedAssertions": 25,
+    "publicComponentReviewsPassed": 3,
+    "reviewWordingCorrectionsApplied": true,
+    "theseAreAppUnitTestsOrFirmwareCoveragePercent": false
+  },
+  "productCodeChanged": false,
+  "testCodeChanged": false,
+  "buildRun": false,
+  "unitTestsRun": false,
+  "previousCodeValidationOnly": {
+    "csharpPassed": 437,
+    "pythonPassed": 85,
+    "buildWarnings": 0,
+    "buildErrors": 0
+  },
+  "vendorCodeExecutedLoadedOrEmulated": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "actualExperimentMarkerAccessed": false,
+  "driverServiceSecurityFirmwareSettingsChanged": false,
+  "newRequestOrRunnableHardwareCodeConstructed": false,
+  "newExecutableOrZipProvided": false,
+  "originalVendorDataOrExecutionRecipesIncluded": false,
+  "newUserTestOrResubmissionRequired": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "newNetworkResearchOrBinaryDownloadPerformed": false,
+  "currentProtectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "nextRequirement": "Connect a protection mode or charger-response producer to a model-supported fixed query with preserved errors and fresh delivery; do not expose generic address or bus requests or infer command numbers from record positions",
+  "documentValidation": {
+    "markdownFiles": 5,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "newReportAndAuditPrivacyCheckPassed": true,
+    "oldReleaseArchivesUnchanged": 4,
+    "gitDiffCheckPassed": true,
+    "publicComponentReviewsPassed": 3
+  }
+}

@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — OS 변수 저장 경로와 EC 버전 메타데이터 / 2026-11-07 한국 시간
+
+**새로 연결한 근거:** [후속 분석](RUNTIME_VARIABLE_AND_EC_IDENTITY_REVIEW.md)에서 host RuntimeServices의 SetVariable 게시→조건부 NV backend→새 변수 추가·선택 rebuild fallback→실제 flash receiver→기존 EC 후크를 연결했습니다. host/SMM 표와 RAM/flash/별도 SMM adapter는 구분했습니다. SBDXE와 SMIFlash의 외부 소비자도 실제 lookup·receiver·게시 표로 연결했습니다. guard의 SMI 제어 의도는 공개 Lynxpoint 헤더와 저장 삼성 base로 교차 확인했습니다.
+
+**미확정:** 현재 Windows 호출·선택 구성·probe·실제 경합과 공통 EC 소유권은 미관측입니다. 저장 TXT17개에 명시적 EC 버전 필드는 없고, SMBiosBoard의 ECRev1/2 수신값→정확한 SMBIOS Type0 EC 필드 연결은 변수 생산자·갱신주기·live EC 조회를 입증하지 않습니다. 현재 이미지 동일성이나 호출 권한으로 승격하지 않습니다. 문서·정적 기록만 변경, 앱·EXE·기존 ZIP·예약 그대로이며 이번 빌드·단위 테스트는 미실행입니다. 제어 Unsupported, 추가 실기·동일 자료 제출·하드웨어 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — 명령 게시자 문맥과 조건부 소유권 / 2026-11-07 한국 시간
 
 **연결한 근거:** [명령 소유권 검토](EC_COMMAND_OWNERSHIP_REVIEW.md)에서 대체 EC poll을 같은 main scheduler로 연결하고, 포인터 writer의 capability와 실제 선택 전 개입을 구분했습니다. 펌웨어의 boot 초기화·알림과 SMM callback·forwarder를 분류했으며, 과거 서비스 WSABI도 기존 세 변형과 같은 Global 협력 잠금을 쓰는 것을 확인했습니다. 초기화 완료·관련 전역 상태 안정·정상 CPU context를 전제로 정상 SMM 세대의 하나의 root 실행을 설명하고, 새 GPI/SW 제공자를 실제 같은 root/child 호출로 연결했습니다.

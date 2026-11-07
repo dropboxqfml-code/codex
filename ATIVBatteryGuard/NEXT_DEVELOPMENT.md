@@ -1,5 +1,19 @@
 # 다음 개발 재개 메모
 
+## 최신 — Runtime OS 소비자·현재 EC 이미지 근거 / 2026-11-07 한국 시간
+
+[RUNTIME_VARIABLE_AND_EC_IDENTITY_REVIEW.md](RUNTIME_VARIABLE_AND_EC_IDENTITY_REVIEW.md)를 먼저 읽습니다. 실제 host RuntimeServices SetVariable wrapper 게시부터 NV 속성·구성 선택·backend 전달·flash receiver를 연결했습니다. NV flash adapter와 RAM adapter·SMM 별도 adapter를 혼합하지 않습니다. 새 변수 append가 주 경로이고 RAM staging 뒤 persistence backend를 쓰는 것은 선택 rebuild fallback이며 모든 기존 변수 수정의 일반 경로가 아닙니다. 현재 Windows 호출·probe·구성·동시 실행은 미관측입니다. 이전 Runtime 보존/EC hook 분석 수치를 새 성과로 다시 세지 않습니다.
+
+외부 flash 소비자는 SBDXE entry의 정확한 첫 게시 GUID→receiver→begin/end 연속 호출과 SMIFlash의 InSmm 초기화→다른 게시 GUID→등록된 SW callback→같은 표의 메서드로 연결했습니다. SMIFlash의 flash 조회는 InSmm 안의 BootServices 조회이고 SW registry 조회는 SMST이므로 receiver를 혼동하지 않습니다. 같은 GUID·offset 출현 수는 소비자 수가 아닙니다.
+
+host/SMM 변수 wrapper의 공유 busy pointer와 PIC·제어 필드의 guard는 source positive이나 plain admission을 atomic lease로 해석하지 않습니다. 공개 coreboot4.20 Lynxpoint 헤더를 정상 proxy/TLS로 한 번 받아 SMI 제어 역할을 교차 확인했습니다. coreboot default base 대신 저장된 Samsung ACPI base를 사용했습니다. 현재 register lock/쓰기 효과·이미 진행 중인 SMM 배제·새 SMI delivery·공통 EC 소유권은 입증하지 못했습니다. 실제 변수 저장/flash/마스크 변경으로 시험하지 않습니다.
+
+현재 EC identity 감사는 보존 실기 TXT17개 ECversion 관련 명시 필드 미관측·현 앱/준비/단발 도구의 BIOS 문자열 전용 수집을 확인했습니다. SMBiosBoard는 ECRev1/2를 RuntimeServices GetVariable로 읽고 typed SMBIOS 제공자 finder(Type0,instance1)와 update 메서드를 통해 EC release 필드를 채웁니다. PE 진입점과 명명 변수 read body를 구분하며 실제 주소는 private 기록만 봅니다. 정확한 이름/좁은 변형 검색에서 명명 변수 생산자는 미연결입니다. 계산된 이름·비PE·다른 이미지·외부 updater 부재를 주장하지 않습니다. live EC 기원/정적 default/updater cache·갱신 주기·현재 값·EC본문 동일성은 미확정입니다. 단순 버전 수집을 추가해도 이 간극은 닫히지 않아 새 collector·자료 재제출을 요구하지 않았습니다.
+
+다음은 이 구체적인 host NV 저장의 flash/RAM 구성 선택·후속 RuntimeServices 표 교체와 guard의 실제 동기화 범위를 우선합니다. 정상 SMM 순차화·WMI 협력 잠금을 direct OS RuntimeServices까지 자동 확장하지 않습니다. EC 이미지 적합성은 현재 BIOS 문자열·SMBIOS cache 값만으로 승격하지 않습니다. 고정 조회 입력·실행 전 소유권·응답 귀속 계약은 여전히 미완료이므로 실제 backend·제어 권한 추가 없이 Unsupported입니다.
+
+private cache: 20261107/runtime-os-services-consumer-next(하위 rt-entry-subset), flash-protocol-consumers-next(하위 smm-consumer-independent), current-ec-identity-evidence-next, ec-revision-variable-producers-next, smbios-ec-version-source-next, smi-mask-register-crosscheck-next. 새 source 검산은 문맥/중복 decode와 분리합니다. 문서·정적 기록만 변경, C#/WPF·Python 도구·EXE·기존 ZIP 미변경, 이번 빌드·단위 테스트 미실행입니다. C#437/빌드경고오류0은5d77df5, Python88은e7b067a 과거 기록입니다. 원본 실행·하드웨어/OEM·단발 예약·드라이버/서비스/보안·펌웨어 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — 명령 게시·선택 무결성과 최소 조회 설계 / 2026-11-07 한국 시간
 
 [EC_COMMAND_OWNERSHIP_REVIEW.md](EC_COMMAND_OWNERSHIP_REVIEW.md)를 먼저 읽습니다. EC의 포인터 writer는 명령 슬롯에 쓸 capability가 있지만 복원한 진입에서는 자신의 선택 뒤에 store합니다. 대체 poll도 같은 main scheduler 후속 경로로 연결돼 독립적인 ISR 재진입으로 세지 않습니다. 직접 literal 목록의 zero clear·기존 class/index 두 읽기는 문맥이며 새 nonzero 자율 재게시자를 확보한 것이 아닙니다. 다른 handler가 reader의 미사용 입력을 쓰기 데이터로 해석할 수 있으므로 사후 응답 거부로 실행 전 명령·대상 안전성을 대체하지 않습니다.

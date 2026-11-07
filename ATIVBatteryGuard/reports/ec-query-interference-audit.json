@@ -1,0 +1,139 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "New selected EC producer entry/scheduling, concrete SMM AP task provenance, and generic callback direct-call closure; static saved bytes only",
+  "previousRepositoryCommit": "3a10586",
+  "sourcePins": [
+    {
+      "source": "P05ACJ.cap",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "source": "SecSabiDispatch.efi",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    },
+    {
+      "source": "CpuSpSMI.efi",
+      "bytes": 6304,
+      "sha256": "5af283ef53ff6c0bd780671e8dc2d5b3b2d8ec2b0cef17cc02b440278be5ee15"
+    },
+    {
+      "source": "PowerMgmtS3.efi",
+      "bytes": 5920,
+      "sha256": "dbb0d6ec4a699f77df3decb76f5536f011f822a9f663c59e524449e3f4eda308"
+    },
+    {
+      "source": "DigitalThermalSensorSmm.efi",
+      "bytes": 9856,
+      "sha256": "f0fe8b1a120ae012274f93a5ea4d2a33e0e03dea5523351511164cb0134749fd"
+    },
+    {
+      "source": "MicrocodeUpdate.efi",
+      "bytes": 24608,
+      "sha256": "94c70780afa5e96e97ed75ee7f1180bdb58d5c72e05f9859f8b831a934977f31"
+    }
+  ],
+  "ecAttribution": {
+    "existingConditionalIsaAndBankModelStillRequired": true,
+    "differentFirstByteWriterIsSeparateCommandHandler": true,
+    "thatWriterIsProvenAutonomousInterferenceDuringSelectedRead": false,
+    "selectedStableReadCommandChoosesThatOtherHandlerInSingleDispatch": false,
+    "completionClearHasGatedSameMainThreadPostTaskCaller": true,
+    "selectedClearBlockWritesMessageResultOrTail": false,
+    "allUpstreamIndirectEffectsClosed": false,
+    "conditionalLaterHostPostCancellationSupportedBySourceOrder": true,
+    "thatCancellationObservedOnLaptop": false,
+    "isolatedCancellationWithoutResultWriteIsInputEchoRejectionCase": true,
+    "knownIsrLikeEntryAssessment": {
+      "entryJumpAndRegisterSaveRestoreRechecked": true,
+      "assumption": "Selected read command remains stable",
+      "selectedPathWritesResultOrTakesLowCommandClear": false,
+      "selectedPathPreservesRegistersItTouches": true,
+      "actualInterruptHardwareBindingVerified": false
+    },
+    "duplicatePendingAloneRunsHandlerAfterCommandZero": false,
+    "classificationAndHandlerSelectionReadCommandSeparately": true,
+    "commandStabilityAcrossThoseReadsProven": false,
+    "otherInterruptComputedOrExternalWriterAbsenceProven": false
+  },
+  "apTaskAttribution": {
+    "concreteSelectedModules": 4,
+    "typedApServiceCallSites": 6,
+    "fixedTaskTargetsClassified": 10,
+    "receiverProvenanceIncludesGetSmstOutputAndActualConsumerGlobal": true,
+    "classificationFromDisplacementOrGuidPresenceAlone": false,
+    "selectedRoles": [
+      "CPU cache and MTRR restoration",
+      "Processor power register restoration",
+      "Processor thermal status, local APIC and result collection",
+      "CPU microcode register task"
+    ],
+    "selectedTaskConnectedToKnownEcSabiMailboxTransmission": false,
+    "allTransitiveTasksMemoryAliasesOrRuntimeQueueContentsClosed": false,
+    "bootServicesPublicationLookalikesSeparated": true,
+    "x64MethodOffsetsTreatedAsCompleteIa32Search": false
+  },
+  "callbackClosure": {
+    "selectedFunctions": 13,
+    "reachableInstructionRows": 229,
+    "bothSidesOfConditionalBranchesInspectedStatically": true,
+    "indirectCallsOrTailBranchesInSelectedClosure": false,
+    "explicitApSchedulingOrCallbackPumpInSelectedClosure": false,
+    "delayHelperUsesDirectTimerPolling": true,
+    "commandAndMessageUseCompletedLocalInputSnapshot": true,
+    "laterSharedFrameStoreDirectlyChangesLocalCommandInSelectedSource": false,
+    "snapshotAtomicityProven": false,
+    "allIndexedIoMailboxAndFinalResponseAccessExclusiveProven": false,
+    "busyDelayCompletionIndependentOfTimerProgress": false,
+    "outerReadinessCountProvesHardTotalWallTimeBound": false,
+    "appTimeoutInterruptsThisSmmInternalWait": false,
+    "actualTimerFailureOrHangObserved": false
+  },
+  "minimumContract": {
+    "requiresGlobalAbsenceOfAllWriters": false,
+    "requiresRelevantCommandTargetIntegrityAndResultAttribution": true,
+    "allowsNonconflictingOrProperlyOrderedOtherTasks": true,
+    "posthocBadReplyRejectionUndoesEarlierHardwareSideEffects": false,
+    "knownCandidateBodiesAloneProveAutonomousOverwrite": false,
+    "safeCurrentHardwareQueryCompleted": false,
+    "actualProtectionModeReadSucceeded": false,
+    "genericRouteImpossibleProven": false,
+    "chargeControl": "Unsupported"
+  },
+  "verification": {
+    "newEcCallerBranchAssertionsPassed": 20,
+    "newIndependentResultEntryAssertionsPassed": 17,
+    "reusedEcContextAssertionsNotCountedAsNew": [8, 10],
+    "cpuTaskSourceFilesPinned": 3,
+    "cpuTaskExactInstructionPins": 130,
+    "cpuTaskDecodeChecksOfSameInstructions": 130,
+    "cpuTaskSelectedCodeRangePins": 11,
+    "microcodeAndLookalikeMechanicalChecksPassed": 139,
+    "microcodeAndLookalikeExactInstructionPins": 65,
+    "microcodeAndLookalikeDecodeChecksOfSameInstructions": 65,
+    "newCallbackClosureAssertionsPassed": 40,
+    "fourConcreteApConsumerSourcePinsIndependentlyRehashed": true,
+    "selectedSourceAndClaimBoundariesIndependentlyReviewed": true,
+    "staticCountsNotSummedAsSemanticFactsAppTestsOrCoverage": true,
+    "appBuildOrUnitTestsRerun": false,
+    "historicalCsharpTestsPassed": 437,
+    "historicalBuildWarningsAndErrors": [0, 0],
+    "historicalCsharpCodeCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+    "historicalPythonTestsPassed": 88,
+    "historicalPythonCodeCommit": "e7b067a47e129bc7b1212fdc398d08e45aad366e"
+  },
+  "changeBoundary": {
+    "documentationAndSanitizedAuditOnly": true,
+    "applicationOrPythonToolCodeChanged": false,
+    "existingExecutableOrArchivesChanged": false,
+    "vendorCodeLoadedExecutedOrEmulated": false,
+    "requestTagValueFrameGeneratorOrLiveBackendConstructed": false,
+    "hardwareOemOrExistingExperimentMarkerAccessed": false,
+    "driverServiceSecurityOrFirmwareChanged": false,
+    "networkResearchPerformed": false,
+    "additionalLaptopTrialOrRepeatedUploadRequested": false,
+    "cloudEnvironmentPublished": false
+  }
+}

@@ -1,5 +1,19 @@
 # 다음 개발 재개 메모
 
+## 최신 — 조회 간섭 후보의 실행 순서·역할 연결 / 2026-11-07 한국 시간
+
+[EC_QUERY_INTERFERENCE_REVIEW.md](EC_QUERY_INTERFERENCE_REVIEW.md)를 먼저 읽습니다. 다른 첫 바이트 작성자는 같은 분배표의 별도 명령 handler로 연결됐으며 자율 background writer로 입증한 것이 아닙니다. 조회 명령이 유지되는 단일 분배에서는 선택 reader를 실행합니다. 다른 완료 clear는 같은 main thread의 조건부 scheduler 후처리입니다. 새 host post를 나중에 지울 조건부 취소 구간은 남지만 선택 clear block은 결과 바이트·tail을 바꾸지 않으며 단순 취소는 input echo 거부 대상입니다. 실제 race·상위 전체 간접 효과는 미입증입니다. 정확한 주소·명령값·호출 관계는 비공개 원본 기록에 보존합니다.
+
+알려진 ISR 형태의 진입에서 안정된 조회 명령 분기는 low-command clear를 우회하고 결과를 바꾸지 않으며 사용 register를 복구합니다. 실제 hardware binding은 조건부입니다. 중복 pending만으로 완료 후 다른 handler를 실행하지 않습니다. 반면 분배기는 명령 종류와 index를 위해 공유 명령을 두 번 읽으므로 그 값의 안정성이 필요합니다. 사후 응답 거부는 잘못된 명령의 부작용 취소가 아닙니다.
+
+실제 AP 소비자는 CpuSpSMI/PowerMgmtS3/DigitalThermalSensorSmm/MicrocodeUpdate의 여섯 호출·열 고정 작업으로 CPU/cache/MTRR·전력 register·thermal/APIC·microcode 역할입니다. 선택 작업에서 EC/SABI 연결 미확보이지 전체 간접·runtime 작업 부재가 아닙니다. old/new SMST의 다른 method offset을 혼동하지 않습니다. 동일 displacement나 GUID 포함 후보 수는 실제 AP caller 수가 아니며 IA32에 x64 offset을 적용한 완전 탐색도 아닙니다.
+
+선택 일반 callback을 포함한 13함수의 CFG를 새로 검산했습니다. 이 사슬은 직접 호출·tail 분기만 있고 AP pump가 아니며, 입력 snapshot 뒤 local 명령·메시지를 씁니다. snapshot 자체의 원자성·다른 CPU/ISR/indexed I/O·최종 frame 교체는 증명하지 못했습니다. timer poll은 타이머 진행이 전제이며 앱 timeout을 SMM 중단 보장으로 쓰지 않습니다. 실행 요청·표식 값·frame·실제 backend는 만들지 않았습니다.
+
+다음 최소 계약은 선택 고정 조회의 의미를 바꾸는 간섭의 비중첩·규약·안전 검출입니다. 전역 writer 부재를 요구하지 않습니다. 공유 명령 게시→종류 판정→handler 선택, WMI 입력 snapshot·응답 반환의 충돌 가능한 실제 작성자에 집중합니다. 이미 분류한 CPU 작업·다른 명령 handler·clear 본문 존재만으로 자율 덮어쓰기 반례를 다시 세지 않습니다. 현재 모델·이미지·읽기 부작용·IRQ·간접 진입은 여전히 미확정입니다.
+
+private cache: 20261107/ec-producer-attribution-next(하위 result154ad-independent), smm-ap-mailbox-callers-next(하위 cpu-subset), generic-callback-call-closure-next. 새 source checks·독립 검토는 정제 audit에 분리 기록합니다. 문서·정적 기록만 변경, C#/WPF·Python 도구·EXE·기존 ZIP 미변경, 이번 빌드·단위 테스트 미실행입니다. C# 437개·빌드 경고/오류 0개는 5d77df5, Python 88개는 e7b067a 과거 기록입니다. 실제 보호 조회 미완료·제어 Unsupported입니다. 추가 실기·재제출·OEM/단발 예약·하드웨어/보안 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — 보호 상태 조회 경로의 성립 조건 / 2026-11-07 한국 시간
 
 [BOUNDED_READ_ROUTE_FEASIBILITY.md](BOUNDED_READ_ROUTE_FEASIBILITY.md)를 먼저 읽습니다. WMI→일반 callback→조건부 EC 모드 저장값 읽기의 정적 경로는 이미 있습니다. ‘경로 없음’과 ‘현재 장치의 안전한 최신 응답 계약 미완료’를 구분합니다. 전용 OEM getter는 유일한 해법이 아니며 기존 범용 읽기를 고정 대상에 제한해 같은 계약을 입증할 가능성도 열어 둡니다. 아래 과거 메모의 고정 getter 조건을 배타적인 요구로 적용하지 않습니다.

@@ -1,5 +1,7 @@
 # 단발 조회안의 대상·고정 요청·준비 경로 결합 — 2026-11-08 한국 시간
 
+**후속:** [SDK 입력 준비와 저장 근거 대조](WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md)에서 supplied parameter 객체의 형식 검사·두 할당·실패 후 재사용 차단을 분리했습니다. 실제 읽기 template·메서드 호출은 추가하지 않았습니다. 아래는 단발 plan 결합 시점의 기록입니다.
+
 **A안의 선언한 대상 조건과 한 번의 software handoff를 prepared 경로에 연결했습니다.** 순수 `WsabiWmiSingleReadPlan`과 Windows의 고정 요청 handle을 추가했습니다. 실제 보호 byte 조회 template/명령은 만들지 않았으며 기존 synthetic 요청을 주입해 이행 경로를 검증했습니다. [이전 등록 준비](WINDOWS_WMI_PREPARATION_UPDATE.md)의 후속이며 실제 보호 설정 조회·충전 제어는 Unsupported입니다.
 
 ## 대상 plan

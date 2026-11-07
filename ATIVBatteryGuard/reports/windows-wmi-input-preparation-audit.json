@@ -1,0 +1,175 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "ebdeca2",
+  "scope": "Saved conditional read semantics compared with SDK parameter contract; supplied input shape and two-setter preparation, no real request or method invocation",
+  "sourcePins": [
+    {
+      "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsInputPreparation.cs",
+      "bytes": 4142,
+      "sha256": "42ee88a43ab3b23530667521c42e3fb6d088bc5c878cca3e40aa715ac78b7dc5"
+    },
+    {
+      "projectFile": "tests/WsabiWmiWindowsInputPreparationTests.cs",
+      "bytes": 22697,
+      "sha256": "38c3e50d2fb5859420eef342a32c261729c2e6c2fd0129991363aa227ffea2fb"
+    },
+    {
+      "projectFile": "tests/Fakes/ManagementSdkFakes.cs",
+      "bytes": 8874,
+      "sha256": "161e083fdab303f18b326ff66a0acf3035fc0b7da2f8b41a8a57b0707054b47a"
+    },
+    {
+      "projectFile": "tests/Program.cs",
+      "bytes": 33450,
+      "sha256": "8a7de09cccd6b382768c277803541248837cdfe1cc3bbe25d81564b04b9d2147"
+    },
+    {
+      "projectFile": "tests/ATIVBatteryGuard.PortableTests.csproj",
+      "bytes": 4845,
+      "sha256": "55e2715162d5f5c0593efc13bfaf9259686de7fa30611c7447f0ff9fbca53a40"
+    }
+  ],
+  "savedEvidenceDocumentPinsReused": [
+    {
+      "projectFile": "EC_CHARGE_PROTECTION_CANDIDATE.md",
+      "bytes": 7454,
+      "sha256": "856179be97294375d1a0f1f9c106195ca070894a1d8cef50d1b536c04720dbd1"
+    },
+    {
+      "projectFile": "EC_READBACK_AND_WINDOWS_BRIDGE.md",
+      "bytes": 7455,
+      "sha256": "781584b7d20db07b76ea81d866006f1cdb08af523baedc214a6563ae0ca585d6"
+    },
+    {
+      "projectFile": "EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md",
+      "bytes": 8489,
+      "sha256": "32675fc805bc4ef8830d8cf644e17867a0d18799237a0d9a6fe7ce65d55274e9"
+    },
+    {
+      "projectFile": "SHARED_CHANNEL_COORDINATION_UPDATE.md",
+      "bytes": 7898,
+      "sha256": "039783eca7489c9697c79cde2bd5cebf1b025ec30727e0f3352fb39b55cbcb02"
+    },
+    {
+      "projectFile": "EC_FRESHNESS_AND_ERROR_PATHS.md",
+      "bytes": 7509,
+      "sha256": "af8782ddbfe47a4e0aadac742ad67ff455f3044d4de23ccf42038bac62e14cfa"
+    },
+    {
+      "projectFile": "WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md",
+      "bytes": 9759,
+      "sha256": "2c203487b3198ba73a585afaf04969bfa78d1e4aef30e3b00f537e993e7361cd"
+    },
+    {
+      "projectFile": "SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md",
+      "bytes": 7596,
+      "sha256": "c795fded0de6ad393fc4ba146a463c3a03fcae5b07fda2989ce2bb18b6e4594d"
+    }
+  ],
+  "storedEvidenceConclusion": {
+    "selectedReaderSupportsConditionalStoredSoftwareModeSample": true,
+    "selectedReaderWritesSelectedTarget": false,
+    "dedicatedProtectionGetterOrCurrentChargingApplicationEstablished": false,
+    "modeInterpretationUsesExistingConditionalEcIsaAndBankModel": true,
+    "gateInitialClosedAndCurrentUnobserved": true,
+    "genericSendFailureCanBeHiddenByLaterWaitAndStaleCopy": true,
+    "postReturnTailOrAckProvesPrepublicationIntegrityOrFreshness": false,
+    "knownSelectedWorkerInlineInputConsumptionAndSeparationRetained": true,
+    "allIrqAliasHardwareWritersOrAllEcEffectsClosed": false,
+    "newFirmwareSourceEdgeOrCurrentLaptopObservation": false,
+    "oldConsumedCandidateEquatedWithCurrentReaderOrReused": false
+  },
+  "sdkReferenceReview": {
+    "referencePins": [
+      {
+        "name": "ManagementBaseObject.cs.reference.txt",
+        "bytes": 33062,
+        "sha256": "451b969687406c4f266f8919c6666abd9dda7d5705c71aa0c6bfc2e77143e85f"
+      },
+      {
+        "name": "ManagementObject.cs.reference.txt",
+        "bytes": 123017,
+        "sha256": "b5aa6341ab0b4ceffceab5d81f1bed416f08c74739d47523c630525d801d90f9"
+      }
+    ],
+    "sourceVersion": "dotnet/runtime v8.0.0, not current laptop .NET Framework 4.8 runtime identity",
+    "selectedCachedTextRelations": 7,
+    "newDownloads": 0,
+    "runtimeExecuted": false,
+    "propertyDataMapperSourceOrExactEmbeddingCopySemanticsEstablished": false,
+    "checks": [
+      "Properties can initialize",
+      "Properties collection belongs to supplied wrapper",
+      "indexer can initialize",
+      "indexer delegates setter",
+      "named setter delegates property value",
+      "typed async input uses SDK wrapper",
+      "typed async dispatch passes prepared input"
+    ],
+    "relationsBoundedToSelectedMembers": true
+  },
+  "inputPreparation": {
+    "requestCanonicalCopyUsesExistingPlanAndBinder": true,
+    "planRequestNullOrReferenceAliasRejectionTouchesSdkObjects": false,
+    "twoManagedWrapperClaimsAtomicBeforeSdkGetters": true,
+    "sameWrapperReuseAllowedWithFreshPlanOrRoleChange": false,
+    "usedWrapperRejectionClaimsOtherFreshWrapper": false,
+    "sdkGettersAndSettersRunInsideClaimLock": false,
+    "shape": "DataBuffer class; exactly one scalar Object inData and one UInt8 array Bytes",
+    "allShapeChecksBeforeEitherValueAssignment": true,
+    "assignmentOrder": [
+      "Bytes = canonical frame copy",
+      "inData = supplied buffer"
+    ],
+    "oldValuesReadRollbackRetryOrDisposeByHelper": false,
+    "partialMutationCanRemainInBorrowedObjects": true,
+    "shapeOrAccessFailureRetiresBothManagedWrappers": true,
+    "sdkExceptionOrPayloadReturnedLoggedOrCached": false,
+    "actualParameterMethodOriginEmbeddedQualifierOrNativeCopyAuthenticated": false,
+    "alreadyMaterializedInputIsSupplierContractNotCertification": true,
+    "sdkPropertyAccessCanInitializeLazyObjectsOrEnterCom": true,
+    "managedIdentityCoversOtherComAliasesExternalMutationOrOtherProcesses": false,
+    "concreteInvocationOwnerRunCloseBindingImplemented": false
+  },
+  "verification": {
+    "newRegisteredGroups": 10,
+    "finalResult": {
+      "passed": 572,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 572,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "windowsProductionSourceFilesLinkedWithStandins": 6,
+    "portableDependencyLibraries": [
+      "ATIVBatteryGuard.PortableTests/1.0.0"
+    ],
+    "actualSystemManagementRuntimeOrProviderExecuted": false,
+    "existingSyntheticRequestOnly": true,
+    "concurrencyControlledGateAndTasksJoinedInFinally": true,
+    "noPrivateChecksAddedToRegisteredCount": true,
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0,
+      "actualSdkReferenceApiCompiled": true
+    },
+    "independentSourceTestsAndDocumentationReadReview": true,
+    "independentReviewerReranSuite": false
+  },
+  "boundary": {
+    "explicitSdkDiscoveryConstructionConnectGetPutInvokeOrCancelSitesAdded": 0,
+    "actualFirmwareTemplateCommandOrGeneratorAdded": false,
+    "defaultAppControllerProtectionReadAndChargingControl": "Unsupported",
+    "coreAppOldBackendProgramEncoderReservationOrReleaseArchivesChanged": false,
+    "aDeclaredMethodBound": 1,
+    "aHandshakeRetrySettingWrites": 0,
+    "bSelectedAsFallbackOrApproved": false,
+    "hardwareOemGlobalObjectConsumedReservationOrVendorOriginalAccessed": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "newDependencyInstallOrSourceDownload": false,
+    "newLaptopTestOrRepeatedUploadRequested": false
+  },
+  "next": "Bind supplied parameter ownership to prepared Run/Close and same target/observer/input attempt; retain separate real request, gate, participation, terminal attribution and execution approval conditions"
+}

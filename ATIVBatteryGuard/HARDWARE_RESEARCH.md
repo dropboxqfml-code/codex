@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 저장 reader 근거와 SDK 입력 준비 대조 / 2026-11-08 한국 시간
+
+**확인된 범위:** [입력 준비 검토](WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md)는 저장된 generic byte reader와 기존 WMI/SDK 경로를 대조했습니다. 선택 reader는 조건부 EC 해석에서 저장 mode byte를 읽고 대상에는 쓰지 않습니다. 별도 대상·gate·관련 참여자·신선한 응답 조건까지 충족됐다는 뜻은 아니며 새 펌웨어 연결을 찾은 작업도 아닙니다.
+
+**구현·검증:** 공급된 SDK 입력 객체의 class/CIM shape를 확인한 뒤 고정 요청 사본을 Bytes→inData로 할당합니다. 두 wrapper를 SDK 접근 전에 함께 claim해 오류·부분 변경 뒤 재사용을 막고 caller 소유는 유지합니다. 신규 10개 포함 572개 통과·실제 net48 참조 전체 Release 빌드 경고/오류 0입니다. 테스트는 SDK stand-in이며 실제 provider는 실행하지 않았습니다.
+
+**미확정:** 임의 supplied 객체의 method 출처·lazy 초기화·native 복사·다른 COM alias는 인증하지 않습니다. 실제 요청 template·SDK dispatch·앱 연결·배포 ZIP 변경은 없으며 보호 설정 조회·충전 제어는 Unsupported입니다. 아래는 이전 기록입니다.
+
 ## 최신 — A 선언 scope와 고정 요청 이행 경로 / 2026-11-08 한국 시간
 
 **구현:** [단발 plan/binding](SINGLE_READ_PLAN_BINDING_UPDATE.md)은 정확한 관측Name/전체BIOS·선언한platform·local method target·상세metadata/MethodId1·완료열거/단일Active를 검사합니다. opaque token을 참조 비교하고 기존 요청을 복사·재구성해 prepared Run에 고정합니다. 공급 사실/참조 일치이며 실제 SDK target/read semantic/권한의 인증이 아닙니다.

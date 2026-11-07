@@ -1,6 +1,6 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
-**판정: 준비 경로에 A의 공급 scope·고정 요청·software 단발 제한을 결합하고 stand-in 검증 완료, 실제 장치 호출·실행은 보류.** [단발 plan/binding](SINGLE_READ_PLAN_BINDING_UPDATE.md)을 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
+**판정: A의 공급 대상·고정 요청 결합에 이어 SDK 입력 객체 준비를 분리하고 stand-in 검증 완료, 실제 장치 호출·실행은 보류.** [SDK 입력 준비와 근거 대조](WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md)를 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
 
 | 조건 | 확인된 범위 | 남은 조건 |
 | --- | --- | --- |
@@ -11,6 +11,8 @@
 | 선택 실행 영역·gate·결과 귀속 | WMI→AML→PCH legacy SW→SABI generic 경로 연결. 별도 typed 변수 경로와 분리. gate는 초기닫힘/현재미관측 | 관련 게시자 순서·전체 교환·응답 귀속 필요. handshake0의 유용성 미확정. 다른 기능 caller의 사전 handshake를 보호 조회 지원으로 확대하지 않음 |
 
 최신 software plan은 정확한 대상 사실·상세 metadata/MethodId1을 비교하고 observer 등록 전에 opaque 요청을 동결합니다. 같은 plan 참조의 첫 준비에서 예산을 소모해 취소/실패 뒤 새 wrapper도 재준비하지 않으며 Run은 publish/token만 받습니다. 신규21개 포함562회귀·실제 net48 참조 빌드0/0입니다. 이는 supplied handoff1회/자체 추가 경로0의 이행 검증이고 실제 template의 read/write 의미·delegate 내부 SDK 횟수·대상 현재성·실행 승인을 인증하지 않습니다. B/실제 명령·프레임/소모 예약은 변경하지 않았습니다.
+
+최신 입력 준비는 공급 parameter/buffer의 shape를 검사하고 Bytes→inData로 할당하며 SDK 접근 전 두 wrapper를 함께 소모합니다. 부분 실패 뒤 재사용·rollback은 없고 caller 소유는 유지합니다. 새 10개 포함 572회귀·실제 net48 참조 전체 빌드 경고/오류 0입니다. 입력 배치의 이행 검증이며 실제 SDK 호출·native 복사·현재 대상·읽기 의미를 인증하지 않습니다. 고정 저장 byte reader의 조건부 근거와 실제 요청·gate·관련 참여/완료 조건은 구분하며 새 펌웨어 근거는 추가하지 않았습니다.
 
 모델·BIOS·제조사 원본과 여러 해석 anchor는 임시 CandidateProfile 근거로 유지합니다. live 함수 포인터·EC 전체 hash를 직접 관측하지 못했다는 사실 하나만을 절대 중단 조건으로 쓰지 않습니다. 동시에 위 실제 미완료 연결을 정상성 가정이나 사후 내용 비교만으로 메우지 않습니다.
 

@@ -68,6 +68,8 @@
     <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs" Link="WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs" />
     <Compile Include="WsabiWmiSingleReadBindingTests.cs" />
     <Compile Include="WsabiWmiSingleReadLifetimeTests.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsInputPreparation.cs" Link="WmiInterop/WsabiWmiWindowsInputPreparation.cs" />
+    <Compile Include="WsabiWmiWindowsInputPreparationTests.cs" />
     <Compile Include="WsabiWmiWindowsMutexGateTests.cs" />
   </ItemGroup>
 </Project>

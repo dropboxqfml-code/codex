@@ -1,5 +1,21 @@
 # 다음 개발 재개 메모
 
+## 최신 — 읽기 근거 대조와 SDK 입력 준비 / 2026-11-08 한국 시간
+
+기준 커밋 `ebdeca2` 다음 작업입니다. [WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md](WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 저장된 reader는 조건부 software-mode 저장 byte 읽기를 지지하지만 실제 요청 template·현재 장치의 실행·충전 적용은 입증하지 않습니다. 새로운 firmware edge는 없으며 동결 mapper나 전체 status/IRQ 조사는 재개하지 않았습니다.
+
+새 `WsabiWmiWindowsInputPreparation.Populate(plan,request,parameters,buffer)`는 plan으로 요청을 canonical 복사한 뒤 null/reference alias를 거부합니다. SDK 접근 전에 두 wrapper를 공유 CWT에 원자적으로 claim하고 고정 DataBuffer class·각 property count 1·scalar Object inData·UInt8 array Bytes를 검사합니다. 모든 shape 검증 뒤 Bytes=frozen.Frame, inData=buffer의 두 setter만 실행합니다. 기존 상세 Binder의 qualifier 대안은 변경하지 않았습니다.
+
+SDK getter/setter는 claim lock 밖에서 실행합니다. shape/getter/부분 setter 실패 후에도 두 wrapper는 어느 역할로든 재사용할 수 없으며 새 plan도 이 제한을 해제하지 않습니다. 이미 사용한 쪽과 새 객체가 충돌하면 새 쪽은 소모하지 않습니다. 원문 오류·이전 Value는 읽거나 반환하지 않고 rollback·자동 재시도·Dispose도 하지 않습니다. 일부 할당은 borrowed 객체에 남을 수 있으므로 향후 owner는 실패 객체를 폐기하고 성공 객체를 관련 종료/Unknown 수명 동안 유지해야 합니다.
+
+공급 객체는 이미 materialize됐다는 계약입니다. 저장 참조의 Properties/indexer가 Initialize(true)를 호출할 수 있으므로 임의 lazy 객체의 무조회/순수 메모리를 인증하지 않습니다. method 출처·embedded qualifier·native embedding copy·외부 mutation·다른 COM alias·실제 SDK target/횟수·read 의미·실행 승인은 별도입니다. actual InvokeMethod/Get/Connect/Put/Cancel site·새 객체 factory·하드웨어 frame recipe는 추가하지 않았습니다. 기존 prepared Run과의 객체 소유권 연결은 아직 없습니다.
+
+신규 10개 그룹 포함 전체 572개 통과·실패 0·skip 0이며 전체 net48 참조 Release 빌드 경고/오류 0입니다. Windows production 소스 6개를 portable SDK stand-in과 실행했으며 실제 System.Management runtime/provider는 실행하지 않았습니다. 기존 synthetic fixture만 사용했습니다. cached Microsoft v8 참조 2개 해시와 선택 member 내부 관계 7개를 대조했고 새 다운로드·현재 .NET48 구현 동일성 주장은 없습니다. 해당 7개는 앱 테스트 수에 합산하지 않습니다.
+
+변경은 Windows 새 소스 1개·새 테스트 1개·fake/등록/project 및 문서/정제 기록입니다. Core·앱 UI/default backend·기존 실험 backend/Program·encoder·사용 완료된 예약·배포 ZIP은 그대로입니다. 삼성 원본·실제 WMI/OEM/하드웨어/Global 객체·driver/service/security/firmware/cloud 환경에는 접근하거나 변경하지 않았습니다. 보호 설정 조회·제어는 Unsupported이며 새 노트북 시험·같은 자료 재제출은 필요하지 않습니다.
+
+다음은 준비된 입력 객체의 소유권을 기존 Run/Close 수명에 연결하고 구체 target/observer/input이 같은 시도에 묶이는 SDK dispatch 경계를 검토하는 일입니다. 실제 고정 요청 의미·gate 유용성·관련 참여·완료/귀속·실기 승인은 별도로 유지합니다. A/B 호출 상한·B 상태 변경·옛 소모 예약 정책은 변경하지 않습니다. Private cache: `20261108/windows-wmi-input-validation`의 final JSON/log, solution-build.log, reference-review, execution/pins입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 단발 조회안의 대상·요청을 준비 경로에 결합 / 2026-11-08 한국 시간
 
 [SINGLE_READ_PLAN_BINDING_UPDATE.md](SINGLE_READ_PLAN_BINDING_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 기준 커밋 `1713c3e` 다음으로 Core의 `WsabiWmiSingleReadPlan`과 Windows의 고정 요청 준비 경로를 추가했습니다. 기존 합성 요청으로 연결을 검증했으며 실제 보호 조회 명령이나 SDK 호출 구현은 추가하지 않았습니다.

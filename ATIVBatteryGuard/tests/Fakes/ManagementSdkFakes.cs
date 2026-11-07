@@ -18,11 +18,14 @@ namespace System.Management
     public sealed class PropertyData
     {
         private object value;
-        private int valueReads;
+        private int valueReads, valueWrites;
         public CimType Type { get; set; }
         public bool IsArray { get; set; }
         public Func<object> OnGetValue;
+        public Action<object> BeforeSetValue;
+        public Action<object> AfterSetValue;
         public int ValueReads => Volatile.Read(ref valueReads);
+        public int ValueWrites => Volatile.Read(ref valueWrites);
         public object Value
         {
             get
@@ -30,7 +33,13 @@ namespace System.Management
                 Interlocked.Increment(ref valueReads);
                 return OnGetValue == null ? value : OnGetValue();
             }
-            set { this.value = value; }
+            set
+            {
+                Interlocked.Increment(ref valueWrites);
+                BeforeSetValue?.Invoke(value);
+                this.value = value;
+                AfterSetValue?.Invoke(value);
+            }
         }
 
         public PropertyData(CimType type, bool isArray, object value)
@@ -46,6 +55,7 @@ namespace System.Management
         private int reads;
         public Func<string, PropertyData> OnRead;
         public int Reads => Volatile.Read(ref reads);
+        public int Count => values.Count;
         public PropertyData this[string name]
         {
             get

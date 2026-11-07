@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 저장 읽기 근거 대조·SDK 입력 준비 / 2026-11-08 한국 시간:** [검토·구현](WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md)에서 공급된 입력 객체를 검사하고 고정 frame을 Bytes→inData 순서로 할당하는 단계를 분리했습니다. 일부 변경 뒤 오류가 나도 같은 객체는 재사용하지 않습니다. 신규 10개 포함 572개 통과·전체 Release 빌드 경고/오류 0입니다. 저장 byte reader의 읽기 의미는 조건부 근거로 유지하며 실제 조회 명령·SDK 호출·앱/배포물 변경은 없습니다. 보호 조회·충전 제어는 Unsupported이고 새 노트북 시험·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 **최신 — 단발 대상·요청·준비 경로 결합 / 2026-11-08 한국 시간:** [구현·검증](SINGLE_READ_PLAN_BINDING_UPDATE.md)은 A의 공급 사실 scope와 고정 요청을 묶어 준비 전에 거부/동결하고, Run에서 command/payload를 다시 받지 않습니다. 같은 plan의 재준비·fallback을 막고 software handoff1회를 검사합니다. 신규21개 포함562개 통과·실제 net48 참조 전체 Release 빌드 경고/오류0입니다. 실제 보호 read template·SDK 호출·승인이나 앱/배포 ZIP 변경은 없으며 제어는 Unsupported입니다. 새 노트북 실행/재제출은 필요하지 않습니다. 아래는 이전 기록입니다.
 
 **최신 — 세션 시작 전 WMI 등록 준비 / 2026-11-08 한국 시간:** [구현·검증](WINDOWS_WMI_PREPARATION_UPDATE.md)은 등록/취소/실패 정리 뒤에만 단발 실행 handle을 반환합니다. Run/미사용 닫기를 한 번 결정하며 실제 호출의 Unknown은 기존 잠금·구독 대기를 유지합니다. 새15개 포함541개 통과·실제 net48 참조 전체 Release 빌드 경고/오류0입니다. 실행 검증은 SDK stand-in이며 실제 OEM 호출·앱 연결·배포 ZIP 변경은 없습니다. 보호 조회/제어 Unsupported·새 노트북 실행/재제출 불필요입니다. 아래는 이전 기록입니다.

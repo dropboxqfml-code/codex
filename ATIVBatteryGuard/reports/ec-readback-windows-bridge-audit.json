@@ -1,0 +1,154 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Static source connection of independent stored-byte read candidate and Windows/WMI generic EC bridge; not a live protected-state query or charging control implementation",
+  "previousAnalysisCommit": "034c890572fa2522782c6f4ac3cd75c5890fa145",
+  "softwareCodeBaseCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "P05ACJ CAP",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "source": "EC-region raw slice",
+      "bytes": 98304,
+      "sha256": "2c8aeabe90b844b9d5bc09a05656aa08be1ef927b2d80006e6bd4fb0cc983d04"
+    },
+    {
+      "source": "SecSabiDispatch.efi",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    },
+    {
+      "source": "ModuleSABI.dll from Settings 2.2.0.18",
+      "bytes": 27968,
+      "sha256": "7c57ac5a6ce5727766f425c0aa7368ee75be20fdf790b84113b7e9abf2069f12"
+    },
+    {
+      "source": "capsule-table-14.aml",
+      "bytes": 71849,
+      "sha256": "e65919be72fd7e7bd51ca6561a6a94754ea22c929743a04727188f4638dda7a5"
+    },
+    {
+      "source": "public-table-00.aml",
+      "bytes": 71849,
+      "sha256": "d3e7aa7172ee20b1762aae5b941e1fdf3bd90ef8ed74043d37de57a69537676a"
+    }
+  ],
+  "conditionalEcInterpretation": {
+    "assumedIsa": "Intel8051 compatible",
+    "fixedLowRegionBytes": 49152,
+    "bankWindowBytes": 16384,
+    "manufacturerChipOrLiveAddressMapVerified": false,
+    "sourceReaderSeparateFromSetterEcho": true,
+    "selectedReaderDoesNotWriteSelectedTarget": true,
+    "candidateCanReadModeAndThresholdStorageUnderModel": true,
+    "dedicatedProtectionGetterEstablished": false,
+    "adjacentWritePathExcluded": true,
+    "genericMemoryReadIsApprovedWindowsInterface": false,
+    "selectedInitializationClearIncludesModeAndThresholds": true,
+    "allInitializationPathsClearedOrRestored": false,
+    "rebootOrSleepPersistenceProved": false,
+    "literalReferencesExcludeDynamicOrBulkAccess": false,
+    "hostAcpiOffsetsEquatedWithInternalAddresses": false,
+    "storedModeProvesChargerWriteSuccessOrElectricalStop": false
+  },
+  "windowsSourceBridge": {
+    "savedWmiMethodToRegisteredGenericCallbackConnected": true,
+    "allocationBytes": 278,
+    "headerBytes": 17,
+    "sharedBackingBytes": 261,
+    "wmiVisibleFrameBytes": 21,
+    "wmiPayloadBytes": 16,
+    "callbackSnapshotPayloadBytes": 20,
+    "callbackFrameBytesAccessed": 25,
+    "selectedInputDataBytes": 10,
+    "selectedResponseBytes": 10,
+    "selectedInputAndResponseFitWmi": true,
+    "snapshotWithinSelectedAllocation": true,
+    "extraSnapshotBytesOutsideWmiField": 4,
+    "extraSnapshotBytesNeededBySelectedModes": false,
+    "extraSnapshotBytesAlwaysZeroProved": false,
+    "publicSameModelDsdtRegionLengthMatchesSourcePatcher": true,
+    "publicDsdtIsCurrentNotebookObservation": false,
+    "requestLengthChanged": false,
+    "nativeClassicDllAndLegacyRouteTreatedAsSame": false,
+    "wholeTransactionSerializedByAcpiMutex": false,
+    "gateIsHardwareSupportOrUserAuthorization": false,
+    "outerAckImpliesCallbackSuccess": false,
+    "firstSendStatusCheckedBeforeSecondWait": false,
+    "freshIndependentResponseGuaranteed": false,
+    "presentImageRegistrationGateAndWindowsPermissionProved": false
+  },
+  "oemCallerAnchor": {
+    "settingsPackageVersion": "2.2.0.18",
+    "module": "ModuleSABI.dll",
+    "moduleFileVersion": "2.2.0.7",
+    "selectedNamedFunctions": [
+      "AirplaneLED_SetAirplaneLED",
+      "KeyboardBackLight_GetCurrentJogMode"
+    ],
+    "dynamicCallBiosInterfaceSymbolAndIndirectCallLinked": true,
+    "callerPayloadBytes": 16,
+    "selectedGenericCalls": 4,
+    "matchesSelectedFirmwareGenericByteRoles": true,
+    "currentRuntimeDllSelectionProved": false,
+    "selectedFunctionsProveNewEcProtectionSenderOrGetter": false,
+    "packageWideAbsenceClaimed": false,
+    "incompleteExploratoryScanUsedForClaims": false
+  },
+  "sourceValidation": {
+    "ecReaderExactAndPatternAssertions": 20,
+    "ecReaderSelectedConditionalRows": 149,
+    "initializationExactByteAssertions": 16,
+    "initializationPatternSetAssertions": 3,
+    "initializationSelectedConditionalRows": 138,
+    "windowsExactInstructionAssertions": 82,
+    "windowsSelectedInstructionRows": 668,
+    "softwareGateExactByteAssertions": 24,
+    "softwareGateSelectedRows": 212,
+    "oemExactByteAssertions": 20,
+    "oemIdentityAndExportAssertions": 4,
+    "oemSelectedRows": 250,
+    "rootIndependentSelectedAssertions": 52,
+    "theseAreAppUnitTestsOrFirmwareCoveragePercent": false,
+    "publicComponentReviewsPassed": true,
+    "publicOemWordingCorrectionsApplied": true
+  },
+  "productCodeChanged": false,
+  "testCodeChanged": false,
+  "buildRun": false,
+  "unitTestsRun": false,
+  "previousCodeValidationOnly": {
+    "csharpPassed": 437,
+    "pythonPassed": 85,
+    "buildWarnings": 0,
+    "buildErrors": 0
+  },
+  "vendorCodeExecutedLoadedOrEmulated": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "actualExperimentMarkerAccessed": false,
+  "driverServiceSecurityFirmwareSettingsChanged": false,
+  "newRequestOrRunnableHardwareCodeConstructed": false,
+  "newExecutableOrZipProvided": false,
+  "vendorOriginalsOrExecutionRecipesIncluded": false,
+  "newUserTestOrResubmissionRequired": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "newManufacturerBinaryDownloaded": false,
+  "networkResearchPerformed": false,
+  "currentProtectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "nextRequirement": "Find a source-supported existing path that preserves errors and establishes fresh independent state with whole-transaction coordination; verify current model and route before any device query or control",
+  "documentValidation": {
+    "markdownFiles": 5,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "newReportAndAuditPrivacyCheckPassed": true,
+    "oldReleaseArchivesUnchanged": 4,
+    "gitDiffCheckPassed": true,
+    "publicComponentReviewsPassed": 3
+  }
+}

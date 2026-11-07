@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 저장값 조회 후보와 WMI 중계 소스 연결 / 2026-11-07 한국 시간
+
+[EC_READBACK_AND_WINDOWS_BRIDGE.md](EC_READBACK_AND_WINDOWS_BRIDGE.md)를 먼저 읽습니다. 조건부 EC 모델에서 범용 저장 바이트 읽기 경로를 찾아 보호 모드·임계값 조회 후보를 확보했습니다. 전용 보호 getter·충전기 적용 read-back·실행 승인이 아니며 인접 쓰기와 구분합니다. 특정 초기화 분기의 범위 지우기는 모드·임계값을 포함하지만 이후 복원이나 Windows 재부팅 지속성을 입증하지 않습니다. host EC offset과 내부 주소를 숫자로 대응시키지 않습니다.
+
+저장된 P05 WMI→공유 프레임→dispatcher→등록 generic callback을 연결했습니다. 278바이트 할당의 17바이트 header 뒤 261바이트 backing이 있어 25바이트 frame 접근은 할당 안입니다. WMI Field는 21바이트/payload16 그대로이고 선택한 입력 10바이트·반환 10바이트가 들어갑니다. 추가 snapshot 4바이트는 WMI 제어 밖이며 항상 0이라고 가정하거나 프레임을 확대하지 않습니다. 공개 같은 모델 DSDT 길이도 맞지만 현재 장치 정체성은 아닙니다. Settings 2.2.0.18에 포함된 ModuleSABI의 LED·키보드 백라이트 JogMode 호출자는 형식을 지지할 뿐 새 EC 보호 setter의 sender·현재 DLL 선택의 증거는 아닙니다.
+
+gate는 소프트웨어 상태이며 ACK·정상 반환도 신선한 응답이 아닙니다. 송신 결과가 다음 대기에 가려질 수 있고 ACPI mutex는 트리거만 감싸 전체 교환 직렬화를 보장하지 않습니다. 다음은 이 오류 전달·신선도·동시 접근 문제를 해결하는 기존 경로 추적입니다. 현재 경로 적합성과 독립 상태 조회가 입증되기 전 새 요청·live backend·제어·OEM 시험을 추가하지 않습니다. 기존 단발 예약은 접근하지 않고 앱은 Unsupported입니다.
+
+private cache는 20261107/ec-mode-readback-next(하위 initialization-independent), windows-ec-contract-next(하위 gate-review), oem-ec-charge-sender-next, charge-contract-integration-next입니다. 통합 독립 검산 52개 통과. 앱·테스트·EXE·기존 ZIP 미변경, 이번 빌드·단위 테스트 미실행이며 437/85·경고오류0은 이전 5d77df5 기록입니다. 새 노트북 시험·자료 제출·드라이버/서비스/보안·펌웨어 변경은 없습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 조건부 EC 해석에서 80/75 충전 보호 사슬 연결 / 2026-11-07 한국 시간
 
 [EC_CHARGE_PROTECTION_CANDIDATE.md](EC_CHARGE_PROTECTION_CANDIDATE.md)를 먼저 읽습니다. 8051 호환 ISA와 하위48KiB 공통/상위16KiB bank 모델을 가정한 데이터 전용 해석입니다. 전환 stub, 업데이트 주소, 버전 응답, 별도로 확인한 USBwake sender의 역할이 모델과 맞지만 공식 chip/ISA 정의나 live image 검증은 아닙니다. 원본 명령어 실행·에뮬레이션은 하지 않았습니다.

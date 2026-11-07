@@ -1,0 +1,155 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Static examination of fresh-response boundaries, error-preserving alternatives and cooperative Windows coordination; not a current hardware query or charging-control implementation",
+  "previousAnalysisCommit": "dcd28dc33a56fbeb11aa3a64d85e3c473bf6c4c6",
+  "softwareCodeBaseCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "SecSabiDispatch.efi",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    },
+    {
+      "source": "P05ACJ CAP",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "source": "EC-region raw slice",
+      "bytes": 98304,
+      "sha256": "2c8aeabe90b844b9d5bc09a05656aa08be1ef927b2d80006e6bd4fb0cc983d04"
+    },
+    {
+      "source": "Saved capsule DSDT",
+      "bytes": 71849,
+      "sha256": "e65919be72fd7e7bd51ca6561a6a94754ea22c929743a04727188f4638dda7a5"
+    },
+    {
+      "source": "Current native x64 Sabi3.dll",
+      "bytes": 28976,
+      "sha256": "09a9714f0e11734872d60f2966edf8590ca721f0c05b2ca852a0bf20d6c006ae"
+    },
+    {
+      "source": "Current WSABI current-x86",
+      "bytes": 22920,
+      "sha256": "b68452579a3f5f898ad8ccf63d655aed62c5be221784b799cdf471da674fbdcc"
+    },
+    {
+      "source": "Current WSABI sosi-x64",
+      "bytes": 24368,
+      "sha256": "99fc3a6a93987706bb161550f70a3739590e3571134aebb60eaeb3fb5328df58"
+    },
+    {
+      "source": "Current WSABI installer-x64",
+      "bytes": 24968,
+      "sha256": "8e655ede2559c986a120d2bd4c48256c35fb2a1bd13baceecb167f7b4a6b21c9"
+    }
+  ],
+  "interpretationModel": {
+    "assumedIsa": "Intel8051 compatible",
+    "fixedLowRegionBytes": 49152,
+    "bankWindowBytes": 16384,
+    "manufacturerOrCurrentImageVerified": false,
+    "decoderIsOurDataOnlyRenderer": true,
+    "decoderSha256": "da1d3a88f9bdf8a1d6bb4e16709e200c14d21d70e4cf9730decfad5337f3ac94"
+  },
+  "genericReceiveBoundary": {
+    "firstReadinessFailurePreventsNewMessageAndCommandPost": true,
+    "readinessExhaustionSymbol": "EFI_NOT_READY",
+    "readinessExhaustionIsEfiTimeout": false,
+    "sendFailureCheckedBeforeSecondWait": false,
+    "oldPendingCompletionCanPermitNormalCopyWithoutNewPost": true,
+    "conditionalEventTraceIsHardwareObservationOrEmulation": false,
+    "repeatedEqualValueOrFixedEchoProvesFreshness": false
+  },
+  "ecMailboxBoundary": {
+    "selectedInterruptPendingSchedulerDispatcherSourceChainConnected": true,
+    "selectedReaderWritesResultBeforeDispatcherClearsCompletion": true,
+    "readerProducedResultBytes": 1,
+    "bridgeCopiedBytes": 10,
+    "allTenCopiedBytesAreNewState": false,
+    "selectedReaderOrDispatcherHasIndependentRequestSequenceOrDetailedStatus": false,
+    "completionClearIsUniqueToProtectedStateQuery": false,
+    "otherClearContextsProveObservedConcurrentRace": false
+  },
+  "strictAlternative": {
+    "bothReadinessResultsChecked": true,
+    "eitherFailureReturnsBeforeOutputCopy": true,
+    "typedExistingReaderCallbacks": 4,
+    "selectedCallbacksPreserveErrorToProvider": true,
+    "fixedSnapshotPageRatherThanModeAddressReader": true,
+    "fixedReadBitHasEcProducerAndAcpiAcPowerRoleAnchor": true,
+    "acPresenceOrSocBitIsProtectionMode": false,
+    "modeMirrorsGloballyExcluded": false,
+    "modeMirrorEstablished": false,
+    "providerPreservesDetailedCallbackErrorToWindows": false,
+    "outerNormalReturnOrAckImpliesProtectedState": false,
+    "readModifyWriteAlternativeExcluded": true,
+    "adjacentWriteExcluded": true
+  },
+  "windowsCoordination": {
+    "currentWsabiVariantsWithSameGlobalNamedMutex": 3,
+    "ordinaryWholeExchangeHeldThroughReplyCopy": true,
+    "actualAccessibleParticipatingNamedObjectRequired": true,
+    "allOtherWmiNativeAcpiFirmwareAccessExcluded": false,
+    "nativeMutexSameAsWmiMutex": false,
+    "oemWaitHasFiniteBound": false,
+    "selectedNonzeroWaitPathBypassesRelease": true,
+    "allLifecycleAndExceptionOwnershipPathsProved": false,
+    "cooperativeLockRepairsMaskedFirmwareFailure": false,
+    "cooperativeLockAddsFreshRequestCorrelation": false,
+    "previousProvidedServiceSourceBytesReverified": false
+  },
+  "sourceValidation": {
+    "firmwareStatusAssertions": 30,
+    "firmwareStatusSelectedRows": 317,
+    "callbackAssertions": 32,
+    "callbackSelectedRows": 327,
+    "ecMailboxAssertions": 25,
+    "ecMailboxSelectedRows": 155,
+    "ecIndependentLiteralAndTableAssertions": 23,
+    "ecIndependentSelectedRows": 289,
+    "windowsCoordinationAssertions": 56,
+    "windowsCoordinationSelectedRows": 1593,
+    "nativeCoordinationAssertions": 21,
+    "nativeCoordinationSelectedRows": 311,
+    "rootIndependentSelectedAssertions": 46,
+    "publicComponentReviewsPassed": 3,
+    "theseAreAppUnitTestsOrFirmwareCoveragePercent": false
+  },
+  "productCodeChanged": false,
+  "testCodeChanged": false,
+  "buildRun": false,
+  "unitTestsRun": false,
+  "previousCodeValidationOnly": {
+    "csharpPassed": 437,
+    "pythonPassed": 85,
+    "buildWarnings": 0,
+    "buildErrors": 0
+  },
+  "vendorCodeExecutedLoadedOrEmulated": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "actualExperimentMarkerAccessed": false,
+  "driverServiceSecurityFirmwareSettingsChanged": false,
+  "newRequestOrRunnableHardwareCodeConstructed": false,
+  "newExecutableOrZipProvided": false,
+  "originalVendorDataOrExecutionRecipesIncluded": false,
+  "newUserTestOrResubmissionRequired": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "newNetworkResearchOrBinaryDownloadPerformed": false,
+  "currentProtectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "nextRequirement": "Trace a protection-mode producer into an existing error-preserving state query or a dedicated query producer; establish current route suitability and fresh independent state before invoking or controlling hardware",
+  "documentValidation": {
+    "markdownFiles": 5,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "newReportAndAuditPrivacyCheckPassed": true,
+    "oldReleaseArchivesUnchanged": 4,
+    "gitDiffCheckPassed": true,
+    "publicComponentReviewsPassed": 3
+  }
+}

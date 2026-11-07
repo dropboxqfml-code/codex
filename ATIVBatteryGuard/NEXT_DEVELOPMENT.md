@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 오류 보존 경로와 보호 모드 생산자 분리 / 2026-11-07 한국 시간
+
+[EC_FRESHNESS_AND_ERROR_PATHS.md](EC_FRESHNESS_AND_ERROR_PATHS.md)를 먼저 읽습니다. 일반 중계는 첫 대기 EFI_NOT_READY로 새 게시를 하지 못한 뒤 이전 작업이 끝나 두 번째 대기가 성공하면 기존 데이터를 정상으로 복사할 수 있습니다. 소스가 허용하는 조건부 사건 순서이며 실행·에뮬레이션·실기 관측이 아닙니다. EC의 선택한 바이트 읽기는 결과 한 바이트만 갱신하고 독립 요청 순번이 없습니다. 중계 복사 10바이트를 전부 신선한 상태로 해석하지 않습니다.
+
+첫·두 번째 대기 오류를 모두 보존하는 별도 helper와 등록 callback 네 개를 연결했습니다. 보호 모드의 범용 주소 읽기와 다르게 고정 상태 페이지를 읽습니다. 고정 비트 하나는 EC 생산자·DSDT ACEX/PWRS/_PSR에 맞는 AC 전원 상태입니다. 공통 제공자의 오류 축약·외부 ACK는 여전하며 읽기 후 쓰기 경로는 제외합니다. 현재 WSABI 세 변형의 같은 Global mutex는 협력 호출자의 일반 전체 교환을 감싸지만 모든 native/ACPI/펌웨어 호출자 배제나 응답 신선도·송신 오류 복구는 아닙니다. 원본의 무한 대기·일부 해제 누락을 앱에 복제하지 않습니다.
+
+다음은 오류 보존 조회가 읽는 페이지에 보호 모드가 반영되는 생산자 또는 별도 전용 조회 생산자를 찾는 것입니다. 모드·임계값의 독립 상태와 현재 경로 적합성이 연결되기 전 요청·live backend·제어·OEM 시험을 추가하지 않습니다. host offset과 내부 주소를 숫자로 대응시키지 않고 기존 단발 예약은 접근하지 않습니다. 같은 FF/잠금 후보의 반복 세분화보다 새 보호 상태 생산자 근거를 우선합니다.
+
+private cache는 20261107/bridge-status-alternatives-next(하위 strict-reader-callbacks), ec-mailbox-lifecycle-next(하위 independent-xrefs), windows-exchange-coordination-next(하위 native-independent), readback-freshness-integration-next입니다. 통합 독립 검산 46개 통과. 앱·테스트·EXE·기존 ZIP 미변경, 이번 빌드·단위 테스트 미실행이며 437/85·경고오류0은 이전 5d77df5 기록입니다. 실제 제어 Unsupported, 추가 실기·재제출·드라이버/서비스/보안·펌웨어 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — 저장값 조회 후보와 WMI 중계 소스 연결 / 2026-11-07 한국 시간
 
 [EC_READBACK_AND_WINDOWS_BRIDGE.md](EC_READBACK_AND_WINDOWS_BRIDGE.md)를 먼저 읽습니다. 조건부 EC 모델에서 범용 저장 바이트 읽기 경로를 찾아 보호 모드·임계값 조회 후보를 확보했습니다. 전용 보호 getter·충전기 적용 read-back·실행 승인이 아니며 인접 쓰기와 구분합니다. 특정 초기화 분기의 범위 지우기는 모드·임계값을 포함하지만 이후 복원이나 Windows 재부팅 지속성을 입증하지 않습니다. host EC offset과 내부 주소를 숫자로 대응시키지 않습니다.

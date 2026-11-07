@@ -1,5 +1,23 @@
 # 다음 개발 재개 메모
 
+## 최신 — callback 객체의 선택·복사·정리 연결 / 2026-11-07
+
+[CALLBACK_SOURCE_CAPTURE_UPDATE.md](CALLBACK_SOURCE_CAPTURE_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. HEAD3323778 다음으로 WsabiWmiCallbackInvocationSource<T:class,IDisposable>를 구현했습니다. constructor는 명시적 Action<request,Action<T>,Action<int>> dispatch와 Func<T,byte[]> reader만 받으며 기본 SDK/endpoint/profile/frame/실기 기능은 없습니다. 직접 source Invoke도 인스턴스당1회이며 이것은 delegate 내부 실제 SDK method 수·하드웨어 권한의 인증이 아닙니다.
+
+첫 terminal 전 window의 객체 notification을 null/동일참조 반복까지 포함해0/1/>1로 셉니다. 첫T는 중복에도terminal까지보유, 다른T는lock에서Dispose등록→밖에서실행합니다. 첫terminal의성공status/정확히1T일때reader최대1, 첫terminal이비영이면reader0/outputnull입니다. null/oversize4096초과/reader나관련Dispose예외는고정capture실패입니다. readerbyteview는복사동안안정적이라는계약이며sourceclone을selectedDispose전에수행하고transport가다시clone합니다. cap은decoder허용길이가아니며padding/truncate없음입니다. 실제SDKproperty/CIM형식검사는다음Windowsreader의책임입니다.
+
+firstT→processing은terminal선택과같은lock에서옮깁니다. processing중같은T는동시정리하지않고CWT<T,Disposal(noTrefs)>의weakidentity기록으로정리후다시전달돼도Dispose시도1회만합니다. providerEquals/GetHashCode/ToString·reader/Dispose/observer호출은lock안에서실행하지않습니다. terminalForwarded+selectedWorkEnded+pendingDisposals0에서publicationclaim을원자적으로잡고한번capture보고합니다. terminal뒤~claim전lateT의등록된정리도join합니다. claim뒤late객체정리는독립local이어야한다는공급자계약이며미래SDKcallback부재/전체COMcleanup/providerstop증명이아닙니다.
+
+첫terminalforward가완료되기전상충status가앞서지않게defer하고결과게시전상충을고정실패로보존합니다. 동일중복/이미게시된뒤late통지는과거결과나새시도를바꾸지않습니다. dispatchthrow는원문없는고정호출실패로transport에전달하고catch/finally에서객체/callback을임의로닫지않습니다. source가attempt를보유해terminal없는throw후선택T도보유하며Unknown/pending/lease/hostclose를유지합니다. SDKsink소실복구·COMthread적합성·확실한미진입을추정하지않습니다.
+
+기본9+수명6의새15회귀포함505통과0실패0skip·전체net48Release빌드경고0/오류0입니다. 첫기본8개로498,수명6통합으로504,최종동시상충terminal순서1개추가후505를통과했습니다. 수명회귀는stop뒤IsCompletionUnknown으로source.Invoke실제종료를확인한후독립callbackTask에서reader/selectedDispose/claim전lateDispose/duplicateDispose재진입을막아기존call-exitgate만검증하는빈틈을피했습니다. finally에서gate/합성terminal/task를join했습니다. 이전private콘솔48/child2·SDK8/48·원문관찰수는앱수에합산하지않습니다. 기존SDK8.0.427/cache/ILtask설정·no-restore·UseSharedCompilation=false·m1을썼고새dependency/SDK패치/XAMLskip없음입니다.
+
+변경은Core새1+tests4(새2/등록/프로젝트)+문서/정제기록입니다. 실제SDK reader/eventadapter·앱Main/UI·oldBackend/Program/encoder/사용완료예약/배포ZIP은그대로입니다. 실제WMI/OEM/hardware/Global객체·삼성원본·marker접근/driver/service/security/firmware변경0입니다. A/B호출수·gate상태영향·권한유지,실제보호조회/제어Unsupported·새실기/동일자료제출불필요입니다.
+
+다음은실제SDK타입의outData/Bytes형식확인·분리Windowsreader와event등록/terminal소실/준비실패경계를구체화하는작업입니다. 새source의fake통과를실기준비/승인으로바꾸거나oldconsumedBackend를그대로재연결하지않습니다. claim뒤late정리독립성·COMthreading·terminal출처는실제adapter에서검토합니다. publicframe/noncegenerator·하드웨어호출·승인질문은추가하지않았습니다.
+
+private cache: 20261107/callback-source-validation(first/integrated/final json·logs,solution-build.log),callback-capture-join-review-next,callback-source-independent-review-next. 아래는 이전 기록입니다.
+
 ## 최신 — RunAndCloseAsync와 fake 콘솔 host 검증 / 2026-11-07
 
 [INVOCATION_HOST_LIFETIME_UPDATE.md](INVOCATION_HOST_LIFETIME_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. HEAD846951f의 Session에 RunAndCloseAsync를 추가했습니다. 별도 tracker 없이 ExchangeAsync bounded 결과→RequestCloseAsync 시작→짧은 동기 publishResult→finally 같은 close Task await 흐름입니다. null callback은 진입 전 거부하고 caller token/두 번째 timeout으로 close 대기를 취소하지 않습니다. unknown은 표시 후에도 host task pending, 표시 예외도 close 뒤 task fault입니다. Main은 method를 한 번 호출해 수명으로 await해야 하며 async void callback/UI 자동 전환·전역 report1회 보장은 없습니다.

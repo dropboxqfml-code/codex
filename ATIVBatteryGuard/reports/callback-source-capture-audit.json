@@ -1,0 +1,167 @@
+{
+  "dateUtc": "2026-11-07",
+  "previousRepositoryCommit": "3323778",
+  "scope": "Generic prepared callback source owns and detaches selected typed output for existing managed session; no actual SDK adapter",
+  "implementation": {
+    "sourcePins": [
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiCallbackInvocationSource.cs",
+        "bytes": 9873,
+        "sha256": "8552634c42d9dd32f67db45754b1fda402a85f2407dce99115e9ee8323e24285"
+      },
+      {
+        "projectFile": "tests/WsabiWmiCallbackSourceTests.cs",
+        "bytes": 13811,
+        "sha256": "3e02e719909bd3dbbe89f1b7a67e6055042267bab84e377287232284969138c1"
+      },
+      {
+        "projectFile": "tests/WsabiWmiCallbackSourceLifetimeTests.cs",
+        "bytes": 21044,
+        "sha256": "a6b6c2d3859e6943667e2507bcbdff74aa933ce121c82672e2ed53348e487166"
+      },
+      {
+        "projectFile": "tests/Program.cs",
+        "bytes": 33043,
+        "sha256": "cb6a825717c7f33383ed508867b04f8c40580ab626d5e97cdde8d596eebd69f4"
+      },
+      {
+        "projectFile": "tests/ATIVBatteryGuard.PortableTests.csproj",
+        "bytes": 3379,
+        "sha256": "8e611579ce38ba3d0f720d2ee969a71d554f3735a16a650133eb142e5e0f505d"
+      }
+    ],
+    "coreFilesAdded": 1,
+    "testFilesIncludingRegistrationAndProjectChanged": 4,
+    "consumer": "RunAndCloseAsync -> Session/FrameExchange -> cooperative owner -> Bound -> InvocationSnapshotTransport -> CallbackInvocationSource<T> -> supplied dispatch",
+    "explicitDependencies": "Action<request, Action<T>, Action<int>> dispatch and Func<T, byte[]> reader; T class and IDisposable",
+    "constructorInvokesDispatchOrReader": false,
+    "directSourceInvokeAtMostOncePerInstance": true,
+    "sourceInvokeOnceAuthenticatesActualSdkMethodCountHardwareIdentityOrPermission": false,
+    "inputNullGuardBeforeSingleUseEntry": true,
+    "allHardwareCapabilitiesAdvertisedFalse": true,
+    "countWindow": "Notifications before first terminal; null and repeated identities count; saturated at two",
+    "selectedReaderAtMostOnceForSuccessfulFirstStatusAndExactlyOneNonNullObject": true,
+    "newSdkCimPropertyVerifierImplemented": false,
+    "firstObjectRetainedUntilTerminalEvenAfterDuplicates": true,
+    "readerByteViewStableDuringCopyIsSupplierContract": true,
+    "maximumRetainedCaptureBytes": 4096,
+    "sourceClonesBeforeSelectedDisposeThenTransportClonesAgain": true,
+    "retentionCapPadsTruncatesOrAuthorizesDecoderLengths": false,
+    "sdkObjectsExceptionsContextsOrLazyReadersForwardedToTransport": false,
+    "selectedReaderOrRelatedDisposeFailureBecomesFixedCaptureFailure": true,
+    "originalExceptionOrInnerExceptionRetained": false,
+    "processingReferenceAndWeakIdentityTombstonesSuppressDuplicateDisposal": true,
+    "maximumDisposeAttemptsPerObjectReferenceWithinThisSource": 1,
+    "weakIdentityValuesHoldObjectKeysStrongly": false,
+    "providerEqualityHashingOrTextInvoked": false,
+    "dispatchReaderDisposeOrObserverCallsRunUnderCaptureLock": false,
+    "firstNonzeroTerminalInvokesReader": false
+  },
+  "captureJoin": {
+    "minimumClaim": "terminalForwarded AND selectedWorkEnded AND pendingDisposals == 0",
+    "disposeRegisteredBeforeExecutionOutsideLock": true,
+    "claimAndCleanupAdmissionAtomic": true,
+    "terminalAfterDuplicateDisposalReentrySynchronouslyWaitsForItself": false,
+    "lateObjectDisposalRegisteredAfterTerminalBeforeClaimJoined": true,
+    "postClaimLateObjectsMustNeedOnlyIndependentLocalCleanup": true,
+    "publicationClaimEqualsObserverSettleReturn": false,
+    "sourceCutoffAuthenticatesFutureSdkCallbackAbsenceOrEntireProviderStop": false,
+    "sameTerminalDuplicateReplacesStatusOrPostsSecondCapture": false,
+    "conflictingTerminalObservedBeforeResultPublicationPreservedAsFixedFailure": true,
+    "postPublicationLateReportRetractsPublishedResultOrReopensAttempt": false,
+    "concurrentConflictMayOvertakeFirstForwardedStatus": false
+  },
+  "invocationFailure": {
+    "dispatchThrowReplacedByFixedFailureWithoutInnerException": true,
+    "dispatchCatchOrFinallyClosesCallbacksOrDisposesSelectedObject": false,
+    "sourceRetainsSelectedObjectWhileUnknownAndSourceRooted": true,
+    "dispatchThrowWithoutTerminalBecomesProvenNotDispatchedOrTerminal": false,
+    "unknownTimeoutOrCallerStopEndsLeaseOrHostClose": false,
+    "earlyTerminalThenDispatchThrowCanSettleLifetimeWithFailedResult": true,
+    "sdkSinkLossOrMissingTerminalRecovered": false,
+    "actualSdkPreparationsOrComThreadingAuthenticated": false
+  },
+  "verification": {
+    "newRegisteredRegressions": 15,
+    "basicGroups": 9,
+    "lifetimeGroups": 6,
+    "firstBasicEightGroups": {
+      "passed": 498,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 498,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "integratedBeforeLastConcurrentConflictGroup": {
+      "passed": 504,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 504,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "finalResult": {
+      "passed": 505,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 505,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0
+    },
+    "sameProductionSourceTransportSessionAndHostUsed": true,
+    "objectsDispatchReaderGateAndLeaseAreFakes": true,
+    "existingSyntheticRequestReplyFixturesReused": true,
+    "independentCallbackTasksAfterActualSourceStackExitUsedForJoinTests": true,
+    "callExitObservedViaStoppedMissingTerminalUnknownState": true,
+    "testBlockedOperations": [
+      "Selected reader",
+      "Selected disposal",
+      "Post-terminal pre-claim late disposal",
+      "Pre-terminal duplicate disposal with terminal reentry"
+    ],
+    "testTerminalAndCallbackCases": [
+      "No/null/repeated/distinct/malformed capture",
+      "Reader throw including cancellation and null/oversized bytes",
+      "Copy before disposal mutation",
+      "Nonzero terminal with reader zero",
+      "Historical and reentrant same-reference disposal once",
+      "Terminal before object cannot revive result",
+      "Same and conflicting statuses",
+      "Concurrent first-terminal forwarding barrier",
+      "Dispatch throw before or after terminal",
+      "Unknown timeout or caller stop retains host and lease"
+    ],
+    "allGatesAndFakeCallbacksJoinedInFinally": true,
+    "syntheticFinalCleanupProvesActualSdkLateCompletion": false,
+    "priorPrivateConsoleOrSdkProofAssertionsAddedToAppCount": false,
+    "existingUnnamedMutexRegressionsAreOemGlobalAccess": false,
+    "independentSourceAndRegressionReadReviewApproved": true,
+    "independentReviewerReranSuite": false,
+    "newDependencySdkPatchOrSkippedXamlStep": false
+  },
+  "decision": {
+    "genericTypedCallbackBridgeImplemented": true,
+    "actualSystemManagementReaderEventAdapterOrDefaultSdkSourceConnected": false,
+    "newHardwareFrameCommandProfileOrNonceGeneratorCreated": false,
+    "actualProtectionReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "existingABCallLimitsGateStateEffectsOrExecutionApprovalChanged": false,
+    "oldConsumedBackendReconnectedOrReservationAccessed": false,
+    "hardwareExecutionApprovalRequested": false
+  },
+  "changeBoundary": {
+    "mainAppUiDefaultBackendOldSdkBackendProgramOrEncoderChanged": false,
+    "mainAppOrDeviceToolsExecuted": false,
+    "ownPortableSafetySuiteExecuted": true,
+    "actualWmiSdkProviderOemHardwareGlobalObjectOrConsumedMarkerAccessed": false,
+    "vendorOriginalExecutedLoadedOrEmulated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "newOfficialSourceRuntimeHardwareFactsOrFirmwareAnalysisPercentageClaimed": false,
+    "applicationNetworkCodeAdded": false,
+    "distributionArchiveUpdated": false,
+    "additionalNotebookRunOrRepeatedUploadRequested": false
+  }
+}

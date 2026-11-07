@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — typed callback source 구현 / 2026-11-07
+
+**구현:** [CallbackInvocationSource](CALLBACK_SOURCE_CAPTURE_UPDATE.md)는 명시적 dispatch/reader의 T 객체를 terminal window에서 선택하고, bounded clone·관련 Dispose 뒤 byte[]/고정 실패만 기존 transport에 전달합니다. T의 형식/terminal 출처는 공급자 계약이며 실제 SDK 타입 검사·event adapter는 아직 없습니다. claim 뒤 late 정리가 독립 local이라는 전제와 source Invoke1회가 실제 SDK 횟수를 인증하지 않는 한계를 유지합니다.
+
+**검증:** 기본9+수명6의 새15개 포함505개 통과·전체 net48 Release 빌드 경고/오류0입니다. source stack이 끝난 뒤 독립 callback에서 막힌 reader/selected·duplicate·late Dispose를 만들어 host/lease 유지·terminal 재진입·중복 정리 억제를 검증했습니다. 합성 terminal finally 정리는 실제 SDK 완료 보장이 아니며 이전 private 검산 수를 합산하지 않습니다.
+
+**실제 연결:** SDK reader/event adapter·실제 WMI/OEM/하드웨어·기존 Backend/예약·A/B 범위·배포 ZIP은 그대로입니다. SDK sink 소실·COM threading·모든 provider 활동 종료를 해결한 것으로 확대하지 않습니다. 실제 보호 조회·충전 제어 Unsupported·새 실기/재제출 불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — host 결과 표시와 종료 대기 / 2026-11-07
 
 **구현:** [RunAndCloseAsync](INVOCATION_HOST_LIFETIME_UPDATE.md)는 bounded 결과 뒤 admission을 닫고 표시 callback을 실행하며 finally에서 source/자기·공유 owner의 정리를 기다립니다. 시간 초과·취소·표시 예외가 Main의 조기 반환을 허용하지 않습니다. 새 tracker·실제 SDK source·앱 hook은 추가하지 않았습니다.

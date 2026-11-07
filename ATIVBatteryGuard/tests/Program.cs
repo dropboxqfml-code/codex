@@ -414,6 +414,8 @@ internal static partial class Program
         RegisterWsabiWmiCooperativeChannelTests();
         RegisterWsabiWmiInvocationSessionTests();
         RegisterWsabiWmiInvocationHostTests();
+        RegisterWsabiWmiCallbackSourceTests();
+        RegisterWsabiWmiCallbackSourceLifetimeTests();
         RegisterWsabiWmiWindowsMutexGateTests();
     }
 

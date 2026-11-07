@@ -1,5 +1,7 @@
 # 단발 호출의 결과 표시와 host 종료 대기 — 2026-11-07
 
+**후속:** [callback source 구현](CALLBACK_SOURCE_CAPTURE_UPDATE.md)에서 선택 객체의 복사·정리와 세션 연결을 추가했습니다. 새15개 포함505회귀·전체 빌드 경고/오류0이며 실제 SDK reader/event adapter·장치 호출은 아직 없습니다. 아래는 당시 host 구현 기록입니다.
+
 **기존 세션을 끝까지 기다리는 실행 흐름을 구현했습니다.** `WsabiWmiInvocationSession.RunAndCloseAsync`는 제한 시간 안에 얻은 결과를 표시한 뒤에도 관련 정리가 끝나기 전에는 반환하지 않습니다. 시간 초과 결과를 출력한 직후 Main이 끝나 background owner와 잠금이 사라지는 사용을 피하기 위한 실제 소비 경로입니다. [이전 세션 구현](MANAGED_INVOCATION_SESSION_UPDATE.md)의 후속이며 새 수명 tracker를 만들지 않았습니다.
 
 ## 구현한 흐름

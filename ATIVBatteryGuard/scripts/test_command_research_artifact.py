@@ -273,6 +273,48 @@ class ArtifactIntakeTests(unittest.TestCase):
             self.assertFalse(report["sourcePayloadIntegrityVerified"])
             self.assert_closed(report)
 
+    def test_ssconfig_requires_size_and_hash_before_zip_inspection(self):
+        data = zip_bytes()
+        cases = (
+            (intake.SPECS["ssconfig-amor3"], "SourceSizeMismatch"),
+            (intake.ArtifactSpec("ssconfig-amor3"), "SourceSizeMismatch"),
+            (intake.ArtifactSpec("ssconfig-amor3", len(data)), "SourceHashMismatch"),
+            (intake.ArtifactSpec("ssconfig-amor3", len(data), "0" * 64), "SourceHashMismatch"),
+        )
+        for spec, expected in cases:
+            with self.subTest(expected=expected, spec=spec):
+                with patch.object(intake, "_zip_counts", side_effect=AssertionError("must not parse")) as parsed:
+                    report = intake.inspect(data, spec)
+                parsed.assert_not_called()
+                self.assertEqual(report["status"], expected)
+                self.assertFalse(report["sourcePayloadIntegrityVerified"])
+                self.assert_closed(report)
+
+    def test_matching_ssconfig_observation_does_not_authenticate_or_authorize(self):
+        data = zip_bytes("PRIVATE-USER/serial-unique-927361.bin")
+        spec = intake.ArtifactSpec("ssconfig-amor3", len(data), hashlib.sha256(data).hexdigest())
+        report = intake.inspect(data, spec)
+        self.assertEqual(report["status"], "ObservedSourcePayloadMatched")
+        self.assertTrue(report["sourcePayloadIntegrityVerified"])
+        self.assertEqual(report["containerEntryCount"], 1)
+        self.assertEqual(report["containerUncompressedBytes"], len(b"synthetic inert payload"))
+        self.assert_closed(report)
+        self.assertNotIn("PRIVATE-USER", json.dumps(report))
+        self.assertNotIn("serial-unique-927361", json.dumps(report))
+        mutated = data[:-1] + bytes([data[-1] ^ 1])
+        self.assertEqual(intake.inspect(mutated, spec)["status"], "SourceHashMismatch")
+
+    def test_ssconfig_matching_hash_still_requires_safe_complete_zip(self):
+        original = zip_bytes(payload=b"unique payload marker")
+        damaged = original.replace(b"unique payload marker", b"tamper payload marker", 1)
+        for data in (damaged, original[:-1], zip_bytes("../private.bin"), b"not a ZIP"):
+            with self.subTest(data=data[:20]):
+                spec = intake.ArtifactSpec("ssconfig-amor3", len(data), hashlib.sha256(data).hexdigest())
+                report = intake.inspect(data, spec)
+                self.assertEqual(report["status"], "InvalidZipContainer")
+                self.assertFalse(report["sourcePayloadIntegrityVerified"])
+                self.assert_closed(report)
+
     def test_pe_header_optional_header_section_and_truncation_bounds(self):
         original = pe_bytes()
         mutations = [(60, "<L", 63), (60, "<L", 0xffffffff),
@@ -316,10 +358,13 @@ class ArtifactIntakeTests(unittest.TestCase):
             for arguments, expected, code in (
                 (["--kind", "p05acj", "--input", str(path)], "SourceSizeMismatch", 1),
                 (["--kind", "legacy-ble", "--input", str(path)], "SourceSizeMismatch", 1),
+                (["--kind", "ssconfig-amor3", "--input", str(path)], "SourceSizeMismatch", 1),
                 (["--kind", "private-invalid-kind", "--input", str(path)], "InvalidArguments", 1),
                 (["--kind", "legacy-ble", "--input", str(path), "--expected-sha256", "private"],
                  "InvalidArguments", 1),
                 (["--kind", "p05acj", "--input", str(path), "--expected-sha256", "private"],
+                 "InvalidArguments", 1),
+                (["--kind", "ssconfig-amor3", "--input", str(path), "--expected-sha256", "private"],
                  "InvalidArguments", 1),
                 (["--kind", "p05acj", "--input", str(path) + "-missing"], "InputUnavailable", 1),
             ):
@@ -342,6 +387,9 @@ class ArtifactIntakeTests(unittest.TestCase):
         self.assertEqual(intake.SPECS["p05acj"].expected_size, 5822368)
         self.assertEqual(intake.SPECS["p05acj"].expected_sha256,
                          "374c768a09211ce8da6e0812bde870e3b90957bf8b38e2289cac4dc52857e7fd")
+        self.assertEqual(intake.SPECS["ssconfig-amor3"].expected_size, 3771257)
+        self.assertEqual(intake.SPECS["ssconfig-amor3"].expected_sha256,
+                         "1681f1a5a10b3d758ce1b925efbe7ec4360d3ed33c7d3fb189a5bf69fff699c2")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,247 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "New Model940X3G Amor3 OEM package acquisition, scoped static component review and developer offline intake pin; no protection query or app control implementation",
+  "previousRepositoryCommit": "97193af301b7818cc5cc9a3cb1b3846fb0adf71e",
+  "unchangedCsharpCodeBaseCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "Model940X3G WB catalog 0",
+      "bytes": 440536,
+      "sha256": "60cd213f900c93b7e9947fdbc998c0dda7ce8628c0180bb63a355f1d5ed0bd6f"
+    },
+    {
+      "source": "Model940X3G WB catalog 1",
+      "bytes": 454048,
+      "sha256": "e6ce8071684aaee64c648b82c827e4d25a8846760eb421395897ca1cead2adae"
+    },
+    {
+      "source": "Model940X3G W7 catalog 2",
+      "bytes": 352430,
+      "sha256": "6761dd143c5d14aed5b51ee67d7fc64b2255a913865879766d7aa5e45b4b566a"
+    },
+    {
+      "source": "Model940X3G W7 catalog 3",
+      "bytes": 352704,
+      "sha256": "9f0c25af3986dbd4dd5809cb63c174c299af2040deab244d87903594fd1c94cb"
+    },
+    {
+      "source": "Model940X3G A1 catalog 4",
+      "bytes": 345236,
+      "sha256": "fa64e5ad43d9c23f5d66d81b634b1d92ec1dd16a6ba10ad5fc0930a4db3385e2"
+    },
+    {
+      "source": "Model940X3G A1 catalog 5",
+      "bytes": 310438,
+      "sha256": "ae8c9c474467b2a124e0c73e05f752699ccace2479454585485ce7ca5657fe84"
+    },
+    {
+      "source": "BASW-A0141A02.ZIP",
+      "bytes": 3771257,
+      "sha256": "1681f1a5a10b3d758ce1b925efbe7ec4360d3ed33c7d3fb189a5bf69fff699c2"
+    },
+    {
+      "source": "SSC package member IdleStateFanCtrl.exe",
+      "bytes": 96064,
+      "sha256": "d6af2f03fae88affd1a68e00ef31756408e061ff69ad9c5d161131964172c251"
+    },
+    {
+      "source": "SSC package member IdleStateFanCtrl.xml",
+      "bytes": 3268,
+      "sha256": "5a660c862f8ebae341e28af6af8f9778cd779508f5e4ba782ec5c8e05b4d6001"
+    },
+    {
+      "source": "SSC package member Inst.exe",
+      "bytes": 518024,
+      "sha256": "6694519add0fffbc1a1fdedbcd8d7fcd7b546c39b7a2aa6d81b3c17b5ca24abc"
+    },
+    {
+      "source": "SSC package member Inst.ini",
+      "bytes": 3486,
+      "sha256": "aca6049cb0715e0b83864745fe00f9e940aa1314effb5c4e3cac3738fda12c60"
+    },
+    {
+      "source": "SSC package member mfc100u.dll",
+      "bytes": 4368720,
+      "sha256": "abeb2d80384af1b1a5fae7fc21c3f6ead04cceb01d34a4255a14a194dd4ccfe2"
+    },
+    {
+      "source": "SSC package member msvcr100.dll",
+      "bytes": 768848,
+      "sha256": "649a7ab8e3b5c0940812e40eafc8f004979bb48bfc8f4bc7db9f2cbcdd715344"
+    },
+    {
+      "source": "SSC package member SamsungConfigurationMonitor.exe",
+      "bytes": 1779008,
+      "sha256": "8a0d87b214623f424b7f493034bca3271e35fc4376bbfa3f72a1491d33b72281"
+    },
+    {
+      "source": "SSC package member SamsungSystemConfiguration.exe",
+      "bytes": 23872,
+      "sha256": "8ed2cd9dbeecb55577692c2c9b9450f7cf8df7efadf51ff81631fc346b41a9c1"
+    },
+    {
+      "source": "SSC package member SamsungSystemConfigurationAdd.bat",
+      "bytes": 857,
+      "sha256": "b4fc28fe70a073cb6c190e14866d1639c50aac2e0d5099dd4248daf50c28e302"
+    },
+    {
+      "source": "SSC package member WSABI.dll",
+      "bytes": 22920,
+      "sha256": "564b640d62db2a4e4b56c6331e0e526bad2ac1fcf438a41a9e5241551f457b6e"
+    }
+  ],
+  "catalogAndAcquisition": {
+    "savedMatchingModelBoms": 6,
+    "savedMatchingModelItems": 233,
+    "savedDistinctDownloadFilenames": 71,
+    "focusedRelevantRows": 18,
+    "focusedDistinctFilenames": 9,
+    "newPackageName": "SamsungSystemConfiguration for Amor3",
+    "newPackageVersion": "1.0.0.7",
+    "newArchiveFileName": "BASW-A0141A02.ZIP",
+    "newArchiveCount": 1,
+    "matchingWbCatalogEntries": 2,
+    "sameLocatorCountedOnce": true,
+    "finalPublicSourceUrl": "https://downloadcenter.samsung.com/content/SW/201405/20140527113613244/BASW-A0141A02.ZIP",
+    "httpStatus": 200,
+    "archiveBytes": 3771257,
+    "archiveSha256": "1681f1a5a10b3d758ce1b925efbe7ec4360d3ed33c7d3fb189a5bf69fff699c2",
+    "archiveFiles": 10,
+    "uncompressedBytes": 7585067,
+    "catalogSizesMatchObservedBytes": true,
+    "crcAndSafePathsDuplicateCaseAndSymlinkChecksPassed": true,
+    "normalManufacturerRedirectProxyAndTlsVerificationUsed": true,
+    "firstSandboxAttemptFailedAndSameRequestRetriedOutsideSandbox": true,
+    "modelCatalogLineageProvesCurrentWin10OrChargeCompatibility": false,
+    "actualUserSerialOrDeviceIdentifiersUsed": false,
+    "otherGeneralSupportPackagesDownloadedWithoutRelevantContractEvidence": false
+  },
+  "newSscComponentReview": {
+    "bundledWsabiMatchesHistoricalServiceSha256": true,
+    "historicalMonitorExactByteIdentityEstablished": false,
+    "monitorBuildsExeDirectoryPlusWsabiPathBeforeLoadLibrary": true,
+    "currentRuntimeDllIdentityObserved": false,
+    "selectedMonitorCallsHaveFanQueryAndSetterContext": true,
+    "monitorInput80MeansBattery80Percent": false,
+    "initializationOrBiosModeImpliesProtectedState": false,
+    "serviceLaunchesMonitorThroughProcessHelperInSource": true,
+    "idleWorkerSendsMonitorWindowMessagesInSource": true,
+    "installerWin8SectionDeclaresServiceAndIdleTask": true,
+    "anyOriginalInstallerScriptServiceTaskOrOemFunctionRun": false
+  },
+  "retainedPackageNewCoverage": {
+    "w7ChargingOnlyArtifact": {
+      "name": "SettingsChargingOnlyMode.exe",
+      "bytes": 5609280,
+      "sha256": "9d804bad920e1bebd13412126f3ab8d0aa61e4aec6f22c6a324014788c9ddeef",
+      "role": "USB/tablet charging-only mode",
+      "previouslyAcquiredPackage": true,
+      "newlyScopedArtifact": true,
+      "laptopProtectionContractEstablished": false
+    },
+    "v21AddedOsdPaths": [
+      "sourcedir/cmdserver/settings_osd_win10.exe",
+      "sourcedir/cmdserver/osd_configuration.ini"
+    ],
+    "v21OsdNamedEventConsumerConnected": true,
+    "v21ActualOsGuardOrDeviceSelectionEstablished": false,
+    "selectedV18V21LogicalPairs": 20,
+    "selectedOwnershipChangesEstablishNewBatteryQuery": false,
+    "completeSemanticEquivalenceClaimedFromRelocationMask": false,
+    "currentLocalizedBleHelpResources": 33,
+    "localizedHelpIsModelAllowlistOrCommandSupport": false,
+    "selectedMsiComponentConditionsAreOsSelection": true,
+    "msiCustomActionsAlsoIncludeInstallationStateConditions": true,
+    "modelMetadataSource": "CommandSystemInfo.dll",
+    "currentModelAllowlistOrProtectedStateContractEstablished": false,
+    "wholePackageAbsenceOrCurrentRuntimeCompatibilityClaimed": false
+  },
+  "developerIntake": {
+    "fixedKind": "ssconfig-amor3",
+    "fixedArchiveBytes": 3771257,
+    "fixedArchiveSha256": "1681f1a5a10b3d758ce1b925efbe7ec4360d3ed33c7d3fb189a5bf69fff699c2",
+    "sizeAndHashGateBeforeZipParsing": true,
+    "unpinnedOrMismatchedSourceAccepted": false,
+    "matchingSourceStillRequiresBoundedZipCrcAndSafePathChecks": true,
+    "cliCanOverrideExpectedSizeOrDigest": false,
+    "actualArchiveCliResult": "ObservedSourcePayloadMatched",
+    "actualArchiveEntryCount": 10,
+    "actualArchiveUncompressedBytes": 7585067,
+    "sourcePayloadIntegrityMeansObservedIdentityAndContainerOnly": true,
+    "authenticodeVerified": false,
+    "currentModelCompatibilityVerified": false,
+    "batteryCommandContractVerified": false,
+    "canInvokeMethods": false,
+    "canWriteHardware": false,
+    "toolExtractedOrExecutedOriginalData": false,
+    "toolHasNetworkOrVendorExecutionFeatureAdded": false
+  },
+  "validation": {
+    "pythonTestsRun": true,
+    "pythonPassed": 88,
+    "pythonFailures": 0,
+    "pythonSkipped": 0,
+    "newPythonTests": 3,
+    "pythonCommand": "python3 -m unittest discover -s scripts -p 'test_*.py' -v",
+    "actualNewArchiveCliRun": true,
+    "independentCodeReviewPassed": true,
+    "catalogAssertions": 64,
+    "independentCatalogAssertions": 42,
+    "monitorBindingAssertions": 30,
+    "monitorIndependentAssertions": 40,
+    "monitorIndependentRows": 426,
+    "monitorAdditionalPathAssertions": 24,
+    "monitorPathRowsOverlapBaseReview": true,
+    "configurationAssertions": 51,
+    "configurationSelectedRows": 272,
+    "independentMsiAssertions": 36,
+    "independentConfigurationReviewPassed": true,
+    "usbArtifactAssertions": 30,
+    "usbArtifactSelectedRows": 239,
+    "v21AddedConsumerAssertions": 31,
+    "v21AddedConsumerSelectedRows": 90,
+    "v21SelectedDiffAssertions": 82,
+    "v21SelectedDeltaRows": 28,
+    "publicSourceComponentReviewsPassed": 3,
+    "publicCodeClaimReviewPassed": true,
+    "staticCheckCountsAreAppUnitTestsOrFirmwareCoveragePercent": false,
+    "csharpBuildRun": false,
+    "csharpTestsRun": false,
+    "previousCsharpVerificationOnly": {
+      "passed": 437,
+      "buildWarnings": 0,
+      "buildErrors": 0
+    }
+  },
+  "developerPythonToolChanged": true,
+  "developerPythonTestsChanged": true,
+  "productCsharpOrWpfCodeChanged": false,
+  "newExecutableOrZipProvided": false,
+  "originalVendorDataOrExecutionRecipesIncluded": false,
+  "vendorCodeExecutedLoadedOrEmulated": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "actualExperimentMarkerAccessed": false,
+  "driverServiceTaskRegistrySecurityFirmwareSettingsChanged": false,
+  "newQueryRequestOrRunnableHardwareCodeConstructed": false,
+  "newUserTestOrResubmissionRequired": false,
+  "runtimeAppNetworkAdded": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "developerNetworkUsedForNewSourceAcquisition": true,
+  "newSafeProtectedStateQueryContractEstablished": false,
+  "currentProtectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "nextRequirement": "New current-model evidence connecting protection-state producer, fixed query, preserved errors, fresh request correspondence and Windows return; do not treat fan/USB/OSD roles or archive identity as charge-control progress",
+  "documentValidation": {
+    "markdownFiles": 6,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "newReportAndAuditPrivacyCheckPassed": true,
+    "oldReleaseArchivesUnchanged": 4,
+    "gitDiffCheckPassed": true,
+    "publicSourceComponentReviewsPassed": 3,
+    "independentCodeAndPublicCodeClaimReviewsPassed": true
+  }
+}

@@ -1,4 +1,4 @@
-"""Developer-only offline intake; never execute, extract, or authenticate firmware.
+"""Developer-only offline intake; never execute, extract, or authenticate OEM data.
 
 The legacy reference is pinned LFS metadata; the P05ACJ reference is previously
 observed download bytes, not authenticated manufacturer firmware. Neither a hash
@@ -37,11 +37,16 @@ class ArtifactSpec:
 # P05ACJ: ITEM_20140901_21421_WIN_P05ACJ.exe, observed after the user
 # published the environment. HTTP source, Authenticode not verified. This pin
 # binds subsequent analysis to the same bytes; it is not a trust anchor.
+# SSC Amor3: BASW-A0141A02.ZIP 1.0.0.7, observed through the Model940X3G
+# catalog and normal manufacturer download redirect. The pin is byte identity,
+# not verified signature, current-model compatibility, or a battery contract.
 SPECS = MappingProxyType({
     "legacy-ble": ArtifactSpec("legacy-ble", 13728500,
         "5e3be33df74283d00542777320519c3f5d5fb6a01bdcbd664d7d9e33ce2511fc"),
     "p05acj": ArtifactSpec("p05acj", 5822368,
         "374c768a09211ce8da6e0812bde870e3b90957bf8b38e2289cac4dc52857e7fd"),
+    "ssconfig-amor3": ArtifactSpec("ssconfig-amor3", 3771257,
+        "1681f1a5a10b3d758ce1b925efbe7ec4360d3ed33c7d3fb189a5bf69fff699c2"),
 })
 
 
@@ -214,20 +219,22 @@ def inspect(data, spec):
                 match[1].decode("ascii") == spec.expected_sha256 and
                 int(match[2]) == spec.expected_size)
         return report
-    if spec.kind == "legacy-ble" or (spec.kind == "p05acj" and spec.expected_size is not None):
+    zip_kind = spec.kind in ("legacy-ble", "ssconfig-amor3")
+    if zip_kind or (spec.kind == "p05acj" and spec.expected_size is not None):
         if len(data) != spec.expected_size:
             report["status"] = "SourceSizeMismatch"
             return report
         elif report["sourceSha256"] != spec.expected_sha256:
             report["status"] = "SourceHashMismatch"
             return report
-    if spec.kind == "legacy-ble":
+    if zip_kind:
         try:
             count, total = _zip_counts(data)
         except Exception:
             report["status"] = "InvalidZipContainer"
         else:
-            report.update(status="SourcePayloadVerified", containerEntryCount=count,
+            status = "SourcePayloadVerified" if spec.kind == "legacy-ble" else "ObservedSourcePayloadMatched"
+            report.update(status=status, containerEntryCount=count,
                           containerUncompressedBytes=total,
                           sourcePayloadIntegrityVerified=True)
     elif spec.kind == "p05acj" and data.startswith(b"MZ"):

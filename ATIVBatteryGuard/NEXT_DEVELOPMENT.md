@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 새 Amor3 공식 원본 확보·오프라인 pin 추가 / 2026-11-07 한국 시간
+
+[AMOR3_OEM_SOURCE_ACQUISITION.md](AMOR3_OEM_SOURCE_ACQUISITION.md)를 먼저 읽습니다. 기존 펌웨어 후보 반복 대신 모델 일치 목록 6개와 미검토 구성요소를 대조했습니다. WB 두 BOM이 같은 SamsungSystemConfiguration for Amor3 1.0.0.7/BASW-A0141A02.ZIP을 가리켜 정상 제조사 redirect로 새로 받았습니다. 3,771,257바이트/SHA1681f1a5a10b3d758ce1b925efbe7ec4360d3ed33c7d3fb189a5bf69fff699c2, 10파일/비압축7,585,067·CRC·안전 경로 일치. 원본·카탈로그는 비공개이며 사용자 시리얼/장치정보 전송·환경 설정 변경 없음.
+
+WSABI22920/SHA564b는 과거 서비스 DLL 기록과 같으나 과거 Monitor 해시가 없어 Monitor까지 동일하다고 하지 않습니다. 새 Monitor1.0.0.7의 loader는 GetModuleFileNameW(NULL) 기반 디렉터리+wsabi.dll 경로 구성→LoadLibraryW/동적함수입니다. bare DLL 이름만 전달한다고 하지 않으며 현재 runtime DLL 선택도 미관측입니다. 선택한 query/setter 문맥은 팬 제어이고 준비 결과·BIOSmode·80은 배터리 보호 성공/80%가 아닙니다. SSC 설치 설정의 서비스/idle task는 데이터로만 읽었고 실행 안 했습니다.
+
+기존 W7 SettingsChargingOnlyMode는 실제 USB/태블릿 충전 전용 경로, A1/V21의 추가 Settings_OSD_Win10.exe+INI는 EventHandler 알림 소비자로 연결했습니다. 정확한 OS 선택 조건·현 노트북 선택은 미확인입니다. 현재 2.2.0.18의 33언어 BLE 도움말은 모델 허용 목록이 아니며 검토한 MSI component 선택 조건은 OS 분기이고 custom action에는 설치 상태 조건도 있습니다. SettingsDeployer의 모델 정보 원천은 CommandSystemInfo.dll이지 SUS가 아닙니다. 선택한 V18/V21 코드 차이도 새 보호 query로 연결되지 않았습니다. 이 기능들을 충전 제한 진전으로 세지 않습니다.
+
+개발 scripts/inspect_command_research_artifact.py에 ssconfig-amor3 고정 pin을 추가했습니다. 크기·해시 불일치/누락을 ZIP 해석 전에 거부하며 관측 일치는 ObservedSourcePayloadMatched, 인증/모델/배터리계약/하드웨어 권한 false입니다. 실제 새 ZIP 검사·독립 코드 검토 통과, 신규 3개 포함 전체 Python 88개 통과. C#/WPF·EXE·기존 ZIP은 미변경이며 C# 테스트/빌드 미실행; 437개·경고오류0은 이전5d77df5 기록입니다.
+
+private cache는 20261107/ssconfig-source-acquisition-next, target-catalog-source-gap-next(하위 monitor-review), oem-model-config-next, alternate-oem-source-gap-next(하위 v21-component-diff)입니다. 다음 채택 조건은 현재 모델의 보호 상태 생산자→고정 조회→실패 보존·새 요청 대응→Windows 반환입니다. 현재 새 보호 계약 미확보·실제 제어 Unsupported. 원본 실행·하드웨어/OEM 호출·단발 예약·드라이버/서비스/보안·펌웨어 변경·추가 실기·동일 자료 재제출 없음. 아래는 이전 기록입니다.
+
 ## 최신 — 외부·간접 후보 검토와 구현 보류 경계 / 2026-11-07 한국 시간
 
 [EXTERNAL_INDIRECT_CONTRACT_BOUNDARIES.md](EXTERNAL_INDIRECT_CONTRACT_BOUNDARIES.md)를 먼저 읽습니다. 이번에도 새 보호 조회 계약은 확보하지 못했습니다. 34개 PE의 동일 192바이트 .data 구간은 공통 창이며 완전한 객체·등록표·미사용 증명이 아닙니다. 선택 참조 83개 중 19개는 기존 SABI 직접 참조 6개 모듈, 64개는 이웃 GUID입니다. 구간의 첫 호출 전 별칭 복사 등을 못 찾은 것은 전역 부재가 아닙니다. 과거 20261106 pointer/affine 음성 분석은 반복 성과로 세지 않았습니다.

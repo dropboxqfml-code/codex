@@ -411,6 +411,8 @@ internal static partial class Program
         RegisterWsabiWmiExperimentReviewViewModelTests();
         RegisterWsabiWmiRequestEncoderTests();
         RegisterWsabiWmiFrameExchangeTests();
+        RegisterWsabiWmiCooperativeChannelTests();
+        RegisterWsabiWmiWindowsMutexGateTests();
     }
 
     private static void Add(string name, Action action) { Tests.Add(new KeyValuePair<string, Func<Task>>(name, () => { action(); return Task.CompletedTask; })); }

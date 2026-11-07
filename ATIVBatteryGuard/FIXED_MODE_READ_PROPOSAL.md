@@ -1,6 +1,6 @@
 # 고정 보호 모드 조회 검토안 — 비실행 문서
 
-**현재 상태: 설계 검토 가능, 실제 호출 준비·승인 미완료.** [새 소스 분석](RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md)의 조건부 근거를 바탕으로 한 검토안입니다. 실행 코드·요청 프레임·주소·명령·표식 값은 없으며 이 문서를 따라 노트북에서 수행할 작업도 없습니다. 실제 보호 설정 조회·충전 제어는 아직 제공하지 않습니다.
+**현재 상태: 실제 시험 보류, 비실행 설계 유지.** [현재 판정](FIXED_MODE_READ_DECISION.md)과 [협력 교환 구현·검증](COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md)을 먼저 읽습니다. [기존 소스 분석](RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md)의 조건부 근거를 바탕으로 한 검토안이며, 실행 코드·요청 프레임·주소·명령·표식 값이나 사용자가 노트북에서 수행할 작업은 없습니다. 실제 보호 설정 조회·충전 제어는 아직 제공하지 않습니다.
 
 아래 조건표는 [부팅 순서·EC 인계 검토](EC_READ_HANDOFF_AND_BOOT_ORDER.md), [입력·완료 정리·응답 귀속 검토](EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md), [공유 채널 조정·입력 수명 후속 결과](SHARED_CHANNEL_COORDINATION_UPDATE.md)를 반영했습니다. 정상 부팅 순서와 legacy fallback의 실행 영역은 조건부로 연결했으며, live 함수 포인터나 EC 전체 해시 미관측만을 독립 절대 중단 조건으로 요구하지 않습니다.
 
@@ -17,11 +17,11 @@
 | 모델 적합성 | 위 프로파일 근거와 미관측 조건을 함께 명시. 다른 모델에서 자동 실행하지 않음 | 임시 프로파일 검토 가능, 현재 이미지 일치 확정 아님 |
 | 최종 host 경로 | 초기 직접 Runtime 함수와 후속 proxy 교체를 구분하고 알림 순서·성공 조건을 연결 | 모듈 발견·DXE 의존성·Load/Start·등록 성공이면 BDS marker 이전 등록. 정상 성공 조건과 현재 미관측을 구분 |
 | 통신 실행 영역 | 선택 통신 제공자에서 SMM handler까지 정상 entry와 순차화 전제를 연결. legacy fallback과 혼합하지 않음 | legacy SW fallback의 default-root 동기 경로 연결. 표준 통신 제공자→typed handler는 미완료 |
-| 전체 교환 소유권 | 입력 준비부터 실제 완료·응답 회수까지 관련 무결성·소유권과 참여자 규약을 평가 | FrameExchange의 동일 channel/transport reference 재진입 방지 보강. 프로세스 내부 조정이며 직접 호출·외부 OEM 참여·Field Lock만의 보호로 확대하지 않음 |
+| 전체 교환 소유권 | 입력 준비부터 실제 완료·응답 회수까지 관련 무결성·소유권과 참여자 규약을 평가 | 같은 자원 admission과 opt-in 협력 owner/gate 구현·fake/unnamed 검증. 실제 Windows Global 참여자 규약·상호 운용은 미검증이며 모든 외부 호출자 보호로 확대하지 않음 |
 | indexed 접근 | 관련 주소 선택·데이터 접근이 다른 CPU 작업에 의해 바뀌지 않는 범위를 입증 | 선택 helper의 같은 wire 규약 확인. 같은 비재진입 SMM 순서 안의 접근은 조건부로 비중첩. 미연결 표준 경로까지 확대하지 않음 |
 | 다른 정상 작업 보존 | 조회가 기존 작업의 명령·상태 전이·계속 사용할 입력을 훼손하지 않아야 함. 새 조회 취소는 안전한 실패로 처리 가능 | 식별된 원본/local 입력 소비는 terminal 요청 반환 전 완료하며 조회 upload와 분리. 알려진 후속은 상태/result polling. 관련 hardware/미확인 IRQ/alias/scratch 수명은 미확정 |
 | 응답 귀속 | 업로드 생략·입력 echo·다른 생산자·모호한 결과를 성공으로 분류하지 않음. 사후 비교로 실행 전 무결성을 대체하지 않음 | reader의 순차 주소 소비·첫 성분 결과 대체·나머지 보존과 known ISR register 보존을 연결. 사후 일치만으로 소비 시점·실행 identity를 인증하지 않음 |
-| 대기·정리 | 같은 소유 thread가 실제 하위 완료까지 소유권 유지. UI timeout을 하위 완료로 오인하지 않음 | 하위 종료 한계 포함해 별도 구현 검토 필요 |
+| 대기·정리 | 같은 소유 thread가 실제 하위 완료까지 소유권 유지. UI timeout을 하위 완료로 오인하지 않음 | owner 획득/취소callback·pending 종료/해제 순서와 stop CAS·sticky 격리 검증. 실제 provider 완료 계약·프로세스 종료 후 외부 진행은 여전히 미입증 |
 
 정상 framework 초기화 완료·관련 control 안정·고유하고 비재진입인 CPU context는 명시적인 소스 논증의 전제입니다. 이를 악의적인 모든 플랫폼 writer의 전역 부재 요구로 확대하지 않습니다. 반대로 `InSmm`, registry 등록, busy byte, SMI 마스크 의도만으로 조건을 충족했다고 하지 않습니다.
 
@@ -41,4 +41,4 @@
 
 이 조회 검토안은 저장 소스 분석에 근거한 비실행 설계입니다. 일반적인 개발 계속 지시나 과거 단발 시험 승인을 새 하드웨어 호출 권한으로 해석하지 않습니다. 프로젝트 [AGENTS.md](AGENTS.md)는 “커널/펌웨어 제어 코드 추가 작업은 사용자에게 별도의 명시적 승인을 받은 뒤 안전성과 모델 적합성이 입증된 범위에서만 진행한다.”고 정합니다. 이번에는 해당 코드를 추가하지 않았으며 승인 질문도 하지 않습니다.
 
-프로세스 내부의 같은 resource reference 조정과 식별된 inline 입력 소비는 반영했습니다. 다음은 외부 참여자를 포함한 전체 교환 보호와 관련 hardware/status/IRQ 입력 수명·응답 귀속 조건을 우선합니다. 표준 통신은 구체 제공자 연결이 생길 때만 갱신합니다. 같은 resource slot·inline 소비·기존 내용 비교를 반복 세분화해 실제 호출 준비로 보고하지 않습니다. 조건을 충족하기 전에는 실제 backend·시험 도구를 제공하지 않습니다. 이번 결과를 위해 추가 노트북 실행이나 동일 자료 제출은 필요하지 않습니다.
+프로세스 내부의 같은 resource reference 조정, 협력 owner의 software 경계와 식별된 inline 입력 소비는 반영했습니다. [보류 판정](FIXED_MODE_READ_DECISION.md)에 남은 실제 Global 협력·provider 완료·관련 status/IRQ·표준 통신 조건을 줄이는 새 근거가 필요합니다. 동결된 같은 source 후보·잠금·내용 비교를 반복해 실제 호출 준비로 보고하지 않습니다. 조건을 충족하기 전에는 실제 backend·시험 도구를 제공하지 않습니다. 이번 결과를 위해 추가 노트북 실행이나 동일 자료 제출은 필요하지 않습니다.

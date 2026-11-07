@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 협력 owner와 고정 조회 판정 / 2026-11-07 한국 시간
+
+[협력 교환 구현](COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md)에서 finite gate·전용 owner의 획득/해제·하위 task/취소 callback 종료·attempt별 stop CAS·abandon/해제 실패의 resource/gate identity 격리를 추가했습니다. lazy 고정 Global mutex adapter도 opt-in이며 실제 Global은 열지 않고 fake/unnamed Mutex로만 검사했습니다. 실제 Windows 상호 운용·모든 외부 참여자·provider 완료를 증명한 것은 아닙니다. 테스트463개·전체 빌드 경고/오류0입니다.
+
+source 한정 조사에서는 요청 field와 고정 status 소비의 관계를 대조했지만 실제 외부 status/IRQ 생산자 새 연결은0개입니다. 인접 OR/helper의 ordinary byte 의미와 물리 MMIO/외부 처리 의미를 구분하며 기존 polling을 새 producer로 세지 않습니다. 요청 control→외부/controller/IRQ→준비·오류 status 간극은 그대로 동결했습니다. [고정1바이트1회 조회는 보류](FIXED_MODE_READ_DECISION.md)하며 live 전체hash나 모든writer 부재를 대신 요구하지 않습니다. 실제 hardware backend·배터리 명령·OneShot/예약·앱등록·드라이버/서비스/보안/펌웨어 변경 없이 Unsupported입니다. 새 노트북 실행·동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 같은 전송 자원의 조정과 inline 입력 소비 / 2026-11-07 한국 시간
 
 [후속 결과](SHARED_CHANNEL_COORDINATION_UPDATE.md)에서 FrameExchange의 active 상태를 동일 resource reference별로 공유하도록 수정했습니다. 같은 channel·같은 snapshot transport의 별도 래퍼는 실제 작업과 취소 callback이 모두 끝나기 전 재진입하지 못합니다. 별도 자원은 독립적입니다. 프로세스 내부의 FrameExchange 범위이며 외부 OEM mutex·직접 channel 호출·모든 WMI 참여자 보호가 아닙니다. 소모된 OneShot backend/Program/예약/승인·요청 encoder는 변경하지 않았습니다.

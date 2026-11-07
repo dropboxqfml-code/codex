@@ -1,5 +1,7 @@
 # 공유 채널 재진입 방지 보강 — 2026-11-07 한국 시간
 
+후속 [협력 교환 소유권 구현](COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md)에서 opt-in gate/owner, stop CAS와 불명확 소유권 격리를 추가하고 [고정 조회 시험은 보류](FIXED_MODE_READ_DECISION.md)로 판정했습니다. 아래는 당시441개 검사·수정 기록입니다.
+
 **같은 채널을 새 교환 객체로 감싸 진행 중인 작업을 우회하던 소프트웨어 결함을 수정했습니다.** 같은 snapshot transport를 사용하는 별도 BoundFrameChannel 래퍼도 진행 상태를 공유합니다. 오프라인 C# 테스트441개 통과, 전체 솔루션 빌드 경고·오류0입니다. 실제 보호 모드 조회·충전 제어는 아직 미구현·Unsupported입니다.
 
 [이전 입력·정리 분석](EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md)의 후속입니다. 이번에는 준비용 전송 조정 코드와 회귀 테스트를 수정하고, 관련 EC 작업의 입력 소비 시점도 저장 원본으로 한 단계 더 연결했습니다. 새 하드웨어 요청·배터리 명령·실제 backend는 추가하지 않았습니다.

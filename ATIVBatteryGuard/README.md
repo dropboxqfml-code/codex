@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 협력 교환 소유권 구현·조회 시험 보류 / 2026-11-07 한국 시간:** [구현·검증](COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md)에서 전용 owner의 유한 획득 대기·같은 thread 해제·취소/late-acquire·소유권 격리와 lazy 고정 mutex adapter를 추가했습니다. 테스트463개 통과·전체 빌드 경고/오류0이며 fake/unnamed만 검사했고 실제 OEM Global은 열지 않았습니다. 실제 status 생산자 연결은 새로 확보하지 못해 [1회 보호 조회 시험은 보류](FIXED_MODE_READ_DECISION.md)합니다. 앱 등록·OneShot/기존예약·실기호출·기존ZIP은 그대로이고 실제 제어 Unsupported·추가 실행/자료 제출 불필요입니다. 아래는 이전 기록입니다.
+
 **최신 — 공유 채널 재진입 수정 / 2026-11-07 한국 시간:** [수정·검증 결과](SHARED_CHANNEL_COORDINATION_UPDATE.md)에서 같은 channel이나 snapshot transport를 새 래퍼로 감싸 미완료 작업을 우회하던 준비용 전송 조정 코드를 수정했습니다. C#441개 통과·전체 솔루션 빌드 경고/오류0입니다. 선택 EC 입력의 소비 시점도 더 연결했지만 실제 보호 조회·충전 제어는 여전히 미구현·Unsupported입니다. 기존 OneShot/예약·OEM 호출은 변경하지 않았고 현재 앱 흐름·배포 ZIP은 그대로이며 새 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
 
 **최신 — 조회 입력·후처리·응답 귀속 / 2026-11-07 한국 시간:** [후속 분석](EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md)에서 늦은 clear의 작업 상태 생산자, 읽기 주소 소비와 known ISR register 보존, Field Lock과 전체 WMI 교환의 차이를 연결했습니다. [조회 검토안](FIXED_MODE_READ_PROPOSAL.md)은 기존 작업 비훼손과 조회의 안전한 실패를 구분합니다. 실제 보호 조회·충전 제어는 미구현·Unsupported이며 문서·정제 기록만 변경했습니다. 앱·기존 ZIP은 그대로이고 추가 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.

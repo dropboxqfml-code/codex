@@ -49,5 +49,7 @@
     <Compile Include="../src/ATIVBatteryGuard.WmiOneShotQuery/OneShotResultCapture.cs" Link="OneShotResultCapture.cs" />
     <Compile Include="WsabiWmiRequestEncoderTests.cs" />
     <Compile Include="WsabiWmiFrameExchangeTests.cs" />
+    <Compile Include="WsabiWmiCooperativeChannelTests.cs" />
+    <Compile Include="WsabiWmiWindowsMutexGateTests.cs" />
   </ItemGroup>
 </Project>

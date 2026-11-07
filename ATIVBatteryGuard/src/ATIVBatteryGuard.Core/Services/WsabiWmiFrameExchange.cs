@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using ATIVBatteryGuard.Core.Models;
@@ -11,12 +10,10 @@ namespace ATIVBatteryGuard.Core.Services
     public sealed class WsabiWmiFrameExchange
     {
         public static readonly TimeSpan MaximumTimeout = TimeSpan.FromSeconds(10);
-        private static readonly ConditionalWeakTable<object, ExchangeSlot> Slots =
-            new ConditionalWeakTable<object, ExchangeSlot>();
         private readonly IWsabiWmiFrameChannel channel;
         private readonly TimeSpan timeout;
-        private readonly ExchangeSlot slot;
-        public bool IsBusy => Volatile.Read(ref slot.Active) != 0;
+        private readonly WsabiWmiExchangeResource resource;
+        public bool IsBusy => resource.IsBusy;
 
         public WsabiWmiFrameExchange(IWsabiWmiFrameChannel channel, TimeSpan timeout)
         {
@@ -29,8 +26,7 @@ namespace ATIVBatteryGuard.Core.Services
             // supplied channel. Bound wrappers share their transport reference;
             // other channels share only their own object identity. This is an
             // in-process scope, not an OS/OEM mutex or a live transport lease.
-            object identity = (channel as WsabiWmiBoundFrameChannel)?.ExchangeIdentity ?? channel;
-            slot = Slots.GetValue(identity, _ => new ExchangeSlot());
+            resource = WsabiWmiExchangeResource.For(WsabiWmiExchangeResource.Identity(channel));
         }
 
         public async Task<WsabiWmiFrameExchangeResult> ExchangeAsync(int command, object payload,
@@ -40,24 +36,32 @@ namespace ATIVBatteryGuard.Core.Services
             byte[] request;
             if (!WsabiWmiRequestEncoder.TryEncode(command, payload, out request))
                 return Result(WsabiWmiFrameExchangeStatus.InvalidRequest);
-            if (Interlocked.CompareExchange(ref slot.Active, 1, 0) != 0)
+            if (!resource.TryEnter())
                 return Result(WsabiWmiFrameExchangeStatus.Busy);
 
             Task<WsabiWmiReplyResult> pending = null;
             Task cancellation = null;
             var operation = new CancellationTokenSource();
             var deadline = new CancellationTokenSource();
+            var cooperative = channel as WsabiWmiCooperativeFrameChannel;
+            var stop = cooperative == null ? null : new WsabiWmiExchangeStopSignal();
             var cancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             CancellationTokenRegistration registration = default(CancellationTokenRegistration);
             try
             {
                 // The caller's Cancel never runs channel cancellation callbacks.
-                registration = cancellationToken.Register(() => cancelled.TrySetResult(true));
+                registration = cancellationToken.Register(() =>
+                {
+                    stop?.Request();
+                    cancelled.TrySetResult(true);
+                });
                 if (cancellationToken.IsCancellationRequested) return Result(WsabiWmiFrameExchangeStatus.Cancelled);
                 pending = Task.Run(async () =>
                 {
                     operation.Token.ThrowIfCancellationRequested();
-                    Task<WsabiWmiReplyResult> task = channel.ExchangeAsync(request, operation.Token);
+                    Task<WsabiWmiReplyResult> task = cooperative == null
+                        ? channel.ExchangeAsync(request, operation.Token)
+                        : cooperative.ExchangeAsync(request, operation.Token, stop);
                     if (task == null) throw new InvalidOperationException();
                     return await task.ConfigureAwait(false);
                 });
@@ -65,11 +69,13 @@ namespace ATIVBatteryGuard.Core.Services
                 Task winner = await Task.WhenAny(pending, delay, cancelled.Task).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
                 {
+                    stop?.Request();
                     cancellation = CancelChannelOffThread(operation);
                     return Result(WsabiWmiFrameExchangeStatus.Cancelled);
                 }
                 if (!ReferenceEquals(winner, pending))
                 {
+                    stop?.Request();
                     cancellation = CancelChannelOffThread(operation);
                     // Only cancellation already observed before publishing wins.
                     // Never wait for channel callbacks to create cancellation.
@@ -96,7 +102,8 @@ namespace ATIVBatteryGuard.Core.Services
                 if (pending == null)
                 {
                     operation.Dispose();
-                    Interlocked.Exchange(ref slot.Active, 0);
+                    stop?.Dispose();
+                    resource.Release();
                 }
                 else
                 {
@@ -108,7 +115,8 @@ namespace ATIVBatteryGuard.Core.Services
                     {
                         _ = completed.Exception;
                         operation.Dispose();
-                        Interlocked.Exchange(ref slot.Active, 0);
+                        stop?.Dispose();
+                        resource.Release();
                     }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                 }
             }
@@ -130,9 +138,5 @@ namespace ATIVBatteryGuard.Core.Services
         private static WsabiWmiFrameExchangeResult Result(WsabiWmiFrameExchangeStatus status)
             => new WsabiWmiFrameExchangeResult(status);
 
-        private sealed class ExchangeSlot
-        {
-            internal int Active;
-        }
     }
 }

@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 협력 gate/owner 구현·실기 조회 보류 / 2026-11-07 한국 시간
+
+[COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md](COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md), [FIXED_MODE_READ_DECISION.md](FIXED_MODE_READ_DECISION.md), [조건표](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. opt-in CooperativeFrameChannel과 GateAttempt/lease를 추가했습니다. 전용 owner가 유한 획득(최대2초)→정상 획득만 lower 호출→실제 pending/owner 직접 Cancel callback 완료→same-thread 해제를 수행합니다. native 고정 Global adapter는 lazy·이름/권한 fallback 없음·정상 OS 권한이며 앱/old OneShot에는 연결하지 않았습니다. 테스트는 fake 및 unnamed만, 실제 Global/하드웨어/예약은 열지 않았습니다.
+
+FrameExchange는 attempt별 stop 신호를 queue 전에 만들고 caller/timeout에서 즉시 비차단 신호한 뒤 기존 off-thread Cancel을 예약합니다. dispatch CAS보다 stop이 먼저면 zero lower call, CAS가 먼저면 이미 admit된 작업의 취소/완료입니다. private CTS.Cancel은 owner가 직접 실행해 blocked callback이 있으면 lease/task를 유지합니다. success/fault/cancel task=실제 종료·sync throw/null=미추적 work0 계약을 명시했고 위반은 Q 처리합니다. Q가 잘못된 provider의 실제 작업 종료를 보장하지는 않습니다. 공유 준비·staging·응답 정리가 하위 call/task 안에 있어야 합니다. abandon/unknown acquire/release fail은 canonical resource+gate identity sticky Q이며 새 wrapper/고정 adapter로 우회하지 못합니다. reset API 없음. process/owner 종료 뒤 외부 work는 별도 미확정입니다.
+
+새22검사(coordinator15/native7)+기존441=463pass/0fail/0skip·전체 net48 Release 빌드0경고0오류입니다. SDK8.0.427·writable DOTNET_CLI_HOME·기존 NuGet cache·DOTNET_ReadyToRun=0/COMPlus_ReadyToRun=0·no-restore·UseSharedCompilation=false·m1로 빌드합니다. SDK 패치/XAML skip/새 package 없음. Python 도구 미변경·88개는e7b067a 과거 기록입니다.
+
+source 상태 생산자 조사는0새 actual producer로 동결했습니다. 요청 인수 기록 field와 고정 status 소비 주소를 구분했고 인접 OR-helper를 busy/ready/error producer로 부를 근거 없음입니다. ordinary/uninterfered byte readback 가정은 MMIO/외부 효과의 부재 증명이 아닙니다. 실제 missing edge는 control 게시→external/controller/IRQ→future status입니다. main1새 check/4문맥, child1field관계/3checks/7문맥은 생산자 발견이나 앱 테스트가 아닙니다.
+
+private cache: 20261107/cooperative-owner-validation(463 tests·solution-build.log), cooperative-owner-design-next, deferred-status-producer-next(하위 consumer-selection-independent). 현재 판정은 **실제 조회 시험 보류**입니다. 실제 Global 상호 운용/관련 참여자, provider 완료/수명, 표준 typed 진입·관련 외부 status/IRQ를 줄이는 새 근거가 필요합니다. 같은 source 후보/락/내용 비교/metadata를 반복해 준비 완료로 승격하지 않습니다. live 전체 hash/모든 writer 부재를 절대 조건으로 추가하지 않습니다. 현재 Unsupported와 앱 흐름·배포 ZIP 유지, old OneShot/Program/정책/encoder/예약 변경·새 hardware backend/frame/tag/배터리 명령·실기 호출 없음입니다. synthetic fixture만 사용했고 원본 실행/로딩/에뮬레이션·OEM/하드웨어/기존 예약 접근·드라이버/서비스/보안/펌웨어 변경·과거 차단 실행 시도 재현은 없습니다. 추가 노트북 실행·동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 같은 자원 재진입 수정·worker 입력 수명 / 2026-11-07 한국 시간
 
 [SHARED_CHANNEL_COORDINATION_UPDATE.md](SHARED_CHANNEL_COORDINATION_UPDATE.md)와 [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. FrameExchange의 인스턴스별 active는 같은 channel을 새 교환 객체로 감싸 우회할 수 있어 CWT reference별 공유 slot으로 수정했습니다. sealed BoundFrameChannel은 내부 readonly snapshot transport reference, 다른 channel은 자기 reference가 key입니다. 기존 pending+취소 callback 모두 끝난 뒤 release·late fault 관측을 유지합니다. metadata가 같은 별도 transport는 독립적입니다. 직접 channel 호출/임의 다른 wrapper/외부 프로세스·OEM/물리 endpoint 전체의 lock은 아닙니다.

@@ -1,12 +1,12 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
-**판정: 공통 managed 세션·host·callback source 구현과 fake 검증 완료, 실제 SDK 연결·실행은 보류.** [결과 객체의 선택·복사·정리](CALLBACK_SOURCE_CAPTURE_UPDATE.md)를 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
+**판정: 공통 세션·host·callback source와 Windows SDK 타입 연결 구현·stand-in 검증 완료, 실제 장치 호출·실행은 보류.** [Windows 타입 검사·이벤트 연결](WINDOWS_WMI_TYPED_BINDING_UPDATE.md)을 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
 
 | 조건 | 확인된 범위 | 남은 조건 |
 | --- | --- | --- |
 | 같은 자원의 software admission | 새 transport가 source 참조별 단발 상태를 공유하며 Bound가 identity를 계승. 닫기는 canonical admission과 공유 정리 barrier에 합류 | 같은 source 참조의 알려진 경계이며 다른 객체·직접 호출·임의 물리 alias 전체를 막지 않음 |
 | 외부 협력 잠금 | lazy adapter·owner thread 해제·취소/abandon 격리 검증. 알려진 OEM4개의 정상 Call은 전체 교환 구간 보호 | 선택 OEM allocation 예외의 함수내 unwind에는 mutex guard 없음. 상위 처리·현재 참여/권한·상호 운용은 미관측 |
-| 관련 하위 완료 | transport/세션/host와 typed callback source의 선택·복사·정리 join 구현. source stack 종료 뒤 독립 callback 회귀 포함505개 통과 | 실제 SDK reader/event adapter·terminal 적용성과 소실·claim 뒤 late 정리의 독립성은 별도 검토. 실제 Main/GUI 연결도 별도 |
+| 관련 하위 완료 | Windows 타입 reader와 raw handler/completion phase·구독 해제 join까지 구현. 동일 소스 stand-in 회귀 포함526개·실제 net48 참조 빌드0/0 | 실제 SDK 이벤트/terminal 적용성과 소실·cutoff 뒤 late 정리의 독립성·COM threading은 미관측. 등록 실패의 준비 단계 분리와 실제 Main/GUI도 별도 |
 | 기존 EC 작업 입력 보존 | 식별된 입력은 요청 반환 전에 inline 소비하고 query upload·reader 쓰기와 분리됨 | 조회 자원과 교차하는 구체 근거가 생긴 IRQ/status만 조사. 전체 생산자 발견은 비실행 제안의 필수조건 아님 |
 | 선택 실행 영역·gate·결과 귀속 | WMI→AML→PCH legacy SW→SABI generic 경로 연결. 별도 typed 변수 경로와 분리. gate는 초기닫힘/현재미관측 | 관련 게시자 순서·전체 교환·응답 귀속 필요. handshake0의 유용성 미확정. 다른 기능 caller의 사전 handshake를 보호 조회 지원으로 확대하지 않음 |
 
@@ -23,6 +23,8 @@ Global 접근 권한을 별도 사전 수집하는 것도 절대 조건은 아�
 후속 RunAndCloseAsync는 결과 표시 전에 닫기를 시작하고 finally에서 관련 정리를 기다립니다. 표시 예외·호출자 취소로 Main의 정상 반환을 앞당기지 않으며 새6개 포함490개·전체 Release 빌드 경고/오류0을 검증했습니다. 실제 Main/UI hook은 별도이고 fake-only 콘솔 검증을 실제 Windows 신호 관측으로 세지 않습니다. source는 비동기 terminal status를 유지하는 방향으로 좁혔으며 동기 정상 반환을 원래 status0으로 바꾸지 않습니다.
 
 최신 callback source는 terminal 전 선택 window의 T 개수·소유를 봉인하고 copy/관련 Dispose 뒤에만 capture를 게시합니다. 같은 T의 재진입/후속 중복은 약한 identity 기록으로 Dispose 시도1회로 제한합니다. claim 뒤 late 객체는 독립 local 정리라는 공급자 전제이며 미래 SDK callback 부재 증명이 아닙니다. 새15개 포함505개·전체 Release 빌드 경고/오류0을 검증했고 실제 SDK reader/event adapter·장치 호출·예약·A/B 권한은 변경하지 않았습니다.
+
+후속 Windows library는 실제 SDK 타입의 reader/event binding을 구현하고 동일 소스를 테스트 전용 SDK stand-in으로 검증했습니다. runtime 배열 타입/추가 raw 입장 경합의2실패를 재현·수정해526개 통과·실제 net48 참조 전체 빌드0/0입니다. 실제 SDK/provider를 실행한 검증은 아니며 등록 실패가 source.Invoke 뒤에 생기면 Unknown/pending입니다. 준비·등록 단계를 세션 전으로 분리하기 전에는 supplied dispatch0회가 유한 close를 뜻하지 않습니다. 실제 호출·기존 예약·A/B 승인 범위는 그대로입니다.
 
 세부 WMxx/Arg2 매핑의 공식 원문 미확보만을 별도 blocker로 세지 않습니다. 정상 mapper와 보존된 모델 선언의 대응 가정을 유지하고, 새 원문·provider 코드·관련 trace·반례가 생길 때만 정상 반환 항목을 다시 엽니다. 내부 미게시 분기가 존재해도 외부 FF만으로 실제 미게시를 식별할 수 없고, SDK dispatch 예외의 faulted Task는 종료 증거가 아닙니다.
 

@@ -1,5 +1,23 @@
 # 다음 개발 재개 메모
 
+## 최신 — Windows WMI 타입 reader/event binding / 2026-11-08 한국 시간
+
+[WINDOWS_WMI_TYPED_BINDING_UPDATE.md](WINDOWS_WMI_TYPED_BINDING_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. HEADf6e54ac 다음 새 net48 classlibrary ATIVBatteryGuard.WmiInterop를 solution에 추가했습니다. Core/app에는 새참조·등록이 없고 실제 InvokeMethod/Connect/Get/target/command/frame은 없습니다. supplied ManagementOperationObserver와 dispatch delegate만 받으며 source.Invoke1회나 observer CWT1회 소유는 SDK method 수·물리 독점·권한 인증이 아닙니다.
+
+reader는 scalar Object outData→distinct embedded DataBuffer→UInt8 array Bytes→exact runtime GetType()==typeof(byte[])→4096 cap→clone→concrete embedded.Dispose입니다. CLR signed-array cast 호환 때문에 as byte[]만 쓰지 않습니다. cap은 getter 선행 할당 제한/decoder 허용이 아니며 padding/truncate가 없습니다. root borrowed/selfalias 거부, reader 원문/InnerException은 고정 실패입니다. OwnedWmiResult는 canonical raw root wrapper를 CWT로 재사용하고 Interlocked.Exchange 뒤 concrete ManagementBaseObject.Dispose를 호출합니다. Component/newDispose 언어 경계이며 managed callback-root 범위의1회 시도이지 embedded/native alias 전체/자원 소멸 인증이 아닙니다.
+
+ObjectReady는 getter 전에 active 입장을 등록합니다. EnterHandler의 gate에서 completionObserved latch와 객체 입장을 함께 결정해 Completed와 겹치거나 그 뒤 closing 전 입장한 raw handoff는 고정 실패입니다. generic source의 terminal은 그대로 봉인하고 capture만 proxy에 보관→closing으로primary입장차단→기존 handler 관련 접근0→unsubscribe시도종료→실제observercapture1회입니다. subscriber flags 게시/해제claim은gate, SDK조작/reader/Dispose/외부통지는밖입니다. -=는queueddelegate철회/fullSDKdrain이 아니며 cutoff뒤 local정리 독립성 계약을 유지합니다. Context/StatusObject를읽지않고해당별도객체소유는밖입니다.
+
+dedicated observer는 binding1개 전용이며 다른 ObjectReady 소비자/Cancel/직접dispatch/reuse를 허용하지 않는 계약입니다. dispatchreturn/throw/stop으로unsubscribe하거나terminal을합성하지 않습니다. unknown이면선택T/구독/owner/hostclose를보유합니다. 중요한미완료: 구독등록실패가현재 source.Invoke 안이면 transport는Unknown/pending입니다. direct시험의dispatch0회가유한close가아닙니다. 다음도구는준비/등록을세션시작전으로분리하는단계를우선구현해야하고새NoDispatch프로토콜/가짜terminal을만들지않습니다.
+
+회귀21개(reader9/binding12)포함526통과0실패0skip입니다. 첫524개중523통과1실패(배열),경합회귀추가후525개중523통과2실패,exacttype/phase수정+knownterminal뒤throw추가후526통과입니다. 테스트명만captureclaim으로정밀화한최종로그도526입니다. portable은실제production3소스를test-only System.Management stand-in과컴파일했고dependency는우리시험assembly뿐입니다. 이는실제SDK객체생성/getter/COM/provider실행이아니며Component fake도필요한언어경계만모델링합니다. 기존syntheticfixture와가짜events/gates를사용,모든Gate/Task는finallyjoin했습니다. SDK참조API컴파일과runtime증거를구분합니다.
+
+전체net48솔루션Release는새Windowsproject를포함해경고0/오류0입니다. 일반restore초기는코드1/빈로그,그뒤첫no-restorebuild는새projectreference오류1이었으며기존ReadyToRun0 IL환경+package source0 offlineconfig로cache복원후최종build0/0입니다. SDK8.0.427·기존reference패키지1.0.3·no-restore·UseSharedCompilation=false·m1이며새tool/runtime설치/SDK패치/XAMLskip없음입니다. nativeSDK원문은기존캐시만재사용,새SDK/runtime/hardware사실0이며앱·기존진단EXE/실제SDK/provider를실행하지않았습니다.
+
+변경은Windowslibrary4+solution1+tests5+문서/정제기록입니다. Core/앱UI·defaultbackend/oldBackend/Program/encoder/사용완료예약/배포ZIP은그대로이며실제WMI/OEM/hardware/Global객체·삼성원본·marker/driver/service/security/firmware/cloud환경변경0입니다. A/B호출수·gate상태영향·승인범위유지,보호조회/제어Unsupported·새실기/동일자료제출불필요입니다.
+
+다음은준비/등록실패를source진입전으로분리하고,검토할단발조회안의대상/횟수/준비조건과이SDK연결계층의접점을확정합니다. 실제SDKterminal/queuedcallback·COMthreading·cutoff뒤독립성·실행승인은별도이며oldconsumedBackend를그대로재연결하지않습니다. private cache: 20261108/windows-wmi-binding-validation(restore/restore-il,first/before-fixes/after/final json·logs,solution-build/solution-after-build,execution/pins),기존20261107/wmi-typed-event-boundary-review-next. 아래는 이전 기록입니다.
+
 ## 최신 — callback 객체의 선택·복사·정리 연결 / 2026-11-07
 
 [CALLBACK_SOURCE_CAPTURE_UPDATE.md](CALLBACK_SOURCE_CAPTURE_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. HEAD3323778 다음으로 WsabiWmiCallbackInvocationSource<T:class,IDisposable>를 구현했습니다. constructor는 명시적 Action<request,Action<T>,Action<int>> dispatch와 Func<T,byte[]> reader만 받으며 기본 SDK/endpoint/profile/frame/실기 기능은 없습니다. 직접 source Invoke도 인스턴스당1회이며 이것은 delegate 내부 실제 SDK method 수·하드웨어 권한의 인증이 아닙니다.

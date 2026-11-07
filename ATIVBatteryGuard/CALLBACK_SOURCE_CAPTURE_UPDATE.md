@@ -1,5 +1,7 @@
 # 결과 객체의 선택·복사·정리 연결 — 2026-11-07
 
+**후속 / 2026-11-08 한국 시간:** [Windows 타입 검사·이벤트 연결](WINDOWS_WMI_TYPED_BINDING_UPDATE.md)에 SDK 타입 reader/binding을 추가했습니다. 같은 소스의 stand-in 회귀21개 포함526개와 실제 net48 참조 전체 빌드 경고/오류0을 확인했습니다. 실제 SDK/provider 실행·앱 연결은 없으며 아래는 당시 generic source 기록입니다.
+
 **결과 객체를 기존 세션에 전달하는 callback source를 구현했습니다.** `WsabiWmiCallbackInvocationSource<T>`는 명시적으로 공급한 dispatch와 reader를 받아 객체 선택·bounded byte 복사·정리를 담당합니다. [host 종료 대기 구현](INVOCATION_HOST_LIFETIME_UPDATE.md)의 다음 단계이며 실제 System.Management 구현·WMI/OEM 호출·모델/명령/프레임은 추가하지 않았습니다. 실제 보호 설정 조회와 충전 제어는 Unsupported입니다.
 
 ## 연결한 경로

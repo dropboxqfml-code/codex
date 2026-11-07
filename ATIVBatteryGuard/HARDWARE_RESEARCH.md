@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — Windows SDK 타입 reader/event binding / 2026-11-08 한국 시간
+
+**구현한 코드:** [Windows library](WINDOWS_WMI_TYPED_BINDING_UPDATE.md)는 scalar outData/DataBuffer와 UInt8 선언·exact runtime byte[]를 검사하고, 복사 후 concrete embedded/root Dispose를 분리합니다. dedicated observer의 raw handler 입장·completion phase와 capture proxy가 관련 handoff/구독 해제 시도를 실제 capture 전에 join합니다. 실제 InvokeMethod/Connect/Get·대상/명령/프레임은 없습니다.
+
+**검증:** source stand-in 회귀21개 포함526개 통과·실제 net48 참조 전체 Release 빌드 경고/오류0입니다. signed 배열 호환과 completion 검사 뒤 새 handoff 누락을525개 중523통과2실패로 재현한 뒤 수정했습니다. 실제SDK runtime/COM/provider/Win10 이벤트 관측이 아니며 이전 private 수를 합산하지 않습니다.
+
+**아직 미확정:** actual SDK terminal/queued callback·COM threading·native alias 전체 정리·cutoff 뒤 local 독립성은 새로 입증하지 않았습니다. 등록 실패도 현재 source 진입 뒤면 Unknown/pending이므로 미래 도구의 준비 단계를 분리해야 합니다. old Backend/예약·A/B 범위·배포 ZIP은 그대로이고 실제 보호 조회·충전 제어 Unsupported·새 실기/재제출 불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — typed callback source 구현 / 2026-11-07
 
 **구현:** [CallbackInvocationSource](CALLBACK_SOURCE_CAPTURE_UPDATE.md)는 명시적 dispatch/reader의 T 객체를 terminal window에서 선택하고, bounded clone·관련 Dispose 뒤 byte[]/고정 실패만 기존 transport에 전달합니다. T의 형식/terminal 출처는 공급자 계약이며 실제 SDK 타입 검사·event adapter는 아직 없습니다. claim 뒤 late 정리가 독립 local이라는 전제와 source Invoke1회가 실제 SDK 횟수를 인증하지 않는 한계를 유지합니다.

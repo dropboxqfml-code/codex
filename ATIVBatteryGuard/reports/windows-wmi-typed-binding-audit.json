@@ -1,0 +1,213 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "f6e54ac",
+  "scope": "Windows System.Management type reader and supplied-observer event binding, compiled against actual net48 references and exercised against test-only SDK stand-ins; no device invocation",
+  "implementation": {
+    "sourcePins": [
+      {
+        "projectFile": "src/ATIVBatteryGuard.WmiInterop/ATIVBatteryGuard.WmiInterop.csproj",
+        "bytes": 676,
+        "sha256": "ffb519a5ba8f57adee73d3a809817cf37dc343807461fa3d6d28fb7c54052a19"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsOutputReader.cs",
+        "bytes": 2475,
+        "sha256": "501067b5cf3b980f074646385256bcabcd61b83d26032a33ee1594ca709958d9"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.WmiInterop/OwnedWmiResult.cs",
+        "bytes": 845,
+        "sha256": "975323aa7e26933422ef3c9c4ba8a9af82aa30f0cf9c3e2ba725c28d475d13b2"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsCallbackSource.cs",
+        "bytes": 9109,
+        "sha256": "b2848a0355c1b532dea3e8f073b4a5b00fbba8353437d9863904816d775b5ce8"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard.sln",
+        "bytes": 5393,
+        "sha256": "ca9ba770617da0e9185b0bb890b2b1b544c419dd5729389020892c3d0809a59d"
+      },
+      {
+        "projectFile": "tests/Fakes/ManagementSdkFakes.cs",
+        "bytes": 8357,
+        "sha256": "69ab684a3efcfcfe7592496bf087ab63733d68cfa531218d67d09a4f4f3d2376"
+      },
+      {
+        "projectFile": "tests/WsabiWmiWindowsOutputTests.cs",
+        "bytes": 12562,
+        "sha256": "cedb1883aee2d13437ad7dd1978a362225c2ca01abeaa950d9b44a080199633c"
+      },
+      {
+        "projectFile": "tests/WsabiWmiWindowsBindingTests.cs",
+        "bytes": 24064,
+        "sha256": "cf008289948faab3af75c414f9ced66be3edd6d807145dcce2aebe69517540de"
+      },
+      {
+        "projectFile": "tests/Program.cs",
+        "bytes": 33136,
+        "sha256": "83b80add8bd17d261f867c72a25dbdb06910b0388a94a23f37557f56fc622cc0"
+      },
+      {
+        "projectFile": "tests/ATIVBatteryGuard.PortableTests.csproj",
+        "bytes": 4024,
+        "sha256": "6cb0c883c33a7417db733a257c1557e6b0cf96cea825368a6695f8153bfa3c46"
+      }
+    ],
+    "windowsLibraryFilesAdded": 4,
+    "solutionFilesChanged": 1,
+    "testFilesIncludingStandinsRegistrationAndProjectChanged": 5,
+    "coreOrAppReferenceChanged": false,
+    "explicitDependencies": "Dedicated ManagementOperationObserver and Action<observer,request> dispatch only",
+    "defaultInvokerTargetProfileFrameOrNonceGeneratorImplemented": false,
+    "invokeMethodConnectGetOrCancelCallSiteAdded": false,
+    "dedicatedObserverClaimedByOneBindingWithWeakIdentityRecord": true,
+    "sameRawCallbackRootUsesCanonicalOwnedWrapper": true,
+    "sourceOrObserverSingleUseAuthenticatesSdkMethodCountPhysicalExclusivityOrPermission": false,
+    "allHardwareCapabilitiesAdvertisedFalse": true
+  },
+  "reader": {
+    "requiresScalarObjectOutDataAndEmbeddedDataBuffer": true,
+    "requiresUInt8ArrayCimMetadata": true,
+    "requiresExactRuntimeByteArrayType": true,
+    "compatibleSignedPrimitiveArraysRejected": true,
+    "nullMultidimensionalNonzeroBoundOrCoercibleArraysRejected": true,
+    "maximumRetainedCopyBytes": 4096,
+    "capLimitsPrecedingSdkGetterAllocationOrEstablishesDecoderAcceptance": false,
+    "paddingTruncationOrCoercionImplemented": false,
+    "outerRootBorrowedByReader": true,
+    "rootEmbeddedSameReferenceRejectedWithoutDisposal": true,
+    "copyBeforeConcreteEmbeddedDispose": true,
+    "ownedRootCallsConcreteManagementBaseObjectDispose": true,
+    "interfaceMapAssumedToReachHiddenConcreteMethod": false,
+    "rootDisposeOnceGuaranteeIncludesAllEmbeddedOrNativeAliases": false,
+    "getterOrDisposeFailureKeepsOriginalExceptionOrInnerException": false,
+    "cachedReferenceImplementationVersion": "dotnet/runtime v8.0.0",
+    "targetNet48RuntimeImplementationEquivalenceProven": false
+  },
+  "eventJoin": {
+    "bothHandlersRegisteredBeforeSuppliedDispatch": true,
+    "subscriptionFlagsPublishedAndClaimedUnderGate": true,
+    "sdkEventAddRemoveGetterReaderDisposeOrObserverCallsRunUnderBindingGate": false,
+    "rawObjectEntryCountedBeforeNewObjectGetter": true,
+    "completionPhaseAndObjectAdmissionDecidedUnderSameGate": true,
+    "overlapOrPostCompletionPreClosingRawHandoffConservativelyFailsCapture": true,
+    "proxyRetainsGenericCaptureUntilAdmittedHandlerAccessAndDetachAttemptsEnd": true,
+    "unsubscribeFailureReportedAsSuccessfulHandlerRemoval": false,
+    "unsubscribeRetractsQueuedDelegateOrDrainsAllSdkCallbacks": false,
+    "postCutoffQueuedObjectsRequireOnlyIndependentLocalCleanupByContract": true,
+    "completedContextOrStatusObjectReadRetainedOrReported": false,
+    "completedStatusObjectOwnershipIncludedInBinding": false,
+    "normalReturnThrowOrClientStopDetachesUnknownAttempt": false,
+    "missingTerminalRetainsPossibleSubscriptionAndSelectedObjectPath": true,
+    "lateTerminalGuaranteedOrSdkSinkLossRecovered": false,
+    "subscriptionFailureInsideInvokeIsProvenFiniteSessionNoDispatchOutcome": false,
+    "directSubscriptionFailureTestOnlyEstablishesSuppliedDispatchZeroAndNoSyntheticTerminal": true,
+    "newNoDispatchOrTerminalSynthesisProtocolIntroduced": false
+  },
+  "verification": {
+    "newRegisteredRegressions": 21,
+    "readerGroups": 9,
+    "bindingGroups": 12,
+    "firstRun": {
+      "passed": 523,
+      "failed": 1,
+      "skipped": 0,
+      "registered": 524,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "beforeArrayAndPhaseFixes": {
+      "passed": 523,
+      "failed": 2,
+      "skipped": 0,
+      "registered": 525,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "afterFixes": {
+      "passed": 526,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 526,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "finalResult": {
+      "passed": 526,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 526,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "reproducedFailures": [
+      "Compatible primitive array accepted by cast-only check",
+      "Raw object admission after completion inspection omitted from candidate count"
+    ],
+    "corrections": [
+      "Exact runtime byte[] type check",
+      "Completion phase latched atomically with raw handler admission"
+    ],
+    "lastChangeBeforeFinalRun": "Test label corrected from terminal claim to capture claim; behavior unchanged",
+    "productionSdkSourceFilesLinkedIntoPortableTests": 3,
+    "portableUsesTestOnlySystemManagementTypeStandins": true,
+    "standinsModelOnlyRequiredTypeAndLanguageShapeNotEntireSdkImplementation": true,
+    "portableActualSystemManagementRuntimeLoadedOrExecuted": false,
+    "portableDependencyLibraries": [
+      "ATIVBatteryGuard.PortableTests/1.0.0"
+    ],
+    "sourceInvokeExitedBeforeIndependentEventRaceTasks": true,
+    "controlledTerminalAndRawGetterOrUnsubscribeBarriersJoinedInFinally": true,
+    "syntheticTerminalCleanupEstablishesActualSdkTermination": false,
+    "priorPrivateAssertionsAddedToAppCount": false,
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0,
+      "newWindowsLibraryIncluded": true,
+      "actualNet48SystemManagementReferenceApiCompiled": true
+    },
+    "initialRestore": {
+      "exitCode": 1,
+      "logBytes": 0,
+      "failureCauseEstablished": false
+    },
+    "initialUnrestoredProjectBuild": {
+      "succeeded": false,
+      "warnings": 0,
+      "errors": 1,
+      "code": "MSB3644"
+    },
+    "offlineRestoreAfterExistingIlEnvironmentApplied": {
+      "exitCode": 0,
+      "configuredPackageSources": 0,
+      "referencePackages": "Existing cached 1.0.3",
+      "sdk": "8.0.427"
+    },
+    "newRuntimeToolInstallSdkPatchOrSkippedXamlStep": false,
+    "independentCodeAndRegressionReadReviewApproved": true,
+    "independentReviewerReranSuite": false
+  },
+  "decision": {
+    "windowsTypeReaderAndSuppliedEventBindingImplemented": true,
+    "actualFrameworkGetterComCleanupOrWindowsEventDeliveryObserved": false,
+    "actualWmiInvocationBackendOrAppRegistrationConnected": false,
+    "preparationAndSubscriptionFailureStageBeforeSessionStillToBeDesigned": true,
+    "actualProtectionReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "abCallLimitsGateStateEffectsOrExecutionApprovalChanged": false,
+    "oldConsumedBackendReconnectedOrReservationAccessed": false,
+    "hardwareExecutionApprovalRequested": false
+  },
+  "changeBoundary": {
+    "coreDefaultControllerAppUiOldBackendProgramOrEncoderChanged": false,
+    "mainAppOrDeviceToolsExecuted": false,
+    "ownPortableStandinSafetySuiteExecuted": true,
+    "actualWmiSdkProviderOemHardwareGlobalObjectOrConsumedMarkerAccessed": false,
+    "vendorOriginalExecutedLoadedOrEmulated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "newOfficialSourceRuntimeHardwareFactsOrFirmwareAnalysisPercentageClaimed": false,
+    "applicationNetworkCodeAdded": false,
+    "distributionArchiveUpdated": false,
+    "additionalNotebookRunOrRepeatedUploadRequested": false
+  }
+}

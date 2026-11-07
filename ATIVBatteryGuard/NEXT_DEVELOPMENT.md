@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — late-clear gate·주소 소비·전체 교환 경계 / 2026-11-07 한국 시간
+
+[EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md](EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md)와 [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. descriptor 하위 작업의 시작 성공→active·완료 대기 상태 생산→readiness/정리 gate를 새로 연결했습니다. 같은 byte의 다른 ISR bit와 active bit를 혼동하지 않으며 실패 rollback도 구분합니다. 선택 staging/알려진 복사는 query mailbox와 다른 영역이나 관련 하위 작업이 계속 소비할 입력을 조회 upload가 훼손하지 않는지는 미완료입니다. 현재 Windows overlap·하드웨어 기능명·startup/flash/shutdown 전용을 단정하지 않습니다.
+
+고정 reader는 주소 두 성분을 순차 소비→target sample→첫 성분을 결과로 대체합니다. known stable-command ISR의 실제 register 보존을 이 구간에 결합했습니다. 사후 비교는 endpoint 보존이며 덮어쓴 첫 성분의 과거값·두 소비시점의 지속 안정성·EC실행identity를 인증하지 않습니다. 송신생략/실행전clear/완료후clear를 분리하며 기존 tag·오류가림·ISR entry를 새 성과로 재집계하지 않습니다.
+
+두 raw DSDT는 Field AnyAcc/Lock/Preserve이면서 WM00/SAWS는 NotSerialized입니다. explicit MTX1은 trigger만 보호합니다. Field Lock만으로 전체 교환·firmware Global Lock 참여를 증명하지 않고 NotSerialized만으로 Windows의 실제 race도 주장하지 않습니다. 필요한 것은 관련 전체 교환의 무결성/소유권이며 특정 협력 mutex만 강제하지 않습니다.
+
+최소 계약은 기존 정상 작업의 명령/상태/계속 소비할 입력의 비훼손과 고정 조회의 사전 대상 안전성·오귀속 방지·실제 하위 정리입니다. 새 조회 자체의 취소는 안전한 실패/판정불가로 허용하며 양쪽의 무조건 성공을 요구하지 않습니다. 다음은 특정 deferred 작업의 계속되는 buffer 소비와 입력 준비~snapshot 경계의 실제 참여 규약에 집중합니다. 표준 통신은 구체 provider/caller→typed dispatch가 생길 때만 갱신하며 같은 GUID 검색/legacy/내용 비교 반복은 하지 않습니다. live pointer/전체 EC hash/모든 writer의 전역 부재를 절대 조건으로 추가하지 않습니다.
+
+private cache: 20261107/ec-late-clear-gates-next, fixed-read-response-attribution-next, wmi-field-lock-boundary-next. response16관계/80재사용문맥·Field5관계는 앱 테스트나 분석률이 아니며 원본 hash/동일 byte decode와 새 관계를 구분합니다. 문서·정제 기록만 변경, C#/WPF·Python 개발 도구·EXE·기존 ZIP 미변경·이번 빌드/단위 테스트 미실행입니다. C#437/빌드경고오류0은5d77df5, Python88은e7b067a 과거 기록입니다. 실제 query backend/frame/tag값/시험 추가·원본 실행/로딩/에뮬레이션·OEM/하드웨어/기존예약 접근·드라이버/서비스/보안/펌웨어 변경 없음. 과거 차단 실행 시도는 보존하며 재현하지 않았습니다. 추가 노트북 실행·동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 부팅 알림 선행·legacy domain·EC 준비 규약 / 2026-11-07 한국 시간
 
 [EC_READ_HANDOFF_AND_BOOT_ORDER.md](EC_READ_HANDOFF_AND_BOOT_ORDER.md)와 갱신한 [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. NvramSmi는 복합 SMM/DXE FFS이며 DXE DEPEX는 SmmBase2만 요구합니다. 별도 SMM DEPEX와 합치지 않습니다. CORE의 복합 모듈 열거·DXE DEPEX 처리·dispatch 반환→BDS receiver를 연결했습니다. 발견·의존성·비재진입 Load/Start·notify 등록 성공 조건이면 BDS marker보다 등록이 선행합니다. dispatch 완료는 미발견/미충족/시작 실패 모듈 성공을 보장하지 않습니다. 정상 소스 조건과 현재 포인터 미관측은 구분하며 live pointer/전체 EC hash 하나를 절대 proposal blocker로 되돌리지 않습니다.

@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 조회 입력·후처리·응답 귀속 / 2026-11-07 한국 시간:** [후속 분석](EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md)에서 늦은 clear의 작업 상태 생산자, 읽기 주소 소비와 known ISR register 보존, Field Lock과 전체 WMI 교환의 차이를 연결했습니다. [조회 검토안](FIXED_MODE_READ_PROPOSAL.md)은 기존 작업 비훼손과 조회의 안전한 실패를 구분합니다. 실제 보호 조회·충전 제어는 미구현·Unsupported이며 문서·정제 기록만 변경했습니다. 앱·기존 ZIP은 그대로이고 추가 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 **최신 — 부팅 알림·EC 명령 인계 / 2026-11-07 한국 시간:** [후속 결과](EC_READ_HANDOFF_AND_BOOT_ORDER.md)에서 정상 성공 조건의 중계 설치 순서, legacy software-SMI fallback의 같은 SMM root 호출, Runtime/조회의 같은 준비 규약을 연결했습니다. 표준 통신 경로·EC 양쪽 작업 보존·전체 교환의 응답 귀속은 아직 미완료입니다. [고정 조회 검토안](FIXED_MODE_READ_PROPOSAL.md)을 갱신했으며 실제 보호 조회·충전 제어는 미구현·Unsupported입니다. 문서·정제 기록만 변경, 앱·기존 ZIP은 그대로이고 추가 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
 
 **최신 — Runtime 중계·고정 조회 검토 / 2026-11-07 한국 시간:** [후속 분석](RUNTIME_PROXY_AND_FIXED_READ_REVIEW.md)에서 정상 초기 구성의 flash 선택, 부팅 후 host 변수 함수의 SMM 중계 교체, EC 후크의 flag-only 효과를 연결했습니다. [고정 모드 한 바이트 조회 검토안](FIXED_MODE_READ_PROPOSAL.md)은 비실행 문서이며 실제 호출 준비는 미완료입니다. 통신의 정상 SMM 실행 영역·관련 indexed 접근·다른 작업 보존이 남았습니다. 실제 제어 Unsupported, 앱·기존 ZIP은 그대로이고 추가 실행·동일 자료 제출은 필요하지 않습니다. 원본 실행 시도 1건이 OS에서 차단됐으며 원본 실행·권한 변경·재시도는 없었습니다. 상세 사건 기록은 후속 분석에 있습니다. 아래는 이전 기록입니다.

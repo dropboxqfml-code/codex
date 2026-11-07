@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 작업 상태 생산자·읽기 소비 시점·Field Lock / 2026-11-07 한국 시간
+
+[후속 검토](EC_QUERY_INPUT_AND_CLEANUP_REVIEW.md)에서 descriptor 하위 작업의 시작 성공이 active·완료 대기 상태를 생산하고 후처리 gate로 연결됨을 확인했습니다. 선택 staging/복사와 query mailbox 영역은 구분하지만 관련 하위 작업이 계속 소비할 입력을 조회 upload가 훼손하지 않는지는 미완료입니다. 이 특정 정리를 초기화/flash/종료 전용으로 이름 붙이거나 현재 Windows 겹침으로 관측하지 않습니다.
+
+reader는 주소 성분을 따로 소비한 뒤 첫 성분만 결과로 바꾸며 known stable-command ISR이 필요한 register를 보존합니다. 사후 tail 일치는 반환 보존 관계일 뿐 소비 시점의 안정성·실행 identity를 단독 인증하지 않습니다. 두 raw DSDT의 Field Lock 선언과 NotSerialized method·trigger mutex도 전체 교환 소유권과 구분했습니다. 필요한 것은 특정 mutex의 강제가 아닌 관련 입력 준비~응답 회수의 무결성입니다. 기존 작업 비훼손·조회 취소의 안전한 실패를 최소 계약으로 반영했으며 실제 backend·새 시험 없이 Unsupported입니다. 문서·정제 기록만 변경, 앱·EXE·기존ZIP·하드웨어 미변경, 이번 빌드·단위 테스트 미실행·추가 실행/자료 제출 불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 부팅 순서와 legacy 정상 실행 영역 / 2026-11-07 한국 시간
 
 [새 검토](EC_READ_HANDOFF_AND_BOOT_ORDER.md)에서 Nvram 복합 모듈의 DXE 의존성과 dispatch→BDS 호출 순서를 대조해, 발견·의존성·시작·등록 성공 조건의 알림 선행을 구체화했습니다. 별도 SMM 의존성과 혼합하거나 dispatch 반환을 전체 성공으로 바꾸지 않습니다. legacy SW fallback은 정확한 PCH 제공자·default root·수신 인수·선택 private Runtime 표까지 동기 연결했습니다. SmmBase legacy Communicate의 별도 deferred 입력 전달도 복원했지만 표준 typed 통신 제공자 증거로 합치지 않습니다.

@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — Bound 전송 직접 실패의 격리 수정 / 2026-11-07:** [수정·검증 결과](BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md)에서 async Bound가 감추던 transport direct throw/null을 내부 표식으로 보존하고 cooperative owner의 resource/gate 재진입 차단을 복구했습니다. 수정 전 새 회귀4개가 실패했고 수정 뒤 전체469개 통과·전체 Release 빌드 경고/오류0입니다. 실제 반환 task의 정상 fault/cancel·로컬 거부는 기존 의미를 유지합니다. 실제 SDK의 불명 dispatch·provider 중단을 해결한 것으로 확대하지 않으며 앱 등록·기존 예약·배포 ZIP·A/B 시험 범위는 그대로입니다. 실제 제어 Unsupported·추가 실행/자료 제출 불필요입니다. 아래는 이전 기록입니다.
+
 **최신 — 정상 반환 계약·EC 재사용·A/B 비교 / 2026-11-07:** [새 검토](WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md)에서 공식 WMI/ACPI 계약과 모델 대응 가정 아래 정상 평가·반환을 조건부로 연결했습니다. EC 미게시·정상 ready·게시 후 오류의 재사용 조건을 구분하고, FF만으로 미실행을 판정하지 않습니다. [시험안](FIXED_MODE_READ_PROPOSAL.md)은 기본 A의1회 읽기/handshake0을 유지하며 별도 B의handshake1+조건부 읽기1 및 공유 gate 상태 변경을 명시했습니다. 두 안 모두 실제 연결 보류이며 앱·배포 ZIP은 그대로입니다. 추가 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
 
 **최신 — 선택 WMI 경로와 완료 계약 / 2026-11-07:** [검토 결과](SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md)에서 조회의 legacy SW 경로와 별도 Runtime 변수 통신을 분리했습니다. 삼성 keyboard/jog caller의 사전 gate 호출 순서를 확인했으며 배터리 지원 근거로 확대하지 않습니다. host WMI 프레임과 EC mailbox, 정상 최종 성공과 클라이언트 취소도 구분했습니다. 비실행 시험안의 초기화 없는 최대 1회 범위는 유지하며 실제 조회·제어는 미구현입니다. 문서·정제 기록만 변경했고 추가 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.

@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — Bound 직접 실패의 격리 전파와 참여 범위 / 2026-11-07
+
+**확인된 사실:** [후속 수정](BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md)은 Bound async 경계가 snapshot transport의 직접 throw/null을 faulted/cancelled Task로 바꿔 cooperative owner의 기존 격리 정책을 소실시키던 문제를 고쳤습니다. 호출 자체만 내부 고정 표식으로 보존하고 owner가 canonical resource와 gate를 격리합니다. 새6개 포함469개 통과·전체 net48 Release 빌드 경고/오류0입니다. 반환된 task fault/cancel·null snapshot과 미진입의 재사용 대조도 유지합니다.
+
+**정적 참여 범위:** 알려진 WSABI4개는 정상 Call의 입력 준비~응답 복사를 같은 협력 객체로 보호합니다. 선택 BSTR 할당 실패에서는 기본 throw handler와 해당 함수의 unwind closure에 mutex 해제 guard가 없는 관계1개를 추가 대조했습니다. 선택 실패는 method 전이며 상위 처리·모든 예외·현재 참여/abandon을 관측한 것은 아닙니다. native 경로의 같은 WMI host frame 사용은 미확정이고 Runtime의 확인된 공유는 downstream EC wire입니다.
+
+**한계:** 격리/lease 해제는 공급자 작업 중단 증거가 아니며 기존 실제 SDK 내부 예외가 이미 async fault로 변환된 경우는 식별하지 못합니다. 실제 adapter 계약·관련 참여 규약·A/B 유용성은 별도입니다. 실제 backend/앱 등록/예약/encoder/배포 ZIP·시험 권한은 유지하고 제어는 Unsupported입니다. 새 실행/동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 정상 반환의 조건부 연결과 EC outcome / 2026-11-07
 
 **확인된 사실:** [후속 결과](WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md)는 Microsoft의 Wmiacpi mapper 역할, WMI method 입출력, ACPI 평가/완료 계약을 기존 모델 선언과 대조했습니다. 같은 규약의 sender는 첫 준비 실패 시 upload/post를 생략하고 다음 호출도 zero-ready 전에는 게시하지 않습니다. 선택 reader의 입력 소비·결과 저장은 정상 dispatcher clear보다 앞섭니다. 새 EC source edge 발견은0개이며 기존 근거를 outcome별로 분류했습니다.

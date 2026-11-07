@@ -4,6 +4,15 @@ using System.Threading.Tasks;
 
 namespace ATIVBatteryGuard.Core.Services
 {
+    // Preserve a supplied transport's direct throw/null-task boundary through
+    // an async wrapper. This is not evidence that untracked work has stopped.
+    // Fixed text only: never retain the supplied exception or provider details.
+    internal sealed class WsabiWmiUntrackedDispatchException : System.InvalidOperationException
+    {
+        internal WsabiWmiUntrackedDispatchException()
+            : base("The supplied transport did not return a tracked operation.") { }
+    }
+
     internal sealed class WsabiWmiExchangeResource
     {
         private static readonly ConditionalWeakTable<object, WsabiWmiExchangeResource> Resources =

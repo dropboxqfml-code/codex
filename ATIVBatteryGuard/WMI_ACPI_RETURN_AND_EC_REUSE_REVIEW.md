@@ -1,5 +1,7 @@
 # WMI·ACPI 반환 계약과 EC 입력 재사용 — 2026-11-07
 
+**후속:** [Bound 전송 실패 격리 수정](BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md)에서 현재 코드의 wrapper별 정책 차이를 고쳤습니다. 테스트469개·전체 빌드 경고/오류0이며 알려진 OEM 참여자의 정상/선택 예외 범위도 구분했습니다. 아래는 당시 분석 기록입니다.
+
 **정상 method의 입출력 흐름을 공식 계약으로 보강하고, EC 오류를 무조건적인 전체 종료 요구와 분리했습니다.** 보호 값을 얻을 유용성이 제한된 기본 안 A와, 추가 gate 호출·상태 변경을 명시한 비실행 대안 B도 비교했습니다. 실제 backend·실기 호출은 추가하지 않았으며 보호 설정 조회·충전 제어는 여전히 미구현·Unsupported입니다.
 
 [이전 경로 검토](SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md)의 후속입니다. [현재 시험안](FIXED_MODE_READ_PROPOSAL.md)과 [연결 판정](FIXED_MODE_READ_DECISION.md)에 반영하고, 출처·해시·한계는 [정제 기록](reports/wmi-acpi-return-ec-reuse-audit.json)에 남겼습니다.

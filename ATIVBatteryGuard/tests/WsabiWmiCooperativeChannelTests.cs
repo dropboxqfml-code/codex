@@ -305,6 +305,98 @@ internal static partial class Program
             }
         });
 
+        AddAsync("bound direct transport throws retain cooperative quarantine across wrappers", () =>
+            CooperativeBoundUntracked((request, token) => { throw new InvalidOperationException("synthetic private transport detail"); }));
+
+        AddAsync("bound null transport tasks retain cooperative quarantine across wrappers", () =>
+            CooperativeBoundUntracked((request, token) => null));
+
+        AddAsync("bound direct transport cancellation retains cooperative quarantine across wrappers", () =>
+            CooperativeBoundUntracked((request, token) => { throw new OperationCanceledException(); }));
+
+        AddAsync("bound completed faults cancellations and null snapshots retain normal ownership cleanup", async () =>
+        {
+            Func<WsabiWmiMethodRequest, CancellationToken, Task<WsabiWmiMethodSnapshot>>[] outcomes =
+            {
+                (request, token) => Task.FromException<WsabiWmiMethodSnapshot>(new InvalidOperationException("synthetic completed fault")),
+                (request, token) => Task.FromCanceled<WsabiWmiMethodSnapshot>(new CancellationToken(true)),
+                (request, token) => Task.FromResult<WsabiWmiMethodSnapshot>(null)
+            };
+            for (int i = 0; i < outcomes.Length; i++)
+            {
+                var transport = new BoundChannelTransport { Handler = outcomes[i] };
+                var gate = new CooperativeTestGate();
+                var owner = CooperativeOwner(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), gate);
+                var pending = owner.ExchangeAsync(BoundChannelRequest(), CancellationToken.None);
+                if (i == 1) await CooperativeCancelled(pending);
+                else await CooperativeFailure(pending, WsabiWmiCooperativeExchangeFailure.ChannelFailure);
+                Check(!owner.IsOwnershipUncertain, "a returned terminal task was mistaken for an untracked dispatch");
+                Equal(1, gate.LastLease.DisposeCalls);
+                Equal(gate.AcquireThread, gate.LastLease.DisposeThread);
+                transport.Handler = (request, token) => Task.FromResult(new WsabiWmiMethodSnapshot(0, BoundChannelOutput(BoundChannelReply())));
+                var peer = CooperativeOwner(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), gate);
+                Check((await peer.ExchangeAsync(BoundChannelRequest(), CancellationToken.None)).IsValidFrame,
+                    "completed transport outcome prevented a later bound exchange");
+                Equal(2, transport.Calls); Equal(2, gate.Calls);
+            }
+        });
+
+        AddAsync("bound local rejection and predispatch cancellation do not quarantine unused transport", async () =>
+        {
+            var transport = new BoundChannelTransport();
+            var gate = new CooperativeTestGate();
+            var owner = CooperativeOwner(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), gate);
+            await CooperativeFailure(owner.ExchangeAsync(new byte[21], CancellationToken.None),
+                WsabiWmiCooperativeExchangeFailure.ChannelFailure);
+            Equal(0, transport.Calls); Equal(1, gate.LastLease.DisposeCalls);
+            Check(!owner.IsOwnershipUncertain, "local binding rejection quarantined an unused transport");
+            using (var caller = new CancellationTokenSource())
+            {
+                caller.Cancel();
+                await CooperativeCancelled(owner.ExchangeAsync(BoundChannelRequest(), caller.Token));
+            }
+            Equal(0, transport.Calls); Equal(1, gate.Calls);
+            Check(!owner.IsOwnershipUncertain, "pre-admission cancellation quarantined an unused transport");
+            Check((await owner.ExchangeAsync(BoundChannelRequest(), CancellationToken.None)).IsValidFrame,
+                "local rejection or pre-cancellation prevented a later exchange");
+        });
+
+        AddAsync("stop while bound transport dispatch is blocked cannot hide a later direct throw", async () =>
+        {
+            using (var release = new ManualResetEventSlim())
+            using (var caller = new CancellationTokenSource())
+            {
+                var entered = CooperativeCompletion();
+                var transport = new BoundChannelTransport { Handler = (request, token) =>
+                {
+                    entered.TrySetResult(true);
+                    Check(release.Wait(TimeSpan.FromSeconds(5)), "test never released the blocked transport dispatch");
+                    throw new OperationCanceledException();
+                }};
+                var gate = new CooperativeTestGate();
+                var owner = CooperativeOwner(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), gate);
+                var pending = owner.ExchangeAsync(BoundChannelRequest(), caller.Token);
+                try
+                {
+                    await CooperativeAwait(entered.Task);
+                    caller.Cancel();
+                    Check(!pending.IsCompleted && gate.LastLease.IsHeld,
+                        "caller stop released a transport dispatch still on the owner stack");
+                    release.Set();
+                    await CooperativeFailure(pending, WsabiWmiCooperativeExchangeFailure.ChannelFailure);
+                    Check(owner.IsOwnershipUncertain, "caller stop concealed the later untracked transport failure");
+                    Equal(1, gate.LastLease.DisposeCalls);
+                    Equal(gate.AcquireThread, gate.LastLease.DisposeThread);
+                }
+                finally
+                {
+                    release.Set();
+                    try { await CooperativeAwait(pending); } catch (WsabiWmiCooperativeExchangeException) { }
+                    catch (OperationCanceledException) { }
+                }
+            }
+        });
+
         AddAsync("outer timeout retains the cooperative lease until a late lower fault stops", async () =>
         {
             var lower = FrameExchangeCompletion();
@@ -451,6 +543,39 @@ internal static partial class Program
                 await FrameExchangeIdle(first);
             }
         });
+    }
+
+    private static async Task CooperativeBoundUntracked(
+        Func<WsabiWmiMethodRequest, CancellationToken, Task<WsabiWmiMethodSnapshot>> outcome)
+    {
+        var transport = new BoundChannelTransport { Handler = outcome };
+        var gate = new CooperativeTestGate();
+        var owner = CooperativeOwner(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), gate);
+        await CooperativeFailure(owner.ExchangeAsync(BoundChannelRequest(), CancellationToken.None),
+            WsabiWmiCooperativeExchangeFailure.ChannelFailure);
+        Check(owner.IsOwnershipUncertain, "a bound wrapper concealed an untracked transport failure");
+        Equal(1, transport.Calls); Equal(1, gate.LastLease.DisposeCalls);
+        Equal(gate.AcquireThread, gate.LastLease.DisposeThread);
+        Check(!gate.LastLease.IsHeld, "software quarantine leaked its lease");
+
+        var plainPeer = new WsabiWmiFrameExchange(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), TimeSpan.FromSeconds(2));
+        AssertFrameExchangeFailure(await plainPeer.ExchangeAsync(0x34, BoundChannelPayload()), WsabiWmiFrameExchangeStatus.Busy);
+        var otherGate = new CooperativeTestGate();
+        var transportPeer = CooperativeOwner(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), transport), otherGate);
+        await CooperativeFailure(transportPeer.ExchangeAsync(BoundChannelRequest(), CancellationToken.None),
+            WsabiWmiCooperativeExchangeFailure.OwnershipUncertain);
+        Equal(0, otherGate.Calls); Equal(1, transport.Calls);
+
+        var otherTransport = new BoundChannelTransport();
+        var gatePeer = CooperativeOwner(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), otherTransport), gate);
+        await CooperativeFailure(gatePeer.ExchangeAsync(BoundChannelRequest(), CancellationToken.None),
+            WsabiWmiCooperativeExchangeFailure.OwnershipUncertain);
+        Equal(0, otherTransport.Calls); Equal(1, gate.Calls);
+
+        var independent = CooperativeOwner(new WsabiWmiBoundFrameChannel(BoundChannelBinder(), new BoundChannelTransport()),
+            new CooperativeTestGate());
+        Check((await independent.ExchangeAsync(BoundChannelRequest(), CancellationToken.None)).IsValidFrame,
+            "quarantine spread to an unrelated software resource and gate");
     }
 
     private static WsabiWmiCooperativeFrameChannel CooperativeOwner(IWsabiWmiFrameChannel channel, IWsabiWmiExchangeGate gate)

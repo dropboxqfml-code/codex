@@ -1,0 +1,147 @@
+{
+  "dateUtc": "2026-11-07",
+  "previousRepositoryCommit": "9b32840",
+  "scope": "Preserve direct snapshot-transport failure provenance through the async bound wrapper into the existing cooperative quarantine policy; bounded OEM participant exception review",
+  "softwareFix": {
+    "changedCodePins": [
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiBoundFrameChannel.cs",
+        "bytes": 2687,
+        "sha256": "167b71ff10bccd858a281f4591264bb7f82cabb537a9781751a7291145d3487e"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiCooperativeFrameChannel.cs",
+        "bytes": 9586,
+        "sha256": "4c8e68094ba96ea92092f64492027e66b12a2fe5f24eae2828ffefbf373ed747"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiExchangeCoordination.cs",
+        "bytes": 3249,
+        "sha256": "1fe8cf7cfb7ea8b3ed4844fec56acba745feed249f83f6b8f9e575a5cfe6e864"
+      },
+      {
+        "projectFile": "tests/WsabiWmiCooperativeChannelTests.cs",
+        "bytes": 39140,
+        "sha256": "ddac9a5ad7466c7590c0ff3954fcd03ff7f45ed70e4fad9da9ac8aabfc2e1681"
+      }
+    ],
+    "publicApiOrHardwareCapabilityAdded": false,
+    "internalFixedTextMarkerForDirectInvocationThrowOrNullTask": true,
+    "directOperationCanceledExceptionIncluded": true,
+    "markerRetainsOriginalExceptionInnerExceptionOrProviderText": false,
+    "catchIncludesAwaitPostTokenCheckOrDecode": false,
+    "ownerHandlesMarkerBeforeCancellationClassification": true,
+    "canonicalResourceAndGateBothStickyQuarantined": true,
+    "sameTransportNewBoundOrPlainPeerBypassesQuarantine": false,
+    "sameGateOtherTransportBypassesQuarantine": false,
+    "unrelatedResourceAndGateBlocked": false,
+    "existingSameThreadLeaseReleaseBeforePublicationRetained": true,
+    "returnedTaskFaultCancelNullSnapshotAndLocalRejectionKeepExistingMeaning": true,
+    "bareBoundOrNonCooperativeFailureReusePolicyChanged": false,
+    "resetOrRetryApiAdded": false
+  },
+  "verification": {
+    "newRegisteredRegressions": 6,
+    "beforeFix": {
+      "passed": 465,
+      "failed": 4,
+      "skipped": 0,
+      "registered": 469,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "afterFix": {
+      "passed": 469,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 469,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0
+    },
+    "existingSdkIlTaskPathAndCachedDependenciesUsed": true,
+    "newDependencySdkPatchOrSkippedXamlStep": false,
+    "regressionScope": [
+      "Three direct invocation failure shapes through the bound wrapper",
+      "Returned terminal task and null-snapshot reuse controls",
+      "Local rejection and pre-cancel no-call controls",
+      "Stop during blocked invocation does not conceal later direct cancellation throw"
+    ],
+    "sourceAndTestCodeIndependentlyReviewed": true,
+    "independentReviewerReadActualTestAndBuildResults": true,
+    "actualWmiOemOrGlobalGateUsedByNewRegressions": false,
+    "existingNativeMutexRegressionsUseUnnamedTestObjects": true
+  },
+  "participantReview": {
+    "knownSourceCount": 4,
+    "sourcePins": [
+      {
+        "role": "service-x86",
+        "bytes": 22920,
+        "sha256": "564b640d62db2a4e4b56c6331e0e526bad2ac1fcf438a41a9e5241551f457b6e"
+      },
+      {
+        "role": "settings-x86",
+        "bytes": 22920,
+        "sha256": "b68452579a3f5f898ad8ccf63d655aed62c5be221784b799cdf471da674fbdcc"
+      },
+      {
+        "role": "settings-sosi-x64",
+        "bytes": 24368,
+        "sha256": "99fc3a6a93987706bb161550f70a3739590e3571134aebb60eaeb3fb5328df58"
+      },
+      {
+        "role": "settings-installer-x64",
+        "bytes": 24968,
+        "sha256": "8e655ede2559c986a120d2bd4c48256c35fb2a1bd13baceecb167f7b4a6b21c9"
+      }
+    ],
+    "normalWholeCallIntervalsAreReusedContext": true,
+    "newFunctionLevelExceptionRelationships": 1,
+    "selectedAssertionsForThatOneRelationship": 134,
+    "reusedOrdinaryIntervalChecks": 12,
+    "reusedIdentityChecks": 8,
+    "selectedDefaultHandlerAndNonemptyAllocationFailureAreExplicitConditions": true,
+    "selectedFunctionOwnUnwindHasMutexReleaseGuard": false,
+    "selectedFailureBeforeOemMethodCall": true,
+    "wmiEnumerationMayAlreadyHaveRunBeforeSelectedFailure": true,
+    "selectedFailureProvesPartialOemEcExecutionOrFrameCorruption": false,
+    "allUpstreamExceptionHandlingOrManualReleaseAudited": false,
+    "currentParticipationLockRetentionOrAbandonmentObserved": false,
+    "normalIntervalEvidenceRefuted": false,
+    "moduleSabiTwoCallsProvenContinuouslyMutexOwned": false,
+    "nativeRouteSameWmiHostFrameBindingProven": false,
+    "runtimeEcWireSharingMeansWindowsGlobalParticipation": false,
+    "allExternalWritersAbsenceRequired": false,
+    "rootReadOnlyVerifierReplayPassed": true,
+    "independentSourceReviewAndVerifierReplayPassed": true,
+    "sourceAssertionsAddedToAppTestCountOrCoverage": false
+  },
+  "limitsAndDecision": {
+    "quarantineOrLeaseReleaseTerminatesProvider": false,
+    "ordinarySdkInternalAsyncFaultNowIdentifiedAsNotPostedOrStopped": false,
+    "oldConsumedBackendCanBeConnectedUnchanged": false,
+    "actualBackendContractAndRelevantParticipantScopeStillNeeded": true,
+    "normalWmiAmlReturnModelAssumptionsReopened": false,
+    "defaultAOrNonExecutableAlternativeBCallsStateEffectsOrApprovalChanged": false,
+    "actualProtectionModeReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "executionApprovalRequested": false
+  },
+  "changeBoundary": {
+    "coreFilesChanged": 3,
+    "publicTestFilesChanged": 1,
+    "appRegistrationUiEncoderOldBackendProgramOrReservationSourceChanged": false,
+    "mainAppOrDeviceToolsExecuted": false,
+    "ownPortableTestsExecuted": true,
+    "existingReleaseArchiveUpdated": false,
+    "vendorCodeExecutedLoadedOrEmulated": false,
+    "actualWmiOemHardwareGlobalObjectOrConsumedMarkerAccessed": false,
+    "newHardwareFrameNonceGeneratorOrBackendCreated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "applicationNetworkCodeAdded": false,
+    "additionalLaptopExecutionOrRepeatedUploadRequested": false
+  }
+}

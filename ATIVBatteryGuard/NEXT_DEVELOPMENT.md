@@ -1,5 +1,19 @@
 # 다음 개발 재개 메모
 
+## 최신 — Bound 전송 직접 실패 격리 코드 수정 / 2026-11-07
+
+[BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md](BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 기존 cooperative owner는 직접 channel throw/null만 격리했는데 async Bound가 lower snapshot transport의 같은 실패를 ordinary faulted/cancelled Task로 감춰 wrapper별 정책이 달랐습니다. transport 호출 자체만 내부 fixed-text marker로 보존하고 owner가 취소 분류 전에 canonical resource+gate를 sticky quarantine하도록 Core3파일을 수정했습니다. 원본 예외/InnerException/detail은 보관하지 않습니다. await·후속 token검사·null snapshot/decode·이미 반환된 task fault/cancel은 기존 완료 의미를 유지하며 plain/unowned 경계까지 전역 격리하지 않습니다.
+
+테스트1파일에6개 등록을 추가했습니다. direct throw/null/direct OCE3개는 peer wrapper/plain/gate 차단·독립자원진행·동일 thread release1회를 검증합니다. 반환된 fault/cancel/null snapshot 대조1개, local reject/precancel no-call1개, blocked direct invocation 중 stop 뒤 OCE1개가 추가됐습니다. 실제 baseline465pass4fail/469total, 수정 뒤469pass0fail0skip입니다. 전체 net48 Release 빌드 경고0/오류0도 현재 완료했습니다. 기존 SDK8.0.427·기존cache·R2R IL 설정·no-restore·UseSharedCompilation=false·m1이며 새 dependency/SDK패치/XAMLskip없음입니다.
+
+격리는 기존 직접 실패의 보수정책 전파이며 untracked provider를 종료하거나 외부 전체를 보호하지 않습니다. 특히 old WindowsOneShotBackend 내부 SDK 예외가 이미 ordinary async fault가 된 경우에는 새 marker가 생기지 않습니다. 실제 adapter가 미게시/관련 완료/불명 dispatch를 구분해야 하는 조건은 유지하며 old backend를 그대로 연결하지 않습니다. lease 해제나 프로세스 종료를 provider 정지로 간주하지 않습니다.
+
+알려진 WSABI4개의 정상 acquire→입력준비→method→응답copy→release는 이전 문맥입니다. 새 정적 관계1개는 소유 이후 선택 BSTR 할당 실패가 saved default handler로 throw할 때 해당 함수의 unwind closure에 mutex guard가 없다는 것입니다. 선택134개/재사용normal12/identity8을 구분합니다. 실패는 OEM method 전이며 이전 WMI 열거는 가능하지만 부분 OEM/EC 실행·프레임훼손 증거가 아니며 상위catch/모든예외/currentruntime참여/actualabandon을 확정하지 않습니다. ModuleSABI의 두 lower Call을 연속 잠금으로 묶었다고 하지 않습니다. native는 같은WMIhostframe미확정, Runtime은downstreamEC wire공유이며 모두Global협력참여로합치지않습니다.
+
+다음은 실제 adapter의 불명 SDK dispatch·관련 마지막 접근을 보존하는 계약과 관련 실제 참여 범위를 고정하는 작업입니다. 정상 WMI→AML 반환은 기존 모델 가정 아래 동결하며 같은원문/404/GUID검색을 반복하지 않습니다. A=최대1read/handshake0, B=별도비실행handshake1+조건부read1/최대2calls/상태영향명시라는 범위와 승인 상태는 유지합니다. 새 public outcomeprotocol/실기 backend/frame/tag값/하드웨어 generator/승인질문은 없습니다.
+
+private cache: 20261107/bound-dispatch-quarantine-fix(baseline/after json·logs,solution-build.log), known-wmi-participant-scope-next, uncertain-outcome-contract-review-next, uncertain-outcome-feasibility-next. 공개 변경은 Core3+tests1+문서/정제기록이며 앱등록/UI/encoder/oldOneShot backend/Program/예약·배포ZIP은 그대로입니다. portable tests는우리코드/가짜전송과기존unnamedmutex이며OEMGlobal을열지않았습니다. WMI/OEM/하드웨어/소모예약 접근·삼성원본실행/로딩/에뮬레이션·driver/service/security/firmware 변경없음입니다. 실제제어Unsupported·새노트북실행/동일자료제출불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — WMI·ACPI 정상 반환과 EC 재사용 계약 / 2026-11-07
 
 [WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md](WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md), [시험안](FIXED_MODE_READ_PROPOSAL.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. Microsoft 공식 Wmiacpi mapper 역할·WMI IRP method 입출력·ACPI 평가 계약을 저장 모델의 metadata/선언/AML과 대응했습니다. 정상 mapper의 object/method 선택·인수·반환 buffer 대응을 가정으로 명시하고 정상 평가/반환은 조건부 연결됨으로 동결합니다. exact WMxx/Arg2 규격의 공식 원문은 미확보지만 이것만을 독립 blocker로 두지 않습니다. 동일404·GUID·metadata 검색을 반복하지 않고 새 원문/provider 코드·관련 trace·구체 반례가 있을 때만 다시 엽니다.

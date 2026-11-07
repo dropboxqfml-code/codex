@@ -34,8 +34,12 @@ namespace ATIVBatteryGuard.Core.Services
             if (!binder.TryWrapFrame(request, out envelope))
                 throw new ArgumentException("A supported request frame is required.", nameof(request));
             cancellationToken.ThrowIfCancellationRequested();
-            Task<WsabiWmiMethodSnapshot> pending = transport.ExchangeAsync(envelope, cancellationToken);
-            if (pending == null) throw new InvalidOperationException("The snapshot task was not supplied.");
+            Task<WsabiWmiMethodSnapshot> pending;
+            // Catch only the invocation itself. Fault/cancel of a returned task
+            // still follows the supplied transport's normal completion contract.
+            try { pending = transport.ExchangeAsync(envelope, cancellationToken); }
+            catch { throw new WsabiWmiUntrackedDispatchException(); }
+            if (pending == null) throw new WsabiWmiUntrackedDispatchException();
             WsabiWmiMethodSnapshot snapshot = await pending.ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             if (snapshot == null) throw new InvalidOperationException("The snapshot was not supplied.");

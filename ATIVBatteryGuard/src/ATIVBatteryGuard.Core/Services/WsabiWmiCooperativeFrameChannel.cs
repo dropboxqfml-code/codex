@@ -132,6 +132,13 @@ namespace ATIVBatteryGuard.Core.Services
                     Quarantine();
                     failure = Failure(WsabiWmiCooperativeExchangeFailure.OwnershipUncertain);
                 }
+                else if (error is WsabiWmiUntrackedDispatchException)
+                {
+                    // An async bound wrapper must not hide the direct-call
+                    // failure policy. Quarantine is not provider termination.
+                    Quarantine();
+                    failure = Failure(WsabiWmiCooperativeExchangeFailure.ChannelFailure);
+                }
                 else if (error is OperationCanceledException) failure = new OperationCanceledException();
                 else failure = error as WsabiWmiCooperativeExchangeException ??
                     Failure(WsabiWmiCooperativeExchangeFailure.ChannelFailure);

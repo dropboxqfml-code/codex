@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 공통 managed 호출 세션 / 2026-11-07
+
+**구현한 소프트웨어:** [새 세션](MANAGED_INVOCATION_SESSION_UPDATE.md)은 명시적으로 공급한 source의 call exit·적용 가능한 terminal·선택 capture 종료를 기다리는 snapshot transport와 host입니다. 같은 source 참조의 단발 상태·identity를 공유하고 capture는 byte[] 복사와 앱 소유 고정 map으로 제한했습니다. terminal status가 권위 있는 값이며 source 신호는 실제 종료를 스스로 인증하는 기능이 아닙니다.
+
+**검증:** 새15개 포함484개 통과·전체 net48 Release 빌드 경고/오류0입니다. source는 끝났어도 다른 owner의 lease.Dispose가 막힌 동안 peer close가 일찍 끝나는 문제를 추가 회귀로 재현했고482통과1실패→483통과로 수정했습니다. admission과 canonical cleanup barrier를 함께 게시하고 새 admission을 막은 뒤 해당 정리를 기다립니다. source·자기/공유 cleanup을 모두 기다리므로 Busy/quarantine을 종료 신호로 쓰지 않습니다.
+
+**남은 실제 연결:** 실제 System.Management source·GUI close/프로세스 수명 hook은 없습니다. observer가 받는 terminal과 capture 사실의 적용 조건·신호 소실은 source 구현에서 검토해야 합니다. 삼성 원본·SDK·OEM·하드웨어를 실행한 검증이 아니며 기존 marker/backend/encoder·A/B 범위·배포 ZIP은 그대로입니다. 실제 제어 Unsupported·새 실기/재제출 불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — SDK 오류와 관련 작업 종료의 분리 / 2026-11-07
 
 **확인한 소스 범위:** [SDK 수명 검토](SDK_INVOCATION_LIFETIME_REVIEW.md)는 새 Microsoft dotnet/runtime v8.0.0 ManagementObject 참조1파일과 기존 observer/Backend를 대조했습니다. 정상 Backend는 SDK 정상 반환과 선택 completion을 기다립니다. 참조의 음수 immediate 상태는 sink/stub을 정리하고 throw하므로 같은 observer의 late terminal을 보장할 수 없습니다. 새 관계1개·선택 text17·재사용13·pins6이며 실제.NET48 일치·노트북의 호출 순서·Reset의 실제 throw를 입증하지 않습니다.

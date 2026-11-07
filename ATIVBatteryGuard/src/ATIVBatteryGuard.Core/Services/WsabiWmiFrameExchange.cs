@@ -13,7 +13,12 @@ namespace ATIVBatteryGuard.Core.Services
         private readonly IWsabiWmiFrameChannel channel;
         private readonly TimeSpan timeout;
         private readonly WsabiWmiExchangeResource resource;
+        private Task cleanupCompletion = Task.CompletedTask;
         public bool IsBusy => resource.IsBusy;
+        // The single-use managed session joins cleanup, never its bounded UI
+        // result or the sticky Busy flag, before reporting its own close ready.
+        internal Task CleanupCompletion => Volatile.Read(ref cleanupCompletion);
+        internal Task StopAdmissionAndGetCleanup() => resource.StopAdmissionAndGetCleanup();
 
         public WsabiWmiFrameExchange(IWsabiWmiFrameChannel channel, TimeSpan timeout)
         {
@@ -39,6 +44,8 @@ namespace ATIVBatteryGuard.Core.Services
             if (!resource.TryEnter())
                 return Result(WsabiWmiFrameExchangeStatus.Busy);
 
+            var cleanupCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Volatile.Write(ref cleanupCompletion, cleanupCompleted.Task);
             Task<WsabiWmiReplyResult> pending = null;
             Task cancellation = null;
             var operation = new CancellationTokenSource();
@@ -104,6 +111,7 @@ namespace ATIVBatteryGuard.Core.Services
                     operation.Dispose();
                     stop?.Dispose();
                     resource.Release();
+                    cleanupCompleted.TrySetResult(true);
                 }
                 else
                 {
@@ -117,6 +125,7 @@ namespace ATIVBatteryGuard.Core.Services
                         operation.Dispose();
                         stop?.Dispose();
                         resource.Release();
+                        cleanupCompleted.TrySetResult(true);
                     }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                 }
             }

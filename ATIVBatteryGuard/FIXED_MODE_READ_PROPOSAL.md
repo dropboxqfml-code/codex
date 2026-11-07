@@ -6,6 +6,8 @@
 
 [SDK 수명 private 증명](SDK_INVOCATION_LIFETIME_REVIEW.md)은 확실한 미진입 또는 call exit+관련 terminal+선택 capture settled를 종료 조건으로 검산했습니다. 실제 SDK의 terminal 소실을 해결한 것은 아니며, A/B 실행 준비·하드웨어 종료 증명으로 승격하지 않습니다.
 
+[공통 호출 세션](MANAGED_INVOCATION_SESSION_UPDATE.md)은 이제 같은 계약을 실제 transport/host 코드로 구현하고 fake 회귀로 검증합니다. 실제 SDK source·GUI close hook을 연결한 것은 아니며 아래 호출 상한·gate 영향·승인 범위는 그대로입니다.
+
 ## 현재 기본 안 A의 목표와 횟수
 
 목표는 임시 CandidateProfile에 고정된 보호 모드 저장 byte를 한 번 읽어 **저장 후보값**으로 분류하는 것입니다. 충전기 적용·잔량·Windows 충전 상태와 구분합니다. 실제 제어 활성화·설정 변경·임계값 쓰기는 범위에 없습니다.

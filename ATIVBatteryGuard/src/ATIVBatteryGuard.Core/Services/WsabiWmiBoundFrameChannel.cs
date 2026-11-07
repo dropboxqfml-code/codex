@@ -12,9 +12,9 @@ namespace ATIVBatteryGuard.Core.Services
     {
         private readonly WsabiWmiMethodBinder binder;
         private readonly IWsabiWmiMethodSnapshotTransport transport;
-        // Only FrameExchange uses this stable reference to coordinate wrappers.
+        // FrameExchange coordinates known wrappers through the supplied source.
         // No external key, OS object or hardware capability is exposed.
-        internal object ExchangeIdentity => transport;
+        internal object ExchangeIdentity => (transport as WsabiWmiInvocationSnapshotTransport)?.ExchangeIdentity ?? transport;
         public bool CanInvokeMethods => false;
         public bool CanReadHardware => false;
         public bool CanWriteHardware => false;

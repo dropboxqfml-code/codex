@@ -1,5 +1,23 @@
 # 다음 개발 재개 메모
 
+## 최신 — 공통 invocation transport와 세션 구현 / 2026-11-07
+
+[MANAGED_INVOCATION_SESSION_UPDATE.md](MANAGED_INVOCATION_SESSION_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. private helper만 두던 단계에서 기존 Bound/owner/FrameExchange가 소비하는 WsabiWmiInvocationSnapshotTransport와 WsabiWmiInvocationSession을 구현했습니다. 실제 SDK 기본 구현·OEM method·모델 profile·GUI 등록은 없습니다.
+
+source는 준비된 호출과 observer만 받고 terminal int status, 이미 분리된 byte[], 고정 capture 실패만 보고합니다. SDK/COM/EventArgs/Context/지연 getter/원문 예외는 넘기지 않습니다. transport는 추적 worker에서 source.Invoke를 수행하고 call exit와 terminal/capture settled를 함께 기다리며 worker/token registration 정리 뒤 Task를 끝냅니다. source throw·stop·UI timeout만으로 끝내지 않고 terminal 소실은 pending입니다. source 사실은 공급자 계약이지 실제 종료의 자동 인증이 아닙니다.
+
+같은 source 참조는 CWT 단발 상태를 공유하고 Bound identity도 그 참조를 계승합니다. alias 재요청은 이전 결과를 replay하지 않습니다. capture는 처음부터 unsettled→Copying 예약→lock 밖 bounded clone→settled입니다. terminal status가 권위 있으며 비영 상태에서는 byte 배열을 읽거나 보유하지 않습니다.4096은 보유 cap이고 decoder acceptance와 다릅니다. null/oversize는 capture 실패, 짧은 배열은 보정하지 않습니다. 순서 오류·상충 terminal·중복 capture는 고정 실패만 기록하며 실제 종료 근거가 오기 전 Task를 조기 fault하지 않습니다.
+
+Session은 시작/닫기를 같은 lock으로 정렬하고 RequestCloseAsync는 stop 의도만 보냅니다. source InvocationCompletion, 자기 Frame cleanup, 같은 canonical source의 active cleanup을 모두 기다린 뒤 CTS를 dispose하고 CloseReady를 게시합니다. canonical TryEnter는 admission과 cleanup TCS를 한 lock에서 만들고 StopAdmissionAndGetCleanup은 새 admission을 막으며 barrier를 포착합니다. Release는 owner/취소/slot 정리 뒤 신호합니다. 닫힌 admission이나 quarantine 때문에 Busy가 남는다고 관련 작업 진행 중이라고 해석하지 않습니다. 직접 호출·다른 source 객체·모든 물리 alias까지 보장하지 않습니다.
+
+처음 새13개로482개가 통과했고 peer-close 추가 회귀는482통과1실패/483개로 문제를 재현했습니다. canonical barrier 수정 후483통과0실패0skip입니다. 이어 정상 return/no terminal의 stop 뒤 진단 회귀를 추가해483통과1실패/484개를 재현하고, stopped도 완료 불명 분류에 포함했습니다. 최종484통과0실패0skip이며 Task 종료 조건이나 소유권은 완화하지 않았습니다. 전체 net48 Release 빌드는 경고0·오류0입니다. 기존 SDK8.0.427·cache·R2R IL 설정·no-restore·UseSharedCompilation=false·m1을 사용했고 새 dependency/SDK패치/XAMLskip은 없습니다. 테스트는 같은 새 세션/transport 코드에 fake source/gate를 주입하며 기존 synthetic fixture만 씁니다. private8/48이나 source 계약 관찰 수를 합산하지 않습니다.
+
+변경은 Core6파일(새3/기존3), tests3파일(새회귀/등록/프로젝트), 문서·정제 기록입니다. 실제 SDK source·WmiOneShot backend/Program/marker·encoder·앱 UI 등록·배포 ZIP은 그대로입니다. 미래 실제 host는 RequestCloseAsync를 기다려야 하며 현재 GUI/ProcessExit hook이나 강제 종료에 대한 provider stop 보장은 없습니다. 실제 source가 terminal을 잃으면 close도 무기한 pending일 수 있습니다.
+
+다음은 이 세션을 쓸 단발 조회 도구의 실제 source/host 계약과 A/B 중 한 안의 대상·횟수·신선함·중단·닫기 동작을 확정하는 작업입니다. source.Invoke 단발은 실제 SDK method 수나 하드웨어 권한을 인증하지 않습니다. 실제 연결 코드·실기는 별도 안전/승인 범위이며 기존 consumed backend를 재사용하지 않습니다. normal mapping·SDK 원문·OEM 참여자 검색을 반복하지 않습니다.
+
+private cache: 20261107/managed-invocation-session-validation(tests.json/log,peer-before.json/log,after.json/log,missing-terminal-before.json/log,final.json/log,solution-final-build.log),observed-transport-design-next,observed-transport-contract-next,observed-transport-boundary-next. 실제 WMI/OEM/hardware/Global객체/소모 예약 접근·삼성 원본 실행/로딩/에뮬레이션·driver/service/security/firmware 변경은 없습니다. A/B 호출 수·gate 영향·승인 상태와 Unsupported는 유지하며 새 노트북 실행/같은 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — SDK 호출 수명 계약과 private 증명 / 2026-11-07
 
 [SDK_INVOCATION_LIFETIME_REVIEW.md](SDK_INVOCATION_LIFETIME_REVIEW.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 기존 Backend의 정상 경로는 이미 SDK 정상 반환과 선택 completion을 함께 기다립니다. 사용처 없는 Core/public tracker를 추가하는 대신, 불명 오류 진단과 소유권이 기다릴 종료 Task를 분리하는 private prototype를 만들었습니다.

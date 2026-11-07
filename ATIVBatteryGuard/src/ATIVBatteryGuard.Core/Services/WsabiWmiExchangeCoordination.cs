@@ -17,10 +17,14 @@ namespace ATIVBatteryGuard.Core.Services
     {
         private static readonly ConditionalWeakTable<object, WsabiWmiExchangeResource> Resources =
             new ConditionalWeakTable<object, WsabiWmiExchangeResource>();
+        private readonly object admissionGate = new object();
         private int active;
         private int quarantined;
+        private int admissionStopped;
+        private TaskCompletionSource<bool> cleanupCompleted;
         internal bool IsQuarantined => Volatile.Read(ref quarantined) != 0;
-        internal bool IsBusy => Volatile.Read(ref active) != 0 || IsQuarantined;
+        internal bool IsBusy => Volatile.Read(ref active) != 0 ||
+            Volatile.Read(ref admissionStopped) != 0 || IsQuarantined;
 
         internal static object Identity(IWsabiWmiFrameChannel channel)
             => (channel as WsabiWmiCooperativeFrameChannel)?.ExchangeIdentity ??
@@ -31,14 +35,43 @@ namespace ATIVBatteryGuard.Core.Services
 
         internal bool TryEnter()
         {
-            if (IsQuarantined || Interlocked.CompareExchange(ref active, 1, 0) != 0) return false;
-            return !IsQuarantined;
+            lock (admissionGate)
+            {
+                if (IsQuarantined || active != 0 || admissionStopped != 0) return false;
+                // Admission and its shared cleanup barrier are one publication.
+                // A peer close cannot observe active work with an old idle task.
+                cleanupCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                Volatile.Write(ref active, 1);
+                return true;
+            }
+        }
+
+        internal Task StopAdmissionAndGetCleanup()
+        {
+            lock (admissionGate)
+            {
+                Volatile.Write(ref admissionStopped, 1);
+                return cleanupCompleted == null ? Task.CompletedTask : cleanupCompleted.Task;
+            }
         }
 
         // Quarantine has no reset/retry API. Even a concurrent Release cannot
         // clear it: both IsBusy and TryEnter consult the separate sticky flag.
-        internal void Quarantine() => Interlocked.Exchange(ref quarantined, 1);
-        internal void Release() => Interlocked.Exchange(ref active, 0);
+        internal void Quarantine()
+        {
+            lock (admissionGate) Volatile.Write(ref quarantined, 1);
+        }
+
+        internal void Release()
+        {
+            TaskCompletionSource<bool> completed;
+            lock (admissionGate)
+            {
+                Volatile.Write(ref active, 0);
+                completed = cleanupCompleted;
+            }
+            completed?.TrySetResult(true);
+        }
     }
 
     internal sealed class WsabiWmiExchangeStopSignal : System.IDisposable

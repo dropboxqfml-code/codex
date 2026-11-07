@@ -1,12 +1,12 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
-**판정: 조건부 비실행 시험안 검토 가능, 실제 backend 연결·실행은 보류.** [SDK 호출 수명 계약과 private 증명](SDK_INVOCATION_LIFETIME_REVIEW.md)을 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하고, 실제 SDK의 불명 dispatch·관련 참여 규약·선택 안의 유용성을 별도로 남깁니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
+**판정: 공통 managed 세션 구현·fake 검증 완료, 실제 SDK source 연결·실행은 보류.** [호출 세션·닫기 경계 구현](MANAGED_INVOCATION_SESSION_UPDATE.md)을 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
 
 | 조건 | 확인된 범위 | 남은 조건 |
 | --- | --- | --- |
-| 같은 자원의 software admission | 내부 identity·미완료/취소·peer 보호와 Bound의 direct throw/null provenance를 검증. owner가 resource+gate 양쪽 격리 | 실제 SDK 내부 오류가 이미 ordinary async fault가 된 경우까지 판정하지 않음. 직접 호출·임의 alias 전체를 막지 않음 |
+| 같은 자원의 software admission | 새 transport가 source 참조별 단발 상태를 공유하며 Bound가 identity를 계승. 닫기는 canonical admission과 공유 정리 barrier에 합류 | 같은 source 참조의 알려진 경계이며 다른 객체·직접 호출·임의 물리 alias 전체를 막지 않음 |
 | 외부 협력 잠금 | lazy adapter·owner thread 해제·취소/abandon 격리 검증. 알려진 OEM4개의 정상 Call은 전체 교환 구간 보호 | 선택 OEM allocation 예외의 함수내 unwind에는 mutex guard 없음. 상위 처리·현재 참여/권한·상호 운용은 미관측 |
-| 관련 하위 완료 | 기존 정상 Backend는SDK정상반환+선택completion을기다림. private proof에서call exit/관련terminal/capture3축과unknown때lease·slot보존을검산 | 참조SDK음수상태가sink를제거해late terminal을보장하지않음. 실제adapter의terminal출처/소실정책·프로세스수명은private상태모델만으로확정되지않음 |
+| 관련 하위 완료 | call exit/terminal/capture를 기다리는 실제 snapshot transport와 host 세션 구현. UI 종료와 관련 Task·자기/공유 owner 정리를 분리하고484회귀 통과 | 실제 SDK source의 terminal 사실·capture 종료·소실 처리는 새 인터페이스 계약만으로 인증되지 않음. GUI/ProcessExit 연결도 별도 |
 | 기존 EC 작업 입력 보존 | 식별된 입력은 요청 반환 전에 inline 소비하고 query upload·reader 쓰기와 분리됨 | 조회 자원과 교차하는 구체 근거가 생긴 IRQ/status만 조사. 전체 생산자 발견은 비실행 제안의 필수조건 아님 |
 | 선택 실행 영역·gate·결과 귀속 | WMI→AML→PCH legacy SW→SABI generic 경로 연결. 별도 typed 변수 경로와 분리. gate는 초기닫힘/현재미관측 | 관련 게시자 순서·전체 교환·응답 귀속 필요. handshake0의 유용성 미확정. 다른 기능 caller의 사전 handshake를 보호 조회 지원으로 확대하지 않음 |
 
@@ -17,6 +17,8 @@ Global 접근 권한을 별도 사전 수집하는 것도 절대 조건은 아�
 이전 fc14fea 수정은 wrapper 유무에 따라 달라지던 보수 정책을 일치시켰습니다. 당시 새6회귀 포함469개와 전체 Release 빌드 경고/오류0을 검증했습니다. quarantine이나 lease 해제가 공급자의 실제 작업을 중단시키지는 않으며, 실제 backend·기존 예약·시험 횟수는 변경하지 않았습니다.
 
 위469개는fc14fea의검증기록입니다. 후속private시험은8case/48검산·시험build0이며앱/Core/API를변경하지않았습니다. unknown진단과actual-end Task를분리해조기해제를막는계약은검산했지만,SDK가제거한terminal을새로만들거나실제종료를증명하지는못합니다. terminal미수신은pending으로남고시험finally의합성cleanup은실기근거가아닙니다.
+
+최신 공통 세션은 그 계약을 Bound/owner가 소비하는 코드로 구현했습니다. 새15개 포함484개·전체 Release 빌드 경고/오류0을 현재 검증했습니다. peer의 조기 close 문제도 수정 전482통과1실패→수정 후483통과로 확인했습니다. 실제 SDK source·하드웨어 frame·기존 예약·A/B 호출 수와 권한은 변경하지 않았습니다.
 
 세부 WMxx/Arg2 매핑의 공식 원문 미확보만을 별도 blocker로 세지 않습니다. 정상 mapper와 보존된 모델 선언의 대응 가정을 유지하고, 새 원문·provider 코드·관련 trace·반례가 생길 때만 정상 반환 항목을 다시 엽니다. 내부 미게시 분기가 존재해도 외부 FF만으로 실제 미게시를 식별할 수 없고, SDK dispatch 예외의 faulted Task는 종료 증거가 아닙니다.
 

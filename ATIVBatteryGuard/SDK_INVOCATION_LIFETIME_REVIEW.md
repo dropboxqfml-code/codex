@@ -1,5 +1,7 @@
 # SDK 호출 오류와 관련 작업 수명 계약 — 2026-11-07
 
+**후속:** [공통 호출 세션 구현](MANAGED_INVOCATION_SESSION_UPDATE.md)에서 private 모델을 실제 transport/세션 소비 경로로 구현했습니다. 새15개 포함484회귀·전체 빌드 경고/오류0이며 실제 SDK source는 아직 없습니다. 아래는 당시 private 증명 기록입니다.
+
 **호출 결과의 오류와 관련 작업의 종료를 별도로 다루는 계약을 구체화했습니다.** 기존 정상 경로의 긍정 근거는 유지하고, SDK 오류 뒤 완료 알림을 반드시 받을 수 있다는 가정은 제외합니다. 실제 adapter·하드웨어 호출은 추가하지 않았으며 보호 설정 조회·충전 제어는 여전히 미구현·Unsupported입니다.
 
 [이전 Bound 직접 실패 격리 수정](BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md)의 후속입니다. 그 수정은 반환 Task 자체가 없는 직접 실패를 보존합니다. SDK 내부 오류가 이미 ordinary faulted Task가 된 경우의 실제 수명은 별도입니다. [정제 기록](reports/sdk-invocation-lifetime-audit.json)은 새 참조 텍스트·가짜 SDK 증명·이전 앱 검증을 구분합니다.

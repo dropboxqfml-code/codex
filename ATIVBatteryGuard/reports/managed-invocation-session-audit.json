@@ -1,0 +1,191 @@
+{
+  "dateUtc": "2026-11-07",
+  "previousRepositoryCommit": "de5b5a8",
+  "scope": "Implemented explicit-source managed snapshot transport and single-use host session with canonical shared cleanup; no live SDK source",
+  "implementation": {
+    "sourcePins": [
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/IWsabiWmiInvocationSource.cs",
+        "bytes": 1607,
+        "sha256": "aa7fab769f59d2358100b5c4e87a6da99e75c38f08945ea63fc54c44228baf79"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiInvocationSnapshotTransport.cs",
+        "bytes": 12489,
+        "sha256": "5c0b5777654a0b97931f5357c5682fbb6ec976910bc5833400d3d0c5c0d87431"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiInvocationSession.cs",
+        "bytes": 4549,
+        "sha256": "2ecfdd7dc194ee7cfa80e1f867d44b5da7b73474f6a4206bdf2dc7d376a7e01c"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiBoundFrameChannel.cs",
+        "bytes": 2759,
+        "sha256": "477197ccbf78202b2a308edf74c2a70b129ad26063bb0b1744e765cd49ef9af8"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiExchangeCoordination.cs",
+        "bytes": 4396,
+        "sha256": "7dc0c41fb7e7f7e45c379a7d4d13170bf85807179f0f0406dbe75abb06458216"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFrameExchange.cs",
+        "bytes": 7978,
+        "sha256": "1d2c733489f7e2eeaa2476f4f1eea10a8f1453afc8e5914acf99cc4acc1c220a"
+      },
+      {
+        "projectFile": "tests/WsabiWmiInvocationSessionTests.cs",
+        "bytes": 22495,
+        "sha256": "08d6489609d971f8c23b20c7b19c66009a94b421be1afcd2cbd3741fb10c0253"
+      },
+      {
+        "projectFile": "tests/Program.cs",
+        "bytes": 32894,
+        "sha256": "1d91e0972aa0efb67771e2fe4620db8714fad02a798b5aed61d3c3dddd46900c"
+      },
+      {
+        "projectFile": "tests/ATIVBatteryGuard.PortableTests.csproj",
+        "bytes": 3200,
+        "sha256": "7df362d7d0fd346cbb9c9fbb6cf83fbf9aae5615f98d3d4692dc8be9218dd68f"
+      }
+    ],
+    "coreFilesChanged": 6,
+    "testFilesIncludingProjectAndRegistrationChanged": 3,
+    "concreteConsumer": "InvocationSession -> FrameExchange -> cooperative owner -> Bound -> InvocationSnapshotTransport -> supplied source",
+    "actualWmiSdkOrDefaultInvocationSourceImplemented": false,
+    "sourceCallbackOnlyAcceptsTerminalIntAndDetachedBytesOrFixedFailure": true,
+    "sdkComEventContextExceptionOrLazyReaderParametersAccepted": false,
+    "sourceFactsAuthenticatedByTransport": false,
+    "sharedSourceReferenceSingleUseAndBoundIdentityInherited": true,
+    "newWrapperReplaysOldSnapshotOrInvokesSourceAgain": false,
+    "singleUseIsPersistentDiskReservation": false,
+    "workerInvocationExitAndTerminalCaptureAreJoined": true,
+    "workerAndTokenRegistrationFinishBeforeTask": true,
+    "unknownThrowClientStopOrUiTimeoutEndsPendingOperation": false,
+    "sourceUserCodeOrByteCopyRunsUnderStateLock": false,
+    "captureStartsUnsettledAndCopyReservationIsAtomic": true,
+    "maximumRetainedCaptureBytes": 4096,
+    "retentionCapIsDecoderAcceptanceOrRepairsLength": false,
+    "terminalStatusIsAuthoritativeAndErrorOutputNotReadOrRetained": true,
+    "protocolErrorAloneEndsOperation": false,
+    "sameTerminalDuplicateRejectedWithoutReplacement": true,
+    "conflictingTerminalOrDuplicateCaptureFailsBeforePublication": true,
+    "lateSignalsReopenPublishedAttempt": false,
+    "originalSourceExceptionOrInnerExceptionRetained": false,
+    "allHardwareCapabilitiesAdvertisedFalse": true,
+    "normalReturnWithoutTerminalBecomesUnknownOnStop": true
+  },
+  "hostClose": {
+    "startAndCloseAreSerialized": true,
+    "requestCloseIsStopIntentNotProviderCancelOrForcedCompletion": true,
+    "closeJoinsSourceLifetimeOwnFrameCleanupAndSharedCanonicalCleanup": true,
+    "admissionAndSharedCleanupPublishedAtomically": true,
+    "closeStopsFurtherCanonicalAdmission": true,
+    "peerCloseBeforeActualOwnerLeaseReleaseAllowed": false,
+    "busyOrQuarantineUsedAsEndSignal": false,
+    "isCloseReadyCanBeTrueWhileClosedAdmissionRemainsBusy": true,
+    "actualGuiCloseOrProcessExitHookImplemented": false,
+    "forcedProcessDeathOrMutexReleaseProvesProviderStop": false,
+    "missingTerminalCanLeaveClosePendingIndefinitely": true
+  },
+  "verification": {
+    "newRegisteredRegressions": 15,
+    "firstFeature13Regressions": {
+      "passed": 482,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 482,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "peerCloseBeforeCanonicalBarrierFix": {
+      "passed": 482,
+      "failed": 1,
+      "skipped": 0,
+      "registered": 483,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "afterCanonicalBarrierFix": {
+      "passed": 483,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 483,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0
+    },
+    "regressionGroups": [
+      "Dependencies and close before start",
+      "Detached byte ownership and single use",
+      "Early terminal and blocked invocation",
+      "Late selected capture",
+      "Unknown throw with UI timeout or caller stop",
+      "Throw after known final",
+      "Invalid order and conflicting or duplicate reports",
+      "Authoritative terminal status and retention limits",
+      "Known source identity across wrappers",
+      "Own and peer close await actual owner lease release",
+      "Normal source return with missing terminal is unknown after stop"
+    ],
+    "sameManagedTransportAndSessionCodeUsedByFakeTests": true,
+    "sourceGateAndLeaseAreFakesAndExistingSyntheticFixturesReused": true,
+    "explicitFakeFinalCleanupIsActualSdkEvidence": false,
+    "oldPrivate8Cases48AssertionsAddedToAppCount": false,
+    "existingNativeMutexRegressionsUseUnnamedTestObjects": true,
+    "actualSdkOemGlobalObjectOrHardwareExercised": false,
+    "existingSdkCachedDependenciesAndIlTaskBuildPathUsed": true,
+    "newDependencySdkPatchOrSkippedXamlStep": false,
+    "independentCodeReviewFoundPeerCloseIssueThenApprovedCorrection": true,
+    "independentReviewerReranFullSuite": false,
+    "missingTerminalDiagnosticBeforeCorrection": {
+      "passed": 483,
+      "failed": 1,
+      "skipped": 0,
+      "registered": 484,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "finalResult": {
+      "passed": 484,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 484,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "missingTerminalCorrectionAffectsDiagnosticsNotLifetimeRelease": true
+  },
+  "dataBoundaryReview": {
+    "scope": "Existing project source contract text only, prior to implementation",
+    "projectSourcePinsAtBaseline": 11,
+    "selectedTextObservations": 16,
+    "newOfficialOrVendorSourcesOrRuntimeHardwareFacts": 0,
+    "sourceContractReviewIndependentlyApproved": true,
+    "sourceObservationsAddedToAppTestCount": false
+  },
+  "decision": {
+    "managedFailureAndClosePolicyImplemented": true,
+    "actualSdkSourceTerminalFactsAndLostSignalContractEstablished": false,
+    "actualBackendConnectionOrExecutionReady": false,
+    "defaultAOrNonExecutableAlternativeBCallsStateEffectsApprovalChanged": false,
+    "oldConsumedBackendReconnectedOrReservationAccessed": false,
+    "actualProtectionModeReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "executionApprovalRequested": false
+  },
+  "changeBoundary": {
+    "coreAndTestsWithDocumentationAndSanitizedAuditChanged": true,
+    "mainAppUiRegistrationOrDeviceToolsBackendProgramChanged": false,
+    "encoderOrFixedHardwareCommandPolicyChanged": false,
+    "mainAppOrDeviceToolsExecuted": false,
+    "ownPortableSuiteExecuted": true,
+    "existingReleaseArchiveUpdated": false,
+    "vendorOriginalExecutedLoadedOrEmulated": false,
+    "actualWmiOemHardwareGlobalObjectOrConsumedMarkerAccessed": false,
+    "newHardwareFrameNonceGeneratorOrSdkBackendCreated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "applicationNetworkCodeAdded": false,
+    "additionalNotebookExecutionOrRepeatedUploadRequested": false
+  }
+}

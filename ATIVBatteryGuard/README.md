@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 공통 호출 세션 구현 / 2026-11-07:** [구현·검증](MANAGED_INVOCATION_SESSION_UPDATE.md)에서 단발 snapshot transport와 host 세션을 기존 Bound/owner에 연결했습니다. 완료 불명은 pending으로 유지하고 닫기는 source와 자기/공유 owner 정리를 기다립니다. peer의 조기 close 문제를 재현·수정했으며 새15개 포함 전체484개 통과·전체 net48 Release 빌드 경고/오류0입니다. 실제 SDK source·GUI 등록·하드웨어 호출·배포 ZIP은 그대로이며 제어는 Unsupported입니다. 추가 노트북 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 **최신 — SDK 호출 수명 계약의 private 증명 / 2026-11-07:** [검토·증명](SDK_INVOCATION_LIFETIME_REVIEW.md)에서 호출 함수 종료·관련 method terminal·선택 capture 완료를 분리했습니다. 가짜 SDK의8case/48검산과 시험 빌드 경고/오류0을 확인했고 unknown 뒤 UI 반환에도 lease/slot이 유지됨을 기록했습니다. 참조 SDK는 오류 때 sink를 제거할 수 있어 늦은 완료를 항상 기대할 수 없습니다. 앱/Core/public API·배포 ZIP은 그대로이며 앱469개는 이전fc14fea 검증입니다. 실제 SDK 종료·보호 조회·충전 제어 성공을 확인한 것은 아닙니다. 추가 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
 
 **최신 — Bound 전송 직접 실패의 격리 수정 / 2026-11-07:** [수정·검증 결과](BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md)에서 async Bound가 감추던 transport direct throw/null을 내부 표식으로 보존하고 cooperative owner의 resource/gate 재진입 차단을 복구했습니다. 수정 전 새 회귀4개가 실패했고 수정 뒤 전체469개 통과·전체 Release 빌드 경고/오류0입니다. 실제 반환 task의 정상 fault/cancel·로컬 거부는 기존 의미를 유지합니다. 실제 SDK의 불명 dispatch·provider 중단을 해결한 것으로 확대하지 않으며 앱 등록·기존 예약·배포 ZIP·A/B 시험 범위는 그대로입니다. 실제 제어 Unsupported·추가 실행/자료 제출 불필요입니다. 아래는 이전 기록입니다.

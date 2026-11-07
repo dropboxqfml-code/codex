@@ -80,6 +80,11 @@ namespace ATIVBatteryGuard.Core.Services
             => Validate(WsabiWmiReadTrialVariant.SingleReadWithoutHandshake, supplied) == WsabiWmiSingleReadPlanIssue.None &&
                 ReferenceEquals(target.Identity, supplied.Identity);
 
+        // Bind an opaque supplier identity to the very same SDK wrapper without
+        // introducing SDK dependencies, provider equality or identifier text.
+        public bool MatchesTargetIdentity(object supplied)
+            => supplied != null && ReferenceEquals(target.Identity, supplied);
+
         public bool TryFreezeRequest(WsabiWmiMethodRequest supplied, out WsabiWmiMethodRequest frozen)
         {
             frozen = null;

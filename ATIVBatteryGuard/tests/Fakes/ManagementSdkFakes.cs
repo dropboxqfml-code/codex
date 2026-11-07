@@ -78,8 +78,15 @@ namespace System.Management
     public sealed class ManagementPath
     {
         private string className;
+        private string server = ".", namespacePath = @"root\WMI";
+        private bool isInstance = true;
         private int classNameReads;
         public Func<string> OnGetClassName;
+        public Func<string> OnGetServer, OnGetNamespacePath;
+        public Func<bool> OnGetIsInstance;
+        public string Server { get => OnGetServer == null ? server : OnGetServer(); set => server = value; }
+        public string NamespacePath { get => OnGetNamespacePath == null ? namespacePath : OnGetNamespacePath(); set => namespacePath = value; }
+        public bool IsInstance { get => OnGetIsInstance == null ? isInstance : OnGetIsInstance(); set => isInstance = value; }
         public int ClassNameReads => Volatile.Read(ref classNameReads);
         public string ClassName
         {
@@ -92,6 +99,36 @@ namespace System.Management
         }
 
         public ManagementPath(string className = null) { this.className = className; }
+    }
+
+    public sealed class ManagementScope
+    {
+        private ManagementPath path = new ManagementPath();
+        private bool connected = true;
+        public Func<ManagementPath> OnGetPath;
+        public Func<bool> OnGetIsConnected;
+        public ManagementPath Path { get => OnGetPath == null ? path : OnGetPath(); set => path = value; }
+        public bool IsConnected { get => OnGetIsConnected == null ? connected : OnGetIsConnected(); set => connected = value; }
+    }
+
+    public sealed class InvokeMethodOptions { }
+
+    public class ManagementObject : ManagementBaseObject
+    {
+        private ManagementScope scope = new ManagementScope();
+        private ManagementPath path = new ManagementPath("WmiAcpiMethod");
+        private int invokeCalls;
+        public Func<ManagementScope> OnGetScope;
+        public Func<ManagementPath> OnGetPath;
+        public Action<ManagementOperationObserver, string, ManagementBaseObject, InvokeMethodOptions> OnInvoke;
+        public int InvokeCalls => Volatile.Read(ref invokeCalls);
+        public ManagementScope Scope { get => OnGetScope == null ? scope : OnGetScope(); set => scope = value; }
+        public virtual ManagementPath Path { get => OnGetPath == null ? path : OnGetPath(); set => path = value; }
+        public void InvokeMethod(ManagementOperationObserver observer, string method,
+            ManagementBaseObject input, InvokeMethodOptions options)
+        {
+            Interlocked.Increment(ref invokeCalls); OnInvoke?.Invoke(observer, method, input, options);
+        }
     }
 
     public class ManagementBaseObject : Component

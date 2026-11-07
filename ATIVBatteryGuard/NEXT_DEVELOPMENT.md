@@ -1,5 +1,25 @@
 # 다음 개발 재개 메모
 
+## 최신 — 고정 SDK 대상·observer·입력의 typed 호출 연결 / 2026-11-08 한국 시간
+
+기준 커밋 `d86fb4e` 다음 작업입니다. [WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md](WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. supplied ManagementObject/observer/parameters/buffer를 private readonly binding에 고정하고 typed async InvokeMethod 한 곳에 연결했습니다. 실제 노트북 호출·보호 조회 command/template·앱 활성화는 없습니다.
+
+새 `WsabiWmiWindowsSdkBinding` 생성자는 nonnull 사실/SDK 참조와 target/input 세 wrapper의 상호 비동일성을 요구합니다. `PrepareSdkAsync`는 기존 Begin/plan budget을 공유하고 Core의 순수 MatchesTargetIdentity(object)로 opaque identity==공급 target 참조를 확인합니다. 그 뒤 bundle도 첫 유효 시도에 소모합니다. pre-cancel은 plan/bundle을 소모하되 target SDK getter/입력 인계는 없습니다. plan 단계의 거부는 bundle을 소모하지 않습니다.
+
+추적 worker는 exact ManagementObject type, Scope.IsConnected, Scope.Path.Server local dot/NamespacePath root\WMI(raw128/OrdinalIgnoreCase/trim0), target.Path.IsInstance+고정 class만 검사합니다. SDK Path는 virtual인데 실제 Invoke는 private routing fields를 쓰므로 subclass를 허용하지 않습니다. full path/RelativePath/key/계정/serial은 별도로 읽거나 보고하지 않으며 target discovery/Get/Connect를 추가하지 않았습니다. 검사 SDK 오류는 고정 SdkStatus, inputs/등록은 아직 미시작입니다. worker 중 취소도 settle 뒤 결과를 반환합니다.
+
+검증 통과 뒤 기존 PopulateAndPrepare가 params/buffer를 같은 공통 CWT에서 인계받습니다. target은 borrowed이며 pair weak protected membership에만 추가해 root/embedded/queued exact alias에서 Dispose/추가 metadata를 막습니다. input 두 Dispose 순서와 Unknown 보유는 그대로입니다. binding이 target과 input wrapper를 강하게 보유할 수 있으므로 pairholder 필드 해제와 모든 참조 소멸을 혼동하지 않습니다. 거부된 재진입은 선행 시도의 target 정리 권한이 아닙니다.
+
+private dispatch는 fixed-request 전체 byte guard 뒤에 같은 target/observer/parameters 및 고정 method name, 새 InvokeMethodOptions로 typed SDK overload에 최대 한 번 진입합니다. 동기 overload/재시도/handshake/fallback/Cancel/Put는 없습니다. SDK 즉시 정상 반환이나 고정 throw를 terminal로 만들지 않으며 Unknown/관련 close와 입력 정리를 유지합니다. 실기 SDK 내부 활동/implicit connection/native copy와 외부 Scope/Path/입력 변경은 인증하지 않습니다. 공급 객체의 외부 mutation/Dispose/독립 dispatch는 해당 실제 보유 시도의 준비~outer close까지 배제하는 계약입니다.
+
+SdkStatus는 준비 시점 정보이며 input/등록 실패에도 보존합니다. NotConnected는 supplied scope 상태이지 driver 부재/보호 미지원 판정이 아닙니다. 실제 model/metadata/Active 관측을 새 query로 반복하지 않았습니다. plan/bundle의 단발 제한은 새 객체·프로세스·직접 lower API 전체의 persistent 권한 경계가 아닙니다. old consumed marker는 접근/재사용하지 않았습니다.
+
+새 binding 12·수명 7개 포함 전체 609개 통과·실패 0·skip 0, 전체 net48 참조 Release 빌드 경고/오류 0입니다. production Windows 소스 8개를 SDK stand-in과 실행했고 실제 System.Management runtime/provider는 실행하지 않았습니다. cached Microsoft v8 ManagementObject 파일 1개 해시와 선택 member 관계 5개 대조는 별도이며 앱 테스트 수에 합산하지 않습니다. 새 다운로드/설치·현재 .NET48 구현 일치 주장은 없습니다.
+
+변경은 Core 순수 함수 1곳·Windows 소스 4개(새 binding 1/기존 3)·테스트 관련 5개(새 2/fake/등록/project) 및 문서/정제 기록입니다. new private InvokeMethodOptions 생성과 typed InvokeMethod site는 이번에 추가했습니다. target/input 탐색·생성, 앱 UI/default backend·기존 실험 backend/Program·encoder·옛 예약·배포 ZIP 변경은 없습니다. 실제 WMI/OEM/hardware/Global 객체·삼성 원본·driver/service/security/firmware/cloud 환경을 실행/접근/변경하지 않았습니다. 보호 조회·제어 Unsupported·새 실기/동일 자료 재제출 불필요입니다.
+
+다음은 실제 시험의 시작·중단 조건과 고정 요청 의미를 이 SDK 경로에 적용할 조건을 정리하는 일입니다. 실제 template·gate 유용성·관련 참여/완료·응답 귀속·실기 승인은 별도이며 A/B 횟수·B 상태 영향과 old 승인 소비 상태를 유지합니다. Private cache: `20261108/sdk-dispatch-binding-validation`의 final JSON/log, solution-build.log, reference-review, execution/source pins입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 입력 객체 소유권과 Run/Close 연결 / 2026-11-08 한국 시간
 
 기준 커밋 `46eb41f` 다음 작업입니다. [WINDOWS_WMI_OWNED_INPUT_LIFETIME_UPDATE.md](WINDOWS_WMI_OWNED_INPUT_LIFETIME_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 새 `PrepareWithInputsAsync`는 기존 plan/binding/request에 supplied materialized parameters/buffer를 함께 받습니다. 실제 SDK target 탐색·InvokeMethod·새 보호 조회 command/template은 없습니다.

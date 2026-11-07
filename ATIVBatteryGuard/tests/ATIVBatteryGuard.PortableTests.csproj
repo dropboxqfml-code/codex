@@ -73,6 +73,9 @@
     <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsOwnedInputPair.cs" Link="WmiInterop/WsabiWmiWindowsOwnedInputPair.cs" />
     <Compile Include="WsabiWmiOwnedInputPreparationTests.cs" />
     <Compile Include="WsabiWmiOwnedInputLifetimeTests.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSdkBinding.cs" Link="WmiInterop/WsabiWmiWindowsSdkBinding.cs" />
+    <Compile Include="WsabiWmiSdkBindingTests.cs" />
+    <Compile Include="WsabiWmiSdkBindingLifetimeTests.cs" />
     <Compile Include="WsabiWmiWindowsMutexGateTests.cs" />
   </ItemGroup>
 </Project>

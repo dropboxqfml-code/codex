@@ -1,5 +1,7 @@
 # 입력 객체 소유권과 실행·정리 수명 연결 — 2026-11-08 한국 시간
 
+**후속:** [고정 SDK 대상·관찰자·입력 연결](WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md)은 supplied ManagementObject를 사용하는 typed async 호출 한 곳을 구현했습니다. SDK stand-in으로만 검증했으며 실제 노트북 호출·보호 조회 template·앱 활성화는 없습니다. 아래는 입력 소유권 연결 시점의 기록입니다.
+
 **공급된 입력 객체를 준비 단계에서 인계받고 기존 관련 종료 대기 뒤에 정리하는 경로를 구현했습니다.** [입력 준비](WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md)의 후속입니다. SDK target 탐색·실제 메서드 호출·보호 조회 명령/template은 추가하지 않았습니다. 보호 설정 조회·충전 제어는 Unsupported입니다.
 
 ## 준비와 소유권 이전

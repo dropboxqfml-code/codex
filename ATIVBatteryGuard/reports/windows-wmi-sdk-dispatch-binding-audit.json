@@ -1,0 +1,177 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "d86fb4e",
+  "scope": "Private supplied target/observer/input bundle with one concrete typed asynchronous SDK dispatch site; executed only against test SDK stand-ins",
+  "sourcePins": [
+    {
+      "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiSingleReadPlan.cs",
+      "bytes": 6299,
+      "sha256": "5b52f5385acf546b1fe65aad2384f46782fe8cb482c85ed1c9a55e57bab0f940"
+    },
+    {
+      "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSdkBinding.cs",
+      "bytes": 4817,
+      "sha256": "cc197a2737b4912a1be7507f125e544f340c8c480d419798099cb377c8d33f5b"
+    },
+    {
+      "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs",
+      "bytes": 18776,
+      "sha256": "99eeb1bf0b3af1174a8ec2cde8f1bda3a9888e26cf304ba4e4714777c9efa098"
+    },
+    {
+      "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsInputPreparation.cs",
+      "bytes": 5172,
+      "sha256": "74ec1807df285de919cbfd00a270a25e27bcb2202d0dbcd8e5b3724797775a87"
+    },
+    {
+      "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsOwnedInputPair.cs",
+      "bytes": 2645,
+      "sha256": "6b95a1b150597babdb3d98ede62b3c1f8b42100fbcd7af62990608174a99d95c"
+    },
+    {
+      "projectFile": "tests/WsabiWmiSdkBindingTests.cs",
+      "bytes": 24775,
+      "sha256": "d2b3020fa03cd2d3231230d53660e857efd746fa573725309990a602a4771c0d"
+    },
+    {
+      "projectFile": "tests/WsabiWmiSdkBindingLifetimeTests.cs",
+      "bytes": 29087,
+      "sha256": "361ff810ed6d991fa2dc455dfde038ac0df78e5c7f51cf7b3b44b84beb44a2d9"
+    },
+    {
+      "projectFile": "tests/Fakes/ManagementSdkFakes.cs",
+      "bytes": 11013,
+      "sha256": "620f3e8625d89e18df925c8343f891217b88c4e0f209298586a1016613ea8560"
+    },
+    {
+      "projectFile": "tests/Program.cs",
+      "bytes": 33649,
+      "sha256": "4617d392f9a10b245d4d85dbf875478141b5f859ce914f239f0af4e2edcc4066"
+    },
+    {
+      "projectFile": "tests/ATIVBatteryGuard.PortableTests.csproj",
+      "bytes": 5366,
+      "sha256": "bd272e990a63510b05f0a7d7b2ac4d2e988aec4a50772cd4a69b46ec9c99bd29"
+    }
+  ],
+  "sdkBinding": {
+    "publicEntry": "WsabiWmiWindowsSingleReadPreparation.PrepareSdkAsync",
+    "sdkReferencesFixedPrivately": [
+      "ManagementObject target",
+      "ManagementOperationObserver",
+      "ManagementBaseObject parameters",
+      "ManagementBaseObject buffer"
+    ],
+    "callerSuppliedDispatchOrRuntimeObjectReplacementArguments": false,
+    "constructorRequiresNonnullAndDistinctTargetParameterBufferWrappers": true,
+    "opaquePlanIdentityMatchedToSuppliedTargetByReferenceOnly": true,
+    "samePlanBudgetSharedAcrossAllPreparationEntries": true,
+    "bundleConsumedAtFirstValidatedAttemptBeforePreCancellation": true,
+    "planLevelRejectionConsumesBundle": false,
+    "sameBundleRearmedWithFreshPlanAfterFailureCancellationOrClose": false,
+    "budgetIsSystemWidePersistentHardwareAuthorization": false
+  },
+  "targetValidation": {
+    "trackedWorkerBeforeInputOwnershipAndRegistration": true,
+    "workerInterruptedOrEndedByCallerCancellation": false,
+    "requiresExactManagementObjectRuntimeType": true,
+    "virtualTargetPathAndPrivateSdkRoutingDistinguished": true,
+    "requiresAlreadyConnectedSuppliedScope": true,
+    "requiresExplicitLocalDotServerAndFixedNamespace": true,
+    "requiresInstanceAndFixedMethodClass": true,
+    "stringComparison": "raw maximum128, OrdinalIgnoreCase, no trim or hostname fallback",
+    "scopePathMetadataSnapshotReadOnce": true,
+    "relativePathFullPathStringInstanceKeyAccountOrSerialReadOrReportedByNewCode": false,
+    "getterFailureProducesFixedStatusNotRawSdkError": true,
+    "targetFailureStartsInputClaimSubscriptionsOrSdkMethod": false,
+    "sdkStatusRetainedAcrossLaterInputAndRegistrationResults": true,
+    "notConnectedMeansDriverAbsentOrHardwareUnsupported": false,
+    "readySnapshotCertifiesCurrentHardwareIdentityOrFreshness": false,
+    "externalScopePathAndInputMutationExcludedBySupplierContract": true
+  },
+  "concreteDispatch": {
+    "typedSdkInvocationImplementationAdded": true,
+    "explicitTypedOverloadSitesAdded": 1,
+    "overload": "ManagementObject.InvokeMethod(observer, fixed method name, supplied parameters, private InvokeMethodOptions)",
+    "fixedMethodName": "CallSabiFunction",
+    "bundleSdkOverloadEntryUpperBound": 1,
+    "samePopulatedInputAndDedicatedObserverPassedToPrivateTarget": true,
+    "existingMethodIdCommandAndWholeFrameGuardRetained": true,
+    "privateInvokeMethodOptionsConstructed": true,
+    "synchronousOverloadRetryHandshakeDllOrDriverFallbackAdded": false,
+    "normalImmediateReturnOrFixedThrowBecomesTerminal": false,
+    "sdkInternalCallCountComOrImplicitConnectionsProvenAbsent": false,
+    "directSdkFailureKeepsExistingUnknownAndRelevantClose": true,
+    "realFirmwareReadMeaningOrInputMethodProvenanceAuthenticated": false
+  },
+  "ownership": {
+    "parametersAndBufferUseExistingOwnedPairClaimAndClose": true,
+    "targetBorrowedAndHeldStronglyThroughBinding": true,
+    "targetDisposedByNewPipeline": false,
+    "rejectedReentryAuthorizesDisposingTargetHeldByPriorAttempt": false,
+    "borrowedTargetWeakIdentityIncludedInOutputAliasProtection": true,
+    "rootEmbeddedQueuedExactTargetAliasesReadOrDisposedAsOutput": false,
+    "inputPairCleanupAlsoClearsReadonlyBindingReferences": false,
+    "allNativeAliasesExternalReferencesOrGlobalQuiescenceEstablished": false,
+    "existingUnknownLeaseReporterAndTwoInputDisposeJoinRetained": true
+  },
+  "cachedReferenceReview": {
+    "reference": "ManagementObject.cs, dotnet/runtime v8.0.0",
+    "bytes": 123017,
+    "sha256": "b5aa6341ab0b4ceffceab5d81f1bed416f08c74739d47523c630525d801d90f9",
+    "selectedMemberRelations": [
+      "Virtual Path returns stored private routing path",
+      "Scope getter returns stored scope",
+      "Typed async overload initializes without object Get request",
+      "Typed async overload consumes supplied SDK input",
+      "Typed async dispatch uses private path relative key and native input"
+    ],
+    "newDownload": false,
+    "targetFramework48RuntimeIdentityEstablished": false,
+    "scopeNamespacePathImplementationOrLiveSdkExecuted": false
+  },
+  "verification": {
+    "newRegisteredGroups": 19,
+    "bindingGroups": 12,
+    "lifetimeGroups": 7,
+    "finalResult": {
+      "passed": 609,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 609,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "windowsProductionSourcesLinkedWithStandins": 8,
+    "portableDependencyLibraries": [
+      "ATIVBatteryGuard.PortableTests/1.0.0"
+    ],
+    "actualSystemManagementRuntimeProviderOrLaptopSdkObjectsExecuted": false,
+    "existingSyntheticRequestAndResponseFixturesOnly": true,
+    "controlledFakeGatesAndRelevantTasksJoinedInFinally": true,
+    "cachedTextChecksAddedToRegisteredTestCount": false,
+    "fullNet48ReleaseBuild": {
+      "succeeded": true,
+      "warnings": 0,
+      "errors": 0,
+      "actualSdkTypedReferenceApiCompiled": true
+    },
+    "independentSourceAndRegressionReadReviewCompleted": true,
+    "independentReviewerReranSuite": false
+  },
+  "boundary": {
+    "targetInputDiscoveryConstructionOrExplicitConnectGetPutCancelAdded": false,
+    "actualFirmwareCommandTemplateGeneratorAdded": false,
+    "defaultAppOrExistingExperimentBackendProgramEncoderMarkerArchiveChanged": false,
+    "protectionReadAndChargeControl": "Unsupported",
+    "existingHardwareCapabilityFlagsRemainFalse": true,
+    "aDeclaredMethodUpperBound": 1,
+    "aDeclaredHandshakeRetrySettingWrites": 0,
+    "bAdoptedAsFallbackOrPriorConsumedApprovalReused": false,
+    "actualWmiOemHardwareGlobalObjectVendorOriginalOrConsumedMarkerAccessed": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "newDependencyInstallOrSourceDownload": false,
+    "newLaptopRunOrRepeatedUploadRequested": false
+  },
+  "next": "Review applying real trial start/stop conditions and fixed-request semantics to this SDK route; preserve separate template, gate utility, participation, terminal attribution and execution approval."
+}

@@ -1,12 +1,12 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
-**판정: SDK 입력 객체의 소유권을 기존 관련 종료 대기에 연결하고 stand-in 검증 완료, 실제 장치 호출·실행은 보류.** [입력 보유·정리 수명 연결](WINDOWS_WMI_OWNED_INPUT_LIFETIME_UPDATE.md)을 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
+**판정: 공급 SDK target·observer·입력을 typed async 호출 한 곳에 고정하고 stand-in 검증 완료, 실제 장치 호출·실행은 보류.** [SDK binding 연결](WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md)을 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
 
 | 조건 | 확인된 범위 | 남은 조건 |
 | --- | --- | --- |
 | 같은 자원의 software admission | 새 transport가 source 참조별 단발 상태를 공유하며 Bound가 identity를 계승. 닫기는 canonical admission과 공유 정리 barrier에 합류 | 같은 source 참조의 알려진 경계이며 다른 객체·직접 호출·임의 물리 alias 전체를 막지 않음 |
 | 외부 협력 잠금 | lazy adapter·owner thread 해제·취소/abandon 격리 검증. 알려진 OEM4개의 정상 Call은 전체 교환 구간 보호 | 선택 OEM allocation 예외의 함수내 unwind에는 mutex guard 없음. 상위 처리·현재 참여/권한·상호 운용은 미관측 |
-| 관련 하위 완료 | Windows 타입·handler/구독 정리와 세션 전 준비 factory/단발 handle 구현. 동일 소스 stand-in 회귀 포함541개·실제 net48 참조 빌드0/0 | 실제 SDK 이벤트/terminal 적용성과 소실·cutoff 뒤 late 정리·COM threading은 미관측. Run 예약 뒤 외부 위반은 Unknown일 수 있고 실제 Main/GUI도 별도 |
+| 관련 하위 완료 | 공급 SDK target·observer·입력의 고정 typed 호출 및 기존 source/lease/등록 정리 구현. SDK stand-in 회귀609개·실제 net48 참조 빌드0/0 | 실제 SDK 이벤트/terminal 적용성과 소실·cutoff 뒤 late 정리·COM threading은 미관측. Run 예약 뒤 외부 위반은 Unknown일 수 있고 실제 Main/GUI도 별도 |
 | 기존 EC 작업 입력 보존 | 식별된 입력은 요청 반환 전에 inline 소비하고 query upload·reader 쓰기와 분리됨 | 조회 자원과 교차하는 구체 근거가 생긴 IRQ/status만 조사. 전체 생산자 발견은 비실행 제안의 필수조건 아님 |
 | 선택 실행 영역·gate·결과 귀속 | WMI→AML→PCH legacy SW→SABI generic 경로 연결. 별도 typed 변수 경로와 분리. gate는 초기닫힘/현재미관측 | 관련 게시자 순서·전체 교환·응답 귀속 필요. handshake0의 유용성 미확정. 다른 기능 caller의 사전 handshake를 보호 조회 지원으로 확대하지 않음 |
 
@@ -15,6 +15,8 @@
 최신 입력 준비는 공급 parameter/buffer의 shape를 검사하고 Bytes→inData로 할당하며 SDK 접근 전 두 wrapper를 함께 소모합니다. 부분 실패 뒤 재사용·rollback은 없고 caller 소유는 유지합니다. 새 10개 포함 572회귀·실제 net48 참조 전체 빌드 경고/오류 0입니다. 입력 배치의 이행 검증이며 실제 SDK 호출·native 복사·현재 대상·읽기 의미를 인증하지 않습니다. 고정 저장 byte reader의 조건부 근거와 실제 요청·gate·관련 참여/완료 조건은 구분하며 새 펌웨어 근거는 추가하지 않았습니다.
 
 최신 owned 경로는 입력 작업이 끝난 뒤만 준비 실패를 정리하고, Ready 뒤에는 기존 inner close가 끝날 때까지 parameters/buffer를 보유합니다. Unknown/timeout/취소/보고 예외는 조기 해제 근거가 아니며 known managed input-output alias도 별도 owner의 Dispose까지 보호합니다. 새 18개 포함 590회귀·전체 net48 참조 빌드 경고/오류 0입니다. supplied 입력 소유권의 이행 검증이며 실제 target/SDK 호출/요청 의미·native alias 전체 인증은 아닙니다.
+
+최신 SDK binding은 순수 참조 identity·exact target type·연결된 local Scope·instance/class를 입력 인계 전에 검사합니다. 같은 target/observer/parameters의 typed async overload에 최대 한 번 진입하고 borrowed target도 출력 alias 정리에서 보호합니다. 신규 19개 포함 609회귀·전체 net48 참조 빌드 경고/오류 0입니다. 이제 고정 SDK 연결 코드는 있지만 실제 노트북·현재 .NET48 runtime·SDK 내부 활동·고정 요청의 firmware 읽기 의미를 관측하거나 인증한 것은 아닙니다.
 
 모델·BIOS·제조사 원본과 여러 해석 anchor는 임시 CandidateProfile 근거로 유지합니다. live 함수 포인터·EC 전체 hash를 직접 관측하지 못했다는 사실 하나만을 절대 중단 조건으로 쓰지 않습니다. 동시에 위 실제 미완료 연결을 정상성 가정이나 사후 내용 비교만으로 메우지 않습니다.
 

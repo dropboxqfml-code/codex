@@ -27,7 +27,7 @@ namespace ATIVBatteryGuard.WmiInterop
 
     public enum WsabiWmiSingleReadPreparationStatus
     {
-        Ready, PlanMissing, AttemptAlreadyUsed, TargetMismatch, RequestMismatch, PreparationNotReady, InputNotReady
+        Ready, PlanMissing, AttemptAlreadyUsed, TargetMismatch, RequestMismatch, PreparationNotReady, InputNotReady, SdkBindingNotReady
     }
 
     public sealed class WsabiWmiSingleReadPreparationResult
@@ -38,17 +38,19 @@ namespace ATIVBatteryGuard.WmiInterop
         public WsabiWmiWindowsInputPreparationStatus? InputStatus { get; }
         public bool InputOwnershipTransferred { get; }
         public WsabiWmiWindowsCleanupStatus? InputCleanupStatus { get; }
+        public WsabiWmiWindowsSdkBindingStatus? SdkStatus { get; }
         public bool IsReady => Status == WsabiWmiSingleReadPreparationStatus.Ready && Invocation != null;
 
         internal WsabiWmiSingleReadPreparationResult(WsabiWmiSingleReadPreparationStatus status,
             WsabiWmiWindowsPreparationStatus? registrationStatus = null,
             WsabiWmiWindowsSingleReadInvocation invocation = null,
             WsabiWmiWindowsInputPreparationStatus? inputStatus = null, bool inputOwnershipTransferred = false,
-            WsabiWmiWindowsCleanupStatus? inputCleanupStatus = null)
+            WsabiWmiWindowsCleanupStatus? inputCleanupStatus = null, WsabiWmiWindowsSdkBindingStatus? sdkStatus = null)
         {
             Status = status; RegistrationStatus = registrationStatus; Invocation = invocation;
             InputStatus = inputStatus; InputOwnershipTransferred = inputOwnershipTransferred;
             InputCleanupStatus = inputCleanupStatus;
+            SdkStatus = sdkStatus;
         }
     }
 
@@ -74,7 +76,7 @@ namespace ATIVBatteryGuard.WmiInterop
 
         // Caller must stop using/disposal of both supplied inputs while this
         // task is pending. Result explicitly states whether the atomic input
-        // claim transferred ownership. No SDK method implementation is added.
+        // claim transferred ownership. This entry uses the supplied dispatch.
         public static Task<WsabiWmiSingleReadPreparationResult> PrepareWithInputsAsync(WsabiWmiSingleReadPlan plan,
             WsabiWmiWindowsReadTrialBinding binding, WsabiWmiMethodRequest fixedRequest,
             ManagementBaseObject parameters, ManagementBaseObject buffer,
@@ -90,6 +92,46 @@ namespace ATIVBatteryGuard.WmiInterop
                     WsabiWmiSingleReadPreparationStatus.PreparationNotReady, WsabiWmiWindowsPreparationStatus.Cancelled));
             return PopulateAndPrepareAsync(plan, binding, frozen, parameters, buffer,
                 exchangeGate, acquireTimeout, responseTimeout, cancellationToken);
+        }
+
+        // Concrete SDK overload binding, without any target discovery, firmware
+        // recipe or app registration. Caller supplies all materialized objects.
+        public static Task<WsabiWmiSingleReadPreparationResult> PrepareSdkAsync(WsabiWmiSingleReadPlan plan,
+            WsabiWmiWindowsSdkBinding binding, WsabiWmiMethodRequest fixedRequest,
+            IWsabiWmiExchangeGate exchangeGate, TimeSpan acquireTimeout, TimeSpan responseTimeout,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            if (binding == null) throw new ArgumentNullException(nameof(binding));
+            var trialBinding = binding.CreateTrialBinding();
+            ValidateArguments(trialBinding, exchangeGate, acquireTimeout, responseTimeout);
+            WsabiWmiMethodRequest frozen;
+            var status = Begin(plan, trialBinding, fixedRequest, out frozen);
+            if (status != WsabiWmiSingleReadPreparationStatus.Ready) return Rejected(status);
+            if (!plan.MatchesTargetIdentity(binding.Target))
+                return SdkRejected(WsabiWmiWindowsSdkBindingStatus.IdentityMismatch);
+            if (!binding.TryClaim()) return SdkRejected(WsabiWmiWindowsSdkBindingStatus.BindingAlreadyUsed);
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromResult(new WsabiWmiSingleReadPreparationResult(
+                    WsabiWmiSingleReadPreparationStatus.PreparationNotReady, WsabiWmiWindowsPreparationStatus.Cancelled));
+            return ValidateSdkAndPrepareAsync(plan, binding, trialBinding, frozen,
+                exchangeGate, acquireTimeout, responseTimeout, cancellationToken);
+        }
+
+        private static async Task<WsabiWmiSingleReadPreparationResult> ValidateSdkAndPrepareAsync(WsabiWmiSingleReadPlan plan,
+            WsabiWmiWindowsSdkBinding binding, WsabiWmiWindowsReadTrialBinding trialBinding, WsabiWmiMethodRequest frozen,
+            IWsabiWmiExchangeGate exchangeGate, TimeSpan acquireTimeout, TimeSpan responseTimeout, CancellationToken token)
+        {
+            // Getters may block or enter SDK code. Stop intent does not end this
+            // worker; no input ownership or observer registration exists yet.
+            var sdkStatus = await Task.Run(() => binding.ValidateTarget()).ConfigureAwait(false);
+            if (sdkStatus != WsabiWmiWindowsSdkBindingStatus.Ready)
+                return new WsabiWmiSingleReadPreparationResult(WsabiWmiSingleReadPreparationStatus.SdkBindingNotReady,
+                    sdkStatus: sdkStatus);
+            if (token.IsCancellationRequested)
+                return new WsabiWmiSingleReadPreparationResult(WsabiWmiSingleReadPreparationStatus.PreparationNotReady,
+                    WsabiWmiWindowsPreparationStatus.Cancelled, sdkStatus: sdkStatus);
+            return await PopulateAndPrepareAsync(plan, trialBinding, frozen, binding.Parameters, binding.Buffer,
+                exchangeGate, acquireTimeout, responseTimeout, token, binding.Target, sdkStatus).ConfigureAwait(false);
         }
 
         private static void ValidateArguments(WsabiWmiWindowsReadTrialBinding binding,
@@ -121,27 +163,28 @@ namespace ATIVBatteryGuard.WmiInterop
         private static async Task<WsabiWmiSingleReadPreparationResult> PopulateAndPrepareAsync(WsabiWmiSingleReadPlan plan,
             WsabiWmiWindowsReadTrialBinding binding, WsabiWmiMethodRequest frozen,
             ManagementBaseObject parameters, ManagementBaseObject buffer, IWsabiWmiExchangeGate exchangeGate,
-            TimeSpan acquireTimeout, TimeSpan responseTimeout, CancellationToken token)
+            TimeSpan acquireTimeout, TimeSpan responseTimeout, CancellationToken token,
+            ManagementBaseObject borrowedTarget = null, WsabiWmiWindowsSdkBindingStatus? sdkStatus = null)
         {
             WsabiWmiWindowsOwnedInputPair owned = null;
             // Do not cancel this worker or dispose its inputs while SDK property
             // access is in progress. Cancellation is observed after it settles.
             var inputStatus = await Task.Run(() => WsabiWmiWindowsInputPreparation.PopulateOwned(
-                plan, frozen, parameters, buffer, out owned)).ConfigureAwait(false);
+                plan, frozen, parameters, buffer, out owned, borrowedTarget)).ConfigureAwait(false);
             if (inputStatus != WsabiWmiWindowsInputPreparationStatus.Populated)
                 return new WsabiWmiSingleReadPreparationResult(WsabiWmiSingleReadPreparationStatus.InputNotReady,
                     inputStatus: inputStatus, inputOwnershipTransferred: owned != null,
                     inputCleanupStatus: owned == null ? (WsabiWmiWindowsCleanupStatus?)null
-                        : await owned.ReleaseAsync().ConfigureAwait(false));
+                        : await owned.ReleaseAsync().ConfigureAwait(false), sdkStatus: sdkStatus);
             var guarded = new WsabiWmiSingleReadDispatch(binding, frozen);
-            return await PrepareCoreAsync(plan, guarded, frozen, exchangeGate, acquireTimeout, responseTimeout, token, owned)
+            return await PrepareCoreAsync(plan, guarded, frozen, exchangeGate, acquireTimeout, responseTimeout, token, owned, sdkStatus)
                 .ConfigureAwait(false);
         }
 
         private static async Task<WsabiWmiSingleReadPreparationResult> PrepareCoreAsync(WsabiWmiSingleReadPlan plan,
             WsabiWmiSingleReadDispatch guarded, WsabiWmiMethodRequest frozen,
             IWsabiWmiExchangeGate exchangeGate, TimeSpan acquireTimeout, TimeSpan responseTimeout, CancellationToken token,
-            WsabiWmiWindowsOwnedInputPair owned = null)
+            WsabiWmiWindowsOwnedInputPair owned = null, WsabiWmiWindowsSdkBindingStatus? sdkStatus = null)
         {
             var preparation = owned == null
                 ? WsabiWmiWindowsPreparation.PrepareAsync(guarded.Observer, guarded.Invoke,
@@ -155,11 +198,15 @@ namespace ATIVBatteryGuard.WmiInterop
                 ? WsabiWmiSingleReadPreparationStatus.Ready : WsabiWmiSingleReadPreparationStatus.PreparationNotReady,
                 prepared.Status, prepared.IsReady ? new WsabiWmiWindowsSingleReadInvocation(prepared.Invocation, frozen, owned) : null,
                 owned == null ? (WsabiWmiWindowsInputPreparationStatus?)null : WsabiWmiWindowsInputPreparationStatus.Populated,
-                owned != null, inputCleanup);
+                owned != null, inputCleanup, sdkStatus);
         }
 
         private static Task<WsabiWmiSingleReadPreparationResult> Rejected(WsabiWmiSingleReadPreparationStatus status)
             => Task.FromResult(new WsabiWmiSingleReadPreparationResult(status));
+
+        private static Task<WsabiWmiSingleReadPreparationResult> SdkRejected(WsabiWmiWindowsSdkBindingStatus status)
+            => Task.FromResult(new WsabiWmiSingleReadPreparationResult(WsabiWmiSingleReadPreparationStatus.SdkBindingNotReady,
+                sdkStatus: status));
 
         private sealed class Attempt { internal int Claimed; }
     }

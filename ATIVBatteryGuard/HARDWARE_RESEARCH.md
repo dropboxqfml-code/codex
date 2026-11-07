@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 같은 SDK 대상·observer·입력으로 typed 호출 연결 / 2026-11-08 한국 시간
+
+**구현:** [SDK binding](WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md)은 계획의 opaque identity와 supplied ManagementObject를 참조 비교한 뒤 exact type·연결된 local scope·instance/class를 worker에서 검사합니다. readonly target/observer/parameters와 private options로 typed InvokeMethod 한 곳에 최대 한 번 진입하도록 연결했습니다. target은 borrowed이며 input pair의 정리/출력 alias 보호는 target 참조도 포함합니다.
+
+**검증:** 새 19개 포함 609개 통과·실제 net48 참조 전체 Release 빌드 경고/오류 0입니다. production Windows 소스 8개를 SDK stand-in과 실행했으며 실제 System.Management runtime/provider·노트북을 호출한 것은 아닙니다. 캐시의 Microsoft v8 참조 1개와 선택 관계 5개는 재사용 대조이며 새 펌웨어 근거가 아닙니다.
+
+**한계:** SDK overload 진입의 고정 참조와 횟수만 검증했습니다. 외부 Scope/Path/input mutation·native alias·SDK 내부 작업·현재 hardware 지원/신선함·실제 요청 의미를 인증하지 않습니다. 새 target/input 탐색·생성이나 보호 조회 template·앱/배포 ZIP 변경은 없으며 조회·충전 제어는 Unsupported입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 입력 객체 소유권과 관련 종료 대기 연결 / 2026-11-08 한국 시간
 
 **구현:** [owned 입력 경로](WINDOWS_WMI_OWNED_INPUT_LIFETIME_UPDATE.md)는 입력 두 wrapper의 공통 원자 claim에서 소유권을 인계받고, 기존 close/관련 정리가 끝난 뒤 두 concrete Dispose를 시도합니다. 준비 중 SDK 입력 작업·Unknown·보고 예외·막힌 lease 동안 입력을 유지하며, 입력이 root/embedded 출력으로 돌아오는 managed alias도 먼저 해제하지 않습니다.

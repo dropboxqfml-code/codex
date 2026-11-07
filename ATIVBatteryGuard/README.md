@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 고정 SDK 대상·관찰자·입력 연결 / 2026-11-08 한국 시간:** [구현·검증](WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md)은 공급 target의 참조·연결된 local scope·instance/class를 확인하고 같은 observer/입력으로 typed async 메서드에 최대 한 번 진입하는 경로를 구현했습니다. borrowed target과 owned 입력의 기존 정리 대기는 유지합니다. 새 19개 포함 609개 통과·전체 Release 빌드 경고/오류 0입니다. 실행 검증은 SDK 대역이며 실제 노트북 호출·보호 조회 명령/template·앱/배포물 변경은 없습니다. 보호 조회·충전 제어는 Unsupported이고 새 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 **최신 — 입력 객체를 관련 종료까지 보유 / 2026-11-08 한국 시간:** [구현·검증](WINDOWS_WMI_OWNED_INPUT_LIFETIME_UPDATE.md)은 입력 준비의 소유권을 기존 Run/Close 경로에 연결했습니다. Unknown·취소·보고 예외로 입력을 먼저 해제하지 않고, 입력이 출력으로 돌아온 경우도 중복 정리를 막습니다. 새 18개 포함 590개 통과·전체 Release 빌드 경고/오류 0입니다. 실제 SDK 호출·보호 조회 명령·앱/배포물 변경은 없고 충전 제어는 Unsupported입니다. 새 노트북 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
 
 **최신 — 저장 읽기 근거 대조·SDK 입력 준비 / 2026-11-08 한국 시간:** [검토·구현](WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md)에서 공급된 입력 객체를 검사하고 고정 frame을 Bytes→inData 순서로 할당하는 단계를 분리했습니다. 일부 변경 뒤 오류가 나도 같은 객체는 재사용하지 않습니다. 신규 10개 포함 572개 통과·전체 Release 빌드 경고/오류 0입니다. 저장 byte reader의 읽기 의미는 조건부 근거로 유지하며 실제 조회 명령·SDK 호출·앱/배포물 변경은 없습니다. 보호 조회·충전 제어는 Unsupported이고 새 노트북 시험·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.

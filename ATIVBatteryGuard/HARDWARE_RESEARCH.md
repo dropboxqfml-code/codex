@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 관련 완료와 비실행 시험안의 비례적 조건 / 2026-11-07 한국 시간
+
+[후속 재검토](PROVIDER_COMPLETION_AND_READ_TRIAL_REVIEW.md)는 비실행 제안의 조건을 실제 코드/실행 준비와 구분합니다. known worker 입력 소비·버퍼 분리·ISR 보존은 이미 위험을 좁혔으며 미확인 status/IRQ 전체를 독립 필수조건으로 되돌리지 않습니다. 실제 연결의 세 조건은 선택 경로/고정 대상/gate, 관련 전체 교환 소유권, 관련 완료/입력 비훼손/결과 귀속입니다. 실제 간섭 actor를 새로 확보한 것은 아닙니다.
+
+우리 collector2파일의 private 하네스13검사는 선택 A completion/capture.Dispose 뒤 다른 B.Dispose가 남을 수 있음을 재현했습니다. managed drain 미보증이며 firmware/shared frame 진행의 증거가 아닙니다. dotnet/runtime v8.0.0 참조4파일의6관계도 현재 Windows10.NET48 일치나 provider/EC 정지를 입증하지 않습니다. 기존 gate 증거는 초기닫힘/현재미관측이며 여는 handshake를 읽기1회에 포함시키지 않습니다. 비실행안은 최대1WMI시도/EC읽기0~1·초기화0입니다. 실제 연결은 보류·Unsupported, app/Core/기존테스트/EXE/ZIP 미변경·전체검증 미반복이며463/빌드0은1790a4b 기록입니다. 새 실기·동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 협력 owner와 고정 조회 판정 / 2026-11-07 한국 시간
 
 [협력 교환 구현](COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md)에서 finite gate·전용 owner의 획득/해제·하위 task/취소 callback 종료·attempt별 stop CAS·abandon/해제 실패의 resource/gate identity 격리를 추가했습니다. lazy 고정 Global mutex adapter도 opt-in이며 실제 Global은 열지 않고 fake/unnamed Mutex로만 검사했습니다. 실제 Windows 상호 운용·모든 외부 참여자·provider 완료를 증명한 것은 아닙니다. 테스트463개·전체 빌드 경고/오류0입니다.

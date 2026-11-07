@@ -1,5 +1,7 @@
 # 협력 교환의 소유권 경계 구현 — 2026-11-07 한국 시간
 
+후속 [완료 경계·조건부 시험안 검토](PROVIDER_COMPLETION_AND_READ_TRIAL_REVIEW.md)에서 비실행 제안과 실제 호출 준비를 구분하고 관련 완료·gate 호출 수를 구체화했습니다. 미확인 status/IRQ 전체를 제안의 필수조건으로 다시 세지 않습니다. 아래는 당시 코드463개·source 검사 기록입니다.
+
 **유한 잠금 대기·같은 스레드의 획득/해제·실제 하위 작업 종료까지 소유하는 준비용 조정 코드를 구현했습니다.** C#463개 테스트 통과, 전체 솔루션 Release 빌드 경고0·오류0입니다. 새 1회 보호 조회 시험은 [보류 판정](FIXED_MODE_READ_DECISION.md)이며 실제 보호 설정 조회·충전 제어는 아직 미구현·Unsupported입니다.
 
 [공유 자원 재진입 수정](SHARED_CHANNEL_COORDINATION_UPDATE.md)의 후속입니다. 새 코드는 명시적으로 공급한 채널과 잠금만 조정하며 앱에 등록하지 않았습니다. 실제 OneShot backend·Program·사용 완료 예약·승인 gate·요청 encoder는 그대로입니다.

@@ -1,5 +1,19 @@
 # 다음 개발 재개 메모
 
+## 최신 — provider 완료 경계·조건부 시험안 구체화 / 2026-11-07 한국 시간
+
+[PROVIDER_COMPLETION_AND_READ_TRIAL_REVIEW.md](PROVIDER_COMPLETION_AND_READ_TRIAL_REVIEW.md), [FIXED_MODE_READ_PROPOSAL.md](FIXED_MODE_READ_PROPOSAL.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. **비실행 제안 검토 가능 / 실제 backend 연결·호출 보류**로 정밀화했습니다. 실행 준비 조건을 제안 작성 자체에 확대하지 않습니다. 미확인 status/IRQ 전체나 모든 외부 활동 정지는 독립 필수조건이 아닙니다. 조회 명령/주소/계속 쓰는 입력/결과에 직접 영향을 주는 연결이 생긴 범위만 조사합니다. 이미 연결한 inline 소비·buffer 분리·known ISR 보존을 전체 hardware 미확인으로 되돌리지 않습니다.
+
+기존 Backend는 SDK dispatch 반환+Completed의 선택 snapshot detach/Dispose 시도 후 Task를 게시하지만 다른 callback/disposal 전체 drain은 없습니다. private fake A/B event 하네스13assert로 A completion+Capture.Dispose 뒤 late B.Dispose 진행 중인 상태를 재현하고 모든 작업을 끝냈습니다. 이것은 managed lifetime이며 실제 SDK/provider/AML/EC 활성 증거가 아닙니다. SDK 동기 dispatch 예외도 async Backend에서는 faulted Task라서 겉의 direct throw/null Q만으로 보완되지 않습니다. 공유 준비·trigger·응답 회수 관련 host 작업 종료 계약이 필요하며 old Backend를 단순 연결하지 않습니다.
+
+dotnet/runtime v8.0.0의 observer/sink/eventargs/baseobject4개를 정상 proxy/TLS로 읽어6텍스트 관계를 검산했습니다. 실제 DynamicInvoke/Completed→RemoveSink/new Dispose 관계와 comment를 구분합니다. .NET8 참조를 현재 Win10.NET48 구현·generic IDisposable target·COM 효과·callback/provider/EC 종료 보증으로 쓰지 않습니다. framework 참조 candidate404는 source 부재 증명이 아닙니다. 원문/경로/정확한 source byte는 private에만 보존합니다.
+
+시험안의 계수는 최대1WMI/OEM 읽기 시도·EC byte 읽기0~1·gate handshake/DLL 초기화0·retry/fallback0·firmware 설정/charger 쓰기0입니다. generic gate는 저장 원본 initial 닫힘/현재 미관측, 여는 local handshake는 별도 WMI 호출+image-data 상태변경이므로 숨겨 포함하지 않습니다. 이 gate를 과거 실기 FF 원인으로 단정하지 않습니다. closed/FF/echo/오류/귀속 불명은 판정불가로 끝내며 보호 해제/기능 부재 추정은 하지 않습니다. 실제 fresh 값/주소/frame/generator는 만들지 않았습니다. 유의미한 값을 얻을 준비나 실기 승인 요청 단계로 승격하지 않습니다.
+
+남은 조건은3묶음: 선택 경로/고정 대상/gate와 프로파일, 관련 전체 교환 참여/순차 규약, 관련 완료/입력 비훼손/결과 분류입니다. fresh host content는 endpoint 전제이지 EC 완료ID나 소비 역사 인증이 아닙니다. echo 거부도 입력/result-domain 분리 근거가 필요합니다. 선택하지 않는 모든 대안 통신 경로·live 전체 EC hash/host pointer·모든 writer 부재/Global ACL 사전 수집을 필수화하지 않습니다.
+
+private cache: 20261107/provider-completion-boundary-next(하위 managed-harness), provider-reference-source-next, read-trial-evidence-proportionality-next(독립 검토 기록). 앱/Core/기존 테스트/EXE/배포 ZIP 미변경·전체 suite/solution 빌드 미반복입니다. C#463/빌드0은1790a4b, Python88은e7b067a 과거 기록입니다. 이번 새 실행은 우리 collector2파일을 링크한 private fake 하네스(13pass·하네스 build0경고0오류)이며 참조 text6과 앱463에 합산하지 않습니다. source/OEM 원본 실행/로딩/에뮬레이션·실제 WMI/provider/hardware/기존 예약 접근·드라이버/서비스/보안/펌웨어 변경·과거 차단 PE 시도 재현은 없습니다. 새 노트북 실행·동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 협력 gate/owner 구현·실기 조회 보류 / 2026-11-07 한국 시간
 
 [COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md](COOPERATIVE_EXCHANGE_OWNERSHIP_UPDATE.md), [FIXED_MODE_READ_DECISION.md](FIXED_MODE_READ_DECISION.md), [조건표](FIXED_MODE_READ_PROPOSAL.md)를 먼저 읽습니다. opt-in CooperativeFrameChannel과 GateAttempt/lease를 추가했습니다. 전용 owner가 유한 획득(최대2초)→정상 획득만 lower 호출→실제 pending/owner 직접 Cancel callback 완료→same-thread 해제를 수행합니다. native 고정 Global adapter는 lazy·이름/권한 fallback 없음·정상 OS 권한이며 앱/old OneShot에는 연결하지 않았습니다. 테스트는 fake 및 unnamed만, 실제 Global/하드웨어/예약은 열지 않았습니다.

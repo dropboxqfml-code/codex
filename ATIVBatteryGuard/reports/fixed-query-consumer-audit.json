@@ -1,0 +1,168 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Seoul",
+  "scope": "Static closure of named OEM power-data consumer and saved ACPI fallback query sources; no new safe protection query contract",
+  "previousAnalysisCommit": "3637c94fc7d9214d6b7214d6c1b733af43c78b7d",
+  "softwareCodeBaseCommit": "5d77df56f7e91470071602b91df05aef9e412f6e",
+  "sourcePinsIndependentlyRehashed": [
+    {
+      "source": "ModuleSABI",
+      "bytes": 27968,
+      "sha256": "7c57ac5a6ce5727766f425c0aa7368ee75be20fdf790b84113b7e9abf2069f12"
+    },
+    {
+      "source": "CommandMNPowerManagement",
+      "bytes": 48448,
+      "sha256": "98ad02569b3732c64b25c0bf73373cd201a64f635fa417a6fdb66f088adadfaf"
+    },
+    {
+      "source": "SecEcDxe.efi",
+      "bytes": 13632,
+      "sha256": "1da5cb1ad47c92f6e16c5a823401da53fc4af92495580b0d09f143c514293ed4"
+    },
+    {
+      "source": "SecSwSmiDispatch.efi",
+      "bytes": 11744,
+      "sha256": "fc8d0f6968b18843243dd906104fba88770ccb73c8adf4a8e559bcdd08d11c9a"
+    },
+    {
+      "source": "SecLagacySabi.efi",
+      "bytes": 5920,
+      "sha256": "446360f3bea7cb7f6af8331f83ca183ca3316cf26592235931e61b7147c2a961"
+    },
+    {
+      "source": "SecEcSmiDispatch.efi",
+      "bytes": 7168,
+      "sha256": "1ee192c743f6e2af1908f861e1bd426a842a123542aa30d81751b02716015674"
+    },
+    {
+      "source": "P05ACJ CAP",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "source": "EC-region raw slice",
+      "bytes": 98304,
+      "sha256": "2c8aeabe90b844b9d5bc09a05656aa08be1ef927b2d80006e6bd4fb0cc983d04"
+    },
+    {
+      "source": "Saved capsule DSDT",
+      "bytes": 71849,
+      "sha256": "e65919be72fd7e7bd51ca6561a6a94754ea22c929743a04727188f4638dda7a5"
+    }
+  ],
+  "interpretationModel": {
+    "assumedIsa": "Intel8051 compatible",
+    "fixedLowRegionBytes": 49152,
+    "bankWindowBytes": 16384,
+    "manufacturerChipOrCurrentAddressMapVerified": false,
+    "decoderIsOurDataOnlyRenderer": true,
+    "decoderSha256": "da1d3a88f9bdf8a1d6bb4e16709e200c14d21d70e4cf9730decfad5337f3ac94"
+  },
+  "oemPowerQuery": {
+    "settingsPackageVersion": "2.2.0.18",
+    "namedEcoPowerDataExportToFixedFirmwareQueryConnected": true,
+    "typedCommandRttiVtableImportAndNumericConsumerConnected": true,
+    "knownWordsProducedFromBatteryCurrentAndVoltagePollCache": true,
+    "remainingByteEstablishedAsChargerResponse": false,
+    "queryReturnCheckedBeforeNumericConsumption": false,
+    "wrapperApiResultLowByteChecked": true,
+    "softwareGateSignatureProvesPhysicalBatteryCapability": false,
+    "queryIsProtectedModeOrAppliedChargerOptionReadback": false,
+    "presentDllSelectionOrDeviceExecutionObserved": false
+  },
+  "savedAcpiFallback": {
+    "scope": "Saved BST ECON==0 branch only; not the currently selected notebook branch",
+    "byteAndWordWrapperSharedProviderTypedCallbackAndPageSourceConnected": true,
+    "activitySnapshotSourceReachedThroughVerifiedAddressArithmetic": true,
+    "rawHostOffsetEquatedToInternalAddressByNumberOnly": false,
+    "byteCallbackPreservesStrictReadFailure": false,
+    "wordCallbackPreservesEitherStrictReadFailure": false,
+    "byteFailureCanCopyInitializedZero": true,
+    "wordSecondFailureCanReuseFirstOutputByte": true,
+    "wordReadIsSingleAtomicSnapshot": false,
+    "lostErrorCanBeRecoveredByRangeCheckingParser": false,
+    "sourcePermittedFailureIsHardwareObservationOrEmulation": false,
+    "currentBranchOrIncorrectBatteryDisplayObserved": false,
+    "legacySabiSelectorsTreatedAsSameInterface": false,
+    "safeProtectedStateQueryEstablished": false
+  },
+  "otherReceivedBusCaches": {
+    "selectedSuccessConditionalWordCopiesIntoHostCachesConnected": true,
+    "selectedTargetsMatchPreviouslyIdentifiedChargerPolicyTarget": false,
+    "componentIdentityEstablished": false,
+    "selectedFailurePathsCanRetainPriorCache": true,
+    "theseCachesProveChargerOptionReadback": false,
+    "directCallerDiscoveryScopeBytes": 94208,
+    "allComputedCallsAliasesAndExternalCodeClosed": false
+  },
+  "candidateDisposition": [
+    {
+      "candidate": "Named current OEM power-data query",
+      "disposition": "Purpose identified as numeric power data; excluded as protected-mode evidence"
+    },
+    {
+      "candidate": "Saved ACPI fallback byte/word query",
+      "disposition": "Not adopted: failure information discarded and word not atomic"
+    },
+    {
+      "candidate": "Other selected received-word caches",
+      "disposition": "Held: target identity and charger-option meaning not established"
+    },
+    {
+      "candidate": "Prior generic mode/bus readers",
+      "disposition": "Held: fixed interface, model safety and freshness requirements remain unresolved"
+    }
+  ],
+  "sourceValidation": {
+    "oemConsumerAssertions": 45,
+    "oemConsumerSelectedRows": 302,
+    "busProducerAssertions": 28,
+    "busProducerSelectedRows": 380,
+    "independentWordCallAssertions": 29,
+    "independentWordCallRows": 306,
+    "ssdbQueryAssertions": 45,
+    "ssdbQuerySelectedRows": 364,
+    "externalProviderInstructionAssertions": 58,
+    "externalProviderAdditionalTypedChecks": 6,
+    "externalProviderSelectedRows": 353,
+    "rootIndependentSelectedAssertions": 37,
+    "publicComponentReviewsPassed": 3,
+    "theseAreAppUnitTestsOrFirmwareCoveragePercent": false
+  },
+  "newSafeProtectedStateQueryContractEstablished": false,
+  "productCodeChanged": false,
+  "testCodeChanged": false,
+  "buildRun": false,
+  "unitTestsRun": false,
+  "previousCodeValidationOnly": {
+    "csharpPassed": 437,
+    "pythonPassed": 85,
+    "buildWarnings": 0,
+    "buildErrors": 0
+  },
+  "vendorCodeExecutedLoadedOrEmulated": false,
+  "amlEvaluated": false,
+  "hardwareOrOemCallsPerformed": false,
+  "actualExperimentMarkerAccessed": false,
+  "driverServiceSecurityFirmwareSettingsChanged": false,
+  "newRequestOrRunnableHardwareCodeConstructed": false,
+  "newExecutableOrZipProvided": false,
+  "originalVendorDataOrExecutionRecipesIncluded": false,
+  "newUserTestOrResubmissionRequired": false,
+  "environmentConfigurationOrPublicationChanged": false,
+  "newNetworkResearchOrBinaryDownloadPerformed": false,
+  "currentProtectionStateObserved": false,
+  "hardwarePermanentUnsupportedProved": false,
+  "chargeControl": "Unsupported",
+  "nextRequirement": "Pursue only new external-registration or indirect state-transfer evidence that links a protection producer to fixed query, preserved errors, fresh request correspondence and Windows return; hold identified alternatives without repeating them as feature progress",
+  "documentValidation": {
+    "markdownFiles": 5,
+    "missingRelativeLinks": 0,
+    "accidentalCjk": 0,
+    "newReportAndAuditPrivacyCheckPassed": true,
+    "oldReleaseArchivesUnchanged": 4,
+    "gitDiffCheckPassed": true,
+    "publicComponentReviewsPassed": 3
+  }
+}

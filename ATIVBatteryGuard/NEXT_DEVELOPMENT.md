@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 고정 조회의 소비자·실패 경계 대조 / 2026-11-07 한국 시간
+
+[FIXED_QUERY_CONSUMER_REVIEW.md](FIXED_QUERY_CONSUMER_REVIEW.md)를 먼저 읽습니다. 이번에는 새 보호 조회 계약을 확보하지 못했습니다. 현재 Settings 2.2.0.18의 ModuleSABI EcoMode_GetPowerData와 CommandMNPowerManagement의 CmdGetCurrentPowerData를 export·동적 API·RTTI/vtable/import로 연결했습니다. 고정 query의 두 word는 SBS 전류·전압 캐시이며 숫자 소비자는 조회 반환을 무시합니다. gate 서명은 물리 기능 지원이 아닙니다. 이 전력 표시 경로를 보호 모드 후보로 다시 세지 않습니다.
+
+저장된 DSDT ECON==0의 byte/word wrapper→SSDB 제공자→SecEcDxe callback→EC 고정 페이지 읽기를 연결했습니다. byte callback은 하위 상태를 버리고 초기/결과 byte를 복사해 0을 반환합니다. word callback은 두 번 따로 읽고 상태를 모두 버리며 동일 임시 byte를 재사용합니다. 현재 fallback 선택·잘못된 실제 표시를 관측한 것은 아닙니다. 레거시 SABI와 번호만으로 합치지 않습니다. 다른 대상의 성공 bus word 캐시도 충전기 옵션 의미가 확보되지 않았습니다.
+
+위 후보는 식별 완료/미해결로 보류하고 반복 세분화하지 않습니다. 다음은 아직 보호 상태 생산자를 연결하지 못한 외부 등록·간접 전달 경로에 한정합니다. 새 생산자→고정 조회→실패 보존·새 요청 대응→Windows 반환을 채택 기준으로 삼습니다. 연결이 없으면 미해결로 남기며 기능 진전으로 보고하지 않습니다. 새 요청·live backend·제어·OEM 시험·단발 예약 접근 없이 Unsupported입니다.
+
+private cache는 20261107/oem-fixed-read-consumers-next, readback-producer-callers-next(하위 independent-word-index), fixed-word-query-routes-next(하위 external-ec), fixed-consumer-source-integration-next입니다. 독립 통합 검산 37개 통과. 앱·테스트·EXE·기존 ZIP 미변경, 이번 빌드·단위 테스트 미실행이며 437/85·경고오류0은 이전 5d77df5 기록입니다. 추가 실기·재제출·드라이버/서비스/보안·펌웨어 변경 없음. 아래는 이전 기록입니다.
+
 ## 최신 — 버스 응답 조회 후보와 활동 스냅샷 분리 / 2026-11-07 한국 시간
 
 [CHARGER_READBACK_AND_PROJECTION.md](CHARGER_READBACK_AND_PROJECTION.md)를 먼저 읽습니다. 조건부 EC 모델에서 장치·레지스터를 받아 word 읽기 상태가 성공일 때 수신값을 복사해 반환하는 별도 후보를 분배표·bank stub과 연결했습니다. 실패는 모두 1인 word로 축약돼 정상 같은 값과 구분하지 못하며 요청 순번·상세 상태가 없습니다. 기존 일반 중계의 첫 송신 오류 가림·신선도 문제는 여전합니다. 고정 보호 getter·실행 승인·현재 부품 식별이 아니며 범용 조회 요청은 만들지 않았습니다.

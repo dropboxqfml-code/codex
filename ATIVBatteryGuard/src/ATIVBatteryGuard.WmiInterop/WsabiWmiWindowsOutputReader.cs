@@ -11,16 +11,23 @@ namespace ATIVBatteryGuard.WmiInterop
         private const int MaximumCaptureBytes = 4096;
 
         public static byte[] Read(ManagementBaseObject result)
+            => Read(result, null);
+
+        internal static byte[] Read(ManagementBaseObject result, WsabiWmiWindowsOwnedInputPair protectedInputs)
         {
             ManagementBaseObject embedded = null;
+            bool ownsEmbedded = false;
             try
             {
-                if (result == null) throw Failure();
+                if (result == null || (protectedInputs != null && protectedInputs.Contains(result))) throw Failure();
                 PropertyData output = result.Properties["outData"];
                 if (output == null || output.Type != CimType.Object || output.IsArray) throw Failure();
                 embedded = output.Value as ManagementBaseObject;
-                // Never dispose the borrowed root through an alias.
-                if (embedded == null || ReferenceEquals(embedded, result)) throw Failure();
+                // The borrowed root and protected inputs keep their own
+                // ownership. Reject before any embedded metadata or Dispose.
+                if (embedded == null || ReferenceEquals(embedded, result) ||
+                    (protectedInputs != null && protectedInputs.Contains(embedded))) throw Failure();
+                ownsEmbedded = true;
                 if (!string.Equals(embedded.ClassPath.ClassName, "DataBuffer", StringComparison.OrdinalIgnoreCase))
                     throw Failure();
                 PropertyData property = embedded.Properties["Bytes"];
@@ -36,7 +43,7 @@ namespace ATIVBatteryGuard.WmiInterop
             catch { throw Failure(); }
             finally
             {
-                if (embedded != null && !ReferenceEquals(embedded, result))
+                if (ownsEmbedded)
                 {
                     // ManagementBaseObject hides Component.Dispose. Resolve
                     // its concrete method, not the inherited IDisposable map.

@@ -70,6 +70,9 @@
     <Compile Include="WsabiWmiSingleReadLifetimeTests.cs" />
     <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsInputPreparation.cs" Link="WmiInterop/WsabiWmiWindowsInputPreparation.cs" />
     <Compile Include="WsabiWmiWindowsInputPreparationTests.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsOwnedInputPair.cs" Link="WmiInterop/WsabiWmiWindowsOwnedInputPair.cs" />
+    <Compile Include="WsabiWmiOwnedInputPreparationTests.cs" />
+    <Compile Include="WsabiWmiOwnedInputLifetimeTests.cs" />
     <Compile Include="WsabiWmiWindowsMutexGateTests.cs" />
   </ItemGroup>
 </Project>

@@ -424,6 +424,8 @@ internal static partial class Program
         RegisterWsabiWmiSingleReadBindingTests();
         RegisterWsabiWmiSingleReadLifetimeTests();
         RegisterWsabiWmiWindowsInputPreparationTests();
+        RegisterWsabiWmiOwnedInputPreparationTests();
+        RegisterWsabiWmiOwnedInputLifetimeTests();
         RegisterWsabiWmiWindowsMutexGateTests();
     }
 

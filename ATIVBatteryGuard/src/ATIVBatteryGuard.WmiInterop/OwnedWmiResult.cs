@@ -9,15 +9,20 @@ namespace ATIVBatteryGuard.WmiInterop
     internal sealed class OwnedWmiResult : IDisposable
     {
         private ManagementBaseObject value;
-        internal OwnedWmiResult(ManagementBaseObject value) { this.value = value; }
-        internal byte[] Read() => WsabiWmiWindowsOutputReader.Read(value);
+        private readonly WsabiWmiWindowsOwnedInputPair protectedInputs;
+        internal OwnedWmiResult(ManagementBaseObject value, WsabiWmiWindowsOwnedInputPair protectedInputs = null)
+        {
+            this.value = value;
+            this.protectedInputs = protectedInputs;
+        }
+        internal byte[] Read() => WsabiWmiWindowsOutputReader.Read(value, protectedInputs);
 
         public void Dispose()
         {
             ManagementBaseObject owned = Interlocked.Exchange(ref value, null);
             // This is a concrete call even if the SDK type inherits a
             // different IDisposable implementation from Component.
-            if (owned != null) owned.Dispose();
+            if (owned != null && !(protectedInputs != null && protectedInputs.Contains(owned))) owned.Dispose();
         }
     }
 }

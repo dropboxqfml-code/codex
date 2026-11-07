@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 입력 객체 소유권과 관련 종료 대기 연결 / 2026-11-08 한국 시간
+
+**구현:** [owned 입력 경로](WINDOWS_WMI_OWNED_INPUT_LIFETIME_UPDATE.md)는 입력 두 wrapper의 공통 원자 claim에서 소유권을 인계받고, 기존 close/관련 정리가 끝난 뒤 두 concrete Dispose를 시도합니다. 준비 중 SDK 입력 작업·Unknown·보고 예외·막힌 lease 동안 입력을 유지하며, 입력이 root/embedded 출력으로 돌아오는 managed alias도 먼저 해제하지 않습니다.
+
+**검증:** 새 18개 포함 590개 통과·실제 net48 참조 전체 Release 빌드 경고/오류 0입니다. SDK stand-in과 기존 synthetic 요청으로 검증했으며 실제 provider나 노트북을 호출한 결과가 아닙니다.
+
+**한계:** 입력 보유는 supplied delegate가 실제로 같은 입력/target을 사용함을 인증하지 않습니다. 다른 COM alias·SDK 내부 copy·실제 호출 수·고정 요청의 읽기 의미·현재 gate/완료 귀속은 별도입니다. 새 펌웨어 근거나 실제 조회 명령/SDK dispatch·앱 연결·배포 ZIP 변경은 없으며 보호 설정 조회·제어는 Unsupported입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 저장 reader 근거와 SDK 입력 준비 대조 / 2026-11-08 한국 시간
 
 **확인된 범위:** [입력 준비 검토](WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md)는 저장된 generic byte reader와 기존 WMI/SDK 경로를 대조했습니다. 선택 reader는 조건부 EC 해석에서 저장 mode byte를 읽고 대상에는 쓰지 않습니다. 별도 대상·gate·관련 참여자·신선한 응답 조건까지 충족됐다는 뜻은 아니며 새 펌웨어 연결을 찾은 작업도 아닙니다.

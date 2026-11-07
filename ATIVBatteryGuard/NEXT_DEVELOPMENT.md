@@ -1,5 +1,23 @@
 # 다음 개발 재개 메모
 
+## 최신 — 입력 객체 소유권과 Run/Close 연결 / 2026-11-08 한국 시간
+
+기준 커밋 `46eb41f` 다음 작업입니다. [WINDOWS_WMI_OWNED_INPUT_LIFETIME_UPDATE.md](WINDOWS_WMI_OWNED_INPUT_LIFETIME_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 새 `PrepareWithInputsAsync`는 기존 plan/binding/request에 supplied materialized parameters/buffer를 함께 받습니다. 실제 SDK target 탐색·InvokeMethod·새 보호 조회 command/template은 없습니다.
+
+기존 PrepareAsync와 같은 Begin/Attempts 예산을 공유합니다. 구조 인자·scope/request 거부와 pre-cancel은 입력 접근·소유권 이전 없이 끝납니다. 이후 입력 worker는 취소하지 않고 settle을 기다립니다. Populate/PopulateOwned는 같은 CWT pair claim을 공유하며 원자 claim에 성공한 경우만 owner가 생깁니다. borrowed Populate의 성공 enum을 adoption ticket으로 사용하지 않습니다. used 객체와 충돌하면 새 다른 객체는 미소모이고 다른 owner의 객체를 Dispose하지 않습니다.
+
+결과의 InputOwnershipTransferred/InputStatus/InputCleanupStatus를 구분합니다. 인계 전에는 원래 소유자 계약이 유지되고, 인계 후 input/등록 실패는 두 concrete Dispose 시도까지 join해 반환합니다. Ready의 InputCleanupStatus는 준비 시점의 null이며 최종 정리는 Invocation.RequestCloseAsync 결과입니다. 준비 Task가 pending인 동안 caller는 입력을 쓰거나 Dispose하지 않아야 합니다.
+
+성공 handle은 기존 inner close(source/capture·call exit·lease·등록 정리) 뒤에 pair.ReleaseAsync를 한 번 시작합니다. Run/외부 close/미사용 close가 같은 Task에 합류하며 Run의 동기 인자/재진입 거부가 다른 Run을 닫지 않습니다. Unknown이면 inner close와 입력 보유가 계속됩니다. timeout/cancel/reportthrow로 조기 Dispose하지 않고, 첫 Dispose가 throw해도 둘째를 시도하며 둘 다 끝나야 outer close가 끝납니다. 정리는 caller/lock 밖 worker의 concrete MBO.Dispose이며 Component interface나 rollback/retry가 아닙니다.
+
+입력 pair를 lower source/result/reader에 전달했습니다. root alias는 입력 Properties/Value/Dispose 없이 실행 중 고정 capture 실패·pre-arm 기존 earlycallback 실패로 처리합니다. post-cutoff exact alias는 다시 capture를 열지 않고 건너뜁니다. embedded alias도 참조 취득 뒤 추가 metadata/Dispose를 생략합니다. pair는 strong 참조 해제 뒤 약한 identity를 유지해 늦은 동일 managed alias의 중복 Dispose를 막습니다. provider terminal을 합성하지 않으며 native/다른 COM wrapper 전체 보호는 아닙니다.
+
+새 준비 10·수명 8개 포함 전체 590개 통과·실패 0·skip 0입니다. 실제 net48 참조 전체 Release 빌드 경고/오류 0이며 최초 build 0/0 뒤 post-cutoff 분기를 좁힌 최종 build도 0/0입니다. Windows production 소스 7개를 SDK stand-in과 실행했고 실제 System.Management runtime/provider는 실행하지 않았습니다. 기존 synthetic fixture만 사용했고 모든 fake gate/관련 Task는 finally에서 합류했습니다.
+
+변경은 Windows 소스 7개(새 holder 1/기존 6)·테스트 관련 4개(새 2/등록/project) 및 문서/정제 기록입니다. Core·앱 UI/default backend·기존 실험 backend/Program·encoder·사용 완료 예약·배포 ZIP은 그대로입니다. 새 dependency 설치/원문 다운로드·삼성 원본/실제 WMI/OEM/hardware/Global 객체·driver/service/security/firmware/cloud 환경 접근/변경은 없습니다. 보호 설정 조회·제어 Unsupported·새 실기/동일 자료 재제출 불필요입니다.
+
+다음은 인계된 입력·구체 target/observer를 같은 시도에 묶는 SDK dispatch 경계를 저장 계약과 대조하는 일입니다. 공급 delegate가 실제로 owned 입력을 사용한다는 인증은 아직 없고, 실제 요청 의미·gate 유용성·관련 참여·완료/귀속·실기 승인은 별도입니다. A/B 횟수·B 상태 변경·옛 소모 정책을 변경하지 않습니다. Private cache: `20261108/owned-input-lifetime-validation`의 final JSON/log, build-before-cutoff/final build logs, execution/source pins입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 읽기 근거 대조와 SDK 입력 준비 / 2026-11-08 한국 시간
 
 기준 커밋 `ebdeca2` 다음 작업입니다. [WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md](WINDOWS_WMI_INPUT_PREPARATION_REVIEW.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 저장된 reader는 조건부 software-mode 저장 byte 읽기를 지지하지만 실제 요청 template·현재 장치의 실행·충전 적용은 입증하지 않습니다. 새로운 firmware edge는 없으며 동결 mapper나 전체 status/IRQ 조사는 재개하지 않았습니다.

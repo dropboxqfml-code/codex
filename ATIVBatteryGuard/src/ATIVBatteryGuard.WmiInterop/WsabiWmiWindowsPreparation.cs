@@ -38,6 +38,28 @@ namespace ATIVBatteryGuard.WmiInterop
             WsabiWmiMethodBinder binder, IWsabiWmiExchangeGate exchangeGate,
             TimeSpan acquireTimeout, TimeSpan responseTimeout,
             CancellationToken cancellationToken = default(CancellationToken))
+            => PrepareWithInputsCore(dedicatedObserver, dispatch, binder, exchangeGate,
+                acquireTimeout, responseTimeout, null, cancellationToken);
+
+        internal static Task<WsabiWmiWindowsPreparationResult> PrepareWithProtectedInputsAsync(
+            ManagementOperationObserver dedicatedObserver,
+            Action<ManagementOperationObserver, WsabiWmiMethodRequest> dispatch,
+            WsabiWmiMethodBinder binder, IWsabiWmiExchangeGate exchangeGate,
+            TimeSpan acquireTimeout, TimeSpan responseTimeout,
+            WsabiWmiWindowsOwnedInputPair protectedInputs,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            if (protectedInputs == null) throw new ArgumentNullException(nameof(protectedInputs));
+            return PrepareWithInputsCore(dedicatedObserver, dispatch, binder, exchangeGate,
+                acquireTimeout, responseTimeout, protectedInputs, cancellationToken);
+        }
+
+        private static Task<WsabiWmiWindowsPreparationResult> PrepareWithInputsCore(
+            ManagementOperationObserver dedicatedObserver,
+            Action<ManagementOperationObserver, WsabiWmiMethodRequest> dispatch,
+            WsabiWmiMethodBinder binder, IWsabiWmiExchangeGate exchangeGate,
+            TimeSpan acquireTimeout, TimeSpan responseTimeout,
+            WsabiWmiWindowsOwnedInputPair protectedInputs, CancellationToken cancellationToken)
         {
             if (dedicatedObserver == null) throw new ArgumentNullException(nameof(dedicatedObserver));
             if (dispatch == null) throw new ArgumentNullException(nameof(dispatch));
@@ -50,7 +72,7 @@ namespace ATIVBatteryGuard.WmiInterop
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromResult(new WsabiWmiWindowsPreparationResult(WsabiWmiWindowsPreparationStatus.Cancelled));
             WsabiWmiWindowsCallbackSource source;
-            try { source = new WsabiWmiWindowsCallbackSource(dedicatedObserver, dispatch); }
+            try { source = new WsabiWmiWindowsCallbackSource(dedicatedObserver, dispatch, protectedInputs); }
             catch (ArgumentException)
             {
                 return Task.FromResult(new WsabiWmiWindowsPreparationResult(WsabiWmiWindowsPreparationStatus.ObserverUnavailable));

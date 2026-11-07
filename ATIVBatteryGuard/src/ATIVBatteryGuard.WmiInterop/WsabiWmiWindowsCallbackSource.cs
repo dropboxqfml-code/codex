@@ -19,6 +19,7 @@ namespace ATIVBatteryGuard.WmiInterop
         private readonly object gate = new object();
         private readonly ManagementOperationObserver sdkObserver;
         private readonly Action<ManagementOperationObserver, WsabiWmiMethodRequest> dispatch;
+        private readonly WsabiWmiWindowsOwnedInputPair protectedInputs;
         private readonly ConditionalWeakTable<ManagementBaseObject, OwnedWmiResult> objects =
             new ConditionalWeakTable<ManagementBaseObject, OwnedWmiResult>();
         private readonly WsabiWmiCallbackInvocationSource<OwnedWmiResult> source;
@@ -126,7 +127,8 @@ namespace ATIVBatteryGuard.WmiInterop
         }
 
         public WsabiWmiWindowsCallbackSource(ManagementOperationObserver dedicatedObserver,
-            Action<ManagementOperationObserver, WsabiWmiMethodRequest> dispatch)
+            Action<ManagementOperationObserver, WsabiWmiMethodRequest> dispatch,
+            WsabiWmiWindowsOwnedInputPair protectedInputs = null)
         {
             if (dedicatedObserver == null) throw new ArgumentNullException(nameof(dedicatedObserver));
             if (dispatch == null) throw new ArgumentNullException(nameof(dispatch));
@@ -135,6 +137,7 @@ namespace ATIVBatteryGuard.WmiInterop
                 throw new ArgumentException("The supplied WMI observer already belongs to a single-use binding.", nameof(dedicatedObserver));
             sdkObserver = dedicatedObserver;
             this.dispatch = dispatch;
+            this.protectedInputs = protectedInputs;
             source = new WsabiWmiCallbackInvocationSource<OwnedWmiResult>(Dispatch, value => value.Read());
         }
 
@@ -214,7 +217,20 @@ namespace ATIVBatteryGuard.WmiInterop
                 // Count entry before the SDK getter/handoff, not just when
                 // generic Accept finally sees the object.
                 ManagementBaseObject value = args == null ? null : args.NewObject;
-                OwnedWmiResult owned = value == null ? null : objects.GetValue(value, raw => new OwnedWmiResult(raw));
+                if (value != null && protectedInputs != null && protectedInputs.Contains(value))
+                {
+                    // Input ownership lasts through the outer close join. Do
+                    // not read or dispose an input reported as a result, even
+                    // by a queued callback after that input was released.
+                    if (admitted && armed)
+                    {
+                        lock (gate) failed = true;
+                        accept(null);
+                    }
+                    return;
+                }
+                OwnedWmiResult owned = value == null ? null : objects.GetValue(value,
+                    raw => new OwnedWmiResult(raw, protectedInputs));
                 if (armed) accept(owned);
                 else owned?.Dispose(); // Pre-invocation events are never replayed.
             }

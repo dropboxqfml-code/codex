@@ -26,6 +26,20 @@ namespace ATIVBatteryGuard.WmiInterop
         public static WsabiWmiWindowsInputPreparationStatus Populate(WsabiWmiSingleReadPlan plan,
             WsabiWmiMethodRequest request, ManagementBaseObject parameters, ManagementBaseObject buffer)
         {
+            WsabiWmiWindowsOwnedInputPair ignored;
+            return PopulateCore(plan, request, parameters, buffer, false, out ignored);
+        }
+
+        internal static WsabiWmiWindowsInputPreparationStatus PopulateOwned(WsabiWmiSingleReadPlan plan,
+            WsabiWmiMethodRequest request, ManagementBaseObject parameters, ManagementBaseObject buffer,
+            out WsabiWmiWindowsOwnedInputPair owned)
+            => PopulateCore(plan, request, parameters, buffer, true, out owned);
+
+        private static WsabiWmiWindowsInputPreparationStatus PopulateCore(WsabiWmiSingleReadPlan plan,
+            WsabiWmiMethodRequest request, ManagementBaseObject parameters, ManagementBaseObject buffer,
+            bool takeOwnership, out WsabiWmiWindowsOwnedInputPair owned)
+        {
+            owned = null;
             if (plan == null) return WsabiWmiWindowsInputPreparationStatus.PlanMissing;
             WsabiWmiMethodRequest frozen;
             if (!plan.TryFreezeRequest(request, out frozen)) return WsabiWmiWindowsInputPreparationStatus.RequestMismatch;
@@ -40,6 +54,7 @@ namespace ATIVBatteryGuard.WmiInterop
                     return WsabiWmiWindowsInputPreparationStatus.ObjectsAlreadyUsed;
                 Objects.Add(parameters, new Used());
                 Objects.Add(buffer, new Used());
+                if (takeOwnership) owned = new WsabiWmiWindowsOwnedInputPair(parameters, buffer);
             }
             try
             {

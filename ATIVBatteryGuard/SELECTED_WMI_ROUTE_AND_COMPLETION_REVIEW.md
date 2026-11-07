@@ -1,5 +1,7 @@
 # 선택 WMI 경로와 gate·완료 계약 — 2026-11-07
 
+**후속:** [WMI·ACPI 반환과 EC 재사용](WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md)에서 공식 mapper/입출력/평가 계약과 모델 대응 가정 아래 정상 반환을 조건부 연결하고, 오류별 EC admission 및 별도 A/B 비실행 비교를 구체화했습니다. 아래는 당시 기록입니다.
+
 **조회 진입 경로와 별도 Runtime 변수 경로를 분리해, 조회에 잘못 합쳐질 수 있던 조건을 정정했습니다.** 선택 WMI 조회의 펌웨어 callback까지는 저장 소스에 연결 근거가 있습니다. 표준 typed 통신 제공자의 미연결을 조회 진입 자체의 필수조건으로 두지 않습니다. 실제 보호 설정 조회·충전 제어 성공을 확인한 것은 아니며 제어는 Unsupported입니다.
 
 [이전 완료 경계 검토](PROVIDER_COMPLETION_AND_READ_TRIAL_REVIEW.md), [시험안](FIXED_MODE_READ_PROPOSAL.md), [판정](FIXED_MODE_READ_DECISION.md)의 후속입니다. 새 실기 호출 대신 보존한 소스의 경로 대응과 Microsoft 공식 WMI API 계약을 검토했습니다.

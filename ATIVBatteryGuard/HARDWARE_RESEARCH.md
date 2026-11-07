@@ -1,5 +1,15 @@
 # 하드웨어 조사
 
+## 최신 — 정상 반환의 조건부 연결과 EC outcome / 2026-11-07
+
+**확인된 사실:** [후속 결과](WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md)는 Microsoft의 Wmiacpi mapper 역할, WMI method 입출력, ACPI 평가/완료 계약을 기존 모델 선언과 대조했습니다. 같은 규약의 sender는 첫 준비 실패 시 upload/post를 생략하고 다음 호출도 zero-ready 전에는 게시하지 않습니다. 선택 reader의 입력 소비·결과 저장은 정상 dispatcher clear보다 앞섭니다. 새 EC source edge 발견은0개이며 기존 근거를 outcome별로 분류했습니다.
+
+**명시 가정:** 정상 mapper가 저장 모델의 object/method·AML 인수·반환 buffer를 대응시킨다는 조건 아래 정상 평가/반환은 연결됨으로 동결합니다. 세부 WMxx/Arg2 규격 원문 미확보를 독립 blocker로 두지 않으며 새 반례나 관련 원문이 있을 때 재검토합니다. raw zero와 FF는 신선함·미게시를 각각 단독 인증하지 않습니다.
+
+**미검증:** 실제 관련 외부 참여자의 admission 규약, 불명 dispatch의 관련 완료/소유권, 실제 adapter의 결과 분류와 선택 안의 유용성은 남습니다. [별도 비실행 대안 B](FIXED_MODE_READ_PROPOSAL.md)는 공유 gate 변경1회+조건부 읽기1회이며 초기화 없는 기본 A의 실패 뒤 추가하는 fallback이 아닙니다. B의 상태 지속·복원은 관측하지 않았고 승인/실행을 요청하지 않습니다.
+
+문서·정제 기록만 변경했습니다. 앱/Core/테스트/EXE/ZIP 미변경·전체 빌드/단위 테스트 미반복이며463개·빌드 경고/오류0은1790a4b 과거 기록입니다. 실제 제어 Unsupported·추가 실행/자료 제출 불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 선택 조회 경로·gate 호출자·두 공유 버퍼 / 2026-11-07
 
 [선택 WMI 경로 검토](SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md)에서 보존한 AML trigger와 PCH legacy SW 등록을 교차 대조했습니다. 조회는 이 경로를 거치며 별도 Runtime 변수 서비스의 typed 통신 미연결을 조회 진입 자체의 필수조건에서 제외합니다. 관련 EC 후크 게시자의 순서 문제까지 해소한 것은 아닙니다.

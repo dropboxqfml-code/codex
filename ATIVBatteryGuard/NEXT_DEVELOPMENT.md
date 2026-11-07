@@ -1,5 +1,19 @@
 # 다음 개발 재개 메모
 
+## 최신 — WMI·ACPI 정상 반환과 EC 재사용 계약 / 2026-11-07
+
+[WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md](WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md), [시험안](FIXED_MODE_READ_PROPOSAL.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. Microsoft 공식 Wmiacpi mapper 역할·WMI IRP method 입출력·ACPI 평가 계약을 저장 모델의 metadata/선언/AML과 대응했습니다. 정상 mapper의 object/method 선택·인수·반환 buffer 대응을 가정으로 명시하고 정상 평가/반환은 조건부 연결됨으로 동결합니다. exact WMxx/Arg2 규격의 공식 원문은 미확보지만 이것만을 독립 blocker로 두지 않습니다. 동일404·GUID·metadata 검색을 반복하지 않고 새 원문/provider 코드·관련 trace·구체 반례가 있을 때만 다시 엽니다.
+
+EC source outcome은 미게시/게시 후 zero/게시 후 wait 오류로 분리합니다. 첫 준비 실패는 upload/post0이므로 새 요청 drain을 요구하지 않지만 두 번째 wait가 오류를 가려 stale가 나올 수 있습니다. 정상 reader는 입력 소비·결과 쓰기 후 dispatcher clear로 반환하며, reader 전 clear는 조회를 폐기할 수 있습니다. 게시 후 wait 오류는 종료 증거가 아니지만 다음 동일 규약 sender도 zero 전에는 upload/post0이므로 입력 재사용을 지연·실패시킬 근거가 있습니다. 모든 EC effect 종료/모든 status·IRQ 생산자 발견을 추가하지 않습니다. 실제 관련 외부 참여자의 규약 준수·사전 대상 무결성은 별도입니다. 새 source edge 발견은0이며 기존 source 재대조를 coverage로 세지 않습니다.
+
+source의 gate/준비 실패는 그 branch에서 EC 게시0이나 외부 FF/ACK만으로 실제 branch를 식별할 수 없습니다. 새로 만든 관측 classifier가 없고, 불명 응답을 ProvenNotPosted로 승격하지 않습니다. 기존 backend의 로컬 dispatch 예약은 SDK call 전에 설정되므로 실제 call 증거가 아니며 SDK 예외도 async faulted Task가 될 수 있습니다. 실제 adapter는 SDK 전 미게시·정상 관련 완료·불명 dispatch를 구분해야 하고 관리 drain counter/기존 owner만으로 이를 만들 수 없습니다. old backend/실기 예약은 변경·접근하지 않습니다.
+
+기본 A는 최대1WMI 읽기·고정 대상 샘플0~1·handshake0입니다. 새 B는 사전선택하는 별도 비실행 비교: gate handshake1→API/응답 검증 후 조건부 고정read1, 최대2WMI/샘플0~1/실패·불명시read0입니다. handshake는EChelper0이지만 공유 image-data gate에 열린 값을 쓰고 후속 generic 기능에도 영향을 주며 복원/지속시간은미관측입니다. B는아무상태변경없는조회가 아니고 두 호출·사이의 관련 소유권/마지막접근을 검토해야 합니다. DLL/boot초기화·retry·FF후fallback·사후reset0이며 A/실행권한변경·승인질문·request/frame/tag/generator/backend생성은없습니다.
+
+다음 연결 판단은 관련 실제 참여자의 admission/전체교환 규약, 불명 dispatch에서 소유권과 마지막 접근을 보존하는 adapter 계약, A/B의 유용성·상태 영향을 고정하는 작업에 집중합니다. 정상 반환의 이미 연결된 근거를 다시 전체 kernel/실기trace 요구로 되돌리지 않습니다. 코드 추가 승인은 실제 연결 조건·구체 안이 검토될 때 별도이며 지금은 실행을 요청하지 않습니다.
+
+private cache: 20261107/wmi-acpi-provider-contract-next, ec-mailbox-outcome-contract-next, managed-outcome-boundary-next, provider-outcome-proportionality-next. 공식 문서와 선택 source는 데이터로만 읽고 원본·C# 프로그램·SDK/provider를 실행하지 않았습니다. 문서·정제 기록만 변경, 앱/Core/테스트/EXE/ZIP 미변경·전체 빌드/단위 테스트 미반복이며 C#463/빌드0은1790a4b 과거 기록입니다. 실제 WMI/OEM/하드웨어/사용완료예약 접근·원본 실행/로딩/에뮬레이션·driver/service/security/firmware 변경 없음. 실제 제어 Unsupported·새 실행/동일 자료 제출 불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 선택 WMI 경로 분리와 완료 계약 / 2026-11-07
 
 [SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md](SELECTED_WMI_ROUTE_AND_COMPLETION_REVIEW.md), [시험안](FIXED_MODE_READ_PROPOSAL.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. 보존된 WMI→AML→PCH legacy SW→SABI callback 경로를 교차 대조했습니다. 별도 Runtime SetVariable proxy의 표준 typed 통신 미연결을 조회 진입 자체의 필수조건에서 제외합니다. 그 분기는 관련 Runtime EC 게시자의 실행 순서와 입력 보존에 영향을 주는 범위만 남깁니다. 새 typed provider 발견이나 현재 전달 성공 관측으로 세지 않습니다.

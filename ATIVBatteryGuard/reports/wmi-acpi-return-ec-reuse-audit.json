@@ -1,0 +1,268 @@
+{
+  "dateUtc": "2026-11-07",
+  "previousRepositoryCommit": "3d4731d",
+  "scope": "Conditional normal WMI-ACPI return contract, EC outcome-specific reuse and explicitly separate non-executable gate-aware trial alternative",
+  "officialProviderContract": {
+    "newReferenceDocuments": 7,
+    "newReferenceIndexes": 2,
+    "sourcePins": [
+      {
+        "name": "acpi",
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/windows-driver-docs/staging/windows-driver-docs-pr/acpi/toc.yml",
+        "bytes": 3154,
+        "sha256": "d10d507e517e57c67bd2a1df71519a18ecaa793c83dc662f72cb436889015580"
+      },
+      {
+        "name": "kernel-toc",
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/windows-driver-docs/staging/windows-driver-docs-pr/kernel/toc.yml",
+        "bytes": 67561,
+        "sha256": "0b12fabf76d80c725e9a86de43e180a578609fc36857564e442bd9a3e8026c69"
+      },
+      {
+        "name": "evaluating-acpi-control-methods",
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/windows-driver-docs/staging/windows-driver-docs-pr/acpi/evaluating-acpi-control-methods.md",
+        "bytes": 5814,
+        "sha256": "ba7db95cf086feb4a5a7c6918c3c6ae17d4881a180ac332fe9eeb372a6aa0bf5"
+      },
+      {
+        "name": "wmi-architecture",
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/windows-driver-docs/staging/windows-driver-docs-pr/kernel/wmi-architecture.md",
+        "bytes": 1113,
+        "sha256": "bc0c561c8e34d2e569755dedc94bc3e20d72fc6cba905fc87ae624275f79aee4"
+      },
+      {
+        "name": "irp-mn-execute-method",
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/windows-driver-docs/staging/windows-driver-docs-pr/kernel/irp-mn-execute-method.md",
+        "bytes": 10713,
+        "sha256": "248ba1cc7377fb1e27b0125a74d12b27bf3dc6f6784bd889a3053e268350efdf"
+      },
+      {
+        "name": "using-wmimofck-exe",
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/windows-driver-docs/staging/windows-driver-docs-pr/kernel/using-wmimofck-exe.md",
+        "bytes": 3037,
+        "sha256": "4797cc2a344b1cbdb2f93a4aca5131d091ecd41c5e4718e5a5465c097aab769b"
+      },
+      {
+        "name": "wmi-class-examples",
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/windows-driver-docs/staging/windows-driver-docs-pr/kernel/wmi-class-examples.md",
+        "bytes": 2804,
+        "sha256": "59b63206ad38e3a062de622d2dd4fe7e8aeffdb1da563565500274d6103f8609"
+      },
+      {
+        "name": "wmi-acpi-sample-readme",
+        "url": "https://raw.githubusercontent.com/microsoft/Windows-driver-samples/main/wmi/wmiacpi/README.md",
+        "bytes": 2801,
+        "sha256": "8f15f0ebd981de5322c919a9ea441e49b25c62b65db0a308272e9c398138cbbf"
+      },
+      {
+        "name": "evaluating-acpi-control-methods-synchronously",
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/windows-driver-docs/staging/windows-driver-docs-pr/acpi/evaluating-acpi-control-methods-synchronously.md",
+        "bytes": 4603,
+        "sha256": "c35e394bdead58e80efc0ed25314270ca6f419eef2c1b4e8481476ee4a49dee8"
+      }
+    ],
+    "selectedCheckCountsByLayer": {
+      "acquisitionLimit": 1,
+      "officialAcpiEvaluation": 4,
+      "officialMapperRole": 2,
+      "officialWmiMethod": 6,
+      "referenceIntegrity": 9,
+      "reusedOfficialAsyncContract": 2,
+      "reusedStoredObservation": 1,
+      "reusedVendorData": 4,
+      "selectedCrosswalk": 4,
+      "storedMetadataScope": 2
+    },
+    "all35SelectedChecksPassed": true,
+    "cachedApiPinsReused": [
+      {
+        "file": "wmi-api-completion-contract-next/execmethodasync.reference.md",
+        "bytes": 11239,
+        "sha256": "911fef3f104a018a47a4548f393bf24a560a6fc88bc1a79214663eaf1e2bb524"
+      },
+      {
+        "file": "wmi-api-completion-contract-next/setstatus.reference.md",
+        "bytes": 7258,
+        "sha256": "095154ad7f4648e261e1394277aae1da637024f2e7343fd17a82caa724ec8bca"
+      },
+      {
+        "file": "wmi-api-completion-contract-next/cancelasynccall.reference.md",
+        "bytes": 7493,
+        "sha256": "ab0bdcdd70906ecd526834d7e0d3560b7f1517df414ba4f1696859775fb22316"
+      }
+    ],
+    "storedMetadataSourcePins": [
+      {
+        "projectFile": "WMI_MATCHED_BINDING_AND_OFFLINE_ENVELOPE.md",
+        "bytes": 8060,
+        "sha256": "4b8c4a1ad120b488208e516d01397d1d8f7602d23527be6accdd8189cb93c7d7"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiContractMetadataPolicy.cs",
+        "bytes": 5222,
+        "sha256": "2af9d66de2c70a854a8cbdd14852a360d387bbf02bc4c5a392ce2a9d3608780a"
+      },
+      {
+        "projectFile": "src/ATIVBatteryGuard.App/Diagnostics/WsabiWmiContractMetadataProbe.cs",
+        "bytes": 9432,
+        "sha256": "3c61defe981ce4e3dd5ed5c7a046d05002654aae71f3209c41ad7e6325bff44e"
+      }
+    ],
+    "vendorDataPinsReused": [
+      {
+        "name": "saved DSDT",
+        "bytes": 71849,
+        "sha256": "e65919be72fd7e7bd51ca6561a6a94754ea22c929743a04727188f4638dda7a5"
+      },
+      {
+        "name": "saved decompilation",
+        "bytes": 598156,
+        "sha256": "fa971bbffe636b61153d3a897ee9f4550596a8884aa676e117908995808c8715"
+      }
+    ],
+    "normalMapperRoleMethodIoAndAcpiEvaluationContractSupported": true,
+    "exactWdgWmArgMappingOfficialContractAcquired": false,
+    "normalReturnConditionallyLinkedUnderDeclaredMapperConformance": true,
+    "declaredAssumption": "The conforming mapper selects the stored model object/method, passes the method input to the selected AML argument and returns that AML output as the WMI method output",
+    "exactMappingDocumentAbsenceIsStandaloneBlocker": false,
+    "normalReturnReviewFrozenUntilRelevantNewSourceOrCounterexample": true,
+    "threeExactReadmeNamedAttachmentHttpStatuses": [
+      404,
+      404,
+      404
+    ],
+    "sourceAbsenceInferredFromAttachmentFailures": false,
+    "currentWindowsImplementationOrLaptopTraceVerified": false,
+    "firmwareEcFreshReadOrActualProtectionProvenByNormalMethodContract": false,
+    "normalProxyTlsVerificationUsedWithoutPolicyChanges": true,
+    "rootTextVerifierReplayPassed": true,
+    "newOfficialTextFilesIncludingDiscovery": 9,
+    "selectedNewContractTextCount": 5,
+    "discoveryContextTextCount": 4,
+    "selectedContractReferenceNames": [
+      "evaluating-acpi-control-methods",
+      "wmi-architecture",
+      "irp-mn-execute-method",
+      "wmi-acpi-sample-readme",
+      "evaluating-acpi-control-methods-synchronously"
+    ],
+    "repositoryBranchesAreMutableAndExactContentHashesPinned": true,
+    "sourceCrosswalkIndependentlyReviewedAndReplayed": true
+  },
+  "ecOutcomes": {
+    "status": "pass",
+    "newFirmwareSourceEdgesRecovered": 0,
+    "reusedSourceRelationChecks": 17,
+    "firstPreparationFailurePostsNewCommand": false,
+    "secondWaitCanMaskFirstFailureAndReturnStaleData": true,
+    "normalSelectedReaderReturnsBeforeDispatcherClear": true,
+    "rawZeroReadyAuthenticatesFreshSample": false,
+    "postThenWaitErrorProvesActualEcTermination": false,
+    "nextSameProtocolPublisherUploadsBeforeZeroReady": false,
+    "sameProtocolCanDelayOrRejectReuseRatherThanOverwritePendingInput": true,
+    "allActualExternalParticipantsFollowThatProtocolProven": false,
+    "fixedReaderWritesStoredProtectionModeOrThreshold": false,
+    "allEcEffectsOrStatusIrqProducersNeedResolution": false,
+    "rootReadOnlyVerifierReplayPassed": true
+  },
+  "managedOutcomes": {
+    "unchangedOwnSourcePins": [
+      {
+        "source": "WindowsOneShotBackend.cs",
+        "bytes": 20372,
+        "sha256": "104883a083a98f9ac92a82a7800bb46ba0453a2b65fc10be5793bbe799467029"
+      },
+      {
+        "source": "IWsabiWmiFrameChannel.cs",
+        "bytes": 886,
+        "sha256": "3495d3a4087effbeb22c1c95f2dbd316124fc882f6eff4f763d44ac9e4ffe432"
+      },
+      {
+        "source": "IWsabiWmiMethodSnapshotTransport.cs",
+        "bytes": 877,
+        "sha256": "cf304c82181844ce8fc20e491a201736a4d81874ea1aaf6f26fb0eea63bb937b"
+      },
+      {
+        "source": "WsabiWmiBoundFrameChannel.cs",
+        "bytes": 2453,
+        "sha256": "d8933488d2c656874938f7752c6762fc31ee44741bf2494fa10dddcde0cc7c7b"
+      },
+      {
+        "source": "WsabiWmiCooperativeFrameChannel.cs",
+        "bytes": 9201,
+        "sha256": "4449bc5c5098f9a439b691bc9c2fb2ab487e431de1631a9621f5cebc1c013e8e"
+      }
+    ],
+    "localDispatchReservationProvesSdkInvocationOccurred": false,
+    "externalFfOrAckIdentifiesNotPostedBranch": false,
+    "ordinaryAsyncFaultMeansNotStartedOrStopped": false,
+    "normalFinalApiSuccessAndApplicableReturnContractCanFinishHostAccess": true,
+    "arbitraryNonCancelErrorPromotedToNormalCompletion": false,
+    "invalidDetachedResultAloneMeansHostOperationStillRunning": false,
+    "oldConsumedBackendCanBeConnectedUnchanged": false,
+    "captureDrainCounterCreatesMissingDispatchProvenance": false,
+    "newManagedHarnessOrPublicApplicationTestsExecuted": false,
+    "knownErrorWithRelevantTerminalContractMayEstablishCompletion": true
+  },
+  "trialComparison": {
+    "defaultA": {
+      "maximumWmiMethodReadAttempts": 1,
+      "gateHandshakeCalls": 0,
+      "fixedTargetSampleCountRange": [
+        0,
+        1
+      ]
+    },
+    "alternativeB": {
+      "status": "Separate non-executable comparison, not selected for execution",
+      "maximumWmiMethodCalls": 2,
+      "gateHandshakeCalls": 1,
+      "conditionalFixedReadCallsMaximum": 1,
+      "fixedTargetSampleCountRange": [
+        0,
+        1
+      ],
+      "handshakeFailureOrUncertaintyAllowsRead": false,
+      "gateImageDataWriteAndSharedInterfaceEffectExplicit": true,
+      "sourceHandshakeCallsEcHelper": false,
+      "handshakeSuccessAuthenticatesSubsequentEcReadFreshness": false,
+      "stoppingFollowupReadRollsBackPossibleGateChange": false,
+      "gateStatePersistenceOrRestorationObserved": false,
+      "bothCallsAndTheirIntervalNeedRelevantOwnershipContract": true,
+      "dllBootInitializationRetryResetOrFailureFallbackAllowed": false,
+      "nonExecutableComparisonIndependentlyReviewed": true
+    },
+    "defaultAOrExecutionPermissionChanged": false,
+    "actualBackendOrTrialRequestFrameNonceGeneratorCreated": false,
+    "newHardwareExecutionApprovalRequested": false
+  },
+  "decision": {
+    "conditionalNonExecutableProposalReviewable": true,
+    "actualBackendConnectionOrExecutionReady": false,
+    "actualProtectionModeReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "nextFocus": [
+      "Relevant actual participants and shared-exchange/admission scope",
+      "Adapter proof of not dispatched, normal relevant completion or uncertain dispatch without premature reuse",
+      "Chosen trial usefulness and explicit state effect"
+    ],
+    "normalReturnNotReopenedWithoutNewRelevantEvidence": true
+  },
+  "changeBoundary": {
+    "publicChangesDocumentationAndSanitizedAuditOnly": true,
+    "appCorePublicTestsDevelopmentToolsExecutableOrArchiveChanged": false,
+    "fullAppBuildOrUnitSuiteRerun": false,
+    "historicalCsharpTestsPassed": 463,
+    "historicalFullBuildWarningsAndErrors": [
+      0,
+      0
+    ],
+    "historicalCodeCommit": "1790a4b",
+    "sourceAndTextChecksAddedToAppCountOrFirmwareAnalysisPercentage": false,
+    "vendorCodeExecutedLoadedOrEmulated": false,
+    "actualWmiOemHardwareOrConsumedReservationAccessed": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "applicationNetworkCodeAdded": false,
+    "newLaptopExecutionOrRepeatedUploadRequested": false
+  }
+}

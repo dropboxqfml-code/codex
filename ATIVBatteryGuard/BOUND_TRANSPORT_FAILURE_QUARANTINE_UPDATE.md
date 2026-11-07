@@ -1,5 +1,7 @@
 # 비동기 래퍼의 직접 호출 실패 격리 수정 — 2026-11-07
 
+**후속:** [SDK 호출 수명 계약과 private 증명](SDK_INVOCATION_LIFETIME_REVIEW.md)에서 이미 반환된 Task 안의 SDK 오류를 구분했습니다. 앱 코드 변경 없이 private8case/48검산으로 unknown 진단과 실제-end를 분리했으며, 아래469개는 이 코드 수정의 검증 기록입니다.
+
 **Bound 래퍼를 거치면 사라지던 협력 owner의 재진입 차단을 수정했습니다.** supplied snapshot transport가 직접 예외를 던지거나 Task를 반환하지 않은 경우, 같은 전송 자원과 협력 gate를 격리합니다. 새 하드웨어 호출·실제 backend·배터리 명령은 추가하지 않았으며 실제 보호 조회·충전 제어는 Unsupported입니다.
 
 [이전 WMI·ACPI 반환/EC 재사용 검토](WMI_ACPI_RETURN_AND_EC_REUSE_REVIEW.md)의 후속입니다. 실제 SDK 오류의 완료 여부를 임의로 판정하는 대신, 현재 소프트웨어 안에서 이미 있는 정책이 래퍼 때문에 빠지는 지점을 고쳤습니다. [정제 검증 기록](reports/bound-transport-quarantine-audit.json)에 코드·테스트·빌드와 정적 검토를 구분합니다.

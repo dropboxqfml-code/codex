@@ -1,0 +1,215 @@
+{
+  "dateUtc": "2026-11-07",
+  "previousRepositoryCommit": "fc14fea",
+  "scope": "SDK dispatch-phase source crosswalk and private fake-evidence proof of separate diagnostics and relevant operation lifetime; no live adapter",
+  "sdkSourceReview": {
+    "newRelationshipCount": 1,
+    "newSelectedTextChecks": 17,
+    "reusedContextTextChecks": 13,
+    "sourcePinsCount": 6,
+    "newReferenceFiles": 1,
+    "sourcePins": [
+      {
+        "role": "new-official-management-object",
+        "source": "ManagementObject.cs.reference.txt",
+        "bytes": 123017,
+        "sha256": "b5aa6341ab0b4ceffceab5d81f1bed416f08c74739d47523c630525d801d90f9",
+        "newlyAcquired": true,
+        "url": "https://raw.githubusercontent.com/dotnet/runtime/v8.0.0/src/libraries/System.Management/src/System/Management/ManagementObject.cs"
+      },
+      {
+        "role": "existing-backend",
+        "source": "WindowsOneShotBackend.cs",
+        "bytes": 20372,
+        "sha256": "104883a083a98f9ac92a82a7800bb46ba0453a2b65fc10be5793bbe799467029",
+        "newlyAcquired": false
+      },
+      {
+        "role": "reused-official-observer",
+        "source": "ManagementOperationWatcher.cs.reference.txt",
+        "bytes": 14082,
+        "sha256": "aee88e1e1d3679450919be114b35f856eb33640bc52fdeaa532c2fbcdc9dbb09",
+        "newlyAcquired": false,
+        "url": "https://raw.githubusercontent.com/dotnet/runtime/v8.0.0/src/libraries/System.Management/src/System/Management/ManagementOperationWatcher.cs"
+      },
+      {
+        "role": "reused-official-sink",
+        "source": "WmiEventSink.cs.reference.txt",
+        "bytes": 10633,
+        "sha256": "361eeba4c64818384f4b2b9d2c3996d56ad0a743e0460dcacfbbb44dcc82f923",
+        "newlyAcquired": false,
+        "url": "https://raw.githubusercontent.com/dotnet/runtime/v8.0.0/src/libraries/System.Management/src/System/Management/WmiEventSink.cs"
+      },
+      {
+        "role": "reused-official-dispatch-contract",
+        "source": "execmethodasync.reference.md",
+        "bytes": 11239,
+        "sha256": "911fef3f104a018a47a4548f393bf24a560a6fc88bc1a79214663eaf1e2bb524",
+        "newlyAcquired": false,
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sdk-api/docs/sdk-api-src/content/wbemcli/nf-wbemcli-iwbemservices-execmethodasync.md"
+      },
+      {
+        "role": "reused-official-status-contract",
+        "source": "setstatus.reference.md",
+        "bytes": 7258,
+        "sha256": "095154ad7f4648e261e1394277aae1da637024f2e7343fd17a82caa724ec8bca",
+        "newlyAcquired": false,
+        "url": "https://raw.githubusercontent.com/MicrosoftDocs/sdk-api/docs/sdk-api-src/content/wbemcli/nf-wbemcli-iwbemobjectsink-setstatus.md"
+      }
+    ],
+    "referenceVersion": "dotnet/runtime v8.0.0",
+    "referenceMatchesTargetWindows10Net48ImplementationProven": false,
+    "existingNormalBackendJoinsSdkNormalReturnAndSelectedCompletion": true,
+    "sdkExceptionSkipsExistingSelectedCompletionAwait": true,
+    "callbackBeforeSdkReturnExcludedByManagedReference": false,
+    "callbackBeforeReturnOrThenThrowObservedOnTarget": false,
+    "conformingNegativeImmediateStatusAfterSuccessfulFinalEstablished": false,
+    "negativeImmediateStatusRemovesSinkAndReleasesStubBeforeThrow": true,
+    "sameObserverLaterTerminalGuaranteedAfterRemoval": false,
+    "allLateCallbacksImpossibleAfterRemovalProven": false,
+    "securityResetActualThrowOrNativeCallbackTimingAudited": false,
+    "rootTextVerifierReplayPassed": true,
+    "independentSourceReviewAndVerifierReplayPassed": true,
+    "referenceCodeExecutedLoadedOrEmulated": false,
+    "normalProxyAndTlsVerificationUsed": true
+  },
+  "lifetimeContract": {
+    "relevantEnd": "Known no SDK invocation OR (call stack exited AND applicable method terminal AND selected capture settled)",
+    "captureStartsUnsettled": true,
+    "callExitAndFailureRecordedAtomically": true,
+    "knownErrorOrCaptureFailureCanSettleWithoutSuccessfulData": true,
+    "sdkThrowAloneProvesNotDispatchedOrStopped": false,
+    "clientStopOrUiTimeoutCreatesApplicableTerminal": false,
+    "diagnosticUnknownAndEndTaskSeparated": true,
+    "singleUseNoReentryOrLateSignalReuse": true,
+    "allPrivateCleanupOrAllEcEffectsMustStop": false,
+    "missingTerminalCanLeaveLifetimeAndOwnershipPendingIndefinitely": true,
+    "helperCreatesMissingSdkTerminal": false,
+    "processDeathOrLeaseReleaseProvesProviderStop": false
+  },
+  "privateManagedProof": {
+    "passed": true,
+    "assertionsPassed": 48,
+    "joinedFakeCases": 8,
+    "scenarioNames": [
+      "early-final-late-call-exit",
+      "early-call-exit-late-final-and-capture",
+      "unknown-throw-ui-timeout",
+      "unknown-throw-caller-stop",
+      "throw-after-early-final",
+      "selected-capture-failure",
+      "known-error-unneeded-capture",
+      "pre-stop-no-dispatch"
+    ],
+    "unknownObservationsBeforeSyntheticCleanup": [
+      {
+        "scenario": "unknown-throw-ui-timeout",
+        "observationBeforeCleanup": {
+          "CallState": "Exited",
+          "ApplicableTerminal": false,
+          "TerminalSucceeded": false,
+          "Capture": "Unsettled",
+          "InvocationFailed": true,
+          "StopRequested": false,
+          "Published": false,
+          "Unknown": true
+        },
+        "heldBeforeSyntheticCleanup": true,
+        "peerBusy": true,
+        "cleanupJoined": true
+      },
+      {
+        "scenario": "unknown-throw-caller-stop",
+        "observationBeforeCleanup": {
+          "CallState": "Exited",
+          "ApplicableTerminal": false,
+          "TerminalSucceeded": false,
+          "Capture": "Unsettled",
+          "InvocationFailed": true,
+          "StopRequested": false,
+          "Published": false,
+          "Unknown": true
+        },
+        "heldBeforeSyntheticCleanup": true,
+        "peerBusy": true,
+        "cleanupJoined": true
+      }
+    ],
+    "allTerminalAndCaptureSignalsSynthetic": true,
+    "finallySyntheticCleanupIsObservedSdkEvidence": false,
+    "sameOwnerThreadLeaseReleaseOnceAndAllFakeWorkJoined": true,
+    "offlineSyntheticRequestFixtureReused": true,
+    "newResponseFrameOrHardwareGeneratorCreated": false,
+    "actualWmiSdkProviderOrWindowsOemGateExecuted": false,
+    "linkedUnchangedCoreSources": 93,
+    "ownSourcePins": [
+      {
+        "source": "InvocationLifetimeProof.csproj",
+        "bytes": 1086,
+        "sha256": "0827d48a07fa11bbec321362e517d340f03e1bd54f072d7b7b3c32de5c75d6d6"
+      },
+      {
+        "source": "offlineNuGet.Config",
+        "bytes": 125,
+        "sha256": "5256a7e3e07d2c5c94f7a1e6c45f39aab011c659c5e2d53e452dea525ce04575"
+      },
+      {
+        "source": "InvocationLifetime.cs",
+        "bytes": 6264,
+        "sha256": "330d4cf2d43b96a9eda80a749f9fca2342bbf549f74ec617d0e28cfe8ccae323"
+      },
+      {
+        "source": "ProofProgram.cs",
+        "bytes": 20361,
+        "sha256": "04ea07c5eb0d058bd4470553db43cb47fc9527698741e2945e8728872898b603"
+      }
+    ],
+    "finalPrivateSourceManifestSha256": "e052879f1ce8821eb6399158db3270c9c6bdc6838272fcd2638b38ab532ae2ce",
+    "privateProofRecordSha256": "6bcaeac53a480e3a5ca26893801d5020234f3951980b64fd7ec4edb5a2eeed12",
+    "privateArtifactManifestSha256": "a6ce8874e6d2a8f0ccf4b446954821421cd8e4887f0df2a170012cd4fdbeb111",
+    "independentSourceAndResultReviewPassed": true,
+    "independentReviewerReranManagedHarness": false
+  },
+  "privateBuildAndRun": {
+    "developmentDotnetSdkExecuted": true,
+    "sdkVersion": "8.0.427",
+    "restoreExitCode": 0,
+    "packageReferenceCount": 0,
+    "packageSourcesExplicitlyCleared": true,
+    "restoredLibraries": 0,
+    "releaseBuildExitCode": 0,
+    "warnings": 0,
+    "errors": 0,
+    "runExitCode": 0,
+    "writableCliHomeTelemetryOptOutAndSkipFirstTimeExplicit": true,
+    "prototypeCodePublicApiOrLiveBackend": false
+  },
+  "decision": {
+    "useUnusedCoreTrackerOrNewPublicProtocolAdded": false,
+    "actualAdapterRelatedTerminalSourceAndMissingSignalPolicyEstablished": false,
+    "actualBackendConnectionOrExecutionReady": false,
+    "normalMapperAndKnownOemSourceScopeReopened": false,
+    "defaultAOrNonExecutableAlternativeBCountsStateEffectsApprovalChanged": false,
+    "actualProtectionModeReadSucceeded": false,
+    "chargeControl": "Unsupported",
+    "executionApprovalRequested": false
+  },
+  "changeBoundary": {
+    "publicChangesDocumentationAndSanitizedAuditOnly": true,
+    "appCorePublicTestsToolsExecutableOrReleaseArchiveChanged": false,
+    "privateOwnPrototypeCreatedAndExecuted": true,
+    "mainAppSuiteOrFullNet48SolutionRerun": false,
+    "historicalAppTestsPassed": 469,
+    "historicalFullBuildWarningsAndErrors": [
+      0,
+      0
+    ],
+    "historicalCodeCommit": "fc14fea",
+    "private48OrSourceChecksAddedToApp469": false,
+    "vendorOriginalExecutedLoadedOrEmulated": false,
+    "actualWmiOemHardwareGlobalObjectOrConsumedMarkerAccessed": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "applicationNetworkCodeAdded": false,
+    "additionalNotebookRunOrRepeatedUploadRequested": false
+  }
+}

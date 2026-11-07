@@ -1,5 +1,21 @@
 # 다음 개발 재개 메모
 
+## 최신 — SDK 호출 수명 계약과 private 증명 / 2026-11-07
+
+[SDK_INVOCATION_LIFETIME_REVIEW.md](SDK_INVOCATION_LIFETIME_REVIEW.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 기존 Backend의 정상 경로는 이미 SDK 정상 반환과 선택 completion을 함께 기다립니다. 사용처 없는 Core/public tracker를 추가하는 대신, 불명 오류 진단과 소유권이 기다릴 종료 Task를 분리하는 private prototype를 만들었습니다.
+
+최소 종료 조건은 확실한 SDK 미진입, 또는 call stack 종료 AND 적용 가능한 method terminal AND 선택 snapshot 처리 settled입니다. capture는 처음부터 unsettled로 두어 final 게시와 reader 등록 사이에 빈틈이 없게 합니다. 선택 처리 실패·불필요도 settled가 될 수 있습니다. SDK throw·UI stop·timeout은 그 자체로 terminal이 아닙니다. final 뒤 throw가 발생하면 이미 확인한 종료 근거와 결과 실패를 함께 보존합니다. 모든 callback·독립 Dispose·전체 EC effect 종료를 요구하지 않습니다.
+
+private .NET8 harness는 변경하지 않은 Core93파일을 링크했습니다.8개 joined case·48개 assertion 통과, 시험 빌드 경고/오류0, restore/build/run 종료코드0입니다. early final/late call, early call/late final+capture, unknown throw와 timeout/caller stop, final 뒤 throw, capture 실패/알려진 오류의 불필요 capture, pre-stop를 검산했습니다. unknown 두 case는 UI 반환 뒤 lease/slot 유지와 peer Busy를 기록했습니다. 그 뒤 finally에서 합성 terminal/capture를 공급해 모든 fake Task를 join했습니다. 이 cleanup은 실제 SDK의 늦은 완료 보장이 아닙니다. 강제 종료·실제 SDK·WMI/OEM/Global 객체는 사용하지 않았습니다.
+
+새 공식 ManagementObject(v8.0.0) 원문1개는 observer 등록→하위 dispatch→후속 처리/status와 negative HR→RemoveSink→ReleaseStub→throw를 보입니다. 재사용 observer는 SDK 정상 반환 gate 없이 Completed를 전달합니다. 정상 Backend는 호출 다음 await를 거치지만 SDK throw는 그 await를 건너뜁니다. 새 관계1개에 대한 text check17·재사용13·source pin6을 구분했습니다. 조기 callback/callback 뒤 throw는 조건부 source 순서이며 conforming target의 실제 발생·현재.NET48 동일성·Reset의 실제 throw 근거는 아닙니다. 정확한 Framework 원문 미확보를 독립 blocker로 추가하지 않습니다.
+
+같은 observer가 throw 뒤 terminal을 반드시 받을 수 있는 것은 아닙니다. 신호가 없으면 helper도 pending이고 owner thread·lease·slot이 무기한 남을 수 있습니다. 제거나 process 종료를 provider stop으로 바꾸지 않고 기존 단발 backend를 그대로 연결하지 않습니다. 실제 adapter는 terminal의 출처와 소실 시 소유권·프로세스 수명 정책을 구체화해야 합니다. 같은 SDK/normal mapping/참여자 검색은 반복하지 않으며 다른 실제 관측 계약이나 구체 반례가 있을 때 재개합니다.
+
+private cache는 20261107/invocation-lifetime-proof-next, sdk-dispatch-phase-boundary-next, invocation-lifetime-contract-next, invocation-lifetime-feasibility-next입니다. proof 폴더에 own4파일/Core93 pins, proof.private.json, root-execution-record, final source/artifact pins와 restore/build/run 로그를 보존했습니다. 초기 agent 준비 기록은 유지하고 실제 root 실행 기록을 별도로 남겼습니다. root는 명시한 CLI home·telemetry opt-out, source clear/package reference0, no-restore build로 .NET 개발 SDK와 우리 prototype를 실행했습니다. 실제 System.Management/provider는 실행하지 않았습니다.
+
+공개 변경은 문서·정제 기록뿐이며 앱/Core/public API·기존 tests/EXE/ZIP은 그대로입니다. 전체 suite/net48 solution 빌드는 반복하지 않았습니다. 앱469개·전체 빌드0은fc14fea 기록이며 private48개를 합산하지 않습니다. 실제 WMI/OEM/hardware/소모 예약 접근·삼성 원본 실행/로딩/에뮬레이션·driver/service/security/firmware 변경은 없습니다. A/B의 호출 수·gate 영향·승인 상태를 유지하며 실제 제어는 Unsupported입니다. 새 실행이나 동일 자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — Bound 전송 직접 실패 격리 코드 수정 / 2026-11-07
 
 [BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md](BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 기존 cooperative owner는 직접 channel throw/null만 격리했는데 async Bound가 lower snapshot transport의 같은 실패를 ordinary faulted/cancelled Task로 감춰 wrapper별 정책이 달랐습니다. transport 호출 자체만 내부 fixed-text marker로 보존하고 owner가 취소 분류 전에 canonical resource+gate를 sticky quarantine하도록 Core3파일을 수정했습니다. 원본 예외/InnerException/detail은 보관하지 않습니다. await·후속 token검사·null snapshot/decode·이미 반환된 task fault/cancel은 기존 완료 의미를 유지하며 plain/unowned 경계까지 전역 격리하지 않습니다.

@@ -4,6 +4,8 @@
 
 [후속 software 수정](BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md)은 Bound 뒤에서 사라지던 직접 throw/null의 owner 격리 정책을 복구합니다. 실제 SDK 내부 async fault의 완료를 새로 판정한 것은 아니며 아래 A/B의 호출 수·상태 영향·승인 상태는 그대로입니다.
 
+[SDK 수명 private 증명](SDK_INVOCATION_LIFETIME_REVIEW.md)은 확실한 미진입 또는 call exit+관련 terminal+선택 capture settled를 종료 조건으로 검산했습니다. 실제 SDK의 terminal 소실을 해결한 것은 아니며, A/B 실행 준비·하드웨어 종료 증명으로 승격하지 않습니다.
+
 ## 현재 기본 안 A의 목표와 횟수
 
 목표는 임시 CandidateProfile에 고정된 보호 모드 저장 byte를 한 번 읽어 **저장 후보값**으로 분류하는 것입니다. 충전기 적용·잔량·Windows 충전 상태와 구분합니다. 실제 제어 활성화·설정 변경·임계값 쓰기는 범위에 없습니다.

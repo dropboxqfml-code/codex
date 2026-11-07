@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — SDK 오류와 관련 작업 종료의 분리 / 2026-11-07
+
+**확인한 소스 범위:** [SDK 수명 검토](SDK_INVOCATION_LIFETIME_REVIEW.md)는 새 Microsoft dotnet/runtime v8.0.0 ManagementObject 참조1파일과 기존 observer/Backend를 대조했습니다. 정상 Backend는 SDK 정상 반환과 선택 completion을 기다립니다. 참조의 음수 immediate 상태는 sink/stub을 정리하고 throw하므로 같은 observer의 late terminal을 보장할 수 없습니다. 새 관계1개·선택 text17·재사용13·pins6이며 실제.NET48 일치·노트북의 호출 순서·Reset의 실제 throw를 입증하지 않습니다.
+
+**private 증명:** 실제 SDK가 없는 single-use prototype로 call exit·적용 가능한 terminal·선택 capture settled를 분리했습니다.8개 case·48개 검산과 시험 빌드 경고/오류0입니다. Unknown 진단으로 종료 Task를 끝내지 않고 UI timeout/caller stop 뒤에도 lease/slot과 peer 차단이 유지됨을 확인했습니다. 이후 합성 terminal/capture로 모든 fake 작업을 정리했으며 이것은 실제 SDK 종료 보장이 아닙니다.
+
+**한계:** terminal이 사라지면 수명은 pending으로 남고 helper는 신호를 만들지 못합니다. process 종료·lease 해제를 provider stop으로 바꾸지 않습니다. 앱/Core/public API·EXE/ZIP은 변경하지 않았고 전체 앱 검증은 반복하지 않았습니다.469개/빌드0은fc14fea 기록입니다. 실제 backend·하드웨어 호출·A/B 권한 변경 없이 Unsupported를 유지하며 새 실기·재제출은 필요하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — Bound 직접 실패의 격리 전파와 참여 범위 / 2026-11-07
 
 **확인된 사실:** [후속 수정](BOUND_TRANSPORT_FAILURE_QUARANTINE_UPDATE.md)은 Bound async 경계가 snapshot transport의 직접 throw/null을 faulted/cancelled Task로 바꿔 cooperative owner의 기존 격리 정책을 소실시키던 문제를 고쳤습니다. 호출 자체만 내부 고정 표식으로 보존하고 owner가 canonical resource와 gate를 격리합니다. 새6개 포함469개 통과·전체 net48 Release 빌드 경고/오류0입니다. 반환된 task fault/cancel·null snapshot과 미진입의 재사용 대조도 유지합니다.

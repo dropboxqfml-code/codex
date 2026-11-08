@@ -1,0 +1,323 @@
+{
+  "dateKst": "2026-11-08",
+  "previousRepositoryCommit": "ae8f8e78a4a2d898f8050e8b6ef4193ed877bd38",
+  "scope": "Official edk2 source-level contract comparison and consolidated non-executing fixed-read proposal; no actual firmware request or trial approval",
+  "sourceAuthority": {
+    "normativePiOriginalAcquired": false,
+    "normativeRetrievalResult": "Default proxy connection failure; identical inherited-proxy retry returned HTTP403; no cause inferred",
+    "officialHeaderAndRepresentativeImplementationAcquired": true,
+    "udk2014IsBranchNotTagOrP05PiVersionProof": true,
+    "modernMmDefinitionsProve2014BiosImplementation": false,
+    "communicationHeaderSuccessWording": "The message was successfully posted.",
+    "explicitSynchronousSentenceFoundInSelectedCommunicationHeaders": false,
+    "representativeTriggerThenReadAndDirectHandlerTypeCallOrderInspected": true,
+    "representativeDirectBranchAlwaysInsideHardwareSmm": false,
+    "normalDeliveryAndReturnAreExplicitApplicationPremisesNotNewP05Evidence": true
+  },
+  "externalTextSources": [
+    {
+      "revision": "UDK2014",
+      "refKind": "branch",
+      "commit": "3ccd6d8b75b7fab66a35da9e77312eaca167c0f0",
+      "repositoryPath": "MdePkg/Include/Protocol/SmmCommunication.h",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/3ccd6d8b75b7fab66a35da9e77312eaca167c0f0/MdePkg/Include/Protocol/SmmCommunication.h",
+      "bytes": 2436,
+      "lines": 65,
+      "sha256": "7276e90a3a71c89bd9f2f1d4a413aa9b40cf3879310452893242731afbf3fffb",
+      "sourceLevel": "official-maintained-historical-interface-header"
+    },
+    {
+      "revision": "UDK2014",
+      "refKind": "branch",
+      "commit": "3ccd6d8b75b7fab66a35da9e77312eaca167c0f0",
+      "repositoryPath": "MdePkg/Include/Pi/PiSmmCis.h",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/3ccd6d8b75b7fab66a35da9e77312eaca167c0f0/MdePkg/Include/Pi/PiSmmCis.h",
+      "bytes": 13990,
+      "lines": 350,
+      "sha256": "28958b91d537dffc0f62fca672b910b23a2537888a073053725d1de97fa2a34f",
+      "sourceLevel": "official-maintained-historical-interface-header"
+    },
+    {
+      "revision": "UDK2014",
+      "refKind": "branch",
+      "commit": "3ccd6d8b75b7fab66a35da9e77312eaca167c0f0",
+      "repositoryPath": "MdePkg/Include/Uefi/UefiAcpiDataTable.h",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/3ccd6d8b75b7fab66a35da9e77312eaca167c0f0/MdePkg/Include/Uefi/UefiAcpiDataTable.h",
+      "bytes": 1637,
+      "lines": 55,
+      "sha256": "c12efd4e039a289507e22c36edc0a2d5e062956ebd8df5621dc75382d7236ade",
+      "sourceLevel": "official-maintained-historical-interface-header"
+    },
+    {
+      "revision": "UDK2014",
+      "refKind": "branch",
+      "commit": "3ccd6d8b75b7fab66a35da9e77312eaca167c0f0",
+      "repositoryPath": "MdeModulePkg/Core/PiSmmCore/PiSmmIpl.c",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/3ccd6d8b75b7fab66a35da9e77312eaca167c0f0/MdeModulePkg/Core/PiSmmCore/PiSmmIpl.c",
+      "bytes": 44613,
+      "lines": 1279,
+      "sha256": "9d3aa052699549e024dd8b1a756aa51b8ef99e0af46e03b45170a8f97d73c80d",
+      "sourceLevel": "official-representative-implementation-not-normative"
+    },
+    {
+      "revision": "edk2-stable202408",
+      "refKind": "tag",
+      "commit": "b158dad150bf02879668f72ce306445250838201",
+      "repositoryPath": "MdePkg/Include/Protocol/SmmCommunication.h",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/b158dad150bf02879668f72ce306445250838201/MdePkg/Include/Protocol/SmmCommunication.h",
+      "bytes": 725,
+      "lines": 25,
+      "sha256": "4f76756ff150eed00312dd2ca391baaeadd82af331316249beed2a16f58c7a94",
+      "sourceLevel": "official-maintained-modern-alias-header"
+    },
+    {
+      "revision": "edk2-stable202408",
+      "refKind": "tag",
+      "commit": "b158dad150bf02879668f72ce306445250838201",
+      "repositoryPath": "MdePkg/Include/Protocol/MmCommunication.h",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/b158dad150bf02879668f72ce306445250838201/MdePkg/Include/Protocol/MmCommunication.h",
+      "bytes": 3093,
+      "lines": 86,
+      "sha256": "16154a78d0a5bc2b7283eec9f05ac1cbcabfeca1afbaef60045e44e0e3e82c8f",
+      "sourceLevel": "official-maintained-modern-interface-header"
+    },
+    {
+      "revision": "edk2-stable202408",
+      "refKind": "tag",
+      "commit": "b158dad150bf02879668f72ce306445250838201",
+      "repositoryPath": "MdePkg/Include/Pi/PiSmmCis.h",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/b158dad150bf02879668f72ce306445250838201/MdePkg/Include/Pi/PiSmmCis.h",
+      "bytes": 7358,
+      "lines": 200,
+      "sha256": "071a2395c78180cd9cf4b5e38d931fd1198d32f5ea23d128664d3fc8c812e5a0",
+      "sourceLevel": "official-maintained-modern-alias-header"
+    },
+    {
+      "revision": "edk2-stable202408",
+      "refKind": "tag",
+      "commit": "b158dad150bf02879668f72ce306445250838201",
+      "repositoryPath": "MdePkg/Include/Pi/PiMmCis.h",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/b158dad150bf02879668f72ce306445250838201/MdePkg/Include/Pi/PiMmCis.h",
+      "bytes": 13280,
+      "lines": 345,
+      "sha256": "7177201d57c1cfb4d1e8a0b99c8be24e10d09a77f818e225c444412dae5aa9dc",
+      "sourceLevel": "official-maintained-modern-interface-header"
+    }
+  ],
+  "selectedSourceStatements": [
+    {
+      "source": "UDK2014/SmmCommunication.h",
+      "firstLine": 1,
+      "lastLine": 5,
+      "supports": "Header states the PI1.2 interface context and intended outside/inside communication purpose.",
+      "doesNotEstablish": "Not the PI specification original or proof that the P05 installed provider conforms."
+    },
+    {
+      "source": "UDK2014/SmmCommunication.h",
+      "firstLine": 33,
+      "lastLine": 59,
+      "supports": "Three-argument API, in/out buffer-size result and limited documented success wording.",
+      "doesNotEstablish": "No explicit synchronous sentence, global mutual exclusion, EC completion identity or P05 provider method binding."
+    },
+    {
+      "source": "UDK2014/UefiAcpiDataTable.h",
+      "firstLine": 33,
+      "lastLine": 50,
+      "supports": "Historical communication header layout and format disambiguation role.",
+      "doesNotEstablish": "The header text alone does not spell out HeaderGuid-to-SmiManage routing."
+    },
+    {
+      "source": "UDK2014/PiSmmCis.h",
+      "firstLine": 128,
+      "lastLine": 147,
+      "supports": "Typed versus NULL-root SmiManage interface and interrupt status vocabulary.",
+      "doesNotEstablish": "No selection of the P05 provider object, CPU-wide exclusion, or ordering with another request."
+    },
+    {
+      "source": "UDK2014/PiSmmCis.h",
+      "firstLine": 150,
+      "lastLine": 193,
+      "supports": "Handler entry and registration contract categories.",
+      "doesNotEstablish": "Registration need not be a normal NULL-root child, and the text gives no application-wide lock membership."
+    },
+    {
+      "source": "UDK2014/PiSmmCis.h",
+      "firstLine": 213,
+      "lastLine": 224,
+      "supports": "CPU metadata describes the executing CPU and possible CPUs separately.",
+      "doesNotEstablish": "CPU metadata is not an all-CPU rendezvous or single-root serialization guarantee."
+    },
+    {
+      "source": "edk2-stable202408/SmmCommunication.h",
+      "firstLine": 1,
+      "lastLine": 21,
+      "supports": "Modern SMM compatibility name aliases MM definitions.",
+      "doesNotEstablish": "A modern alias cannot retroactively prove the P05 2014 firmware implementation or exact historical normative revision."
+    },
+    {
+      "source": "edk2-stable202408/MmCommunication.h",
+      "firstLine": 45,
+      "lastLine": 81,
+      "supports": "Modern MM API retains posted/on-exit description and documents additional optional/error behavior.",
+      "doesNotEstablish": "Do not silently transfer all later optional/error details into the 2014 SMM prototype."
+    },
+    {
+      "source": "edk2-stable202408/PiSmmCis.h",
+      "firstLine": 50,
+      "lastLine": 59,
+      "supports": "Modern SMM management types alias MM types.",
+      "doesNotEstablish": "Not a source edge in the actual P05 firmware."
+    },
+    {
+      "source": "edk2-stable202408/PiMmCis.h",
+      "firstLine": 123,
+      "lastLine": 187,
+      "supports": "Modern typed/root MM registration and dispatch interface continuity.",
+      "doesNotEstablish": "No universal cross-CPU, cross-root or outside-MM host buffer synchronization promise."
+    },
+    {
+      "source": "UDK2014/PiSmmIpl.c",
+      "firstLine": 418,
+      "lastLine": 465,
+      "supports": "Representative implementation stores the request, invokes Trigger, then reads shared result before returning.",
+      "doesNotEstablish": "This order alone does not independently establish Trigger/core completion semantics, locking, or the P05 provider identity."
+    },
+    {
+      "source": "UDK2014/PiSmmIpl.c",
+      "firstLine": 467,
+      "lastLine": 513,
+      "supports": "Representative direct-call branch passes HeaderGuid as HandlerType and returns after the SmiManage call.",
+      "doesNotEstablish": "Its guards allow an early outside-SMM open/unlocked-SMRAM physical case. Writing the software InSmm flag is not hardware SMM entry, and this is not proof that every runtime call executes in the P05 normal root."
+    }
+  ],
+  "limitedOrderingModels": {
+    "scope": "Abstract ordering consequences of explicitly limited API promises; not a full PI model or P05 scheduler/CPU/EC simulation",
+    "indexedResource": {
+      "perCallOrderedEvents": 4,
+      "topologicalOrders": 70,
+      "syncCallChainsPermitSelectorInterferenceWitness": [
+        "runtime-handler-enter",
+        "runtime-select",
+        "query-handler-enter",
+        "query-select",
+        "query-access",
+        "query-handler-return",
+        "runtime-access",
+        "runtime-handler-return"
+      ],
+      "sameResourceSerializedOrders": 2,
+      "selectorInterferenceUnderAddedSerializationPremise": false,
+      "sameGuidOrSmmDomainLabelAddsOrderingEdges": false
+    },
+    "hostFrameExchange": {
+      "topologicalOrders": 70,
+      "serialHandlerWindowsStillPermitHostFrameWitness": [
+        "a-input-write",
+        "a-handler-enter",
+        "a-handler-return",
+        "b-input-write",
+        "a-frame-read",
+        "b-handler-enter",
+        "b-handler-return",
+        "b-frame-read"
+      ],
+      "wholeExchangeProtectedOrders": 2,
+      "crossExchangeInputOverwriteUnderAddedWholeExchangePremise": false
+    },
+    "actualPiOrP05ExecutionModel": false,
+    "actualRaceObserved": false,
+    "countsAreAppTestsOrFirmwareCoverage": false
+  },
+  "conditionalProposal": {
+    "document": "FIXED_READ_TRIAL_SPECIFICATION.md",
+    "status": "ReviewableWithExplicitAssumptions",
+    "actualExecutionReadinessEstablished": false,
+    "actualProviderMachineCodeRecoveryIsUniqueRequiredSolution": false,
+    "normalProtocolDeliveryReturnAndRelatedIndexedOrderingAreSeparate": true,
+    "legacyNullCachePositiveSourceOrderingRetained": true,
+    "normalProxyAndInitialDirectHostTreatedAsSimultaneousCompetitors": false,
+    "knownInlineConsumptionBufferSeparationAndIsrPreservationRetained": true,
+    "relatedIndexedOrderingAndFixedTemplateSdkLifetimeApplicationStillRequired": true,
+    "maximumMethodCalls": 1,
+    "maximumFixedByteSamples": 1,
+    "minimumFixedByteSamples": 0,
+    "handshakeInitializationRetryWriteOrAlternativeFallbackCalls": 0,
+    "liveGateOpenAllWritersIrqsOrFullLiveHashAddedAsAbsoluteCondition": false
+  },
+  "verification": {
+    "rootExecutedOfflineSourceVerifier": true,
+    "pinnedExternalFiles": 8,
+    "selectedSourceExcerpts": 12,
+    "rootExecutedSymbolicOrderVerifier": true,
+    "priorProofPinsVerified": [
+      {
+        "reference": "client-object-proof",
+        "bytes": 12616,
+        "sha256": "9feda011bcfc9c438ddaad15f3dd97401339e34cc0e45353c44e02bfd0dbd8a6"
+      },
+      {
+        "reference": "runtime-phase-proof",
+        "bytes": 10286,
+        "sha256": "0727fe3a50b5730efe468070d9897d994687d8c996370041bbcf91fef10990d1"
+      }
+    ],
+    "independentReadOnlyReviewCompleted": true,
+    "rootDocumentReviewerExecutedScripts": false,
+    "newProviderOrActualTypedDispatchEdges": 0,
+    "frozenProviderScansRepeated": false,
+    "currentApplicationBuildOrCsharpTestsRun": false,
+    "reason": "Production, SDK, test project/source and distributed EXE/ZIP unchanged",
+    "unchangedCodeFiles": 208,
+    "unchangedCodeManifestSha256": "2748b2701bf7fd32e1dafa5a5d42055f67ecec209f410779279efa6250600b68",
+    "previousCodeValidationOnly": {
+      "codeCommit": "ae8f8e78a4a2d898f8050e8b6ef4193ed877bd38",
+      "csharpPassed": 628,
+      "failed": 0,
+      "skipped": 0,
+      "fullNet48ReleaseWarnings": 0,
+      "fullNet48ReleaseErrors": 0,
+      "actualWindowsRuntimeOrGuiExecuted": false
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "privateArtifact": "contract_source/verify_sources.private.py",
+      "bytes": 11470,
+      "sha256": "8f262a55a5179545c9dc51f86e632e27c8818ac121e73484e3abc87f69c8546d"
+    },
+    {
+      "privateArtifact": "contract_source/sources-and-excerpts.private.json",
+      "bytes": 27303,
+      "sha256": "e2fa5907e6e4e77bb1ed48bf20de5f9803b15950d5cf00f7db114cb01981bc40"
+    },
+    {
+      "privateArtifact": "contract_source/findings.private.md",
+      "bytes": 8298,
+      "sha256": "fc662e067f757dbc050adb591674cdaeac720cc37f1c8750c88b32dbcb226186"
+    },
+    {
+      "privateArtifact": "root/verify_contract_scope.private.py",
+      "bytes": 5487,
+      "sha256": "18861d7f04dd11e7040778f213fc81cd6ce78ce1dedb479fa8503ba05382d0a0"
+    },
+    {
+      "privateArtifact": "root/contract-scope-proof.private.json",
+      "bytes": 45926,
+      "sha256": "89fd569efff1c13d78b7e81c169e7166013165cb3df2b724999631084a09d8db"
+    }
+  ],
+  "boundary": {
+    "applicationCoreSdkTestsOrDistributedExeZipChanged": false,
+    "developmentReferenceTextDownloaded": true,
+    "productRuntimeNetworkingAdded": false,
+    "fetchedSourceOrSamsungOriginalExecutedLoadedAsCodeOrEmulated": false,
+    "actualSdkOemHardwareGlobalOrConsumedMarkerAccessed": false,
+    "actualRequestAddressPairFrameNonceOrGeneratorCreated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "publicEntryReopenedOrRealTrialApproved": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "newLaptopRunOrRepeatedUploadRequested": false
+  },
+  "next": "Apply a concrete related indexed-resource ordering contract and review fixed-template meaning/model suitability and actual SDK lifetime before implementation. Do not reopen identical negative scans or use this report as execution authorization."
+}

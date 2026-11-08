@@ -1,5 +1,7 @@
 # 고정 보호 저장 byte의 조건부 시험안 — 비실행 문서
 
+**통합 명세 후속:** [단발 조회 명세](FIXED_READ_TRIAL_SPECIFICATION.md)와 [PI 출처·계약 대조](PI_COMMUNICATION_CONTRACT_REVIEW.md)에 대상·예산·관련 보호·거부·actual end/정리를 묶었습니다. 표준 제공자 기계코드 자체를 유일한 해법으로 두지 않고 동일 보호 순서의 적용 근거를 평가합니다. 조건부 제안은 검토 가능하나 실제 template/SDK 연결·실기 실행은 보류합니다. 아래 source 미연결 기록을 규약 가정의 증명이나 모든 경로의 추가 필수조건으로 바꾸지 않습니다. A/B 호출 수·공개 차단·Unsupported는 유지합니다.
+
 **오프라인 시험 준비:** [시나리오·정제 기록](READ_TRIAL_REHEARSAL_PLAN.md)은 public 사전차단부터 내부 대역의 pending/cleanup까지 재현합니다. 생성된 기록은 가짜 SDK의 관측이며 실제 요청 명세·제공자 연결·입력 보호의 하드웨어 근거나 실행 승인이 아닙니다. A/B 호출 수·상태 영향·실행 보류를 유지합니다.
 
 **제공자 후보 후속:** [구조·역방향 조사](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)에서도 실제 표준 제공자 연결은 미확정입니다. Base2 동적 InSmm을 통신 후보에서 제외하며, Nvram 수신자가 쓰지 않는 incoming buffer와 retained buffer의 동일성을 새 조건으로 두지 않습니다. 기존 정상 legacy 경로는 유지하고 nonnull 분기의 긍정적 순서 근거 한계를 실제 위험 관측으로 바꾸지 않습니다. A/B 실행 보류와 호출 수는 유지합니다.

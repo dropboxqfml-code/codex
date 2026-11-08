@@ -1,5 +1,7 @@
 # Runtime의 부팅 후 중계 선택과 조회 순서 — 2026-11-08
 
+**PI 계약 적용 후속:** [출처·계약 검토](PI_COMMUNICATION_CONTRACT_REVIEW.md)에서 공식 헤더와 대표 구현을 확보했습니다. 아래 실제 제공자 source edge는 여전히 미연결이지만 기계코드 복구만을 유일한 해법으로 고정하지 않습니다. 정상 통신 적용 가정과 관련 indexed 자원의 동일 보호 순서 근거를 구분하며 [조회 명세](FIXED_READ_TRIAL_SPECIFICATION.md)는 조건부 검토본입니다. 실제 entry·배포물은 변경하지 않았습니다.
+
 **후속 후보 조사:** [제공자 후보·역방향 검토](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)는 Base2 동적 method0을 InSmm으로 제외하고, operand 후보와 index 밖 자료를 대조했습니다. 실제 표준 제공자→typed dispatch는 찾지 못했으며 해당 수신자가 쓰지 않는 incoming buffer와 retained buffer의 동일성을 추가 조건으로 요구하지 않습니다. 아래는 부팅 경로 검토 시점 기록입니다.
 
 **선택된 부팅 분기에서 중계 설치 알림을 이미지 실행 전에 처리할 소스 연결을 확보했습니다.** 정상 교체가 완료된 분기에 초기 direct-host 게시자를 계속 남는 경쟁자로 동시에 넣지 않습니다. 실제 조회·충전 제어는 Unsupported이며, 제공자 객체의 함수에서 typed SMM dispatch로 이어지는 연결은 미완료입니다.

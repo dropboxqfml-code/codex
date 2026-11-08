@@ -1,5 +1,23 @@
 # 다음 개발 재개 메모
 
+## 최신 — PI 계약 출처와 단발 조회 통합 명세 / 2026-11-08
+
+기준 `ae8f8e7` 다음 작업입니다. [PI_COMMUNICATION_CONTRACT_REVIEW.md](PI_COMMUNICATION_CONTRACT_REVIEW.md), [FIXED_READ_TRIAL_SPECIFICATION.md](FIXED_READ_TRIAL_SPECIFICATION.md), [기존 제안](FIXED_MODE_READ_PROPOSAL.md), [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md)를 먼저 읽습니다. 사용자 승인은 규약 대조·조회 명세·실기 제안 가능성 검토에 대한 작업 시작이며 실제 호출 승인이 아닙니다.
+
+UEFI PI HTML 원문은 default proxy 연결 실패 뒤 동일 curl의 정상 proxy 재시도에서 HTTP403이었습니다. 원문을 읽었다거나 차단 원인을 단정하지 않습니다. 공식 edk2의 UDK2014 branch commit `3ccd6d8b75b7fab66a35da9e77312eaca167c0f0`에서 SmmCommunication/PiSmmCis/UefiAcpiDataTable 헤더와 대표 PiSmmIpl.c를, stable202408 commit `b158dad150bf02879668f72ce306445250838201`에서 Smm/MmCommunication·PiSmm/PiMmCis 4헤더를 고정 취득했습니다. UDK2014는 branch이고 head의 모든 파일을2014작성본·P05채택PI버전으로 단정하지 않습니다. 개발용 출처 취득이며 제품 네트워크0 규칙은 변경 없습니다.
+
+헤더의 성공 문구는 successfully posted이며 명시적 synchronous 문장은 없습니다. HeaderGuid는 형식 구분자 설명이고 SmiManage의 HandlerType·NULL root·SMM 등록 설명만으로 actual provider edge를 만들지 않습니다. 대표 PiSmmIpl은 공유 buffer→Trigger→결과 읽기 및 별도 조건의 직접 SmiManage(HeaderGuid)→반환 순서를 보여줍니다. direct는 '이미SMM'만이 아니라 preVA/SMRAMopen 등의 초기화 조건을 허용하므로 normal root 전용이라고 쓰지 않습니다. 대표 구현·정상 API 적용 가정·실제 P05 source를 분리합니다.
+
+결론은 **조건부 제안 작성 가능, 실행 연결 보류**입니다. actual provider 기계코드 자체를 유일한 필수조건으로 유지하지 않습니다. 정상 proxy/private wrapper 게시와 플랫폼의 정상 SMM 실행 영역·동일 보호 순서를 적용할 근거가 핵심입니다. 정상 legacy NULL cache의 양의 근거는 그대로이며 초기 direct host를 정상 proxy와 동시에 남기지 않습니다. known worker의 inline 소비/분리/ISR 보존도 미해결로 돌리지 않습니다.
+
+통합 명세는 대상/고정 read branch·A최대1method/sample0~1·handshake/init/retry/write/Bfallback0, WM00쓰기전~최종field/SDK detached capture, 두 주소 성분 소비와 upload30/반환prefix10/전체indexed끝, 관측 거부·충돌 모델 한계·actual end/Unknown 정리를 묶습니다. SMM이라는 분류와 동기 반환만으로 바깥 host 교환·indexed 상호 배제가 생기지는 않습니다. 이미 인정한 초기화 완료·비재진입의 같은 실행 stream의 순서 근거는 유지합니다. gate 초기 닫힘은 유용성 한계이며 live gate open/모든 writer·IRQ/live hash/새 진단을 추가 필수조건으로 두지 않습니다.
+
+root는 limited API promise의 기호 order 모형2개에서 각각70개 순서·상호 배제 추가 시 각2개와 증거2개를 검산하고 기존 proof pin2개를 확인했습니다. 전체 PI 모형·P05 race·firmware/CPU/EC 에뮬레이션·앱 테스트가 아니며 새 provider/body/실제 typed edge0입니다. 정제 기록은 reports/pi-contract-application-audit.json, private `20261108/pi-contract-application-next`의 contract_source/root에 취득 자료·manifest·findings·검산 script/proof를 보존합니다.
+
+C#/SDK/tests·배포 EXE/ZIP 변경이 없어 build/C#회귀는 재실행하지 않았습니다.628/전체 net48 Release0/0은 ae8f8e7의 이전 기록이며 이를 새 검증으로 세지 않습니다. public ReadSpecificationUnavailable/Unsupported, old consumed 예약 접근·초기화·삭제·재사용·우회 금지 유지입니다. 원본 실행/로드/에뮬레이션·실제 SDK/OEM/hardware/Global·driver/service/security/firmware/cloud 변경·실행 request/address pair/frame/nonce/generator 없음, 새 노트북 실행·자료 재제출 불필요입니다.
+
+다음은 명세를 실행에 옮기는 코드를 만들기 전에 **관련 indexed 게시자의 동일 보호 순서 적용 근거와 고정 template/실제 SDK 수명 대응을 함께 검토하는 일**입니다. 기계코드 연결 하나만을 해법으로 고정하거나 같은 negative search·기존 helper 검산을 반복하지 않습니다. 이미 확인한 근거는 재사용하고 새 구체 source/반례가 있는 구간만 조사합니다. 이번 문서나 정제 JSON을 실행 승인 flag로 쓰지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 실기 전 오프라인 리허설과 정제 checkpoint / 2026-11-08
 
 기준 `108259b` 다음 작업입니다. [READ_TRIAL_REHEARSAL_PLAN.md](READ_TRIAL_REHEARSAL_PLAN.md), [고정 시험안](FIXED_MODE_READ_PROPOSAL.md), [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. 사용자는 시험 시나리오·기록·중단 조건을 준비하라는 설명 뒤 작업을 승인했습니다. 실기 호출이나 공개 entry 활성화 승인은 아닙니다.

@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — PI 계약 대조와 단발 조회 통합 명세 / 2026-11-08:** [출처·계약 검토](PI_COMMUNICATION_CONTRACT_REVIEW.md)와 [조회 명세](FIXED_READ_TRIAL_SPECIFICATION.md)를 추가했습니다. 당시 공식 헤더·참조 구현과 실제 P05 근거를 구분하고, 제공자 기계코드 복구만을 유일한 해법으로 두지 않습니다. 메시지 전달·반환과 같은 자원의 보호 순서는 별도이며 실제 연결은 보류합니다. 이번에는 문서·추상 순서 검산만 변경했고 앱·배포물·공개 entry 차단 및 조회/제어 Unsupported는 유지합니다. 628개/빌드0/0은 ae8f8e7의 이전 기록입니다. 아래는 이전 기록입니다.
+
 **최신 — 조회 시험 전 오프라인 리허설 / 2026-11-08:** [시험·기록 계획](READ_TRIAL_REHEARSAL_PLAN.md)과 테스트 전용 `--offline-rehearsal`을 추가했습니다. 실제 checkpoint를 정제 JSON에 남기며 시간 초과 시 보유 상태와 가짜 정리 뒤 결과를 구분합니다. 6시나리오 통과·새11개 포함 전체628개 통과, 테스트/전체 net48 Release 빌드 경고·오류0입니다. 6개 리허설은 전체 회귀와 겹치며 실제 OEM/System.Management 호출은0입니다. 제품 코드·배포 ZIP·공개 entry 차단과 조회/제어 Unsupported는 유지합니다. 아래는 이전 기록입니다.
 
 **최신 — 표준 통신 제공자 후보 조사 / 2026-11-08:** [조사 기록](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)에서 실제 게시 함수와 역방향 호출·index 밖 자료를 대조했으나 제공자→typed SMM dispatch 연결은 확보하지 못했습니다. Base2 method0은 InSmm으로 제외했고 수신자가 쓰지 않는 buffer 인수의 동일성도 추가 요구에서 제거했습니다. 코드·EXE/ZIP 변경 없이 공개 차단·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.

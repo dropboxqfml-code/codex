@@ -1,5 +1,7 @@
 # 고정 조회 후보의 응답 거부 명세와 남은 보호 연결 — 2026-11-08
 
+**통합 적용 후속:** [조회 명세](FIXED_READ_TRIAL_SPECIFICATION.md)에 아래 거부·충돌 모델과 전체 교환/완료 계약을 묶었습니다. [PI 계약 대조](PI_COMMUNICATION_CONTRACT_REVIEW.md)는 provider 본문 복구만을 유일한 해법으로 두지 않으며, 메시지 전달·반환과 관련 indexed 보호 순서의 차이를 유지합니다. 아래 확률 모델·미완료 실제 적용을 새로운 실기 증명으로 바꾸지 않습니다.
+
 **부팅 경로 후속:** [Runtime 중계 선택 검토](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md)는 선택된 이미지 실행 전 TPL 처리 지점과 실제 교체 성공 조건을 연결했습니다. 정상 proxy 교체 분기에 초기 direct-host 게시자를 동시에 남기지 않습니다. nonnull 제공자 객체의 method0→typed dispatch는 여전히 미연결이며 실제 조회 명세·공개 entry는 보류합니다. 아래의 참여자 표는 450f0cc 시점 기록이며 이 분기 구분을 적용해 읽습니다.
 
 **응답 거부 규칙과 충돌 모델을 비실행 명세로 구체화했습니다. 실제 호출의 입력 보호는 알려진 Runtime 게시자의 순서 연결이 남아 있습니다.** [입력·응답 수명 검토](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md)의 후속이며 공개 entry 활성화·실기 시험 승인이 아닙니다. 보호 조회·충전 제어는 Unsupported입니다.

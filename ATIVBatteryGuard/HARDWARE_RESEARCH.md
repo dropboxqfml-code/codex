@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — PI 통신 계약과 단발 조회 명세 적용 / 2026-11-08
+
+**새 출처:** [계약 대조](PI_COMMUNICATION_CONTRACT_REVIEW.md)는 공식 edk2의 고정 UDK2014 branch/현대 tag 자료8개를 읽었습니다. PI 원문 HTML은 HTTP403으로 미확보입니다. 헤더의 successfully posted를 handler 완료로 확대하지 않고, 대표 구현의 Trigger/직접 SmiManage 호출 순서와 P05 구현 근거를 구분합니다. UDK2014 이름이나 현대 MM alias로 P05의 PI버전을 단정하지 않습니다.
+
+**판단:** [통합 조회 명세](FIXED_READ_TRIAL_SPECIFICATION.md)로 검토 가능한 조건부 제안은 정리했습니다. 표준 제공자 본문 복구만을 유일한 필수조건으로 두지 않으며 관련 indexed 게시자의 동일 보호 순서 적용 근거가 남습니다. 정상 legacy와 proxy 교체의 긍정 근거·known worker 입력 비훼손은 유지합니다. SMM이라는 분류와 동기 반환만으로 바깥 WMI 교환이나 indexed 상호 배제가 생기지는 않습니다. 초기화 완료·비재진입의 같은 실행 stream에 대해 확보한 순서 근거는 유지합니다. gate 초기 닫힘은 A의 유용성 한계이고 새 실측 조건이 아닙니다.
+
+**검증·한계:** 각각70개 순서의 제한된 기호 모형2개와 간섭 가능 순서2개, 보호 전제 추가 시 각각2개 순서를 검산했습니다. 실제 PI/P05 실행 모델·race 관측·앱 테스트가 아니고 새 provider/실제 typed edge0입니다. source/proof pin과 독립 읽기 검토는 정제 기록에 남깁니다. C#/SDK/tests·배포물은 같아 build/C#회귀 미실행,628/전체 net48 Release0/0은 ae8f8e7 이전 기록입니다. 실제 SDK/OEM/hardware/Global·과거 예약 접근·원본 실행·환경 변경0, public 차단·Unsupported 유지이며 새 노트북 실행·재제출은 필요 없습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 실기 전 오프라인 시나리오·정제 기록 구현 / 2026-11-08
 
 **소프트웨어 준비:** [리허설 계획](READ_TRIAL_REHEARSAL_PLAN.md)과 test-only CLI로 공개 차단·사전 취소·fake gate timeout·early terminal/call-exit 대기·terminal 유실·유효 frame 귀속 불명의 6사례를 실행했습니다. 실제 관측 enum/카운터만 기록하고 bounded timeout과 합성 정리 후 상태를 분리합니다. 예상 밖 fake Invoke와 input cleanup 실패의 회귀도 보강했습니다.

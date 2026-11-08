@@ -1,5 +1,7 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
+**2026-11-08 PI 계약 적용:** [통합 명세](FIXED_READ_TRIAL_SPECIFICATION.md)는 조건부 제안으로 검토할 수 있습니다. [공식 헤더·대표 구현 대조](PI_COMMUNICATION_CONTRACT_REVIEW.md)는 규격 원문·P05 실제 제공자 증거와 구분합니다. provider 본문 복구만을 유일한 해법으로 두지 않으며, 관련 indexed 자원의 동일 보호 순서와 실제 template/SDK 수명 적용 검토가 남습니다. 실제 entry 활성화·시험 준비 완료 판정은 아니고 아래 차단·Unsupported를 유지합니다.
+
 **판정: 공개 SDK 실기 entry는 ReadSpecificationUnavailable로 사전 차단, 내부 기계 경로는 stand-in 검증 유지.** [시작·중단 조건 적용](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md)을 반영했습니다. 정상 평가·반환은 모델 대응 가정 아래 동결하며 실제 terminal 출처·관련 참여 규약·선택 시험안의 유용성은 별도입니다. 하드웨어 영구 미지원이나 드라이버 부재 판정은 아니며 실제 충전 제어는 Unsupported입니다.
 
 | 조건 | 확인된 범위 | 남은 조건 |

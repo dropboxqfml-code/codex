@@ -1,5 +1,25 @@
 # 다음 개발 재개 메모
 
+## 최신 — 선택된 부팅 경로의 Runtime proxy 설치와 객체 전송 / 2026-11-08
+
+기준 `450f0cc` 다음 작업입니다. [RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md), [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 정상 postboot 분기와 초기 direct-host 예외를 분리했고, 제공자 객체의 공급·선택 수명을 좁혔습니다.
+
+새 source binding은 BDS fixed list의 marker 다음 선택 continuation→RestoreTPL4→선택 LoadImage/StartImage의 관계입니다. 정상적으로 등록/신호된 live TPL8 Event, 필요한 버퍼/host receiver, 해당 continuation 진행과 정상 callback 전제에서 이미지 진입 전에 교체 알림을 처리할 지점이 생깁니다. 모든 Windows 부팅 경로나 실제 노트북의 전달을 관측한 것은 아닙니다. 별도 StartImage caller가 있고 조사한 StartImage 본문은 이미지 반환 후 saved TPL을 복원하므로 이를 보편적 사전 처리로 세지 않습니다.
+
+NvramSmi는 AllocatePool/공유 버퍼 게시 실패에도 성공0으로 반환할 수 있고 교체 notify helper 상태도 후속 locator로 덮습니다. 정상 StartImage 반환만으로 구체 buffer/게시/등록/전달 조건을 대체하지 않습니다. callback의 proxy store는 CRC 계산보다 앞서며 CRC 실패 뒤 old slot 복원은 없습니다. proxy 저장 여부와 정상 CRC/usable 표를 구분합니다.
+
+정상 설치가 완료되면 초기 host wrapper는 proxy로 대체되고 기존 EBS/VA는 이를 초기 wrapper로 복원하지 않습니다. 같은 정상 proxy 분기에 old direct-host→flash→indexed 게시자를 동시에 넣지 않습니다. private SMM Runtime이 host에서 게시한 flash receiver를 사용해도 caller domain이 host로 바뀌지 않으며 private wrapper 게시 성공을 bootstrap Unsupported 표와 구분합니다. 변수 family guard 미공유 자체를 정상 proxy 분기의 독립 blocker로 유지하지 않습니다.
+
+통신 객체는 초기 LocateProtocol output이 실제 캐시에 들어가고, 오류 뒤 same locator를 protocol notification으로 등록해 나중의 게시에도 같은 캐시를 채울 수 있습니다. helper는 그 캐시 객체를 This로 전달해 method0을 호출합니다. NULL 캐시일 때만 기존 legacy fallback이며 nonnull method 오류 뒤 자동 fallback/재시도는 없습니다. VA callback은 같은 객체 포인터를 변환합니다. source 초기 NULL만으로 현재 NULL을 추론하지 않습니다.
+
+구체 미연결은 실제 공급 object의 method0 구현에서 typed GUID dispatch로 가는 호출입니다. server 등록/동일 GUID·legacy Communicate 객체·기존 fallback을 그 edge로 대신하지 않습니다. missing branch를 직접 host EC 게시나 실제 위험 actor로 바꾸지도 않습니다. 직접 슬롯·live 전체 hash·모든 writer/IRQ 부재를 새 절대조건으로 요구하지 않습니다.
+
+검산은 postboot 원본pin3/명령37/본문decode148행/typed-list7/관계10, client source49행/same-cache5, root 별도decode46/기존phaseblock14/mask·분기관계10/6cases를 통과했습니다. 수치는 겹치며 앱 테스트·분석률로 합산하지 않습니다. 새 제한 부팅 순서 binding1·새 함수/게시자/실제race0, provider→typed dispatch 새 연결0입니다. 선택적 scratch PE metadata 조회의 AttributeError는 증거에서 제외했으며 final verifier는 통과했습니다.
+
+정제 기록 reports/runtime-postboot-transport-audit.json, private `20261108/runtime-ordering-closure-next`의 postboot_route/communication_route/root에 source/ref pins·script/proof/findings·실행 기록을 보관합니다. 코드·테스트·SDK·EXE/ZIP이 같아 빌드/C# 회귀는 재실행하지 않았고617/빌드0/0은62f2d2e 이전 기록입니다. public ReadSpecificationUnavailable·조회/제어 Unsupported, A의 method 최대1/handshake·초기화·재시도·쓰기·B fallback0과 old consumed 예약 접근·재사용 금지를 유지합니다.
+
+원본 실행/로드/에뮬레이션·SDK/OEM/hardware/Global·driver/service/security/firmware/cloud 변경·실제 request/address pair/frame/nonce generator는 없습니다. 새 노트북 실행/자료 재제출은 불필요합니다. 다음은 actual provider object.method0의 source 구현과 typed dispatch 연결이 나오는 근거에만 집중합니다. 같은 GUID 검색이나 old direct 경로 재검산을 반복 성과로 세지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 고정 조회 응답 거부 명세와 Runtime 보호 연결 / 2026-11-08
 
 기준 `3a25af3` 다음 작업입니다. [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [입력·회수 경계](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 실제 요청 없이 거부 규칙·명시 확률 모델·관련 participant 적용표를 구체화했습니다.

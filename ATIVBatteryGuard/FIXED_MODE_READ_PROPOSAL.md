@@ -1,5 +1,7 @@
 # 고정 보호 저장 byte의 조건부 시험안 — 비실행 문서
 
+**Runtime 부팅 경로 후속:** [선택된 알림 처리 지점](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md)은 정상 교체 조건과 초기화 예외를 구분합니다. 성공 반환 0만으로 교체를 인증하지 않으며, 정상 proxy 설치 시 초기 direct-host 경로를 같은 분기의 경쟁자로 중복 취급하지 않습니다. NULL 캐시의 legacy 순서 근거는 유지하고 nonnull 제공자 method0의 실제 dispatch 연결은 미완료입니다. A/B 호출 수·권한·실행 보류는 그대로입니다.
+
 **응답 명세 후속:** [거부 규칙과 참여자 적용](FIXED_READ_ACCEPTANCE_SPECIFICATION.md)은 관측 가능한 거부 규칙, 8개 보존 셀의 nonzero·균등·독립 단발 충돌 모델을 비실행 후보로 구체화했습니다. 이는 수용 결과의 신뢰도를 뜻하지 않으며 실제 값/생성기/요청은 없습니다. 알려진 host Runtime 게시자의 선택 조회와의 보호·순서 연결이 남아 A/B 실행 보류를 유지합니다.
 
 **입력·회수 후속:** [보호 구간 검토](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md)에서 ready admission과 완료 후 결과 회수를 구분했습니다. 입력 upload 30바이트·반환 prefix 10바이트·전체 indexed I/O의 수명을 따로 유지하며, 같은 SMM 순서만으로 바깥 WMI frame 회수를 보호하지 않습니다. A/B의 호출 수·권한·실행 보류는 유지합니다.

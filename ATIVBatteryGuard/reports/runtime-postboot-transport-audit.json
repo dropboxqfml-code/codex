@@ -1,0 +1,213 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "450f0cc",
+  "scope": "Bounded selected BDS pre-image notification-drain binding, concrete installer prerequisites and cached interface object selection. No universal current route or completed typed provider edge.",
+  "originalSourcePins": [
+    {
+      "name": "NvramSmi/1.efi",
+      "bytes": 6752,
+      "sha256": "bc6bb8d872475c689a9eff7988f9c49527f478682321b853b26fe46f26404b02"
+    },
+    {
+      "name": "CORE_DXE/0.efi",
+      "bytes": 1393056,
+      "sha256": "1ee7e16301f8432cf96cf6ff30422cfaa2d46fd8e2e28ce5cfa9f97099d24126"
+    },
+    {
+      "name": "Runtime.efi",
+      "bytes": 83776,
+      "sha256": "10a6f228664bada8eaad309879ab3b17d007ce8d5ccb5561a9038d89adb3840a"
+    }
+  ],
+  "privateAnalysisArtifactPins": [
+    {
+      "privateArtifact": "postboot_route/verify_postboot_route.private.py",
+      "bytes": 12289,
+      "sha256": "ef4f5763c2dc8a686d72743800e8d070abf104ca55962b6a66782e9542d193fe"
+    },
+    {
+      "privateArtifact": "postboot_route/postboot-route-proof.private.json",
+      "bytes": 35501,
+      "sha256": "35b2e33c8c880fb5d1e7c3a7210639d3542d6decee41af466113041672bd2e74"
+    },
+    {
+      "privateArtifact": "postboot_route/findings.private.md",
+      "bytes": 8139,
+      "sha256": "194e883b2998c94d5db897995d967e7606c72c5288d4c64bd8bf0ac7c5adcea9"
+    },
+    {
+      "privateArtifact": "postboot_route/artifact-pins.private.json",
+      "bytes": 622,
+      "sha256": "f9f9976f12d5607c971a1da7eb798bf1211687d22be1267444b17f5714f5cfba"
+    },
+    {
+      "privateArtifact": "communication_route/verify_client_object.private.py",
+      "bytes": 11649,
+      "sha256": "33015acbc22411f9b30742fc6d99eb331dfcfbbbe480f9bf045dd21706a0aee6"
+    },
+    {
+      "privateArtifact": "communication_route/client-object-proof.private.json",
+      "bytes": 12616,
+      "sha256": "9feda011bcfc9c438ddaad15f3dd97401339e34cc0e45353c44e02bfd0dbd8a6"
+    },
+    {
+      "privateArtifact": "communication_route/findings.private.md",
+      "bytes": 6191,
+      "sha256": "27028721c1b0372954154417e6c8a82c008072a342c2dea5656f00899ddc478c"
+    },
+    {
+      "privateArtifact": "root/verify_phase_cuts.private.py",
+      "bytes": 9422,
+      "sha256": "92e38a562fce5ab842de2e5e3e5a7e7d6f7353dabd0b469a44594df51f33004c"
+    },
+    {
+      "privateArtifact": "root/phase-cuts-proof.private.json",
+      "bytes": 10286,
+      "sha256": "0727fe3a50b5730efe468070d9897d994687d8c996370041bbcf91fef10990d1"
+    }
+  ],
+  "selectedBootOrdering": {
+    "markerBeforeSelectedContinuationInFixedList": true,
+    "actualBootServicesRestoreTpl4BeforeSelectedLoadAndStartImage": true,
+    "restorePendingMaskIncludesInstallerNotifyTpl8": true,
+    "priorLiveRegisteredPendingEventAndUsableBufferPremisesRetained": true,
+    "conditionalInstallerDeliveryBeforeThisSelectedImageEntry": true,
+    "allWindowsBootPathsTraverseThisCut": false,
+    "startImageLocalRestoreOccursBeforeImageEntry": false,
+    "currentNotebookTraversedSelectedBranchObserved": false,
+    "newBoundedOrderingBinding": 1,
+    "newFirmwareFunctionsOrPublisherActors": 0
+  },
+  "installerSuccessConditions": {
+    "successfulEntryStatusProvesBufferPublicationOrNotifyRegistration": false,
+    "allocationOrBufferPublicationFailureCanReturnSourceSuccessZero": true,
+    "replacementRegistrationStatusOverwrittenByLaterIndependentLookup": true,
+    "actualProxySlotStorePrecedesCrcCalculation": true,
+    "crcFailureRestoresInitialHostWrapperInSelectedBody": false,
+    "proxyStoreOccurredAndUsableNormalRtTableAreDifferentConditions": true,
+    "actualSetupFailureOrCurrentSlotObserved": false
+  },
+  "branchScope": {
+    "normalProxyReplacementAndInitialDirectHostPublisherTreatedAsSimultaneousSameBranchCompetitors": false,
+    "selectedEbsOrVaRestoresInitialHostImplementation": false,
+    "vaConvertsCurrentImplementationRatherThanRechoosingInitialTarget": true,
+    "directHostRouteRetainedAsConcreteSetupDeliveryOrderOrLaterReplacementExceptionOnly": true,
+    "privateSmmCallerBecomesHostBecauseFlashReceiverWasHostPublished": false,
+    "normalPrivateVariableWrapperPublicationRequiredNotJustBootstrapTable": true,
+    "variableFamilyGuardNonparticipationMadeIndependentNormalProxyBlocker": false,
+    "directHostExceptionHasProvenSabiSharedGuard": false
+  },
+  "cachedCommunicationObject": {
+    "initialLocateProtocolOutputAndInvocationThisUseSameCache": true,
+    "failedInitialLookupCanRegisterSameLocatorForLaterProviderPublication": true,
+    "proxySelectsLegacyByCacheNullnessNotProviderReturnStatus": true,
+    "helperRequeriesProviderAtInvocation": false,
+    "nonnullMethodErrorCausesAutomaticLegacyFallbackOrRetry": false,
+    "vaConvertsSameObjectPointer": true,
+    "initialSourceNullProvesCurrentOrPermanentNull": false,
+    "actualProviderMethodZeroToTypedDispatcherSourceEdgeClosed": false,
+    "newProviderToDispatcherEdgesClosed": 0,
+    "sharedStatusOrMatchingHandlerGuidCertifiesActualTypedDispatch": false,
+    "nonnullMissingEdgeMeansObservedDirectHostActorOrRace": false
+  },
+  "conditionalBranchCases": [
+    {
+      "case": "reviewed normal selected boot continuation",
+      "conditions": "registered/live TPL8 Event, required nonzero buffer, valid host receiver, marker queued and selected later RestoreTPL4 reached; no later overwrite",
+      "slotIdentity": "proxy",
+      "directHostPublisherRetainedOnThisBranch": false
+    },
+    {
+      "case": "allocation/publication error reported as source success",
+      "conditions": "no usable setup/event; source status alone is success",
+      "slotIdentity": "not inferred; initial direct route may remain",
+      "directHostPublisherRetainedOnThisBranch": "possible, not observed"
+    },
+    {
+      "case": "replacement registration failed or event not delivered",
+      "conditions": "later independent communication lookup can still report success",
+      "slotIdentity": "not inferred",
+      "directHostPublisherRetainedOnThisBranch": "possible, not observed"
+    },
+    {
+      "case": "callback store completed but CRC call fails",
+      "conditions": "buffer and host receiver valid; no selected rollback",
+      "slotIdentity": "proxy store still occurred; usable table not certified",
+      "directHostPublisherRetainedOnThisBranch": false
+    },
+    {
+      "case": "normal proxy and null communication cache",
+      "conditions": "previously recovered successful legacy receiver/private-table/root initialization",
+      "transport": "legacy same-root fallback",
+      "oldHostWrapperFallback": false
+    },
+    {
+      "case": "normal proxy and nonnull communication cache",
+      "conditions": "lookup supplied opaque actual interface object; method0 invoked",
+      "transport": "actual method0 target not yet source-bound to typed dispatch",
+      "oldHostWrapperFallback": false,
+      "providerFailureCausesLegacyRetry": false
+    }
+  ],
+  "remainingBoundary": "Actual interface object supplied by the standard protocol lookup, its method-zero implementation and the source path into typed dispatch. The known initialized legacy fallback remains a positive same-root route; direct-host initialization exceptions remain separate.",
+  "verification": {
+    "postbootRoute": {
+      "sourcePins": 3,
+      "selectedInstructionAssertions": 37,
+      "overlappingBoundedBodyDecodeRows": 148,
+      "typedAndListBindings": 7,
+      "compositionChecks": 10,
+      "passed": true
+    },
+    "communicationObject": {
+      "selectedSourceInstructionRows": 49,
+      "sameCacheReferences": 5,
+      "registeredVaCallbackChainChecked": true,
+      "newTypedDispatchEdges": 0,
+      "passed": true
+    },
+    "rootIndependent": {
+      "sourceInstructionChecks": 46,
+      "reusedPhaseByteBlocks": 14,
+      "maskAndBranchRelations": 10,
+      "caseRows": 6,
+      "passed": true
+    },
+    "trustedTools": {
+      "pefile": "2024.8.26",
+      "capstone": "5.0.6"
+    },
+    "rootExecutedAllThreeFinalVerifiers": true,
+    "countsOverlapNotAppTestsUniqueDiscoveriesOrCoverage": true,
+    "independentReadReviewCompleted": true,
+    "independentReviewerExecutedScripts": false,
+    "guidDiscoverySearchRepeated": false,
+    "scratchMetadataQueryErrorExcludedFromEvidence": "An initial optional PE exception-directory query raised AttributeError because CORE lacks DIRECTORY_ENTRY_EXCEPTION; it read only inert bytes and was not used as evidence. Final verifier uses explicit bounded source spans.",
+    "actualRaceOrBatteryProtectionStateObserved": false,
+    "currentCsharpBuildOrAppUnitTestsRun": false,
+    "previousCodeValidationOnly": {
+      "codeCommit": "62f2d2e",
+      "csharpPassed": 617,
+      "failed": 0,
+      "skipped": 0,
+      "net48ReleaseWarnings": 0,
+      "net48ReleaseErrors": 0,
+      "sixPriorTestedSourcePinsStillMatch": true
+    }
+  },
+  "boundary": {
+    "applicationCoreSdkTestOrExistingReleaseArchiveChanged": false,
+    "actualRequestAddressPairFrameNonceOrGeneratorCreated": false,
+    "originalFirmwareDllOrAmlExecutedLoadedOrEmulated": false,
+    "actualSdkOemHardwareGlobalOrConsumedMarkerAccessed": false,
+    "newDependenciesInstalledOrExternalSourcesDownloaded": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "handshakeInitializationRetryWriteOrAlternativeFallbackAdded": false,
+    "publicEntryReopenedOrRealTrialApproved": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "newLaptopRunOrRepeatedUploadRequested": false
+  },
+  "next": "Seek the concrete published communication object method implementation and its typed dispatch path; preserve branch-specific boot and legacy positives without repeating GUID counts or claiming live route observation."
+}

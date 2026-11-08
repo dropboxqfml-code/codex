@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — Runtime의 부팅 후 중계와 선택된 알림 처리 경계 / 2026-11-08
+
+**새 연결:** [후속 검토](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md)는 BDS의 기존 marker 다음 선택 continuation이 실제 RestoreTPL4를 거쳐 이미지 Load/Start로 가는 연결을 확보했습니다. 정상 pending/live Event·버퍼·선택 진행 조건에서 TPL8 교체 알림이 해당 restore 반환 전에 처리됩니다. 모든 Windows 부팅 경로나 현재 장치의 실제 전달을 입증한 결과는 아닙니다.
+
+**교체·선택 조건:** 버퍼 할당/공유 게시 실패에도 초기화가 성공 0을 반환할 수 있고 교체 알림 등록 상태는 뒤 조회로 덮입니다. proxy store는 CRC 계산보다 앞서며 CRC 실패의 local rollback은 없습니다. 정상 교체가 끝난 분기에 초기 direct-host 경로를 동시에 경쟁자로 넣지 않습니다. 실제 공급 객체는 초기/알림 조회→같은 캐시→This/method0→VA 변환으로 연결되며 NULL만 legacy 선택, nonnull 호출 오류 뒤 fallback은 없습니다.
+
+**남은 범위·검증:** nonnull 제공자 method0에서 typed dispatch로의 실제 source 연결은 미확정입니다. 알려진 legacy 정상 root/협력 mutex 근거는 유지하며 변수 guard 미공유를 정상 proxy 분기의 새 blocker로 두지 않습니다. 담당별 원본/decode·root mask/분기 검산과 독립 읽기 검토를 수행했습니다. 새 부팅 순서 binding1, 새 함수/게시자/race0이며 검사 수는 중복·앱 테스트 아님입니다. 코드/EXE/ZIP이 같아 빌드/C# 테스트는 미실행,617/0/0은62f2d2e의 이전 기록입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 응답 거부 명세와 관련 참여자 적용 / 2026-11-08
 
 **구체화:** [비실행 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md)는 8개 보존 셀의 전체 zero 원소 하나를 제외한 비교 영역을 제안합니다. 단일 고정 old tuple과 균등·독립인 선택의 우연 일치 한계는1/(2^64−1)이며 실제 생성·측정은 없습니다. 이 한계는 수용된 결과의 오류 확률이나 신뢰도가 아닙니다. no-copy zero·echo·공통 실패·형식/내용 불일치의 거부 규칙을 구체화하고, 다른 producer·혼합 copy·충돌이 관측 검사를 통과할 수 있는 반례도 보존했습니다.

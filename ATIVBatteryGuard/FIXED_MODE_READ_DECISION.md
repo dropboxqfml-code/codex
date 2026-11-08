@@ -1,5 +1,8 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
+**2026-11-08 최신 — A 준비 거부·소모:** [일반 실행의 MethodEnumeration/AccessDenied](FIXED_READ_A_ACCESS_DENIED_RESULT.md)로 firmware호출0·저장후보미관측입니다. 기존A 재실행/예약 변경은 하지 않습니다. 권한 사전차단과 세부 예외/정리 분류만 보강해 현재700회귀·portable/전체net48참조0/0을 검증했습니다. [추가준비1회](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md)는 별도명시승인 전 보류입니다. 기존고정요청/SDK/예약·일반entry차단·제어Unsupported·B/쓰기/재시도금지를 유지하며 아래는 이전 기록입니다.
+
+
 **2026-11-08 최신 — 별도 명시 승인 후 A 구현:** 사용자 승인 범위의 [고정 단발 도구](FIXED_READ_A_IMPLEMENTATION.md)를 구현·검증·제공했습니다. 새 purpose 영속1회 예약과 sealed 전용SDK entry를 적용하며 일반 PrepareSdkAsync 차단·실제 충전 제어 Unsupported는 유지합니다. 새39개 포함688회귀와 portable/전체net48참조 Release0/0을 검증했고 실제Windows SDK/노트북 실행은 없습니다. 정상 플랫폼 전제·새P05연결발견0·A예산·B/설정쓰기 금지는 그대로입니다. 아래 승인대기 표현은 승인 전 기록입니다.
 
 

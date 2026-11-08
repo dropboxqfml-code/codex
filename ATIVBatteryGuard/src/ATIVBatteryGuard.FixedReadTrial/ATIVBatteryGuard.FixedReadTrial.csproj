@@ -13,6 +13,7 @@
     <ProjectReference Include="../ATIVBatteryGuard.Core/ATIVBatteryGuard.Core.csproj" />
     <ProjectReference Include="../ATIVBatteryGuard.WmiInterop/ATIVBatteryGuard.WmiInterop.csproj" />
     <Reference Include="System.Management" />
+    <Compile Include="../ATIVBatteryGuard.App/Diagnostics/ProcessElevationProbe.cs" Link="Diagnostics/ProcessElevationProbe.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />

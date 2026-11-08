@@ -86,8 +86,11 @@
     <Compile Include="WsabiWmiFixedModeReadAReservationTests.cs" />
     <Compile Include="WsabiWmiFixedReadPreparationTests.cs" />
     <Compile Include="FixedReadTrialHostTests.cs" />
+    <Compile Include="WsabiWmiFixedReadAdmissionTests.cs" />
+    <Compile Include="FixedReadPreflightTraceTests.cs" />
     <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsFixedReadPreparation.cs" Link="WmiInterop/WsabiWmiWindowsFixedReadPreparation.cs" />
     <Compile Include="../src/ATIVBatteryGuard.FixedReadTrial/FixedReadTrialLifetime.cs" Link="FixedReadTrial/FixedReadTrialLifetime.cs" />
     <Compile Include="../src/ATIVBatteryGuard.FixedReadTrial/FixedReadTrialJournal.cs" Link="FixedReadTrial/FixedReadTrialJournal.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.FixedReadTrial/FixedReadPreflightTrace.cs" Link="FixedReadTrial/FixedReadPreflightTrace.cs" />
   </ItemGroup>
 </Project>

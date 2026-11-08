@@ -1,0 +1,247 @@
+{
+  "schemaVersion": 1,
+  "receiptDate": "2026-11-08",
+  "baseCommit": "3c92a463c856b22c1a3b3a1e4b122cdb5f8c0602",
+  "input": {
+    "file": "user-submitted-fixed-read-a-result.txt",
+    "bytes": 449,
+    "sha256": "d98e4190bbf87e20901805cf06962b63477a84a046490819934314f811b292aa",
+    "treatedAs": "Observation data, not new execution instructions; raw file not copied to repository or artifacts.",
+    "executionDateTimeInferredFromFileName": false,
+    "actualBinaryHashVerifiedFromUpload": false
+  },
+  "observed": {
+    "purpose": "FixedModeReadA-v1",
+    "reservation": "Claimed",
+    "preflightStatus": "AccessDenied",
+    "preflightStage": "MethodEnumeration",
+    "reportedMethodInvocation": "None; trial ended without retry",
+    "tokenElevationInText": "NotRecorded",
+    "substepAndErrorFamilyInText": "NotRecorded",
+    "cleanupErrorInText": "NotRecorded",
+    "storedModeCandidate": null,
+    "firmwareResponse": null
+  },
+  "userClarification": {
+    "launchMode": "Ordinary launch",
+    "source": "User replied 일반 실행 to the launch-mode question without rerunning or uploading more material.",
+    "directTokenElevationMeasurement": false
+  },
+  "controlFlowInterpretation": {
+    "basis": "Submitted output matched to the released source flow, not an independently attested running binary.",
+    "priorChecksPassed": [
+      "Windows10x64 gate",
+      "Fixed model and BIOS from existing source properties",
+      "Local ROOT/WMI connection",
+      "Fixed method/class/GUID/methodID1 and in-outDataBuffer UInt8[] metadata and binder"
+    ],
+    "unresolved": "MethodEnumeration contains query creation/Get/enumerator/MoveNext/Current/Active/path/cleanup; no exact denied operation or current exception family can be inferred.",
+    "notReached": [
+      "TargetRead",
+      "GetMethodParameters",
+      "Memory DataBuffer construction",
+      "RNG and fixed request construction",
+      "SDK input/observer preparation",
+      "Cooperative owner acquisition",
+      "CallSabiFunction"
+    ],
+    "notConcluded": [
+      "Firmware FF response",
+      "Gate closed",
+      "Battery command failed in firmware",
+      "Driver absent",
+      "Battery protection absent",
+      "Permanent unsupported hardware",
+      "Current token value from launch mode alone"
+    ]
+  },
+  "reusedEvidence": {
+    "documents": [
+      {
+        "file": "WMI_PERMISSION_COMPARISON_RESULT.md",
+        "bytes": 5492,
+        "sha256": "d73203327d1453d1dffe12de428dc1f12e8299c1eb015802159f9f4fb1c1aa48"
+      },
+      {
+        "file": "WMI_QUERY_LOCATOR_READY_RESULT.md",
+        "bytes": 6581,
+        "sha256": "4c8a1e326af025c11a7661926ffa3bf5b90be9e81ceb8cd8973afe3d0148090d"
+      }
+    ],
+    "scope": "Saved ordinary-token enumeration denial and elevated-token completion/LocatorReady. No new permission comparison requested.",
+    "guidanceCorrection": "Earlier ordinary-launch guidance omitted this saved device-specific permission evidence.",
+    "flags": "Same method query, DirectRead and EnsureLocatable settings as the saved successful Locator-v2 preparation. No evidence that the flags inherently cause access denial."
+  },
+  "changes": {
+    "admission": "Read current TokenElevation with TOKEN_QUERY before START/reservation/WMI; only Elevated classified Ready, invalid/unknown denied. No token adjustment, names/groups/SIDs, auto-UAC or administrator rerun instruction.",
+    "admissionMeaning": "Conservative tool policy only; not proof of WMI access, firmware support or new execution permission.",
+    "reporting": "Record token classification, fixed enumeration substep/error category and cleanup-failure fact. No raw exception, path or instance key.",
+    "primaryFailure": "Preserve the first SDK/managed exception while attempting all concrete cleanup actions. Nonexception TargetMismatch is not itself frozen as a primary exception.",
+    "sameSelectionAndFlags": true,
+    "requestSdkDispatchReservationAndControllerSourcesUnchanged": true,
+    "noNewMarkerPurposeOrRetryPathImplemented": true
+  },
+  "verification": {
+    "suite": {
+      "passed": 700,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 700,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "newTests": {
+      "admissionPolicy": 3,
+      "enumerationTraceAndErrorCategories": 9
+    },
+    "portableReleaseBuild": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    "fullNet48ReferenceReleaseBuild": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    "developmentTimeRegression": {
+      "scope": "New follow-up mapper only; not a demonstrated bug in the released notebook run.",
+      "beforeFix": {
+        "passed": 699,
+        "failed": 1,
+        "skipped": 0,
+        "registered": 700,
+        "suite": "reconstructed-portable-safety-regressions"
+      },
+      "afterFix": {
+        "passed": 700,
+        "failed": 0,
+        "skipped": 0,
+        "registered": 700,
+        "suite": "reconstructed-portable-safety-regressions"
+      },
+      "cause": "Target net48 ManagementStatus.Timedout is 262148, distinct from the existing timed-out error code.",
+      "targetEnumEvidence": {
+        "file": "timedout-enum-proof.json",
+        "bytes": 301,
+        "sha256": "ca07520c7a68e15ae9f70607a38056a585ff3312c97783c5e2179a5a33963e8e"
+      }
+    },
+    "logs": [
+      {
+        "file": "portable-build-final.log",
+        "bytes": 227,
+        "sha256": "83c2a648072bdf119b54636d7c6d89a276c6245fc28413a3d4cbf04b921e00ae"
+      },
+      {
+        "file": "solution-build-final.log",
+        "bytes": 1659,
+        "sha256": "b6201cb64dbce73ff4476c9edde9cc9446e432735b35b758c89d1e300e2dbee2"
+      },
+      {
+        "file": "suite-final.json",
+        "bytes": 106,
+        "sha256": "4984d4b348e55276e0958f08de74e4df1d885c3b15dabaa714b0985b7a8b78a2"
+      },
+      {
+        "file": "suite-final.log",
+        "bytes": 60026,
+        "sha256": "d3792e41cf65829ddc536333329308af12f258312f7f4e401c671034f931776a"
+      },
+      {
+        "file": "portable-build-pre-timeout-fix.log",
+        "bytes": 227,
+        "sha256": "a220537ec3fd7657cc47981cf02568aec42ebd38222de23cc1290104270fce3e"
+      },
+      {
+        "file": "suite-pre-timeout-fix.json",
+        "bytes": 106,
+        "sha256": "34ce2a1059ab9d8d9bc2c8a9de27193cdef93162c1d8f7e3af8bf19b9b802c97"
+      },
+      {
+        "file": "suite-pre-timeout-fix.log",
+        "bytes": 60059,
+        "sha256": "a46f4e3a16af32f04b89b5ae8c64969a90b1ab09e555be070af3f0a80e790956"
+      }
+    ],
+    "sourceBoundaryProof": {
+      "file": "source-boundary-proof.private.json",
+      "bytes": 1974,
+      "sha256": "b6a45f765128a8a284b784093a9b5871c0b7888fc81664181f1e2e9cf558e9e3"
+    },
+    "actualWindowsTokenSdkWmiOemHardwareGlobalOrNotebookMarkerExecutedInCloud": false,
+    "windowsRuntimeOfCurrentFixTested": false,
+    "newDependenciesInstalled": false
+  },
+  "sourcePins": [
+    {
+      "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFixedReadAdmissionPolicy.cs",
+      "bytes": 1033,
+      "sha256": "a2549c77064646819c657901c694b35e16138bf6c4253a35aaf40d09d95a3c85"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/Program.cs",
+      "bytes": 14509,
+      "sha256": "3de579efa87fcfdd417e64242d8e823b4286afb4be6a418999fa43ac9eb3d3e1"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/ATIVBatteryGuard.FixedReadTrial.csproj",
+      "bytes": 1046,
+      "sha256": "7c6ecbdb4a9999205ca0d497f95822809c2117b215fa38ec97526cb3c209108f"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/WindowsFixedReadPreflight.cs",
+      "bytes": 28641,
+      "sha256": "31f09fc7c5c3cb61a8aaf44482f43d06581c2eab8410487ad67210e8f6277e53"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/FixedReadPreflightTrace.cs",
+      "bytes": 4782,
+      "sha256": "8aad8af3e63690a1a387f6203471afb8c241e774113fb0f194ab919a79dbe1bb"
+    },
+    {
+      "file": "tests/WsabiWmiFixedReadAdmissionTests.cs",
+      "bytes": 3062,
+      "sha256": "6fc47205e71f08ac31fdfa7c10ef80f9e3f3fb3974996a73223dcb42ef8b785f"
+    },
+    {
+      "file": "tests/FixedReadPreflightTraceTests.cs",
+      "bytes": 11525,
+      "sha256": "d32625694f3578f2a2b4a86c57d3ee45c2b949568cadf03a7443eb860db4c92b"
+    },
+    {
+      "file": "tests/Program.cs",
+      "bytes": 34255,
+      "sha256": "f9f7d41deaec015b1a978af7b88a70c72e58b3c3324b371bd722ed1ba54d3032"
+    },
+    {
+      "file": "tests/ATIVBatteryGuard.PortableTests.csproj",
+      "bytes": 6661,
+      "sha256": "9b1862c85ee0b01fc2e1f0e53f55c1f70aa04bd24e2fb2ebc94c70e9fa18fbd3"
+    }
+  ],
+  "distribution": {
+    "existingReleasedArchiveUnchanged": {
+      "file": "ATIVBatteryGuard-FIXED-READ-A.zip",
+      "bytes": 141137,
+      "sha256": "f99e1255d7fa4500a68596ad067761bff39dded8a7edd1849d2dcf78a817eaf4"
+    },
+    "newExeOrZipPublishedForRerun": false,
+    "currentBuildBytesNotAssertedEqualToOldArchive": true
+  },
+  "nextTrial": {
+    "proposal": "FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md",
+    "state": "Unapproved; no marker, package or new invocation path created.",
+    "requiresExplicitAdditionalBudget": "One additional preparation and at most one method call, preserving all consumed previous reservations; not continuation under the spent A budget.",
+    "mode": "Separate same-account manual elevated launch after specific approval; no automatic elevation or different-account credentials.",
+    "existingFixedReadLimits": "Same model/BIOS/read target and acceptance, no handshake/init/retry/setting writes/B; 2-second owner acquisition and 10-second display plus actual close join.",
+    "currentAppChargeControl": "Unsupported",
+    "duplicateUploadsOrSamePermissionTestsRequired": false
+  },
+  "review": {
+    "independentCodeAndTests": "No blocking findings; first exception scope clarified; read-only review.",
+    "observationAndAdditionalBudgetProposal": "No blocking findings; spent A retained and additional budget requires separate explicit approval.",
+    "finalDocumentsAndSanitizedReport": "No blocking findings. Ordinary launch vs unmeasured token, precise failure limits, 700 current regressions, development-time mapper fix, unchanged release archive and unapproved extra budget are distinguished. Read-only review; no original file or personal data exposure found."
+  },
+  "environmentChanges": "None; no cloud configuration publish, driver/service/ACL/security/firmware flash changes.",
+  "privacy": "Sanitized classifications and artifact/source hashes only; no local absolute paths, raw firmware requests, response bytes, comparison content, personal identifiers or raw exception text."
+}

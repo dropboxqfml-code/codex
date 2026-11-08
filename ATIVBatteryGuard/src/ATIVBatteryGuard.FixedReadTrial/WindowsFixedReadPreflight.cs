@@ -29,14 +29,28 @@ namespace ATIVBatteryGuard.FixedReadTrial
         internal FixedReadPreflightStatus Status { get; }
         internal FixedReadPreflightStage Stage { get; }
         internal FixedReadPreparedResources Resources { get; }
+        internal FixedReadPreflightSubstep Substep { get; }
+        internal FixedReadPreflightError Error { get; }
+        internal bool CleanupFailed { get; }
         internal bool IsReady => Status == FixedReadPreflightStatus.Ready && Resources != null;
 
         internal FixedReadPreflightResult(FixedReadPreflightStatus status,
             FixedReadPreflightStage stage, FixedReadPreparedResources resources = null)
+            : this(status, stage, resources, FixedReadPreflightSubstep.None,
+                FixedReadPreflightError.None, false)
+        {
+        }
+
+        internal FixedReadPreflightResult(FixedReadPreflightStatus status,
+            FixedReadPreflightStage stage, FixedReadPreparedResources resources,
+            FixedReadPreflightSubstep substep, FixedReadPreflightError error, bool cleanupFailed)
         {
             Status = status;
             Stage = stage;
             Resources = resources;
+            Substep = substep;
+            Error = error;
+            CleanupFailed = cleanupFailed;
         }
     }
 
@@ -131,6 +145,7 @@ namespace ATIVBatteryGuard.FixedReadTrial
                 return Failure(FixedReadPreflightStatus.UnsupportedPlatform, stage);
 
             var elapsed = Stopwatch.StartNew();
+            var enumerationTrace = new FixedReadPreflightTracker(ClassifyTraceError);
             ManagementObject target = null;
             ManagementBaseObject parameters = null, buffer = null;
             try
@@ -157,9 +172,11 @@ namespace ATIVBatteryGuard.FixedReadTrial
                     return Failure(FixedReadPreflightStatus.MetadataMismatch, stage);
 
                 stage = FixedReadPreflightStage.MethodEnumeration;
-                string relativePath = ReadSoleActivePath(scope, elapsed);
+                string relativePath = ReadSoleActivePath(scope, elapsed, enumerationTrace);
+                if (enumerationTrace.HasFailure)
+                    return Failure(StatusFor(enumerationTrace.Error), stage, enumerationTrace);
                 if (relativePath == null)
-                    return Failure(FixedReadPreflightStatus.TargetMismatch, stage);
+                    return Failure(FixedReadPreflightStatus.TargetMismatch, stage, enumerationTrace);
                 stage = FixedReadPreflightStage.TargetRead;
                 target = new ManagementObject(scope, new ManagementPath(relativePath),
                     new ObjectGetOptions { Timeout = RemainingTimeout(elapsed) });
@@ -212,7 +229,7 @@ namespace ATIVBatteryGuard.FixedReadTrial
                 return new FixedReadPreflightResult(FixedReadPreflightStatus.Ready,
                     FixedReadPreflightStage.Ready, resources);
             }
-            catch (Exception exception) { return Failure(Classify(exception), stage); }
+            catch (Exception exception) { return Failure(Classify(exception), stage, enumerationTrace); }
             finally
             {
                 // No SDK invocation or ownership claim can occur in preflight.
@@ -262,36 +279,73 @@ namespace ATIVBatteryGuard.FixedReadTrial
             }
         }
 
-        private static string ReadSoleActivePath(ManagementScope scope, Stopwatch elapsed)
+        private static string ReadSoleActivePath(ManagementScope scope, Stopwatch elapsed,
+            FixedReadPreflightTracker trace)
         {
             string relativePath = null;
             int count = 0;
-            using (var searcher = new ManagementObjectSearcher(scope,
-                new ObjectQuery("SELECT Active FROM WmiAcpiMethod"), Enumeration(elapsed, true)))
-            using (var collection = searcher.Get())
-            using (var rows = collection.GetEnumerator())
+            ManagementObjectSearcher searcher = null;
+            ManagementObjectCollection collection = null;
+            ManagementObjectCollection.ManagementObjectEnumerator rows = null;
+            try
             {
+                searcher = trace.Run(FixedReadPreflightSubstep.QueryCreate, () =>
+                    new ManagementObjectSearcher(scope,
+                        new ObjectQuery("SELECT Active FROM WmiAcpiMethod"), Enumeration(elapsed, true)));
+                collection = trace.Run(FixedReadPreflightSubstep.QueryGet, () => searcher.Get());
+                rows = trace.Run(FixedReadPreflightSubstep.EnumeratorCreate, () => collection.GetEnumerator());
                 while (true)
                 {
-                    RequireTime(elapsed);
-                    bool available = rows.MoveNext();
-                    RequireTime(elapsed);
+                    trace.Run(FixedReadPreflightSubstep.BudgetCheck, () => RequireTime(elapsed));
+                    bool available = trace.Run(FixedReadPreflightSubstep.MoveNext, () => rows.MoveNext());
+                    trace.Run(FixedReadPreflightSubstep.BudgetCheck, () => RequireTime(elapsed));
                     if (!available) break;
-                    using (var row = rows.Current)
+                    ManagementBaseObject row = null;
+                    try
                     {
+                        row = trace.Run(FixedReadPreflightSubstep.Current, () => rows.Current);
                         // One lookahead rejects multiple rows without reading
                         // a second target's properties or selecting among them.
                         if (++count > 1) return null;
                         var instance = row as ManagementObject;
-                        if (instance == null || ReadActive(instance) != true || !IsFixedInstance(instance.Path))
-                            return null;
-                        relativePath = instance.Path.RelativePath;
+                        if (instance == null) return null;
+                        var active = trace.Run(FixedReadPreflightSubstep.ActivePropertyRead,
+                            () => ReadProperty(instance, "Active"));
+                        if (active == null) return null;
+                        if (trace.Run(FixedReadPreflightSubstep.ActiveTypeRead, () => active.Type) != CimType.Boolean ||
+                            trace.Run(FixedReadPreflightSubstep.ActiveArrayRead, () => active.IsArray)) return null;
+                        object activeValue = trace.Run(FixedReadPreflightSubstep.ActiveValueRead, () => active.Value);
+                        if (!(activeValue is bool) || !(bool)activeValue) return null;
+                        var path = trace.Run(FixedReadPreflightSubstep.InstancePathRead, () => instance.Path);
+                        if (path == null || !trace.Run(FixedReadPreflightSubstep.PathKindRead, () => path.IsInstance) ||
+                            !string.Equals(trace.Run(FixedReadPreflightSubstep.PathClassRead, () => path.ClassName),
+                                WsabiWmiContractMetadataPolicy.MethodClass, StringComparison.OrdinalIgnoreCase)) return null;
+                        // Preserve the existing second Path access. Neither
+                        // getter's result is stored in the detached trace.
+                        var relativePathObject = trace.Run(FixedReadPreflightSubstep.RelativePathObjectRead,
+                            () => instance.Path);
+                        relativePath = trace.Run(FixedReadPreflightSubstep.RelativePathRead,
+                            () => relativePathObject.RelativePath);
                         if (string.IsNullOrEmpty(relativePath) || relativePath.Length > 4096) return null;
-                        RequireTime(elapsed);
+                        trace.Run(FixedReadPreflightSubstep.BudgetCheck, () => RequireTime(elapsed));
                     }
+                    finally
+                    {
+                        if (row != null) trace.DisposeTracked(FixedReadPreflightSubstep.RowDispose, () => row.Dispose());
+                    }
+                    // A cleanup-only failure used to leave through using's
+                    // exception. Stop before another read, without losing it.
+                    if (trace.HasFailure) return null;
                 }
             }
-            RequireTime(elapsed);
+            finally
+            {
+                if (rows != null) trace.DisposeTracked(FixedReadPreflightSubstep.EnumeratorDispose, () => rows.Dispose());
+                if (collection != null) trace.DisposeTracked(FixedReadPreflightSubstep.CollectionDispose, () => collection.Dispose());
+                if (searcher != null) trace.DisposeTracked(FixedReadPreflightSubstep.SearcherDispose, () => searcher.Dispose());
+            }
+            if (trace.HasFailure) return null;
+            trace.Run(FixedReadPreflightSubstep.BudgetCheck, () => RequireTime(elapsed));
             return count == 1 ? relativePath : null;
         }
 
@@ -445,8 +499,35 @@ namespace ATIVBatteryGuard.FixedReadTrial
             return FixedReadPreflightStatus.Unavailable;
         }
 
+        private static FixedReadPreflightError ClassifyTraceError(Exception exception)
+        {
+            var management = exception as ManagementException;
+            return FixedReadPreflightErrors.Classify(exception,
+                management == null ? (int?)null : (int)management.ErrorCode);
+        }
+
+        private static FixedReadPreflightStatus StatusFor(FixedReadPreflightError error)
+        {
+            switch (error)
+            {
+                case FixedReadPreflightError.WmiAccessDenied:
+                case FixedReadPreflightError.WindowsAccessDenied:
+                case FixedReadPreflightError.ManagedAccessDenied:
+                case FixedReadPreflightError.ManagedSecurityDenied: return FixedReadPreflightStatus.AccessDenied;
+                case FixedReadPreflightError.WmiClassNotFound: return FixedReadPreflightStatus.ClassNotFound;
+                case FixedReadPreflightError.WmiNamespaceNotFound: return FixedReadPreflightStatus.NamespaceNotFound;
+                case FixedReadPreflightError.WmiTimedOut:
+                case FixedReadPreflightError.WindowsTimedOut:
+                case FixedReadPreflightError.ManagedTimedOut: return FixedReadPreflightStatus.TimedOut;
+                default: return FixedReadPreflightStatus.Unavailable;
+            }
+        }
+
         private static FixedReadPreflightResult Failure(FixedReadPreflightStatus status,
-            FixedReadPreflightStage stage) => new FixedReadPreflightResult(status, stage);
+            FixedReadPreflightStage stage, FixedReadPreflightTracker trace = null)
+            => stage == FixedReadPreflightStage.MethodEnumeration && trace != null
+                ? new FixedReadPreflightResult(status, stage, null, trace.Substep, trace.Error, trace.CleanupFailed)
+                : new FixedReadPreflightResult(status, stage);
 
         private static InvalidOperationException FixedFailure()
             => new InvalidOperationException("The fixed read preflight could not complete.");

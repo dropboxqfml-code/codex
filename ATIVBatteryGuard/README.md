@@ -1,5 +1,8 @@
 # ATIV Battery Guard
 
+**최신 — A 실기 결과 수신 / 2026-11-08:** [일반 실행에서 MethodEnumeration·AccessDenied](FIXED_READ_A_ACCESS_DENIED_RESULT.md)로 중단돼 firmware method호출0·저장후보미관측입니다. 과거 권한 근거를 빠뜨린 실행 안내를 정정하고, START/예약 전 토큰 사전차단과 세부 열거/오류/정리 분류를 보강했습니다. 새12개 포함700테스트·portable/전체net48참조빌드0경고·0오류입니다. **기존 A는 종료·소모됐으므로 아래 배포 실행 절차를 반복하지 않습니다.** 추가1회 시험은 [별도 승인 검토안](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md) 단계이며 새 실행파일은 아직 제공하지 않습니다. 충전제어Unsupported를 유지합니다. 아래는 이전 기록입니다.
+
+
 **최신 — 승인된 고정 저장값 단발 조회 A / 2026-11-08:** [시험 도구 ZIP](../downloads/ATIVBatteryGuard-FIXED-READ-A.zip)과 [사용·검증 안내](FIXED_READ_A_IMPLEMENTATION.md)를 추가했습니다. 새 폴더에 ZIP 하나를 풀어 일반 권한으로 실행하고 START를 직접 입력할 때만 고정1byte 조회를 최대1method로 시도합니다. 초기화·재시도·설정 변경0, 새영속1회예약·timeout/취소의 실제close대기를 적용했습니다. 새39개 포함688개 통과·portable/전체net48참조빌드0경고·0오류이며 실제WindowsSDK/노트북 실행은 아직 없습니다. 저장 후보0/1은 충전 제한 성공이 아니며 제어 Unsupported를 유지합니다. 기존 자료 재제출 대신 이번 새TXT만 결과로 사용합니다. 아래는 이전 기록입니다.
 
 

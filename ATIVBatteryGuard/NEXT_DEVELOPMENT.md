@@ -1,5 +1,20 @@
 # 다음 개발 재개 메모
 
+## 최신 — A 일반 실행의 열거 권한 거부 수신·사전 조건/오류 보강 / 2026-11-08
+
+기준 `3c92a46` 뒤 사용자가 새 TXT를 전달했습니다. [관측·정정](FIXED_READ_A_ACCESS_DENIED_RESULT.md)과 [정제 기록](reports/fixed-read-a-access-denied-followup.json)을 먼저 읽습니다. **Claimed·AccessDenied·MethodEnumeration·호출 없음**이며 firmware 조회는 미진입입니다. 사용자는 후속 답변으로 **일반 실행**이었다고 확인했습니다. 실제 TokenElevation·세부 SDK 연산·오류 계열은 TXT에 없으며 실행 방식 답변으로 직접 측정을 대신하지 않습니다.
+
+저장된 일반/상승 비교는 Method 열거의 NotElevated 거부/Elevated 완료, Locator-v2는 Elevated Ready를 이미 보존합니다. 이전 일반 권한 안내가 이 조건을 반영하지 못한 점을 정정했습니다. 현재 SELECT/DirectRead/EnsureLocatable는 그 성공 옵션과 같아 임의 변경·낮은 인증·ACL 수정·같은 비교 재요구는 하지 않습니다. 새 결과를 FF/gate/driver부재/영구미지원으로 해석하지 않습니다.
+
+코드는 TOKEN_QUERY의 현재 토큰 확인과 conservative admission을 START/예약/WMI 전에 추가했습니다. NotElevated/Unknown/미정의는 호출/예약/요청0으로 종료하고 자동 상승·관리자 재실행 권고는 없습니다. 기존 대상 열거는 fixed substep/error/cleanupfailure를 기록하며 최초 SDK/managed 예외가 뒤 정리 예외에 덮이지 않게 합니다. 비예외 TargetMismatch를 모두 보존하는 모델은 아닙니다. query/options/selection과 기존 request/SDK/예약/Unsupported controller는 그대로입니다.
+
+현재 root 검증은 새12개 포함 **700통과·0실패·0skip**, portable/전체 net48참조 Release 각각0경고·0오류입니다. 새계측 mapper의 target net48 Timedout 상수 누락을699통과1실패로 재현한 뒤 보완했습니다. 이는 배포된 이번 노트북 결과에서 발견한 timeout 오류라고 주장하지 않습니다. cloud 실제token/WMI/SDK/OEM/hardware/Global/노트북예약 접근0, 새로운 Windows 실기검증은 없습니다.
+
+기존 A는 준비 실패도 소모한 약속대로 **종료·소모 유지**입니다. A/과거예약 확인·초기화·삭제·재사용·우회0이며 새marker·추가호출 경로·재실행ZIP을 만들지 않았습니다. 기존 ZIP은 당시 byte로 보존합니다. 기존 EXE를 관리자 재실행하도록 안내하지 않습니다.
+
+다음 실제 조회는 [추가 시험안](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md)의 **별도 명시 승인에 따른 추가 준비1회/method최대1**만 검토합니다. 같은계정수동관리자·현재토큰확인·새추가1회전용marker는 승인 후 연결할 범위이며 기존 소모예산을 복구하는 것이 아닙니다. generic entry차단·handshake/초기화/재시도/설정쓰기/B0·actualclose/pending·충전제어Unsupported는 유지합니다. 같은TXT/DLL/EXE·권한비교/부팅진단 재제출은 불필요합니다. 아래는 이전 시점 기록입니다.
+
+
 ## 최신 — 승인된 고정 저장 byte 단발 조회 A 구현·배포 / 2026-11-08
 
 기준 `7488a2d` 뒤 사용자가 구체안의 구현·검증·제공을 **“그래 진행해.”**로 승인했습니다. [구현·사용 안내](FIXED_READ_A_IMPLEMENTATION.md)를 먼저 읽습니다. 새 ZIP은 [ATIVBatteryGuard-FIXED-READ-A.zip](../downloads/ATIVBatteryGuard-FIXED-READ-A.zip) 하나이며 일반 권한의 별도 도구입니다. 기존 부팅 UI ZIP은 그대로입니다.

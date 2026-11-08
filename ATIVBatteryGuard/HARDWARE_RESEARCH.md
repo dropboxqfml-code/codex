@@ -1,5 +1,14 @@
 # 하드웨어 조사
 
+## 최신 — 일반 실행의 A 준비 열거 거부 / 2026-11-08
+
+[새 결과](FIXED_READ_A_ACCESS_DENIED_RESULT.md)는 Claimed·AccessDenied·MethodEnumeration·호출없음입니다. 사용자가 일반 실행임을 확인했지만 TokenElevation 직접 관측은 없습니다. 모델/BIOS/상세metadata단계 통과와 실제target선택·RNG/SDK/owner/method미진입을 구분합니다. FF/gate/driver부재/충전기능부재 판정은 불가합니다.
+
+저장된 일반토큰거부/상승완료·LocatorReady를 재사용해 안내 누락을 정정했습니다. query/options를 추측 변경하거나 같은 권한 비교를 다시 요구하지 않습니다. read-only 토큰 사전 admission·세부 단계/고정오류·최초 예외와 정리오류 분리를 구현해 현재700회귀와 portable/전체net48참조빌드0/0을 검증했습니다. 신규실기·hardware/Global/예약접근0이며 고정요청·SDK호출·예약규약은 바꾸지 않았습니다.
+
+기존A는 종료·소모 유지이며 관리자 재실행·marker우회를 하지 않습니다. [추가준비1회안](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md)은 별도승인 전 미구현입니다. 충전제어Unsupported·B/쓰기/재시도금지는 유지합니다. 아래는 이전 기록입니다.
+
+
 ## 최신 — 승인된 fixed read A 구현 / 2026-11-08
 
 **구현:** [별도 단발 도구](FIXED_READ_A_IMPLEMENTATION.md)는 사용자가 승인한 고정 저장 byte 조회만 연결합니다. 새 목적 영속1회 예약→exact profile/metadata→sealed request→고정SDK entry→관련 actualclose 순서이며 method최대1/sample0~1/handshake·초기화·재시도·설정 쓰기·B fallback0입니다. 정상 플랫폼 전제는 구체안대로 유지하고 실제P05 provider/typed edge를 새로 발견했다고 주장하지 않습니다.

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ATIVBatteryGuard.Core.Models;
 using ATIVBatteryGuard.Core.Services;
 using ATIVBatteryGuard.Core.Storage;
+using ATIVBatteryGuard.Diagnostics;
 using ATIVBatteryGuard.WmiInterop;
 
 namespace ATIVBatteryGuard.FixedReadTrial
@@ -33,6 +34,20 @@ namespace ATIVBatteryGuard.FixedReadTrial
                 return 2;
             }
 
+            // This narrow admission policy reuses the saved device-specific
+            // permission comparison. It is not an elevation request, proof of
+            // method access, or a new authorization to repeat a consumed trial.
+            ProcessElevationState elevation = ProcessElevationProbe.Read();
+            var admission = WsabiWmiFixedReadAdmissionPolicy.Evaluate(elevation);
+            Console.WriteLine("현재 토큰: " + elevation + " / 시작 조건: " + admission);
+            if (admission != WsabiWmiFixedReadAdmissionStatus.Ready)
+            {
+                Console.WriteLine("이 고정 시험의 토큰 조건을 확인하지 못했습니다. START·예약·WMI 준비·method 호출 없음.");
+                Console.WriteLine("자동 상승·권한 변경을 하지 않습니다. 소모된 시험의 관리자 재실행이나 예약 변경도 하지 마세요.");
+                PauseAfterClose();
+                return 2;
+            }
+
             using (var stop = new CancellationTokenSource())
             {
                 ConsoleCancelEventHandler onCancel = (sender, e) =>
@@ -55,7 +70,7 @@ namespace ATIVBatteryGuard.FixedReadTrial
                     if (!string.Equals(Console.ReadLine(), "START", StringComparison.Ordinal) || stop.IsCancellationRequested)
                     { Console.WriteLine("시작하지 않았습니다. 호출 없음."); return 0; }
 
-                    int result = RunApprovedTrialAsync(stop.Token).GetAwaiter().GetResult();
+                    int result = RunApprovedTrialAsync(stop.Token, elevation).GetAwaiter().GetResult();
                     PauseAfterClose();
                     return result;
                 }
@@ -77,7 +92,7 @@ namespace ATIVBatteryGuard.FixedReadTrial
                 Environment.Is64BitOperatingSystem && version.Major == 10 && version.Build >= 10240 && version.Build < 22000;
         }
 
-        private static async Task<int> RunApprovedTrialAsync(CancellationToken token)
+        private static async Task<int> RunApprovedTrialAsync(CancellationToken token, ProcessElevationState elevation)
         {
             WsabiWmiOneShotReservationStatus reservation;
             try
@@ -105,6 +120,7 @@ namespace ATIVBatteryGuard.FixedReadTrial
             try
             {
                 journal.Write("ATIV Battery Guard — FixedModeReadA-v1");
+                journal.Write("현재 토큰: " + elevation);
                 journal.Write("새 목적의 영속 1회 예약: Claimed");
                 journal.Write("method 최대1 / 저장 byte 샘플0~1 / 초기화·handshake·재시도·설정 변경·fallback 각각0");
                 journal.Write("실제 충전 제어: Unsupported. 저장 후보는 실제 충전 제한 적용이나 임계값의 증거가 아닙니다.");
@@ -116,6 +132,8 @@ namespace ATIVBatteryGuard.FixedReadTrial
                     () => journal.Write("메타데이터 준비 표시 시간 초과: 호출 전 작업의 실제 반환을 기다립니다. 강제 종료·재시도 없음."))
                     .ConfigureAwait(false);
                 journal.Write("사전 검증: " + preflight.Status + " / 단계: " + preflight.Stage);
+                journal.Write("열거 세부 단계: " + preflight.Substep + " / 오류 범주: " + preflight.Error);
+                journal.Write("열거 정리 오류 관측: " + (preflight.CleanupFailed ? "Yes" : "No"));
                 if (!preflight.IsReady) { journal.Write("호출 없음. 이번 시험은 종료하며 재시도하지 않습니다."); return 2; }
                 resources = preflight.Resources;
 

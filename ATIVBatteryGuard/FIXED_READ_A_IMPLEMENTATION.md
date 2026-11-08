@@ -1,5 +1,8 @@
 # 고정 저장 byte 단발 조회 A — 구현·제공 / 2026-11-08
 
+**실기 결과 수신·이 A 종료:** [AccessDenied/MethodEnumeration](FIXED_READ_A_ACCESS_DENIED_RESULT.md)으로 firmware호출 전에 끝났고 예약은 소모됐습니다. 후속 답변은 일반 실행이었습니다. 아래 일반 권한 안내가 저장된 권한 성공 조건을 반영하지 못한 점을 정정합니다. **기존 실행 절차를 일반/관리자로 반복하지 않습니다.** ZIP은 당시 배포물로 보존하며 source의 토큰/오류 보강은 재실행 도구 배포가 아닙니다. 추가 시험은 [별도 승인안](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md)이며 아래는 배포 당시 이력입니다.
+
+
 사용자가 [구체 검토안](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)의 구현·검증·도구 제공을 **“그래 진행해.”**로 승인했습니다. 기존 안전 규칙을 유지하며 승인한 A만 구현했습니다. 설정 변경·충전 제어·handshake 대안 B는 승인/구현 범위에 포함하지 않습니다.
 
 ## 다운로드와 실행

@@ -1,5 +1,20 @@
 # 다음 개발 재개 메모
 
+## 최신 — 별도 승인된 추가 단발 조회 Access1 구현·배포 / 2026-11-08
+
+기준 `f030257` 뒤 사용자가 추가 시험안에 **“알겠어 진행해.”**로 명시 승인했습니다. [Access1 구현·사용 안내](FIXED_READ_ACCESS1_IMPLEMENTATION.md), [정제검증](reports/fixed-read-access1-validation.json)을 먼저 읽습니다. 새 ZIP은 [ATIVBatteryGuard-FIXED-READ-A-ACCESS1.zip](../downloads/ATIVBatteryGuard-FIXED-READ-A-ACCESS1.zip) 하나입니다. 같은계정에서 새도구만 수동관리자 실행하고 Access1/Elevated 확인→직접START가 승인된 실행 절차입니다. 일반앱상시상승/자동UAC/runas·다른계정암호/보안우회는 없습니다.
+
+승인된추가준비1회는 고정 LocalAppData Experiments의 `FixedModeReadA-Access1.attempt`를 CreateNew/WriteThrough/Flush(true)한뒤만진행합니다. START뒤준비실패도소모하며추가marker/fallback0입니다. 원래A/Query65예약조회·초기화·삭제·재사용0,같은user내폴더/버전변경으로새예산0입니다. purpose/TXT를Access1/`fixed-read-a-access1-result-*.txt`로구분했습니다.
+
+기존TOKEN_QUERY admission은START/예약/WMI전이고NotElevated/Unknown이면모든준비0입니다. 현재profile/고정요청/readbranch/metadata/SDKbinding/엄격응답검증·owner2초/표시10초/실제종료join·CallCanceled/pending·제어Unsupported는그대로입니다. method최대1/sample0~1,handshake·초기화·재시도·설정쓰기·B0,소유권불명조기해제/SDKCancel/합성final/watchdog/강제종료0입니다.
+
+새storage9개 포함 현재 **709통과·0실패·0skip**,portable/전체net48참조Release 각각0경고·0오류입니다. 새9개는임시폴더/독립객체/24동시Task/claim뒤합성준비예외의storage단위회귀이며actualprocess/Windows/OEM e2e는아닙니다. 별도compiledIL/source50관계와ZIP48정적수용검산을독립수행후root재실행했습니다. 서로겹치는범위이며709앱회귀·firmware분석률에합산하지않습니다.
+
+ZIP은4program파일+안내/BUILDINFO/SHA의7항목,145563bytes SHA256 `474d43f194740e07d01445db7b1477b1dbf73b1dfe3f1d026af20c213a20b4a0`입니다. linked token-probe를포함한sourcefingerprint/manifest/CRC/빌드byte를확인했습니다. 역사A패키저는Access1 bytes를A-v1으로오표기하지못하게거부합니다. 기존ZIP도그대로이며삼성원본/firmware/옛실험EXE없음입니다.
+
+cloud 실제Windows토큰/WMI/SDK/OEM/hardware/Global/노트북예약접근0,새Access1실기결과는아직없습니다. 다음에는이새도구를승인한범위에서한번START하고생성된새TXT만분석합니다. 기존자료/같은권한비교·DLL/EXE 재제출불필요. START후실패해도추가시험권한이생기지않고Pending이면강제종료·재실행하지않습니다. 후보0/1은임계값/충전성공이아니며제어Unsupported·정상플랫폼전제는유지합니다. 아래는이전시점기록입니다.
+
+
 ## 최신 — A 일반 실행의 열거 권한 거부 수신·사전 조건/오류 보강 / 2026-11-08
 
 기준 `3c92a46` 뒤 사용자가 새 TXT를 전달했습니다. [관측·정정](FIXED_READ_A_ACCESS_DENIED_RESULT.md)과 [정제 기록](reports/fixed-read-a-access-denied-followup.json)을 먼저 읽습니다. **Claimed·AccessDenied·MethodEnumeration·호출 없음**이며 firmware 조회는 미진입입니다. 사용자는 후속 답변으로 **일반 실행**이었다고 확인했습니다. 실제 TokenElevation·세부 SDK 연산·오류 계열은 TXT에 없으며 실행 방식 답변으로 직접 측정을 대신하지 않습니다.

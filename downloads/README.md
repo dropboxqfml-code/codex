@@ -1,4 +1,14 @@
-# ATIV Battery Guard — Windows 부팅 방식 확인판
+# ATIV Battery Guard — 승인된 추가 단발 조회 Access1
+
+2026-11-08. [Access1 ZIP 다운로드](ATIVBatteryGuard-FIXED-READ-A-ACCESS1.zip) · [실행·검증 안내](../ATIVBatteryGuard/FIXED_READ_ACCESS1_IMPLEMENTATION.md)
+
+이 ZIP 하나를 새 로컬 폴더에 모두 풀고 **ATIVBatteryGuard.FixedReadTrial.exe만 같은 계정에서 수동 관리자 실행**합니다. 화면의 Access1·현재 토큰 Elevated를 확인한 뒤 START를 직접 입력합니다. 다른 계정 암호나 보안 우회가 필요하면 중단합니다. START 뒤 준비 실패도 추가1회를 소모하며 재실행/예약 변경은 하지 않습니다.
+
+이번 새 `fixed-read-a-access1-result-*.txt`만 전달하면 됩니다. Pending이면 강제로 닫지 않습니다. 삼성 원본·firmware·과거실험EXE는 없으며 다른 ZIP과 합치지 않습니다. 고정 저장 byte 후보만 조회하고 설정 변경/handshake/재시도/B는0, 실제 충전 제어 Unsupported입니다.
+
+새709회귀/portable·전체net48참조 빌드0경고·0오류, ZIP/CLI 정적 독립검산을 통과했습니다. 실제 새도구 Windows/노트북 실행은 아직 미확인입니다. ZIP SHA256: `474d43f194740e07d01445db7b1477b1dbf73b1dfe3f1d026af20c213a20b4a0`.
+
+## 이전 — Windows 부팅 방식 확인판
 
 **후속 결과 / 2026-11-08 수신:** 사용자가 새 부팅 항목의 Complete·UEFI를 [전달했습니다](../ATIVBatteryGuard/WINDOWS_BOOT_UEFI_RESULT.md). 이 항목의 조회·표시는 확인됐지만 전체 GUI·실제 통신 경로·충전 제어 검증은 아닙니다. 프로그램 파일은 그대로이며 추가 다운로드·같은 조회 반복·파일 재제출은 필요 없습니다.
 

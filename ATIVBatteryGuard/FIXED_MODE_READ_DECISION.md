@@ -1,5 +1,8 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
+**2026-11-08 최신 — 추가1회 명시승인·Access1 제공:** [새도구](FIXED_READ_ACCESS1_IMPLEMENTATION.md)는 기존A소모를유지한 추가준비1/method최대1 예산을연결했습니다. 현재Elevated를START/예약/WMI전확인하고새전용marker선소모,실패뒤반복/기존marker접근0입니다.709회귀·portable/전체net48참조0경고·0오류 및정적배포/IL검산을통과했으며새실기결과는없습니다. 기존protocol/owner/actualclose·handshake/초기화/쓰기/재시도/B금지와Unsupported는유지합니다. 아래는이전판정입니다.
+
+
 **2026-11-08 최신 — A 준비 거부·소모:** [일반 실행의 MethodEnumeration/AccessDenied](FIXED_READ_A_ACCESS_DENIED_RESULT.md)로 firmware호출0·저장후보미관측입니다. 기존A 재실행/예약 변경은 하지 않습니다. 권한 사전차단과 세부 예외/정리 분류만 보강해 현재700회귀·portable/전체net48참조0/0을 검증했습니다. [추가준비1회](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md)는 별도명시승인 전 보류입니다. 기존고정요청/SDK/예약·일반entry차단·제어Unsupported·B/쓰기/재시도금지를 유지하며 아래는 이전 기록입니다.
 
 

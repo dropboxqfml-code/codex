@@ -87,7 +87,7 @@ internal static partial class Program
             {
                 Check(log != null, "new TXT unavailable"); log.Write("FixedStatus"); Check(!log.WriteFailed, "new TXT failed");
             }
-            var files = Directory.GetFiles(directory, "fixed-read-a-result-*.txt"); Equal(1, files.Length);
+            var files = Directory.GetFiles(directory, "fixed-read-a-access1-result-*.txt"); Equal(1, files.Length);
             Equal("FixedStatus" + Environment.NewLine, File.ReadAllText(files[0]));
         }));
     }

@@ -1,5 +1,8 @@
 # ATIV Battery Guard
 
+**최신 — 승인된 추가 단발 Access1 / 2026-11-08:** [새 ZIP](../downloads/ATIVBatteryGuard-FIXED-READ-A-ACCESS1.zip)과 [실행·검증 안내](FIXED_READ_ACCESS1_IMPLEMENTATION.md)를 제공합니다. 같은계정에서 새도구만 수동관리자 실행해 Access1/Elevated를 확인한 뒤 START를 직접 입력합니다. 기존A예약은 유지하고 추가준비1회·method최대1만허용하며 준비실패도소모합니다. 새9개 포함709테스트통과·portable/전체net48참조0경고·0오류, 정적ZIP/CLI검산을완료했습니다. 새실기는아직없고제어Unsupported입니다. 기존ZIP과합치지않고이번새TXT만전달합니다. 아래는이전기록입니다.
+
+
 **최신 — A 실기 결과 수신 / 2026-11-08:** [일반 실행에서 MethodEnumeration·AccessDenied](FIXED_READ_A_ACCESS_DENIED_RESULT.md)로 중단돼 firmware method호출0·저장후보미관측입니다. 과거 권한 근거를 빠뜨린 실행 안내를 정정하고, START/예약 전 토큰 사전차단과 세부 열거/오류/정리 분류를 보강했습니다. 새12개 포함700테스트·portable/전체net48참조빌드0경고·0오류입니다. **기존 A는 종료·소모됐으므로 아래 배포 실행 절차를 반복하지 않습니다.** 추가1회 시험은 [별도 승인 검토안](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md) 단계이며 새 실행파일은 아직 제공하지 않습니다. 충전제어Unsupported를 유지합니다. 아래는 이전 기록입니다.
 
 

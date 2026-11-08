@@ -1,5 +1,8 @@
 # 고정 보호 저장 byte 단발 조회 — 구현 승인 검토안
 
+**별도추가1회승인후속:** 기존A종료·소모를유지한채사용자추가명시승인에따라 [Access1](FIXED_READ_ACCESS1_IMPLEMENTATION.md)을제공했습니다. 예전A예산복구나재시도가아니며추가준비1/method최대1·새marker·현재토큰선확인으로제한합니다. 아래추가시험미구현/승인대기는해당시점의이력입니다.
+
+
 **후속 결과·소모:** 승인된 A는 [일반 실행의 열거 권한 거부](FIXED_READ_A_ACCESS_DENIED_RESULT.md)로 method진입 전에 종료됐고 1회는 소모됐습니다. 기존 A의 승인/도구를 재사용하지 않습니다. 현재 추가준비1회는 [별도 명시 승인 검토안](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md)이며 아직 새marker/호출경로/배포물은 없습니다. 아래는 이전 승인·구현 이력입니다.
 
 

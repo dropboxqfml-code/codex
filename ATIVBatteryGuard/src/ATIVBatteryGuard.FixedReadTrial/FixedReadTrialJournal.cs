@@ -24,7 +24,7 @@ namespace ATIVBatteryGuard.FixedReadTrial
             {
                 string local = LocalPathPolicy.NormalizeDirectory(directory);
                 LocalPathPolicy.EnsureNoReparsePoints(local);
-                string name = "fixed-read-a-result-" + DateTime.UtcNow.ToString("yyyyMMddTHHmmssfff",
+                string name = "fixed-read-a-access1-result-" + DateTime.UtcNow.ToString("yyyyMMddTHHmmssfff",
                     System.Globalization.CultureInfo.InvariantCulture) + ".txt";
                 string path = Path.Combine(local, name);
                 LocalPathPolicy.EnsureNoReparsePoints(path);

@@ -1,5 +1,8 @@
 # 고정 보호 저장값 단발 조회 명세 — 비실행 검토본
 
+**승인된추가1회후속:** [Access1 구현](FIXED_READ_ACCESS1_IMPLEMENTATION.md)은별도명시승인된 추가준비1회/method최대1만연결합니다. 기존A소모를유지하며새marker·토큰사전차단·새purpose/TXT구분외protocol/metadata/수명은그대로입니다. 실제새시험결과는아직없고충전제어Unsupported/설정쓰기·handshake·재시도·B금지는유지합니다. 아래추가시험승인대기는이전시점기록입니다.
+
+
 **A 결과 후속:** 기존A는 [준비 열거 거부](FIXED_READ_A_ACCESS_DENIED_RESULT.md)로 종료·소모됐습니다. 펌웨어 응답·저장후보는 미관측입니다. source에 토큰 사전차단과 세부 예외/정리 분류를 추가했으나 현재A를 다시 실행하지 않습니다. [추가준비1회안](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md)은 기존한도와 별개인 명시승인 대상으로 미구현이며 fixedread범위·수명·금지동작은 그대로입니다. 아래는 이전 기록입니다.
 
 

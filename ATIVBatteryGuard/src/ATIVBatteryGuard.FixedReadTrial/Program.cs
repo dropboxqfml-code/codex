@@ -15,6 +15,7 @@ namespace ATIVBatteryGuard.FixedReadTrial
     // No command, address, server, payload, marker path or worker switch exists.
     internal static class Program
     {
+        private const string TrialPurpose = "FixedModeReadA-Access1";
         private static readonly Task Never = new TaskCompletionSource<bool>().Task;
         private static object uncertainOwnershipRoot;
 
@@ -43,7 +44,8 @@ namespace ATIVBatteryGuard.FixedReadTrial
             if (admission != WsabiWmiFixedReadAdmissionStatus.Ready)
             {
                 Console.WriteLine("이 고정 시험의 토큰 조건을 확인하지 못했습니다. START·예약·WMI 준비·method 호출 없음.");
-                Console.WriteLine("자동 상승·권한 변경을 하지 않습니다. 소모된 시험의 관리자 재실행이나 예약 변경도 하지 마세요.");
+                Console.WriteLine("자동 상승·권한 변경을 하지 않습니다. 이번에 승인된 Access1 도구만 같은 계정에서 수동 관리자 실행하는 범위입니다.");
+                Console.WriteLine("다른 계정의 암호가 필요하면 중단하세요. 과거 시험 실행 파일·예약은 건드리지 마세요.");
                 PauseAfterClose();
                 return 2;
             }
@@ -60,11 +62,12 @@ namespace ATIVBatteryGuard.FixedReadTrial
                 catch { Console.WriteLine("안전한 중단 처리를 준비하지 못했습니다. 호출 없음."); return 2; }
                 try
                 {
-                    Console.WriteLine("ATIV Battery Guard — 보호 저장값 단발 조회 A");
+                    Console.WriteLine("ATIV Battery Guard — 승인된 추가 단발 조회 Access1 (" + TrialPurpose + ")");
+                    Console.WriteLine("기존 A의 소모는 유지합니다. 이번 승인은 추가 준비 1회이며 그 뒤 실패도 반복하지 않습니다.");
                     Console.WriteLine("대상: 기존 940X3G/930X3G · P05ACJ.128.140819.dg profile");
                     Console.WriteLine("설정 변경·초기화·재시도 없음. 고정 읽기 WMI method 최대 1회, 저장 byte 샘플 0~1회.");
                     Console.WriteLine("통신 입력과 mailbox 교환은 있으며 충전 제어는 하지 않습니다.");
-                    Console.WriteLine("시작 후 준비 실패도 이 시험의 1회를 소모합니다. 관리자 재실행·예약 삭제로 반복하지 마세요.");
+                    Console.WriteLine("START 후 준비 실패도 추가 1회를 소모합니다. 재실행·예약 삭제로 반복하지 마세요.");
                     Console.WriteLine("시간 초과는 펌웨어 중단이 아닙니다. 정리 완료 전에는 창을 강제로 닫지 마세요.");
                     Console.WriteLine("이 한 번의 조회를 시작하려면 START를 입력하고 Enter를 누르세요. 다른 입력은 호출 없이 종료합니다.");
                     if (!string.Equals(Console.ReadLine(), "START", StringComparison.Ordinal) || stop.IsCancellationRequested)
@@ -99,7 +102,7 @@ namespace ATIVBatteryGuard.FixedReadTrial
             {
                 string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 if (string.IsNullOrWhiteSpace(local) || !Path.IsPathRooted(local)) throw new InvalidOperationException();
-                var claim = new WsabiWmiFixedModeReadAFileReservation(Path.Combine(local, "ATIVBatteryGuard", "Experiments"));
+                var claim = new WsabiWmiFixedReadAccess1FileReservation(Path.Combine(local, "ATIVBatteryGuard", "Experiments"));
                 reservation = claim.TryClaim();
             }
             catch { reservation = WsabiWmiOneShotReservationStatus.Unavailable; }
@@ -119,7 +122,7 @@ namespace ATIVBatteryGuard.FixedReadTrial
             bool sdkPreparationStarted = false;
             try
             {
-                journal.Write("ATIV Battery Guard — FixedModeReadA-v1");
+                journal.Write("ATIV Battery Guard — " + TrialPurpose);
                 journal.Write("현재 토큰: " + elevation);
                 journal.Write("새 목적의 영속 1회 예약: Claimed");
                 journal.Write("method 최대1 / 저장 byte 샘플0~1 / 초기화·handshake·재시도·설정 변경·fallback 각각0");

@@ -1,5 +1,12 @@
 # 하드웨어 조사
 
+## 최신 — 승인된 추가 예산 Access1 연결 / 2026-11-08
+
+[Access1 도구](FIXED_READ_ACCESS1_IMPLEMENTATION.md)는 사용자 별도명시승인에 따라 기존A소모를유지한 추가준비1회/method최대1만 구현했습니다. 같은계정수동관리자·TOKEN_QUERY/Elevated사전차단·직접START·새전용영속예약선소모 순서입니다. 예전예약읽기/복구0,실패뒤자동추가시험0입니다.
+
+기존고정요청/metadata/SDK/owner/CallCanceled·actualclose·정상플랫폼전제·candidate검증은바꾸지않았습니다. 신규storage9 포함709C#통과·portable/전체net48참조0/0, 선택IL/source50·ZIP48정적검산을수행했습니다. 이정적수는앱회귀/하드웨어분석률과합산하지않습니다. 새firmwareedge/실기응답은0이고cloud원본/SDK/OEM/Global/노트북예약접근0입니다. 실제후보0/1은현재임계값/충전제어성공의증거가아니며Unsupported유지입니다. 아래는이전기록입니다.
+
+
 ## 최신 — 일반 실행의 A 준비 열거 거부 / 2026-11-08
 
 [새 결과](FIXED_READ_A_ACCESS_DENIED_RESULT.md)는 Claimed·AccessDenied·MethodEnumeration·호출없음입니다. 사용자가 일반 실행임을 확인했지만 TokenElevation 직접 관측은 없습니다. 모델/BIOS/상세metadata단계 통과와 실제target선택·RNG/SDK/owner/method미진입을 구분합니다. FF/gate/driver부재/충전기능부재 판정은 불가합니다.

@@ -31,6 +31,8 @@ def main():
     names = ('ATIVBatteryGuard.FixedReadTrial.exe', 'ATIVBatteryGuard.Core.dll',
              'ATIVBatteryGuard.WmiInterop.dll', 'ATIVBatteryGuard.FixedReadTrial.exe.config')
     files = {name: (build/name).read_bytes() for name in names}
+    if 'FixedModeReadA-v1'.encode('utf-16-le') not in files[names[0]]:
+        raise ValueError('This historical A packager cannot label a different trial purpose as A-v1.')
     for name in names[:3]:
         pe = pefile.PE(data=files[name])
         if pe.FILE_HEADER.Machine != 0x8664 or not pe.OPTIONAL_HEADER.DATA_DIRECTORY[14].Size:

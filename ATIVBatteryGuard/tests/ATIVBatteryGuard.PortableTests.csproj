@@ -84,6 +84,7 @@
     <Compile Include="WsabiWmiWindowsMutexGateTests.cs" />
     <Compile Include="WsabiWmiFixedModeReadTests.cs" />
     <Compile Include="WsabiWmiFixedModeReadAReservationTests.cs" />
+    <Compile Include="WsabiWmiFixedReadAccess1ReservationTests.cs" />
     <Compile Include="WsabiWmiFixedReadPreparationTests.cs" />
     <Compile Include="FixedReadTrialHostTests.cs" />
     <Compile Include="WsabiWmiFixedReadAdmissionTests.cs" />

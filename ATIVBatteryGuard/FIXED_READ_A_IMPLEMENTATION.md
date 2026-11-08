@@ -1,5 +1,8 @@
 # 고정 저장 byte 단발 조회 A — 구현·제공 / 2026-11-08
 
+**별도후속:** 기존A는아래결과대로종료·소모됐습니다. 사용자새명시승인으로 [추가단발Access1](FIXED_READ_ACCESS1_IMPLEMENTATION.md)을제공합니다. 기존A ZIP/예약을변경하거나기존실행절차를다시사용하지않고Access1전용안내를따릅니다.
+
+
 **실기 결과 수신·이 A 종료:** [AccessDenied/MethodEnumeration](FIXED_READ_A_ACCESS_DENIED_RESULT.md)으로 firmware호출 전에 끝났고 예약은 소모됐습니다. 후속 답변은 일반 실행이었습니다. 아래 일반 권한 안내가 저장된 권한 성공 조건을 반영하지 못한 점을 정정합니다. **기존 실행 절차를 일반/관리자로 반복하지 않습니다.** ZIP은 당시 배포물로 보존하며 source의 토큰/오류 보강은 재실행 도구 배포가 아닙니다. 추가 시험은 [별도 승인안](FIXED_READ_A_ADDITIONAL_TRIAL_PROPOSAL.md)이며 아래는 배포 당시 이력입니다.
 
 

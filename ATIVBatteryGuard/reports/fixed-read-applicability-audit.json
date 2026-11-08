@@ -1,0 +1,410 @@
+{
+  "dateKst": "2026-11-08",
+  "previousRepositoryCommit": "ba185d33b7b0ce8f0450ba578c3e020c7bc3cb20",
+  "scope": "Apply the existing fixed-read specification to saved target roles, concrete resource intervals and target SDK API documentation; non-executing review only",
+  "reviewDocument": "FIXED_READ_APPLICABILITY_REVIEW.md",
+  "modelTarget": {
+    "evidenceLevel": "Conditional source-role and address-space composition, not live model attestation",
+    "vendorInputPins": [
+      {
+        "bytes": 5242880,
+        "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0",
+        "role": "single P05 provenance",
+        "source": "P05ACJ.cap"
+      },
+      {
+        "bytes": 98304,
+        "sha256": "2c8aeabe90b844b9d5bc09a05656aa08be1ef927b2d80006e6bd4fb0cc983d04",
+        "role": "derived data, not independent original",
+        "source": "same CAP-derived raw slice"
+      }
+    ],
+    "capDerivedSliceIsIndependentOriginal": false,
+    "reusedProofReferences": 8,
+    "externalVocabularySources": 2,
+    "compositionChecks": 18,
+    "sourceSliceDigests": [
+      {
+        "label": "setter state read/store relation",
+        "bytes": 33,
+        "sha256": "e18386ee91caea14ebef5411cf750b2fce5bafbe671ce81fea9e5b35f155618a",
+        "scope": "reused selected source slices for new equality/role/space composition; no instruction count claim"
+      },
+      {
+        "label": "sibling setter relation",
+        "bytes": 37,
+        "sha256": "ee11a1aae078184e3b6aaf760065932ea784dd7b0c2971ba38871eaa1cec1fe1",
+        "scope": "reused selected source slices for new equality/role/space composition; no instruction count claim"
+      },
+      {
+        "label": "upper mode policy role",
+        "bytes": 44,
+        "sha256": "2f6a42d82a37910379c43cd60ac138c704c20b5895b69ff38d79b64ac9e1f543",
+        "scope": "reused selected source slices for new equality/role/space composition; no instruction count claim"
+      },
+      {
+        "label": "lower mode policy role",
+        "bytes": 147,
+        "sha256": "7a30bed879cae8ab5fd450a7c7edefe3c628a7a7a4a33034f6e3c2216e6c8cf3",
+        "scope": "reused selected source slices for new equality/role/space composition; no instruction count claim"
+      },
+      {
+        "label": "selected broad XDATA initialization",
+        "bytes": 14,
+        "sha256": "9b3a43930a251653e6880dbd4c18c94f645077acc3f67d1aae6dab951f25486f",
+        "scope": "reused selected source slices for new equality/role/space composition; no instruction count claim"
+      },
+      {
+        "label": "generic target reader",
+        "bytes": 13,
+        "sha256": "2902c9d926fccf1814d3d11daab21dccb038d2ab9787c6b4cd9d49671c96231f",
+        "scope": "reused selected source slices for new equality/role/space composition; no instruction count claim"
+      },
+      {
+        "label": "generic two-component address helper",
+        "bytes": 15,
+        "sha256": "f52c7390fab54ea07e811734706625ec1f4a08c6a7ac402005f8e49cba766b17",
+        "scope": "reused selected source slices for new equality/role/space composition; no instruction count claim"
+      }
+    ],
+    "independenceMatrix": [
+      {
+        "family": "setter plus sibling",
+        "semanticRole": "software state update and changed-one threshold setup",
+        "independentRole": true,
+        "independentVendorProvenance": false,
+        "independentHardwareOrDecoderProof": false,
+        "limits": "sibling similar body is corroboration within one image, not a second model validation"
+      },
+      {
+        "family": "upper/lower consumers plus battery cache producer",
+        "semanticRole": "same state and thresholds govern requests using successful SBS-derived relative SOC",
+        "independentRole": true,
+        "independentVendorProvenance": false,
+        "independentHardwareOrDecoderProof": false,
+        "limits": "distinct dataflow roles close naming ambiguity, not installed-image identity"
+      },
+      {
+        "family": "charger action callers and public register definitions",
+        "semanticRole": "option/current/voltage request vocabulary",
+        "independentRole": true,
+        "independentVendorProvenance": "only upstream definitions have separate provenance",
+        "independentHardwareOrDecoderProof": false,
+        "limits": "unchecked write statuses and bookkeeping cannot prove electrical effect"
+      },
+      {
+        "family": "reset/version/USB plus updater addressing",
+        "semanticRole": "different source roles support conditional interpretation/address model",
+        "independentRole": true,
+        "independentVendorProvenance": false,
+        "independentHardwareOrDecoderProof": false,
+        "limits": "latest frozen48/16 hypothesis is used; older32/32 exploratory scope is not another supporting proof"
+      },
+      {
+        "family": "same-model public ACPI capture and stored user model/BIOS observations",
+        "semanticRole": "profile and WMI/AML route applicability",
+        "independentRole": true,
+        "independentVendorProvenance": "separate capture from firmware source",
+        "independentHardwareOrDecoderProof": false,
+        "limits": "not current EC body or XDATA layout attestation"
+      },
+      {
+        "family": "P04 comparison",
+        "semanticRole": "earlier package/SABI compatibility context",
+        "independentRole": false,
+        "independentVendorProvenance": "different package only",
+        "independentHardwareOrDecoderProof": false,
+        "limits": "existing comparison does not establish raw EC equality/difference; not added as EC target validation"
+      }
+    ],
+    "conditionalReadCrosswalk": [
+      "Source software-mode cell and adjacent thresholds are XDATA state by their initializer/setter/consumer operations, rather than program CODE/version pointer or ACPI host-page offset.",
+      "If the selected image and XDATA mapping apply, the selected generic reader addresses that same domain and returns the current cell independently of setter echo; the operation is not a charger bus read.",
+      "The symbolic first-high/second-low address contract is separate from little-endian WMI header fields; no actual state location was split into components.",
+      "The reader replaces its first input cell with one sample; selected callback puts that sample at the already reviewed output position and returns only its bounded prefix.",
+      "A candidate mode-one sample does not prove current80/75 thresholds: initialization occurs only when a changed incoming value becomes one. No additional threshold read is added to A."
+    ],
+    "remainingApplicationPremises": [
+      "CandidateProfile/current source applicability remains an explicit assumption, not live whole-image evidence",
+      "Conditional ISA/bank and actual host-indexed-to-XDATA mailbox identity",
+      "Input/branch and two address-component stability through final consume",
+      "Related publisher protection and one-attempt response/actual-end contracts are separate from target meaning"
+    ],
+    "legacyExploratory32And32PromotedToIndependent48And16Validation": false,
+    "currentThresholdsOrElectricalEffectProvedByModeOne": false,
+    "actualNormallyReachableThresholdMismatchCounterexampleDiscovered": false,
+    "newFirmwareEdges": 0,
+    "newLiveOrOfficialIsaAnchor": 0,
+    "storedTargetScalarEmittedOrSplitIntoRequestComponents": false
+  },
+  "proxyResourceScope": {
+    "evidenceLevel": "Bounded role composition of previously known full source bodies",
+    "sourcePins": [
+      {
+        "source": "NvramSmi/1.efi",
+        "bytes": 6752,
+        "sha256": "bc6bb8d872475c689a9eff7988f9c49527f478682321b853b26fe46f26404b02"
+      },
+      {
+        "source": "Runtime.efi",
+        "bytes": 83776,
+        "sha256": "10a6f228664bada8eaad309879ab3b17d007ce8d5ccb5561a9038d89adb3840a"
+      }
+    ],
+    "completeBodies": 8,
+    "overlappingInstructionRows": 246,
+    "selectedRelationAssertions": 22,
+    "directCallSites": 15,
+    "indirectCallSites": 4,
+    "sameIndexedHelperRowsReused": 32,
+    "picMaskAndSmiDoorbellDistinctFromKnownEcIndexedPorts": true,
+    "normalRamPointerRangeAndPublicationPremisesRetained": true,
+    "hostAndPrivateSmmForwardingArmsSeparated": true,
+    "allHostMarshallingRequiredToExecuteInSameSmmStream": false,
+    "knownEcSharedFootprintConditionallyInNestedPrivateRuntimeHook": true,
+    "unknownProviderTreatedAsIoFreeOrNewIndependentActor": false,
+    "newActualProviderDispatchEdge": false,
+    "actualCurrentProxyOrWrapperObserved": false
+  },
+  "sdkLifetime": {
+    "evidenceLevel": "Current production code plus cached target API documentation; actual Windows execution unobserved",
+    "targetApiReference": {
+      "package": "Microsoft.NETFramework.ReferenceAssemblies.net48",
+      "version": "1.0.3",
+      "file": "System.Management.xml",
+      "bytes": 237189,
+      "sha256": "a4a85fc4d62c92565fc87b52f27280cb145b320a46e36596c04b38e53da9ae63",
+      "evidenceLevel": "cached-target-reference-package-api-documentation"
+    },
+    "codeCrosswalkRows": 6,
+    "targetXmlMemberChecks": 5,
+    "targetXmlMembers": [
+      {
+        "member": "M:System.Management.ManagementObject.InvokeMethod(System.Management.ManagementOperationObserver,System.String,System.Management.ManagementBaseObject,System.Management.InvokeMethodOptions)",
+        "firstLine": 1236,
+        "lastLine": 1242,
+        "text": "Invokes a method on the object, asynchronously. A used to handle the asynchronous execution's progress and results. The name of the method to be executed. A containing the input parameters for the method. An containing additional options used to execute the method."
+      },
+      {
+        "member": "P:System.Management.CompletedEventArgs.Status",
+        "firstLine": 133,
+        "lastLine": 136,
+        "text": "Gets the completion status of the operation. One of the enumeration values that indicates the completion status of the operation."
+      },
+      {
+        "member": "E:System.Management.ManagementOperationObserver.Completed",
+        "firstLine": 1427,
+        "lastLine": 1429,
+        "text": "Occurs when an operation has completed."
+      },
+      {
+        "member": "P:System.Management.ObjectReadyEventArgs.NewObject",
+        "firstLine": 2068,
+        "lastLine": 2071,
+        "text": "Gets the newly-returned object. Returns a containing the newly-returned object."
+      },
+      {
+        "member": "M:System.Management.ManagementBaseObject.Dispose",
+        "firstLine": 586,
+        "lastLine": 588,
+        "text": "Releases the unmanaged resources used by the ManagementBaseObject."
+      }
+    ],
+    "codePins": [
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiSingleReadPlan.cs",
+        "bytes": 6299,
+        "sha256": "5b52f5385acf546b1fe65aad2384f46782fe8cb482c85ed1c9a55e57bab0f940"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSdkBinding.cs",
+        "bytes": 4817,
+        "sha256": "cc197a2737b4912a1be7507f125e544f340c8c480d419798099cb377c8d33f5b"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsInputPreparation.cs",
+        "bytes": 5172,
+        "sha256": "74ec1807df285de919cbfd00a270a25e27bcb2202d0dbcd8e5b3724797775a87"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs",
+        "bytes": 20867,
+        "sha256": "63c183f8f915a789a25f05ff247bd19a6047cf1790c9dcbabd7c7ef1f35b7cde"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsPreparation.cs",
+        "bytes": 9154,
+        "sha256": "b7368f77644f788a1eaba7a46c9596d51cdd3b4d80eadc6f7eb569d09bec58e5"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsCallbackSource.cs",
+        "bytes": 14743,
+        "sha256": "1d30f2e3e2e8863baad3a927aa42a83b9cc9fe2934476c17c9bfc3f6feafbe6d"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsOutputReader.cs",
+        "bytes": 2891,
+        "sha256": "4783c442ca2954b9eb7c1159d0aca8310597af7d682832a6f3a3cb40732c895b"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/OwnedWmiResult.cs",
+        "bytes": 1133,
+        "sha256": "773915ed40cde2fd1231cb44ec63ae96c3b225b81e9df9fa71fb2450aa6cf9c2"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiCallbackInvocationSource.cs",
+        "bytes": 9873,
+        "sha256": "8552634c42d9dd32f67db45754b1fda402a85f2407dce99115e9ee8323e24285"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiInvocationSnapshotTransport.cs",
+        "bytes": 12489,
+        "sha256": "5c0b5777654a0b97931f5357c5682fbb6ec976910bc5833400d3d0c5c0d87431"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/IWsabiWmiInvocationSource.cs",
+        "bytes": 1607,
+        "sha256": "aa7fab769f59d2358100b5c4e87a6da99e75c38f08945ea63fc54c44228baf79"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiMethodBinder.cs",
+        "bytes": 5952,
+        "sha256": "168f71b7fda73eb5123c1ec85927ebabd21409d786656de4f558a40adf8be848"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiContractMetadataPolicy.cs",
+        "bytes": 5222,
+        "sha256": "2af9d66de2c70a854a8cbdd14852a360d387bbf02bc4c5a392ce2a9d3608780a"
+      },
+      {
+        "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/ATIVBatteryGuard.WmiInterop.csproj",
+        "bytes": 676,
+        "sha256": "ffb519a5ba8f57adee73d3a809817cf37dc343807461fa3d6d28fb7c54052a19"
+      }
+    ],
+    "alreadyImplemented": [
+      "Exact plan/target/observer/input reference guards and one typed async call site",
+      "Input pair ownership and delayed release; borrowed target remains borrowed",
+      "Exact output object/array shape and detached cloning",
+      "Entered callback, selected capture/disposal, unsubscribe-attempt and call-exit joins",
+      "No SDK Cancel/retry/handshake/fake terminal; unknown remains pending",
+      "Public read entry blocked with no reviewed request specification"
+    ],
+    "requiredApplicableSdkOrCallerContracts": [
+      "Supplied target/input wrappers remain externally unmodified/undisposed and observer is dedicated with no external Cancel/reuse/dispatch.",
+      "Completed.Status belongs to this method and is an applicable method terminal, not merely client cancellation or an unrelated operation.",
+      "Returned root/embedded wrapper and byte-array view are valid while read and copied; standard concrete Dispose/native reference semantics apply.",
+      "Late queued callback work after local cutoff requires only independent local cleanup and does not reaccess retired related shared inputs/results.",
+      "Normal output/final-status delivery maps the selected WMI/AML result as described by the applicable API/provider contract."
+    ],
+    "notEstablished": [
+      "Actual .NET48 System.Management implementation identity/timing/native refcounts",
+      "Actual fixed method execution/callbacks/COM cleanup on the notebook",
+      "Current selected WMI/firmware route, shared indexed exclusion or fresh reader attribution",
+      "An actual reviewed fixed template, encoder/parser or execution permission"
+    ],
+    "importantBoundaries": [
+      "Observed method metadata is one; SDK dispatch is by fixed name. Numeric method ID is not a firmware command.",
+      "Completed.Status zero, method-specific ReturnValue, source return values and stored-mode result are distinct.",
+      "Normal applicable API completion is useful evidence; call-exit/throw/UI timeout alone is not terminal.",
+      "The local three-way barrier is implemented but its inputs are facts supplied under contracts; it cannot authenticate them.",
+      "Exact .NET48 implementation source is one possible corroboration, not a newly imposed sole blocker."
+    ],
+    "cachedV8PromotedToNet48ImplementationIdentity": false,
+    "previous628StandInsPromotedToWindowsEvidence": false
+  },
+  "currentDecision": {
+    "fixedReadProposal": "ReviewableWithExplicitAssumptions",
+    "executionConnection": "Deferred",
+    "remainingConcreteOrderingObligation": "Bind the related nested private Runtime hook indexed accesses to the query through an applicable normal execution-domain, route or resource-ownership contract.",
+    "actualProviderMachineCodeRecoveryIsUniqueRequiredSolution": false,
+    "positiveLegacyInlineBufferAndNormalStreamEvidenceRetained": true,
+    "maximumMethodCalls": 1,
+    "fixedByteSamples": "0..1",
+    "handshakeInitializationRetryWriteOrAlternativeFallbackCalls": 0,
+    "allWritersIrqsLiveHashOrGateOpenAddedAsAbsoluteCondition": false
+  },
+  "verification": {
+    "rootExecutedFinalModelSdkAndProxyVerifiers": true,
+    "independentReadOnlyReviewsCompleted": true,
+    "rootDocumentReviewerExecutedScripts": false,
+    "currentApplicationBuildOrCsharpTestsRun": false,
+    "reason": "C#/SDK/test source and project files plus distributed EXE/ZIP unchanged",
+    "countsOverlapNotApplicationTestsDiscoveriesOrFirmwareCoverage": true,
+    "frozenProviderScansRepeated": false,
+    "verifierCorrectionsNotProductFailures": [
+      "The first run copied the outer DJNZ opcode incorrectly in the expected initializer pattern. Corrected to the existing frozen source pattern before the final pass; not a source discrepancy or new bank-model issue.",
+      "Initial size assertion re-encoded decoded XML after stripping its UTF-8 BOM; corrected to original file-byte length, whose SHA was already pinned.",
+      "Initial cancellation-doc substring used method provider where the source says implementing provider; corrected to the exact preserved substring. Neither was a source/product/API failure.",
+      "A first ad-hoc static decode began at an interior instruction offset and was discarded. Final bounded bodies begin at actual call targets; no code execution occurred."
+    ],
+    "previousCodeValidationOnly": {
+      "codeCommit": "ae8f8e78a4a2d898f8050e8b6ef4193ed877bd38",
+      "csharpPassed": 628,
+      "failed": 0,
+      "skipped": 0,
+      "fullNet48ReleaseWarnings": 0,
+      "fullNet48ReleaseErrors": 0,
+      "actualWindowsRuntimeOrGuiExecuted": false
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "privateArtifact": "model_target/verify_model_target.private.py",
+      "bytes": 12114,
+      "sha256": "b2ac03e3cdc7333c14645cf0185ecefddf99a39fa5e2e42378a898f9eefc1aca"
+    },
+    {
+      "privateArtifact": "model_target/model-target-proof.private.json",
+      "bytes": 12099,
+      "sha256": "803e8aaabbdc3cace806ae097f8362349f09d74ba876b72d84516adc86e64dbe"
+    },
+    {
+      "privateArtifact": "model_target/findings.private.md",
+      "bytes": 11535,
+      "sha256": "dec6a36a89958f3316313cd8b05a6476b7ecb7846b9f467c1a4ddebf64a95a8a"
+    },
+    {
+      "privateArtifact": "sdk_lifetime/verify_sdk_crosswalk.private.py",
+      "bytes": 18682,
+      "sha256": "a75bb097ee68e23982a85027041125bc52a8ca9201ba9d74d9e28ec8d18fc006"
+    },
+    {
+      "privateArtifact": "sdk_lifetime/sdk-lifetime-crosswalk.private.json",
+      "bytes": 19212,
+      "sha256": "f97a577e2eeff5962e23ce5adcddbd67f2c6544848e20beea8e8a7c512bb5ff9"
+    },
+    {
+      "privateArtifact": "sdk_lifetime/findings.private.md",
+      "bytes": 9481,
+      "sha256": "cf70d52154fff283de494d0cfe78cf29f29f1eda81d6b11613f34ec061c7fb85"
+    },
+    {
+      "privateArtifact": "root/verify_proxy_resource_scope.private.py",
+      "bytes": 6843,
+      "sha256": "7662b039916ae5d32efcb43727407aa2104ab036c23effcc08223f4218c50b9b"
+    },
+    {
+      "privateArtifact": "root/proxy-resource-proof.private.json",
+      "bytes": 26679,
+      "sha256": "78db84587889490c884aa7545afa950e6568d24e727eb3b4fd7703e59295c188"
+    },
+    {
+      "privateArtifact": "root/findings.private.md",
+      "bytes": 2769,
+      "sha256": "9f19db0bc8bb20b183b2335a4dea1902a4561a426431656ebe721419f09e96bb"
+    }
+  ],
+  "boundary": {
+    "applicationCoreSdkTestsOrDistributedExeZipChanged": false,
+    "newDependenciesOrExternalSourcesDownloaded": false,
+    "originalFirmwareDllAmlExecutedLoadedAsCodeOrEmulated": false,
+    "actualSdkOemHardwareGlobalOrConsumedMarkerAccessed": false,
+    "actualRequestAddressPairFrameNonceGeneratorOrApprovalFlagCreated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "publicEntryReopenedOrActualTrialApproved": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "newLaptopRunOrRepeatedUploadRequested": false
+  }
+}

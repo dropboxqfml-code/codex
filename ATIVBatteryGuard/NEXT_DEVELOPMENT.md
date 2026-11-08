@@ -1,5 +1,19 @@
 # 다음 개발 재개 메모
 
+## 최신 — 고정 대상·자원 범위·대상 SDK 적용 crosswalk / 2026-11-08
+
+기준 `ba185d3` 다음 작업입니다. [FIXED_READ_APPLICABILITY_REVIEW.md](FIXED_READ_APPLICABILITY_REVIEW.md), [통합 명세](FIXED_READ_TRIAL_SPECIFICATION.md), [PI 계약 검토](PI_COMMUNICATION_CONTRACT_REVIEW.md)를 먼저 읽습니다. 실제 template/SDK 활성화·실기 호출 승인은 아니며 기존 source와 적용 계약을 대조했습니다.
+
+대상은 기존 초기화·설정 writer·충전 정책 consumer의 같은 mode cell을 generic XDATA reader와 연결한 조건부 근거입니다. CODE 버전/상수 anchor를 RAM read로 바꾸지 않습니다. mode가 바뀌어 새 값1일 때만80/75를 쓰고 unchanged1에서는 재설정하지 않아, 후보1만으로 현재80/75·80%제한 적용을 표시하지 않습니다. 초기32/32 exploratory근거를 후속48/16모형의 추가독립검증으로 세지 않고 P04/P05문서도ECpayload동일성 증거로 가산하지 않습니다. 기존은행모형/현재적합성가정은유지하며새불일치/재분석요구가아닙니다.
+
+root는 실제 call target에서 시작한 Nvram proxy/guard/restore/transport/IO leaf/copy/strlen의8complete body를 한정 검산했습니다.246행/선택관계22/직접call15/간접call4, 기존EChelper32행은 재사용하며 새함수/발견수로세지않습니다. host mask는PIC, fallback은SMI doorbell이고 ECindexedports와 다릅니다. ordinary retainedRAM/pointer/range전제유지, copy길이status의직접IO부재를전역무부작용으로확대하지않습니다. host arm은 transport helper 뒤 retained status를 읽고 private SMM forwarding은별도분기입니다. 알려진EC공유 footprint는정상privateRuntimehook에한정하며 provider전체의숨은IO부재/실제순서edge를증명한것은아닙니다. 초기ad-hoc interior offset정적decode는폐기했고 final은실제callee경계만사용합니다.
+
+SDK는현재Core/Windows의sameattempt/input/call-exit+해당terminal+capture/cleanup join을 cached.NET48 System.Management.xml의대상API와대조했습니다. 숫자MethodID는metadata고정이고실제InvokeMethod는CallSabiFunction이름의async overload입니다. Completed.Status와methodReturnValue를합치지않습니다. cachedv8은대표구현이며.NET48내부동일성/실제Windows관측아닙니다. 전용observer/외부mutation·Dispose·독립dispatch배제/정상terminal과late객체정리계약은유지합니다.
+
+정제기록 reports/fixed-read-applicability-audit.json, private `20261108/fixed-read-application-next`의 model_target/sdk_lifetime/root에script/proof/findings/pin을보존합니다. root가최종검산기를실행하고독립읽기검토했습니다. C#/SDK/tests·프로젝트·배포EXE/ZIP이같아build/C#회귀재실행없음,628/전체net48Release0/0은ae8f8e7의이전검증입니다. publicReadSpecificationUnavailable/Unsupported, A최대1method/sample0~1/handshake/init/retry/write/Bfallback0, oldconsumed예약접근·초기화·삭제·재사용·우회금지유지입니다. 실제SDK/OEM/hardware/Global/원본실행·로드·에뮬레이션/driver/service/security/firmware/cloud변경·실행request/addresspair/frame/nonce/generator없음, 새노트북실행·재제출불필요입니다.
+
+**아직 확보하지 못한 새 근거는 관련 private Runtime hook의 indexed 접근을 조회와 같은 보호 순서에 귀속시키는 적용 계약입니다.** actual provider본문만을유일해법으로강제하지않고 source·정상실행영역·자원owner근거를평가합니다. 이번역할합성을이미그edge를복구한것으로쓰지않습니다. 대상source/SDK문서의긍정근거를미확인으로돌리지말고 같은negativeGUID/operand검색·copy/reader검산을반복성과로세지않습니다. 전체writer/IRQ/livehash/gateopen/새자료수집을추가조건으로하지않습니다. 아래는이전기록입니다.
+
 ## 최신 — PI 계약 출처와 단발 조회 통합 명세 / 2026-11-08
 
 기준 `ae8f8e7` 다음 작업입니다. [PI_COMMUNICATION_CONTRACT_REVIEW.md](PI_COMMUNICATION_CONTRACT_REVIEW.md), [FIXED_READ_TRIAL_SPECIFICATION.md](FIXED_READ_TRIAL_SPECIFICATION.md), [기존 제안](FIXED_MODE_READ_PROPOSAL.md), [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md)를 먼저 읽습니다. 사용자 승인은 규약 대조·조회 명세·실기 제안 가능성 검토에 대한 작업 시작이며 실제 호출 승인이 아닙니다.

@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 고정 대상 의미·EC 공유 구간·SDK 수명 적용 / 2026-11-08
+
+**대상:** [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md)는 초기화/설정 writer/충전 정책 consumer의 같은 mode cell과 generic XDATA reader를 조건부 모델 아래 대응시켰습니다. unchanged1은80/75를 다시 쓰지 않으므로 후보1만으로 현재 임계값이나 실제 충전 제한을 입증하지 않습니다. 옛32/32 exploratory와 후속48/16모형, 동일 byte의 재검산과 다른 role anchor를 분리하며 새 이미지 불일치나 분석 재시작으로 해석하지 않습니다.
+
+**자원·SDK:** 정상 proxy의 PIC mask/ordinary RAM staging/status를 private Runtime hook의 EC indexed 접근과 구분했습니다. copy/strlen의 직접 I/O 부재를 모든 효과 부재로 확대하지 않고 통신 제공자를 숨은 독립 actor로 중복 세지 않습니다. 관련 hook의 동일 보호 순서 귀속은 아직 미완료입니다. 현재 코드의 입력/terminal/capture/정리 계약과 cached.NET48 참조 XML을 대조했고 v8대표 구현·실제Windows관측과 구분했습니다. Completed.Status와 method ReturnValue도 별개입니다.
+
+**한계:** source·역할 crosswalk/정적 검산과 독립 읽기 검토만 수행했습니다. 새 provider/실제 typed edge/실기 race0, public 차단·Unsupported 유지입니다. C#/SDK/tests·EXE/ZIP은 변경하지 않아 빌드/C#회귀 미실행이며628/전체 net48 Release0/0은ae8f8e7이전기록입니다. 실제 SDK/OEM/hardware/Global/과거예약·원본실행·환경변경0, 새노트북실행·재제출불필요입니다. 아래는 이전 기록입니다.
+
 ## 최신 — PI 통신 계약과 단발 조회 명세 적용 / 2026-11-08
 
 **새 출처:** [계약 대조](PI_COMMUNICATION_CONTRACT_REVIEW.md)는 공식 edk2의 고정 UDK2014 branch/현대 tag 자료8개를 읽었습니다. PI 원문 HTML은 HTTP403으로 미확보입니다. 헤더의 successfully posted를 handler 완료로 확대하지 않고, 대표 구현의 Trigger/직접 SmiManage 호출 순서와 P05 구현 근거를 구분합니다. UDK2014 이름이나 현대 MM alias로 P05의 PI버전을 단정하지 않습니다.

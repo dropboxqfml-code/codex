@@ -1,10 +1,14 @@
 # 고정 보호 저장값 단발 조회 명세 — 비실행 검토본
 
+**적용 검토 후속:** [대상·자원·SDK crosswalk](FIXED_READ_APPLICABILITY_REVIEW.md)에서 저장값의 조건부 의미와 SDK 대상 API 문서를 대조했습니다. mode 후보1만으로 현재80/75임계값·실제80%제한을 입증하지 않습니다. 정상 proxy의 알려진 EC 공유 footprint는 private Runtime hook에 한정하며, 해당 구간의 동일 보호 순서 근거는 여전히 미완료입니다. 실제 요청·공개 entry·실기 실행은 보류합니다.
+
 **검토 상태: 조건부 제안 작성 완료 / 실제 요청·시험 빌드 연결 보류.** [PI 계약 대조](PI_COMMUNICATION_CONTRACT_REVIEW.md), [A/B 제안](FIXED_MODE_READ_PROPOSAL.md), [응답 거부 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [오프라인 리허설](READ_TRIAL_REHEARSAL_PLAN.md)을 하나의 흐름으로 묶었습니다. 실행용 command/address·frame·nonce·generator·승인 flag가 없는 문서입니다. 공개 `PrepareSdkAsync`의 `ReadSpecificationUnavailable`과 보호 조회·충전 제어 `Unsupported`를 유지합니다.
 
 ## 목표와 대상
 
 읽으려는 것은 고정된 RAM 보호 모드 저장 byte의 **후보값**입니다. 사용자 희망 설정, Windows 배터리 잔량, 충전기에 실제 적용된 상태와 분리합니다.
+
+기존 설정 writer는 값이 달라져서 새 값이1일 때에만80/75임계값을 씁니다. 따라서 단일 저장 후보1을 얻어도 현재 임계값이나 `80% 제한 적용됨`을 확인한 결과로 표시하지 않습니다. A에 추가 조회를 넣지 않습니다.
 
 대상은 보존된 940X3G/930X3G 계열 관측과 BIOS `P05ACJ.128.140819.dg`에 대응하는 CandidateProfile입니다. 모델명 문자열만으로 source 일치나 지원을 인증하지 않습니다. 저장 원본의 선택 read branch, 주소 배치, 조건부 ISA/bank 해석과 host indexed window ↔ EC mailbox 대응을 명시한 모델 전제를 유지합니다. 임의 주소·명령·길이 입력, 다른 모델·BIOS 자동 대체는 없습니다.
 
@@ -58,6 +62,6 @@ UI deadline은 기다림의 표시 한도이며 provider 중단이나 안전한 
 
 ## 남은 적용 검토와 사용자 작업
 
-이 명세로 **실행 여부를 검토할 구체 제안**은 갖췄습니다. 실제 연결 전에는 관련 indexed 게시자의 동일 보호 순서 귀속, 고정 template의 읽기 의미·대상 적합성, 실제 SDK 입력/완료 수명에 위 계약을 적용한 결과를 함께 제시해야 합니다. 이 문서만으로 그 결과가 성립했다고 표시하지 않습니다.
+이 명세로 **실행 여부를 검토할 구체 제안**은 갖췄습니다. [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md)는 source의 대상 역할·주소 공간·조건부 모델과 실제 대상 SDK API 문서를 대응시켰습니다. 실제 요청 template를 생성한 결과는 아닙니다. 남은 구체 순서 근거는 관련 private Runtime hook의 indexed 접근을 조회와 같은 보호 순서에 귀속시키는 계약입니다. 실제 연결 전에는 이 근거와 고정 template·SDK 수명 적용 결과를 함께 제시해야 하며 현재 결과를 준비 완료로 표시하지 않습니다.
 
 커널/펌웨어 제어 코드의 추가와 실기 호출은 이번에 수행하지 않았습니다. [AGENTS.md](AGENTS.md)의 별도 명시 승인·안전성/모델 적합성 조건을 유지합니다. 지금 승인을 요구하거나 사용자에게 새 프로그램 실행·같은 진단·DLL·TXT 재제출을 요구하는 단계는 아닙니다. 제품 코드·노트북용 EXE/ZIP 변경도 없습니다.

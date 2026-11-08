@@ -1,5 +1,7 @@
 # Runtime의 부팅 후 중계 선택과 조회 순서 — 2026-11-08
 
+**관련 자원 구간 후속:** [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md)는 정상 proxy의 PIC mask/일반RAM staging/status와 실제 private Runtime hook의 EC indexed footprint를 구분했습니다. 전체 host 처리의 SMM 귀속을 요구하지 않으며 통신 경계를 별도 숨은 actor로 중복 세지 않습니다. 관련 hook의 동일 보호 순서 근거와 실제 제공자 source edge는 새로 확보하지 못했습니다.
+
 **PI 계약 적용 후속:** [출처·계약 검토](PI_COMMUNICATION_CONTRACT_REVIEW.md)에서 공식 헤더와 대표 구현을 확보했습니다. 아래 실제 제공자 source edge는 여전히 미연결이지만 기계코드 복구만을 유일한 해법으로 고정하지 않습니다. 정상 통신 적용 가정과 관련 indexed 자원의 동일 보호 순서 근거를 구분하며 [조회 명세](FIXED_READ_TRIAL_SPECIFICATION.md)는 조건부 검토본입니다. 실제 entry·배포물은 변경하지 않았습니다.
 
 **후속 후보 조사:** [제공자 후보·역방향 검토](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)는 Base2 동적 method0을 InSmm으로 제외하고, operand 후보와 index 밖 자료를 대조했습니다. 실제 표준 제공자→typed dispatch는 찾지 못했으며 해당 수신자가 쓰지 않는 incoming buffer와 retained buffer의 동일성을 추가 조건으로 요구하지 않습니다. 아래는 부팅 경로 검토 시점 기록입니다.

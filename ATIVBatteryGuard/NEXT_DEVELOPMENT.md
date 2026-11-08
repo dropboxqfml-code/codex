@@ -1,5 +1,23 @@
 # 다음 개발 재개 메모
 
+## 최신 — 실제 요청/reader의 조건부 바이트 계약 합성 / 2026-11-08 한국 시간
+
+기준 커밋 `62f2d2e` 다음 작업입니다. [FIXED_READ_BYTE_CONTRACT_REVIEW.md](FIXED_READ_BYTE_CONTRACT_REVIEW.md), [실기 entry 조건](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 기존 original bodies의 새 교차층 합성 정적 분석이며 앱/SDK/Core/test 수정이나 gate wrapper 추가는 없습니다.
+
+선택 generic callback의 세 분기 중 현재 주소 성분을 업로드하고 반환 data도 복사하는 분기만 fixed-reader 후보로 남깁니다. zero-message 분기는 현재 주소를 싣지 않으며 조건부 새 게시/선택 reader/주소 공간 대응 전제에서 zero 주소를 사용합니다. command-only는 command만 게시하고 입력 upload/반환 copy가 없어 WMI sample 자리는 clear zero입니다. EC 실행 자체가 없다고 판정하지 않습니다.
+
+WMI header UInt16LE와 payload의 주소 high→low 순서를 구분했습니다. input 첫 성분은 sample로 치환되고 둘째는 보존됩니다. 전체 frame7..16의 10byte가 반환되며 frame17..20, 즉 visible payload 끝 4byte는 입구 clear 뒤 복원되지 않습니다. 메시지2..9의 8개 셀이 주소/결과와 다른 보존 content 위치입니다. 이 셀의 독점성·nonce 안전성·신선함을 입증하지 않았고 실제 주소/명령/frame 조합도 만들지 않았습니다.
+
+common provider failure는 payload0에 marker를 놓고 나머지를 zero화하므로 payload2의 sample 투영도 zero입니다. sample만 0/1 해석하면 failure를 candidate0으로 오인할 수 있는 조건입니다. 현재 ReplyResult.DispatchFailurePrefix가 이미 있고 mode decoder는 없으므로 제품 bug/실기 false-OFF 발견은 아닙니다. 다른 prefix·zero control2·일치 tail은 새 게시/reader 실행/입력 안정성/신선함/특정 producer의 증거가 아닙니다. source zero를 Windows HRESULT/ReturnValue로 직접 동일시하지 않았습니다.
+
+reader/address helper/known ISR/echo-domain, 선택 worker의 inline 입력 소비·버퍼 분리, 첫 send 오류 가림은 재사용 맥락이며 재발견으로 세지 않습니다. 새 edge는 0입니다. indexed host window↔EC mailbox 대응 가정, conditional 8051/bank·현재 image/등록 적합성, 주소 두 성분의 별도 소비 중 안정성, 실제 관련 participant의 입력/재사용/귀속 계약은 미완료입니다. all-writer/IRQ·전체 live hash·gate-open 실측을 새 절대조건으로 추가하지 않았습니다.
+
+원본 SecSabi/CAP/내부 raw slice의 길이·SHA를 검산했습니다. reader_mapping은 stdlib PE section/prior ASM byte39·관계8, input_attribution은 재사용 문맥29·관계10, root는 기존 trusted pefile2024.8.26/Capstone5.0.6 정적 decode 문맥20·관계15를 통과했습니다. 숫자는 중복되므로 고유 발견·앱 test·coverage로 합산하지 않습니다. reader verifier의 초기 4byte 명령 displacement index4→3 수정은 검산기 오류이며 source/product 실패가 아닙니다. 세 final verifier는 root도 별도로 실행했습니다.
+
+코드·테스트·EXE/ZIP을 바꾸지 않아 C#617/build0/0을 재실행하지 않았습니다. 이는 62f2d2e의 이전 기록이며 이번 정적 검산과 합산하지 않습니다. 실제 firmware/DLL/AML 로드·실행·에뮬레이션, SDK/OEM/hardware/Global/소모 marker 접근, driver/service/security/firmware/cloud 환경 변경·새 다운로드/설치는 없습니다. 공개 ReadSpecificationUnavailable와 조회/제어 Unsupported를 유지하며 새 실기/재제출은 불필요합니다.
+
+다음은 좁혀진 branch/field 계약에 관련 participant의 입력 안정성·새 게시·응답 귀속을 연결하는 근거입니다. 조건부 field map을 실기 명세 완성/실행 승인으로 바꾸거나 public entry를 열지 않습니다. Private cache: `20261108/request-reader-contract-next`의 reader_mapping/input_attribution/root verifier·proof·findings 및 execution/정제 pin 기록입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 실제 고정 읽기 명세 부재 시 public SDK entry 차단 / 2026-11-08 한국 시간
 
 기준 커밋 `068936c` 다음 작업입니다. [READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. SDK의 구조상 valid 요청을 실제 보호 읽기로 허용할 근거가 없어 public PrepareSdkAsync를 ReadSpecificationUnavailable로 끝내도록 변경했습니다. 실제 명세·frame·명령 recipe·runtime 승인 토글은 만들지 않았습니다.

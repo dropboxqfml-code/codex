@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — Windows/EC 바이트 계약의 합성 / 2026-11-08 한국 시간
+
+**새 합성 범위:** [byte 계약](FIXED_READ_BYTE_CONTRACT_REVIEW.md)은 기존 개별 본문을 합쳐 현재 주소+반환을 함께 제공하는 upload/receive 분기만 남기고, payload high→low 주소 순서와 sample 치환/실제 보존 8개 셀·WMI tail4 소거를 확인했습니다. 새 firmware 함수/edge는 0이며 새 request/frame은 만들지 않았습니다.
+
+**응답 귀속의 제한:** common failure marker와 sample 투영이 달라 실패에도 sample 자리는 zero입니다. command-only 성공도 반환 data를 복사하지 않아 sample 자리가 zero입니다. 미래 scalar-only 해석의 오인 조건이며 현재 제품은 이미 실패 prefix를 표시하고 mode decoder가 없으므로 제품 false-OFF나 실기 오류 발견이 아닙니다. 비실패 prefix·보존값 일치도 새 게시/reader 실행/신선함의 증거가 아닙니다.
+
+**검증·남은 조건:** 세 정적 검산은 각각 관계/재사용 8/39·10/29·15/20을 통과했으며 서로 겹치고 앱 테스트 수가 아닙니다. indexed-window↔EC mailbox 대응 가정, 조건부 ISA/bank·현재 이미지, command/address 안정성과 관련 참여자·응답 귀속은 남습니다. 코드·테스트·SDK·ZIP은 바꾸지 않아 빌드/C# 회귀는 재실행하지 않았습니다. 617개·빌드 경고/오류 0은 이전 62f2d2e 기록입니다. 공개 SDK entry 차단·실제 조회/제어 Unsupported는 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 실기 읽기 명세 부재의 공개 entry 차단 / 2026-11-08 한국 시간
 
 **구현:** [시작·중단 조건](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md)은 기존 인자/plan/identity/단발 claim/pre-cancel 뒤 public SDK entry를 ReadSpecificationUnavailable로 끝냅니다. SDK metadata/input claim/등록/호출/Dispose는 시작하지 않습니다. 기존 typed 기계 경로는 internal로 유지하며 승인 bool·빈 registry·미구현 Ready 분기는 추가하지 않았습니다.

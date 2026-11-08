@@ -1,5 +1,7 @@
 # 실기 읽기 시험의 시작·중단 조건 적용 — 2026-11-08 한국 시간
 
+**후속:** [요청·응답 바이트 계약](FIXED_READ_BYTE_CONTRACT_REVIEW.md)에서 선택 generic 분기와 reader의 필드를 합성했습니다. 현재 주소/반환을 함께 제공할 분기·payload 주소 순서·지워지는 WMI tail·실패 sample zero를 좁혔지만 실제 요청은 만들지 않았고 공개 차단은 유지합니다. 아래는 entry 차단 구현 시점의 기록입니다.
+
 **공개 SDK 시험 진입점은 검토된 실제 고정 읽기 명세가 없으면 ReadSpecificationUnavailable로 끝나도록 변경했습니다.** [SDK 연결](WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md)의 후속입니다. 형식이 맞는 임의 frame을 실제 읽기로 허용하는 경로는 열지 않았습니다. 실제 보호 설정 조회·충전 제어는 Unsupported이며 하드웨어의 영구 미지원 판정이 아닙니다.
 
 ## 실제 적용한 시작 조건

@@ -1,5 +1,7 @@
 # 고정 보호 저장 byte의 조건부 시험안 — 비실행 문서
 
+**바이트 계약 후속:** [선택 callback/reader 합성](FIXED_READ_BYTE_CONTRACT_REVIEW.md)은 주소 upload/반환 분기·payload 순서·반환 창과 지워지는 WMI tail을 좁혔습니다. 실패/command-only sample zero를 stored mode로 수용하지 않으며 기존 prefix 표시를 유지합니다. 실제 요청·nonce·frame을 생성하거나 A/B 실행을 허용한 결과는 아닙니다.
+
 **현재 entry 적용:** [시작·중단 조건 구현](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md)에서 공개 SDK 시험 entry는 실제 고정 읽기 명세 부재로 사전 차단됩니다. 내부 기계 연결의 synthetic 회귀는 이 A/B의 실행 허가나 실제 요청 명세가 아닙니다. 아래 A/B의 횟수·gate 영향·조건부 의미는 유지합니다.
 
 **host 후속:** [RunAndCloseAsync 구현](INVOCATION_HOST_LIFETIME_UPDATE.md)은 bounded 결과 표시 뒤에도 관련 close를 기다립니다. 실제 WMI source·Main 연결·아래 A/B의 선택·호출 수·승인 범위를 변경하지 않았습니다. B의 연속 소유권을 두 단발 세션으로 대신하지 않습니다.

@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 고정 읽기 후보의 바이트 계약 대조 / 2026-11-08 한국 시간:** [정적 검토](FIXED_READ_BYTE_CONTRACT_REVIEW.md)는 현재 주소 입력과 반환 sample을 함께 제공할 generic 분기, payload 주소 순서와 실제 보존되는 반환 범위를 좁혔습니다. WMI 끝 4byte는 복원되지 않으며 실패/command-only 응답도 sample 자리가 zero일 수 있습니다. 기존 실패 표시를 무시한 scalar-only 해석을 피해야 하고, 현재 제품 오류나 새 보호값 관측은 아닙니다. 코드·EXE/ZIP 변경·새 노트북 시험은 없으며 public entry 차단·제어 Unsupported를 유지합니다. 617개/빌드 0/0은 이전 검증 기록입니다. 아래는 이전 기록입니다.
+
 **최신 — 실기 읽기 명세 부재 시 SDK 진입 차단 / 2026-11-08 한국 시간:** [조건 적용·검증](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md)은 공개 SDK 시험 entry가 ReadSpecificationUnavailable로 끝나도록 변경했습니다. 형식이 맞는 임의 요청도 SDK 조회·입력 인계·등록·호출을 시작하지 않습니다. 기존 SDK 기계 연결은 내부 대역 시험으로 유지합니다. 새 8개 포함 617개 통과·전체 Release 빌드 경고/오류 0입니다. 실제 보호 조회·충전 제어는 Unsupported이며 하드웨어 영구 미지원 판정은 아닙니다. 앱/배포물 변경이나 새 노트북 실행·자료 제출은 없습니다. 아래는 이전 기록입니다.
 
 **최신 — 고정 SDK 대상·관찰자·입력 연결 / 2026-11-08 한국 시간:** [구현·검증](WINDOWS_WMI_SDK_DISPATCH_BINDING_UPDATE.md)은 공급 target의 참조·연결된 local scope·instance/class를 확인하고 같은 observer/입력으로 typed async 메서드에 최대 한 번 진입하는 경로를 구현했습니다. borrowed target과 owned 입력의 기존 정리 대기는 유지합니다. 새 19개 포함 609개 통과·전체 Release 빌드 경고/오류 0입니다. 실행 검증은 SDK 대역이며 실제 노트북 호출·보호 조회 명령/template·앱/배포물 변경은 없습니다. 보호 조회·충전 제어는 Unsupported이고 새 실행·자료 제출은 필요하지 않습니다. 아래는 이전 기록입니다.

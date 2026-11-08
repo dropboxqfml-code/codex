@@ -1,0 +1,184 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "62f2d2e",
+  "scope": "New bounded cross-layer composition of existing selected generic callback, EC reader and common failure bodies; no live request or new firmware function edge",
+  "originalSourcePinsRehashed": [
+    {
+      "name": "SecSabiDispatch.efi",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    },
+    {
+      "name": "P05ACJ.cap",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "name": "saved raw EC slice",
+      "bytes": 98304,
+      "sha256": "2c8aeabe90b844b9d5bc09a05656aa08be1ef927b2d80006e6bd4fb0cc983d04"
+    }
+  ],
+  "unchangedProductCodeContextPins": [
+    {
+      "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiRequestEncoder.cs",
+      "bytes": 2103,
+      "sha256": "55a26de001c731ac2e44cf37223a2c6f1f47fe9f4430f8b13c93809ecd6cf9d7"
+    },
+    {
+      "projectFile": "src/ATIVBatteryGuard.Core/Services/WsabiWmiReplyDecoder.cs",
+      "bytes": 2349,
+      "sha256": "700d876c9e0f3e78fd4354dfa146dbb6b0264716a9ee1d6521aef02bb91e1044"
+    },
+    {
+      "projectFile": "src/ATIVBatteryGuard.Core/Models/WsabiWmiReplyResult.cs",
+      "bytes": 4720,
+      "sha256": "71cd70060446c428ddb241f21385a1034dfb1a26cfb8570a0491e904611b5aa5"
+    },
+    {
+      "projectFile": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs",
+      "bytes": 20867,
+      "sha256": "63c183f8f915a789a25f05ff247bd19a6047cf1790c9dcbabd7c7ef1f35b7cde"
+    }
+  ],
+  "privateAnalysisArtifactPins": [
+    {
+      "privateArtifact": "reader_mapping/verify_symbolic_mapping.private.py",
+      "bytes": 9184,
+      "sha256": "bdc5e1035b61846b64d966aa2b1c417c6166e2da1e1a22b767b879cadc8fb221"
+    },
+    {
+      "privateArtifact": "reader_mapping/symbolic-mapping-proof.private.json",
+      "bytes": 8993,
+      "sha256": "ab86c6a506559b382857c1391f0653cdbc3fcf7631c30fe9647040987a3cb96d"
+    },
+    {
+      "privateArtifact": "reader_mapping/findings.private.md",
+      "bytes": 5060,
+      "sha256": "c773d1cabb29bf6c21e4d26ab74320fba9773f89fc8c19f678e90860249c5119"
+    },
+    {
+      "privateArtifact": "reader_mapping/artifact-pins.private.json",
+      "bytes": 517,
+      "sha256": "613093456875f50194e9f5db801198d61d47ae3cffa13ff464907704d299f3bc"
+    },
+    {
+      "privateArtifact": "input_attribution/verify_failure_projection.private.py",
+      "bytes": 9225,
+      "sha256": "c540be239f0d6b31c223c62e0c59093da1b0ccf4e537cbfc6b4ada18300c1317"
+    },
+    {
+      "privateArtifact": "input_attribution/failure-projection-proof.private.json",
+      "bytes": 9817,
+      "sha256": "791612dbab6967da3207c056635af0ffea3e3ece1f3bb2fa77ba5ed849f24859"
+    },
+    {
+      "privateArtifact": "input_attribution/findings.private.md",
+      "bytes": 2449,
+      "sha256": "8981b4449fd34b3a0e9c72a160d6255dea95e99346c86f1af31c3e84b9070d03"
+    },
+    {
+      "privateArtifact": "root/verify_contract.private.py",
+      "bytes": 8051,
+      "sha256": "5edc78e18447e1580d40ffdef4774c0b6fe1df9015b5cae3928309493e0f6080"
+    },
+    {
+      "privateArtifact": "root/contract-proof.private.json",
+      "bytes": 6356,
+      "sha256": "1f92c3876b36bbb31d01a5b5d38c186be53f180453b507b69d07ed6930bd813b"
+    }
+  ],
+  "requestReaderMapping": {
+    "methodProviderBridgeAndEcSelectorsAreDifferentLayers": true,
+    "onlyInputUploadAndReceiveBranchCarriesCurrentAddressAndReturnsSampleWithinSelectedCallback": true,
+    "zeroMessageBranchUsesCurrentInputAddressComponents": false,
+    "zeroMessageZeroAddressConclusionRequiresNewPostReaderAndAddressMappingPremises": true,
+    "commandOnlyPostsCommandButNotCurrentInputDataAndSkipsReturnedDataCopy": true,
+    "commandOnlyMeansNoEcCommandExecuted": false,
+    "payloadAddressOrder": "First component high, second component low",
+    "headerUInt16LittleEndianAppliedToPayloadAddress": false,
+    "sampleReplacesFirstInputAddressComponent": true,
+    "secondAddressComponentPreservedBySelectedReaderBody": true,
+    "otherPreservedMessageCellsReturned": 8,
+    "selectedReturnDataBytes": 10,
+    "visibleWmiTailCellsClearedNotRestored": 4,
+    "entireSixteenByteWmiPayloadPreserved": false,
+    "preservedCellsProveNonceSafetyNewPostingOrFreshRead": false
+  },
+  "responseProjection": {
+    "markerPayloadPosition": 0,
+    "samplePayloadPosition": 2,
+    "commonFailureZerosSampleSlotWhileWritingMarkerElsewhere": true,
+    "commandOnlySuccessAlsoLeavesSampleSlotZeroWithoutDataReturn": true,
+    "hypotheticalScalarOnlyCandidateZeroOneConsumerCouldAcceptCommonFailureZero": true,
+    "existingProductDispatchFailurePrefixIndicatorAlreadyPresent": true,
+    "currentProductModeDecoderOrObservedFalseOffBug": false,
+    "prefixRejectionIsNegativeFilterNotReadAttribution": true,
+    "nonFailurePrefixOrZeroControlFieldsCertifyNewRead": false,
+    "sourceReturnZeroEquatedWithWindowsHResultOrReturnValue": false,
+    "prefixOrZeroProvesNoEcDispatchOrDriverAbsence": false
+  },
+  "remainingPremises": {
+    "conditionalIsaAndBankModelRetained": true,
+    "indexedHostWindowAndEcMailboxHardwareEqualityEstablished": false,
+    "currentImageRegistrationAndSelectedReaderExecutionObserved": false,
+    "twoSeparatelyConsumedAddressComponentsProvenStableForRealTrial": false,
+    "relatedParticipantInputReuseAndFreshResponseAttributionContractClosed": false,
+    "allWritersIrqsWholeLiveHashOrLiveGateOpenMadeAbsoluteRequirement": false,
+    "actualStoredModeOrElectricalChargingApplicationObserved": false
+  },
+  "verification": {
+    "readerMapping": {
+      "compositionalRelations": 8,
+      "reusedSourceByteChecks": 39,
+      "passed": true,
+      "method": "stdlib PE section parsing, exact inert byte and affine relation checks"
+    },
+    "failureProjection": {
+      "compositionalRelations": 10,
+      "reusedContextChecks": 29,
+      "passed": true,
+      "method": "stdlib inert byte, projection and current decoder source checks"
+    },
+    "independentRoot": {
+      "compositionalRelations": 15,
+      "reusedContextChecks": 20,
+      "passed": true,
+      "method": "trusted pefile/Capstone static decode plus set and field algebra"
+    },
+    "trustedTools": {
+      "pefile": "2024.8.26",
+      "capstone": "5.0.6"
+    },
+    "rootReranAllThreeFinalVerifiers": true,
+    "countsOverlapAndAreNotUniqueDiscoveriesAppTestsOrCoverage": true,
+    "newFirmwareFunctionEdges": 0,
+    "initialReaderVerifierCorrection": "Four-byte instruction displacement index corrected from4 to3; verifier error, not source discrepancy/product failure",
+    "independentReadReviewCompleted": true,
+    "independentReadReviewerExecutedScripts": false,
+    "currentBuildOrAppUnitSuiteRerun": false,
+    "previousCodeValidationOnly": {
+      "codeCommit": "62f2d2e",
+      "csharpPassed": 617,
+      "failed": 0,
+      "skipped": 0,
+      "net48ReleaseWarnings": 0,
+      "net48ReleaseErrors": 0,
+      "priorSixTestedSourcePinsStillMatchCurrentFiles": true
+    }
+  },
+  "boundary": {
+    "applicationCoreSdkTestOrReleaseArchiveChanged": false,
+    "actualRequestFrameAddressPairNonceOrGeneratorConstructed": false,
+    "vendorFirmwareDllOrAmlExecutedLoadedOrEmulated": false,
+    "actualSdkOemHardwareGlobalObjectOrConsumedMarkerAccessed": false,
+    "newDependencyInstallOrSourceDownload": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "publicSdkEntryReopenedOrExecutionApproved": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "newLaptopTestOrRepeatedUploadRequested": false
+  },
+  "next": "Connect the narrowed branch/field contract to relevant participant input stability, actual new posting and result attribution without promoting this conditional map to a completed or authorized hardware request."
+}

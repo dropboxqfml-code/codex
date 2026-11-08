@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 응답 거부 명세와 관련 참여자 적용 / 2026-11-08
+
+**구체화:** [비실행 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md)는 8개 보존 셀의 전체 zero 원소 하나를 제외한 비교 영역을 제안합니다. 단일 고정 old tuple과 균등·독립인 선택의 우연 일치 한계는1/(2^64−1)이며 실제 생성·측정은 없습니다. 이 한계는 수용된 결과의 오류 확률이나 신뢰도가 아닙니다. no-copy zero·echo·공통 실패·형식/내용 불일치의 거부 규칙을 구체화하고, 다른 producer·혼합 copy·충돌이 관측 검사를 통과할 수 있는 반례도 보존했습니다.
+
+**구체 미완료:** 알려진 host Runtime SetVariable의 NV persistence→flash 후크→동일 indexed 게시자는 boot-only나 WSABI 협력 호출자로 자동 포함할 수 없습니다. 정상 SMM/WSABI의 기존 보호 근거는 유지하며, 이 Runtime 경로의 선택 조회와의 순서·보호가 구체 미완료입니다. Native·이름 없는 가능성은 연결 없이 실제 경쟁자로 추가하지 않습니다. 새 source edge·actor·race 발견0입니다.
+
+**검증·범위:** 담당별 source/reference 검산, root 14사례/256추상조합·정확 분수 검산, 독립 검토를 수행했습니다. 수치는 중복되며 앱 test/coverage가 아닙니다. C#/SDK/배포물 변경이 없어 빌드/C# 회귀는 재실행하지 않았습니다. 공개 ReadSpecificationUnavailable·조회/제어 Unsupported·실제호출0을 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 입력 보호·응답 회수 구간의 합성 / 2026-11-08 한국 시간
 
 **확인 범위:** [후속 검토](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md)는 command clear 뒤 ready가 열려도 현재 EC 응답 복사가 끝난 것은 아님을 source 순서에 연결했습니다. 현재 입력은 30바이트 upload되며 반환에 쓰는 앞 10바이트가 먼저 local로 포착됩니다. 뒤 20바이트 local 저장은 그 prefix를 덮지 않지만 indexed I/O는 전체 download까지 계속됩니다. 새 함수/edge·실제 race 발견은 0입니다.

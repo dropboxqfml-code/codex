@@ -1,0 +1,308 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "3a25af3",
+  "scope": "Non-executable observable rejection specification, explicit per-attempt collision model and application of existing participant evidence; no completed hardware read specification",
+  "originalIdentitiesAndSelectedRowsRechecked": [
+    {
+      "role": "Runtime.efi, reused connected chain",
+      "bytes": 83776,
+      "sha256": "10a6f228664bada8eaad309879ab3b17d007ce8d5ccb5561a9038d89adb3840a"
+    },
+    {
+      "role": "known ordinary WSABI original 1, identity only",
+      "bytes": 22920,
+      "sha256": "564b640d62db2a4e4b56c6331e0e526bad2ac1fcf438a41a9e5241551f457b6e"
+    },
+    {
+      "role": "known ordinary WSABI original 2, identity only",
+      "bytes": 22920,
+      "sha256": "b68452579a3f5f898ad8ccf63d655aed62c5be221784b799cdf471da674fbdcc"
+    },
+    {
+      "role": "known ordinary WSABI original 3, identity only",
+      "bytes": 24368,
+      "sha256": "99fc3a6a93987706bb161550f70a3739590e3571134aebb60eaeb3fb5328df58"
+    },
+    {
+      "role": "known ordinary WSABI original 4, identity only",
+      "bytes": 24968,
+      "sha256": "8e655ede2559c986a120d2bd4c48256c35fb2a1bd13baceecb167f7b4a6b21c9"
+    },
+    {
+      "role": "native route original, identity only; shared-resource binding unproved",
+      "bytes": 13824,
+      "sha256": "7a53b3fba3f82ede6fa688e531fbe7ec9e1ae329090c0afe0dcd64f65bd90f21"
+    },
+    {
+      "role": "SecSabiDispatch.efi, reused projection/no-copy rows",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    }
+  ],
+  "privateAnalysisArtifactPins": [
+    {
+      "privateArtifact": "participant_spec/verify_participant_spec.private.py",
+      "bytes": 14125,
+      "sha256": "105d708e1ca26025cdb656bf00e576c0737a87fb69b0ddda0dc96bb802f42ab6"
+    },
+    {
+      "privateArtifact": "participant_spec/participant-spec-proof.private.json",
+      "bytes": 17169,
+      "sha256": "2ba08d2daf2dd5cd3dba3fcdfc8b6fde02e44bfc7c0cbe17f29fba7b5dc6817d"
+    },
+    {
+      "privateArtifact": "participant_spec/findings.private.md",
+      "bytes": 8887,
+      "sha256": "eed6e59fb006b69af4b964073d3f941bc78a8218b33c50fdca8575fee599b646"
+    },
+    {
+      "privateArtifact": "participant_spec/artifact-pins.private.json",
+      "bytes": 604,
+      "sha256": "6cf53a918208c71f802b784b99ff47496fe8a8d65228738aab5c4d5c9db72f87"
+    },
+    {
+      "privateArtifact": "response_spec/verify_response_spec.private.py",
+      "bytes": 13263,
+      "sha256": "c33798b60e2ae7c96393ef4801a261a7e3b614ede7a97ab3d02ba310cacf44ab"
+    },
+    {
+      "privateArtifact": "response_spec/response-spec-proof.private.json",
+      "bytes": 13838,
+      "sha256": "addcee244e6999faa7be14ebb4bb6659730e3b7451b98f0df3d6bed913981b66"
+    },
+    {
+      "privateArtifact": "response_spec/findings.private.md",
+      "bytes": 8410,
+      "sha256": "237853f636430c86deb0b6e67f23ea0a404156b8588d693cdeb9ec9153b3cd09"
+    },
+    {
+      "privateArtifact": "root/verify_acceptance_spec.private.py",
+      "bytes": 9481,
+      "sha256": "70101ea6b56bac02a9c48251b7637db34d9e77a599d04b048797a2fbc696a5ef"
+    },
+    {
+      "privateArtifact": "root/acceptance-spec-proof.private.json",
+      "bytes": 10466,
+      "sha256": "7c1bd4a993f71030d378fd0a0b8618078b847bac95e331d1e61713d5f434851b"
+    }
+  ],
+  "participantApplication": [
+    {
+      "id": "fixed-A-WMI",
+      "connection": "selected-route-intrinsic",
+      "application": "in-scope source route; no current request or success permission"
+    },
+    {
+      "id": "known-WSABI-four",
+      "connection": "same-WMI-host-frame",
+      "application": "positive cooperating protection rule; absence of live membership telemetry is not a new absolute blocker"
+    },
+    {
+      "id": "ModuleSABI-known-leaf",
+      "connection": "caller-of-known-WMI-participant",
+      "application": "fold into known WSABI route; do not count separate competitor or require all high-level OEM operations atomic"
+    },
+    {
+      "id": "identified-normal-SMM-publisher",
+      "connection": "same-indexed-resource",
+      "application": "conditional positive ordering; do not extend it to host RT or outer WM00 staging/return"
+    },
+    {
+      "id": "host-RT-NV-SetVariable",
+      "connection": "same-indexed-resource",
+      "application": "specific remaining related ownership/order boundary; no demand to observe every writer or live membership"
+    },
+    {
+      "id": "private-SMM-RT-family",
+      "connection": "separate-source-context",
+      "application": "do not infer every Runtime caller is host or normal SMM; no new independent competitor beyond source-bound chains"
+    },
+    {
+      "id": "PEI-HOB-and-boot-initializers",
+      "connection": "boot-only-producer-and-registration",
+      "application": "retain model/branch premises; do not add as concurrent Windows participant; retained hooks remain runtime-capable separately"
+    },
+    {
+      "id": "native-Sabi3-Sabi.sys",
+      "connection": "connection-unproved",
+      "application": "exclude from confirmed shared-resource competitor set until concrete binding appears; not proof of absence or safety"
+    },
+    {
+      "id": "unnamed-policy-direct-WMI-ACPI-clients",
+      "connection": "connection-unproved",
+      "application": "not promoted to actual participants or blockers by possibility alone"
+    }
+  ],
+  "specificRemainingConnectedProtectionGap": "Source-connected host RuntimeServices SetVariable NV-persistence flash-hook publisher shares the indexed resource; its applicable postboot ordering/protection relative to the selected SABI exchange remains unclosed. Normal legacy SMI fallback evidence is retained, not generalized to every route.",
+  "notNewRequirements": [
+    "Direct live reader observation as the only attribution proof",
+    "All platform writers or IRQs absent",
+    "Whole live EC image hash",
+    "Live gate-open evidence",
+    "No live membership telemetry alone treated as a new absolute blocker"
+  ],
+  "observableRejectionSpecification": {
+    "hiddenFreshOriginOrReaderRanBooleanInputs": false,
+    "rejectApiMethodStructureAckFailure": true,
+    "existingFailurePrefixIndicatorReused": true,
+    "rejectWrongReturnShapePreservedComponentOrContent": true,
+    "rejectEchoUnderReviewedInputCandidateDomainSeparation": true,
+    "rejectOutsideNarrowCandidateDomain": true,
+    "rejectNoCopyZeroComparisonUnderProposedNonzeroDomain": true,
+    "observableChecksDistinguishMatchingWrongProducerMixedCopyOrOldCollision": false,
+    "inputSafetyAndRelatedCaptureProtectionRemainIndependentPreconditions": true
+  },
+  "proposedNonExecutableCollisionModel": {
+    "comparisonCells": 8,
+    "bits": 64,
+    "domainSize": 18446744073709551615,
+    "excludedElement": "the single all-zero eight-cell content",
+    "selectionPremise": "A uniform choice from the nonzero domain, independent of a single complete old tuple fixed before selection; no such choice or generator exists in this analysis",
+    "singleFixedNonzeroOldTupleProbability": "1/18446744073709551615",
+    "singleFixedZeroOldTupleProbability": "0",
+    "attemptsInProposal": 1,
+    "automaticRetries": 0,
+    "oldTupleFixedAndWholeCaptureCoherentAreRequired": true,
+    "additionalCandidatesDependentBiasedReplayOrMixedCaptureCovered": false,
+    "probabilityClaimsMeasuredRuntimeEntropy": false,
+    "boundIsPerAttemptOldContentCollisionNotPosteriorErrorAmongAcceptedResults": true
+  },
+  "caseTable": [
+    {
+      "abstractOrigin": "selected_reader_candidate_zero",
+      "predicateOutcome": "candidate_only",
+      "limitation": "Conditional storage candidate, never electrical charge-control success"
+    },
+    {
+      "abstractOrigin": "selected_reader_candidate_one",
+      "predicateOutcome": "candidate_only",
+      "limitation": "Same restriction"
+    },
+    {
+      "abstractOrigin": "common_failure_with_zero_sample",
+      "predicateOutcome": "reject_known_failure_prefix",
+      "limitation": "Existing product failure-prefix indicator is reused"
+    },
+    {
+      "abstractOrigin": "command_only_zero_content",
+      "predicateOutcome": "reject_content",
+      "limitation": "Nonzero comparison domain excludes the known all-zero no-copy content"
+    },
+    {
+      "abstractOrigin": "upload_skipped_old_content_mismatch",
+      "predicateOutcome": "reject_content",
+      "limitation": "Usual old-content mismatch; not a deterministic freshness guarantee"
+    },
+    {
+      "abstractOrigin": "upload_skipped_old_content_collision",
+      "predicateOutcome": "candidate_only",
+      "limitation": "Explicit residual collision case under the independent uniform finite-domain model"
+    },
+    {
+      "abstractOrigin": "upload_without_reader_echo",
+      "predicateOutcome": "reject_echo",
+      "limitation": "Relies on the source-profile input-echo domain being disjoint from candidate domain"
+    },
+    {
+      "abstractOrigin": "different_producer_preserving_current_content",
+      "predicateOutcome": "candidate_only",
+      "limitation": "Must be excluded or distinguished by independent pre-execution participant/source protection; observable filter cannot detect it"
+    },
+    {
+      "abstractOrigin": "mixed_producer_copy",
+      "predicateOutcome": "candidate_only",
+      "limitation": "Not covered by collision bound; related capture stability is required"
+    },
+    {
+      "abstractOrigin": "preserved_component_changed",
+      "predicateOutcome": "reject_preserved_component",
+      "limitation": "Mismatch rejects; match does not prove historical input stability"
+    },
+    {
+      "abstractOrigin": "outside_narrow_candidate_domain",
+      "predicateOutcome": "reject_sample_domain",
+      "limitation": "No automatic OFF interpretation"
+    },
+    {
+      "abstractOrigin": "api_or_method_failure",
+      "predicateOutcome": "reject_api_or_method",
+      "limitation": "No inference of no dispatch or completed provider cleanup"
+    },
+    {
+      "abstractOrigin": "malformed_or_missing_ack",
+      "predicateOutcome": "reject_structure_or_ack",
+      "limitation": "No decoder or support promotion"
+    },
+    {
+      "abstractOrigin": "wrong_control_or_visible_return_shape",
+      "predicateOutcome": "reject_return_shape",
+      "limitation": "Negative filter only"
+    }
+  ],
+  "conditionalAttribution": {
+    "mayBeDerivedFromSourceProtectionAndIndependentContentRulesWithoutSeparateLiveReaderWitness": true,
+    "intendedReaderExecutionAssumedAsPremiseThenClaimedAsConclusion": false,
+    "probabilityIsPerAttemptOldContentCollisionNotPosteriorErrorAmongAcceptedResults": true,
+    "probabilityIsHardwareSafetyOrChargingSuccessRate": false,
+    "runtimeUniformIndependentSamplingOrSafeGeneratorImplementedOrMeasured": false,
+    "actualFixedReadSpecificationComplete": false
+  },
+  "verification": {
+    "participantSpecification": {
+      "referencePins": 9,
+      "originalIdentityPins": 6,
+      "reusedRuntimeByteChecks": 22,
+      "reusedTableIdentities": 4,
+      "applicationChecks": 9,
+      "rows": 9,
+      "passed": true
+    },
+    "responseSpecification": {
+      "reusedInstructionRows": 15,
+      "caseRows": 10,
+      "passed": true
+    },
+    "rootAbstractSpecification": {
+      "caseRows": 14,
+      "observableCombinations": 256,
+      "passingObservationClasses": 2,
+      "assertions": 277,
+      "arithmetic": "exact rational fractions; no sampling",
+      "passed": true
+    },
+    "rootExecutedAllThreeFinalVerifiers": true,
+    "countsOverlapNotUniqueDiscoveriesAppTestsOrCoverage": true,
+    "newFirmwareFunctionEdges": 0,
+    "newRelevantActors": 0,
+    "actualRaceOrBatteryStateObserved": false,
+    "independentReadReviewCompleted": true,
+    "independentReviewerExecutedScripts": false,
+    "initialRootVerifierCorrection": "Abstract observation enumerator had six non-prefix boolean dimensions for a five-field constructor; corrected to five after a local TypeError. No source/product failure.",
+    "currentAppCsharpBuildOrUnitTestsRun": false,
+    "previousCodeValidationOnly": {
+      "codeCommit": "62f2d2e",
+      "csharpPassed": 617,
+      "failed": 0,
+      "skipped": 0,
+      "net48ReleaseWarnings": 0,
+      "net48ReleaseErrors": 0,
+      "sixPriorTestedSourcePinsStillMatch": true
+    }
+  },
+  "boundary": {
+    "applicationCoreSdkTestsOrExistingReleaseArchiveChanged": false,
+    "actualRequestAddressPairInputOrOutputFrameTagValueNonceOrGeneratorCreated": false,
+    "randomSelectionPerformed": false,
+    "originalFirmwareDllOrAmlExecutedLoadedOrEmulated": false,
+    "actualSdkOemHardwareGlobalOrConsumedMarkerAccessed": false,
+    "newDependenciesInstalledOrExternalSourcesDownloaded": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "handshakeInitializationRetryWriteOrAlternativeFallbackAdded": false,
+    "publicSdkEntryReopenedOrRealTrialApproved": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "newLaptopRunOrRepeatedUploadRequested": false
+  },
+  "next": "Acquire a source-bound postboot Runtime publisher ordering/protection contract relative to the selected read; retain the conditional rejection specification without constructing or approving live requests."
+}

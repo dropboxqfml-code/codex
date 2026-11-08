@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 응답 거부 명세와 구체 참여자 범위 / 2026-11-08:** [비실행 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md)에 실패·echo·불일치·no-copy 거부와 조건부 내용 충돌 모델을 정리했습니다. 14사례·256추상 관측 조합의 검산은 앱/실기 테스트가 아닙니다. 같은 자원으로 연결된 host Runtime 변수 저장 경로의 순서·보호는 미완료입니다. 코드·EXE/ZIP 변경 없이 공개 차단·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.
+
 **최신 — 입력 보호와 응답 포착 경계 / 2026-11-08 한국 시간:** [정적 검토](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md)는 ready 이후에도 응답 복사 보호가 필요함을 기존 전송·협력 규약에 연결했습니다. 30바이트 upload/download와 반환 prefix 10바이트의 의미상 포착, 전체 I/O 자원 수명, SMM 밖 WMI frame 회수를 구분했습니다. 실제 경합·새 reader 실행을 관측한 결과가 아니며 공개 entry 차단·조회/제어 Unsupported를 유지합니다. 코드·EXE/ZIP 변경과 새 노트북 시험은 없습니다. 아래는 이전 기록입니다.
 
 **최신 — 고정 읽기 후보의 바이트 계약 대조 / 2026-11-08 한국 시간:** [정적 검토](FIXED_READ_BYTE_CONTRACT_REVIEW.md)는 현재 주소 입력과 반환 sample을 함께 제공할 generic 분기, payload 주소 순서와 실제 보존되는 반환 범위를 좁혔습니다. WMI 끝 4byte는 복원되지 않으며 실패/command-only 응답도 sample 자리가 zero일 수 있습니다. 기존 실패 표시를 무시한 scalar-only 해석을 피해야 하고, 현재 제품 오류나 새 보호값 관측은 아닙니다. 코드·EXE/ZIP 변경·새 노트북 시험은 없으며 public entry 차단·제어 Unsupported를 유지합니다. 617개/빌드 0/0은 이전 검증 기록입니다. 아래는 이전 기록입니다.

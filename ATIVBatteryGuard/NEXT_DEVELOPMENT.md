@@ -1,5 +1,23 @@
 # 다음 개발 재개 메모
 
+## 최신 — 고정 조회 응답 거부 명세와 Runtime 보호 연결 / 2026-11-08
+
+기준 `3a25af3` 다음 작업입니다. [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [입력·회수 경계](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 실제 요청 없이 거부 규칙·명시 확률 모델·관련 participant 적용표를 구체화했습니다.
+
+반환되는 8개 보존 셀의 전체 zero 원소 하나를 제외한 영역(크기 2^64−1)에서, 고정된 old tuple과 독립·균등한 단발 선택을 가정합니다. 실제 선택·표식·생성기는 없습니다. no-copy zero 형상은 결정적으로 거부하고, 고정된 old nonzero tuple 하나의 우연 일치는 1/(2^64−1), old zero는 0입니다. 이는 한 시도의 old 충돌 한계이며 **수용된 결과의 오류 확률이나 신뢰도 1−p가 아닙니다.** 여러 old 후보·의존/비균등 선택·replay·다른 producer·mixed capture에는 같은 한계를 적용하지 않습니다.
+
+실패 prefix·API/구조/ACK/반환 형식·보존 성분/내용 불일치·입력 echo·후보 영역 밖 값을 거부합니다. 관측 predicate에 숨은 fresh/origin/readerRan boolean을 넣지 않았습니다. 다른 producer·mixed copy·old collision이 같은 관측으로 통과하는 반례를 유지하며, 실행 전 command/address·관련 참여자 보호가 별도로 필요합니다. 직접 reader 실기 관측이나 EC 완료ID만을 유일한 해법으로 요구하지 않습니다.
+
+참여자 표는 네 WSABI ordinary source의 whole-exchange 보호와 정상 같은 SMM 순서를 재사용합니다. 구체 미완료는 **host RuntimeServices SetVariable→NV persistence→flash 후크→같은 indexed 게시자**와 선택 SABI 교환 사이의 보호·순서입니다. host adjusted flash adapter를 SMM-only로 분류하지 않고 후속 중계 교체·정상 legacy fallback 근거도 보존합니다. Native·이름만 있는 policy/direct client는 연결 없이 경쟁자로 추가하지 않으며, boot 구성 생산자도 Windows 실행 writer로 세지 않습니다.
+
+검산은 participant reference 9개/original identity 6개/재사용 Runtime byte 22개/table 4개/application 9개, response 재사용 row 15개/case 10개, root 14사례/256관측 조합/277assertion 및 exact Fraction을 통과했습니다. 숫자는 서로 겹치며 앱 테스트·고유 발견·coverage로 합산하지 않습니다. 새 source edge·actor·실제 race는 0입니다. root의 초기 추상 boolean 차원 6→5 수정은 검산기의 로컬 TypeError이며 제품/source 오류가 아닙니다. 독립 읽기 검토의 posterior 확률 구분을 명세에 반영했습니다.
+
+정제 기록은 reports/fixed-read-acceptance-spec-audit.json, private는 `20261108/fixed-read-specification-next`의 participant_spec/response_spec/root에 있습니다. source/ref pins·script/proof/findings·실행 기록을 보관합니다. response verifier가 고정한 이전 byte/capture 문서는 이번에 바꾸지 않아 재현 pin을 유지합니다. 코드·테스트·EXE/ZIP이 같아 빌드/C# 회귀는 재실행하지 않았으며 617개/build0/0은 62f2d2e 이전 기록입니다.
+
+공개 ReadSpecificationUnavailable·조회/제어 Unsupported, A의 method 최대1/handshake·초기화·재시도·쓰기·B fallback 0을 유지합니다. old consumed 예약은 접근·초기화·삭제·재사용·우회하지 않습니다. 원본 로드/실행/에뮬레이션·SDK/OEM/hardware/Global 접근·driver/service/security/firmware/cloud 변경·실제 request/address pair/frame/tag/nonce generator는 없습니다. 새 노트북 실행·자료 재제출은 불필요합니다.
+
+다음 근거 확보는 위 Runtime의 부팅 후 적용 전송 경로와 선택 조회 사이의 순서 관계에 집중합니다. 독립 내용 검증의 조건부 귀속을 직접 실기 관측 부재만으로 되돌리지 않고, 미완료 Runtime 보호를 사후 검사로 대신하지도 않습니다. 그 전에는 실제 생성기·요청·parser·시험 빌드를 추가하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — ready 이후 응답 포착과 관련 참여자의 보호 구간 / 2026-11-08 한국 시간
 
 기준 커밋 `4c0ae25` 다음 작업입니다. [FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md), [바이트 계약](FIXED_READ_BYTE_CONTRACT_REVIEW.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 새로운 source edge가 아닌 기존 source의 부분순서·footprint 합성이며 코드나 gate wrapper 변경은 없습니다.

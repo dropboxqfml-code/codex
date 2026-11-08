@@ -24,6 +24,8 @@
 
 [입력 보호·포착 후속](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md)은 ready 이후 copyout 보호를 따로 명시하고 upload30/반환 prefix10/전체 indexed I/O의 수명을 구분했습니다. 정상 같은 SMM 순서는 EC copyout을 덮지만 바깥 WMI frame 회수는 실제 관련 참여자의 전체 교환 보호가 필요합니다. 기존 source의 조건부 합성이고 실기 입력 안정성·새 게시/reader 실행 인증이나 현재 제품 오류 발견은 아닙니다. 공개 entry 차단과 세 조건 미완료를 유지합니다.
 
+[응답 거부 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md)는 8셀 nonzero 단발 비교의 명시적 충돌 모델과 관측 거부 규칙을 정리했습니다. 잘못된 producer·혼합 copy가 관측 검사를 통과할 수 있으므로 실행 전 보호를 대체하지 않습니다. 직접 reader 관측을 별도 절대조건으로 요구하지 않으며 관련 host Runtime 게시자의 순서·보호가 구체 미완료입니다. 확률은 한 시도의 old-content 일치 한계이고 수용 결과의 신뢰도가 아닙니다. 실제 값/생성기/요청·공개 entry 활성화는 없습니다.
+
 모델·BIOS·제조사 원본과 여러 해석 anchor는 임시 CandidateProfile 근거로 유지합니다. live 함수 포인터·EC 전체 hash를 직접 관측하지 못했다는 사실 하나만을 절대 중단 조건으로 쓰지 않습니다. 동시에 위 실제 미완료 연결을 정상성 가정이나 사후 내용 비교만으로 메우지 않습니다.
 
 Global 접근 권한을 별도 사전 수집하는 것도 절대 조건은 아닙니다. 유한 Acquire가 접근 거부로 끝나면 하위 호출 없이 실패할 수 있습니다. 조회 진입 자체의 typed provider 발견도 필수조건에서 제외합니다. 남는 것은 gate를 포함한 선택 안의 유용성·관련 참여와 마지막 접근/재사용·입력 비훼손·응답 귀속이며, 별도 Runtime 경로는 실제 관련 게시자 조건으로만 평가합니다.

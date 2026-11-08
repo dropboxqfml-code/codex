@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 사용자 부팅 관측 Complete·UEFI / 2026-11-08 수신
+
+기준 `f474e6f` 다음 기록입니다. [WINDOWS_BOOT_UEFI_RESULT.md](WINDOWS_BOOT_UEFI_RESULT.md)와 reports/windows-boot-user-observation.json을 먼저 읽습니다. 사용자가 요청한 두 항목을 전달했습니다: 조회 정상 Complete, 실행 당시 UEFI 부팅. 추가 TXT·DLL·EXE·관리자 비교·같은 조회 반복은 필요 없습니다. 실제 실행 시각·권한·노트북 파일 해시는 전달되지 않았으며 수신일을 실행일로 추정하지 않습니다.
+
+이 관측에는 legacy BIOS를 이유로 표준 Windows EFI 변수 API→Runtime proxy라는 특정 OS 경로를 제외하는 안을 적용할 수 없습니다. 관련 경로는 분석 범위에 유지합니다. UEFI는 proxy 내부 cache nonnull/표준 제공자 선택을 뜻하지 않으며 NULL-cache legacy fallback의 기존 긍정 근거와도 모순되지 않습니다. EFI 변수 접근 성공·actual proxy/provider·typed dispatch·indexed 보호 순서·Secure Boot·관리자 권한·배터리 모드/충전 적용은 미관측입니다.
+
+새 부팅 항목의 조회·표시는 사용자 보고로 확인됐습니다. 전체 GUI/SDK/펌웨어의 Windows 검증으로 확대하지 않습니다. 순서 조건은 여전히 미완료, public ReadSpecificationUnavailable·실제 보호 조회/제어 Unsupported와 A/과거 소모 예약 경계를 유지합니다. 이 결과는 동결된 GUID/operand·entry/state·metadata/P04 검색을 재개할 source edge가 아닙니다. 같은 검산을 진전으로 세지 말고 구체 실제 경로·플랫폼 순서 계약·공유 owner의 새 근거가 있을 때만 해당 범위를 다시 엽니다.
+
+이번 변경은 정제 관측과 문서뿐입니다. 코드·EXE/ZIP은 그대로이며 빌드/C# 회귀는 재실행하지 않았습니다.646/portable·전체 net48 Release0/0은 f474e6f의 이전 기록입니다. 클라우드 Windows/API/OEM/hardware/Global/과거 예약 접근·firmware 요청/승인 flag·환경 변경은 없습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 현재 Windows 부팅 방식 관측 구현·배포 / 2026-11-08
 
 기준 `1472aab` 다음 작업입니다. [WINDOWS_BOOT_FIRMWARE_UPDATE.md](WINDOWS_BOOT_FIRMWARE_UPDATE.md), [미완료 순서 판정](INDEXED_ORDERING_CONTRACT_REVIEW.md), [조회 명세](FIXED_READ_TRIAL_SPECIFICATION.md)를 먼저 읽습니다. 동결한 source 검색을 반복하지 않고 새 source 범위를 확인한 뒤, 기존에 없던 현재 부팅 방식의 표준 읽기 전용 관측을 구현했습니다.

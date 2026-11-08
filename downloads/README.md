@@ -1,5 +1,7 @@
 # ATIV Battery Guard — Windows 부팅 방식 확인판
 
+**후속 결과 / 2026-11-08 수신:** 사용자가 새 부팅 항목의 Complete·UEFI를 [전달했습니다](../ATIVBatteryGuard/WINDOWS_BOOT_UEFI_RESULT.md). 이 항목의 조회·표시는 확인됐지만 전체 GUI·실제 통신 경로·충전 제어 검증은 아닙니다. 프로그램 파일은 그대로이며 추가 다운로드·같은 조회 반복·파일 재제출은 필요 없습니다.
+
 2026-11-08. [프로그램 ZIP](ATIVBatteryGuard-BOOT-FIRMWARE.zip) · [SHA-256](ATIVBatteryGuard-BOOT-FIRMWARE-SHA256SUMS.txt) · [변경·검증 안내](../ATIVBatteryGuard/WINDOWS_BOOT_FIRMWARE_UPDATE.md)
 
 **프로그램 ZIP 하나만** 새 폴더에 전부 풀고 ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 다른 분석 ZIP이나 삼성 DLL은 필요 없습니다. 기존 **삼성 파일 정보 만들기**를 선택하면 TXT에 **현재 Windows 부팅 방식**의 조회 상태와 **관측: BIOS / UEFI / Unknown**이 추가됩니다. 새 정보는 이 두 항목만 전달할 수 있고 기존 TXT·진단·삼성 DLL·EXE 전체를 다시 제출할 필요는 없습니다.

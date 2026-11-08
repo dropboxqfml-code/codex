@@ -1,5 +1,7 @@
 # Windows 부팅 방식으로 조회 경로 범위 구분 — 2026-11-08
 
+**후속 사용자 결과:** [Complete·UEFI 관측](WINDOWS_BOOT_UEFI_RESULT.md)을 수신했습니다. 아래는 구현·배포 당시의 설명과 검증이며, 후속 결과는 특정 Windows EFI 변수 경로를 제외할 수 없다는 범위 정보로 반영했습니다. 실제 통신 보호 순서는 여전히 미확정입니다.
+
 **기존 삼성 파일 정보 보고서에 현재 Windows의 BIOS/UEFI 부팅 방식을 추가했습니다.** 기존 자료에는 없던 정보이며, 미확정 Runtime 경로가 현재 부팅에 적용되는지 좁히기 위한 표준 읽기 전용 메타데이터입니다. 실제 보호 설정을 읽거나 충전 제한을 활성화하는 기능은 아닙니다. 공개 SDK 시험 entry는 `ReadSpecificationUnavailable`, 보호 조회·충전 제어는 `Unsupported`를 유지합니다.
 
 [프로그램 ZIP](../downloads/ATIVBatteryGuard-BOOT-FIRMWARE.zip) · [SHA-256](../downloads/ATIVBatteryGuard-BOOT-FIRMWARE-SHA256SUMS.txt) · [정제 검증 기록](reports/boot-firmware-validation.json)
@@ -18,7 +20,7 @@ ZIP 하나를 새 폴더에 전부 풀고 `ATIVBatteryGuard.exe`를 일반 권�
 | 권한 거부·API 미가용·오류·시간 초과·형식 오류 | 해당 조회 상태를 표시하고 경로 판단 보류 | 실패 때 남은 out 값이나 기본값을 BIOS로 해석하지 않음 |
 | 예전 IPC v5 결과 | 부팅 정보는 `NotCollected`로 보존 | 옛 보고서에 현재 부팅 관측을 새로 만들어 넣지 않음 |
 
-현재 클라우드에서 사용자 노트북의 부팅 결과를 관측한 것은 아닙니다. BIOS 결과가 나온다고 자동으로 실기 시험을 허용하거나 실제 제어를 활성화하지 않습니다. 관련 경로와 남은 보호 조건에 적용하는 검토가 별도로 필요합니다.
+배포 당시에는 노트북의 부팅 결과가 없었으며, 후속으로 사용자가 실행 당시 Complete·UEFI를 전달했습니다. 이는 클라우드의 직접 Windows API 실행이나 전체 GUI/SDK 검증과 구분합니다. 어느 boot 결과도 자동으로 실기 시험을 허용하거나 실제 제어를 활성화하지 않습니다. 관련 경로와 남은 보호 조건에 적용하는 검토가 별도로 필요합니다.
 
 ## 공식 계약과 구현 범위
 

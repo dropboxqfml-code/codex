@@ -1,5 +1,7 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
+**2026-11-08 사용자 UEFI 결과:** [Complete·UEFI 관측](WINDOWS_BOOT_UEFI_RESULT.md)에는 legacy 부팅을 이유로 특정 EFI 변수 OS 경로를 제외할 수 없습니다. UEFI 부팅을 proxy cache nonnull·표준 제공자 선택·보호 순서 입증으로 바꾸지 않으며 정상 legacy fallback의 조건부 긍정 근거도 유지합니다. 실제 entry·보호 조회/제어 상태는 그대로입니다.
+
 **2026-11-08 부팅 방식 관측 추가:** [표준 메타데이터 구현](WINDOWS_BOOT_FIRMWARE_UPDATE.md)은 현재 Windows의 특정 EFI 변수 OS 경로 적용 여부를 좁히기 위한 정보입니다. BIOS 결과도 제어 지원·시험 승인으로 쓰지 않으며 UEFI/Unknown은 기존 순서 미완료를 닫지 않습니다. 실제 노트북 관측은 아직 없고 public SDK 차단·Unsupported는 유지합니다.
 
 **2026-11-08 보호 순서 조사:** [entry·owner 대조](INDEXED_ORDERING_CONTRACT_REVIEW.md)에서도 핵심 순서의 새 연결은 확보하지 못했습니다. 실기 전 첫 단계는 미완료이며 정상 legacy의 긍정 근거·조건부 명세는 유지합니다. bootstrap·등록 flag·family-local 상태를 공통 보호의 증거로 대체하지 않고 동일 검색/검산은 동결합니다. 실제 공개 entry·시험 빌드 연결은 보류합니다.

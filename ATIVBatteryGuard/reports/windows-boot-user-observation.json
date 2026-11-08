@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "reportKind": "user-reported-windows-boot-observation",
+  "receivedDateKst": "2026-11-08",
+  "executionDateTime": null,
+  "source": "User-provided displayed text, without a diagnostic file or live trace",
+  "referencedDistributionCommit": "f474e6fa28c2a2fd49f084f467a4e8202a8df566",
+  "notebookPackageHashVerified": false,
+  "reportedLines": [
+    "조회 상태: 정상 조회 완료 (Complete).",
+    "관측: UEFI. 현재 Windows는 UEFI 방식으로 부팅했습니다."
+  ],
+  "reportedStatus": "Complete",
+  "reportedFirmwareType": "Uefi",
+  "elevation": "NotReported",
+  "scope": "The Windows boot used for the reported execution; not an attestation of every later boot",
+  "interpretation": {
+    "requestedTwoFieldsReceived": true,
+    "newBootQueryAndDisplayConfirmedByUserReport": true,
+    "legacyBiosBasedExclusionOfStandardWindowsEfiVariableApiPathApplies": false,
+    "specificOsRuntimeVariablePathRemainsInAnalysisScope": true,
+    "efiVariableApiAccessSuccessObserved": false,
+    "actualProxyCacheProviderOrTypedDispatchObserved": false,
+    "nonnullCommunicationCacheInferredFromUefiBoot": false,
+    "sharedIndexedOrderingEstablished": false,
+    "secureBootElevationOrBatteryProtectionStateInferred": false,
+    "fullWindowsGuiSdkOrFirmwareCoverageEstablished": false
+  },
+  "decision": {
+    "orderingEvidence": "NotEstablished",
+    "publicSdkReadTrialEntry": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "normalLegacyFallbackAndNormalStreamPositivePremisesRetained": true,
+    "frozenInvestigationsReopened": false,
+    "additionalUploadOrRepeatExecutionRequired": false
+  },
+  "changeBoundary": {
+    "documentationAndObservationOnly": true,
+    "codeOrDistributedExeZipChanged": false,
+    "currentBuildOrCsharpTestsRerun": false,
+    "previousCodeValidationCommit": "f474e6fa28c2a2fd49f084f467a4e8202a8df566",
+    "previousCsharpPassed": 646,
+    "previousBuildWarnings": 0,
+    "previousBuildErrors": 0,
+    "cloudWindowsApiOemHardwareGlobalOrConsumedMarkerAccessed": false,
+    "firmwareRequestOrApprovalFlagCreated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false
+  }
+}

@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 실행 당시 UEFI 부팅 사용자 관측 / 2026-11-08 수신
+
+**관측:** 사용자 보고의 새 부팅 항목이 Complete·UEFI였습니다. [관측 기록](WINDOWS_BOOT_UEFI_RESULT.md)은 실행 당시 범위이며 시각·권한·파일 해시는 미관측입니다. legacy BIOS를 이유로 특정 Windows EFI 변수 OS 경로를 제외할 수 없으므로 해당 경로를 분석 범위에 유지합니다.
+
+**한계:** UEFI는 proxy cache nonnull·실제 표준 제공자 선택·EFI 변수 접근 성공·indexed 보호 순서·Secure Boot·배터리 보호 상태가 아닙니다. 정상 NULL-cache legacy fallback과도 모순되지 않습니다. 전체 Windows GUI/SDK/펌웨어 검증으로 확대하지 않고 공개 차단·Unsupported를 유지합니다. 추가 자료·반복 실행은 필요 없으며 동결 조사는 재개하지 않습니다. 코드·배포물 변경과 이번 빌드/회귀는 없습니다. 아래는 이전 기록입니다.
+
 ## 최신 — Windows 부팅 방식과 표준 EFI 변수 경로의 적용 범위 / 2026-11-08
 
 **새 관측 기능:** [구현·공식 계약](WINDOWS_BOOT_FIRMWARE_UPDATE.md)은 GetFirmwareType으로 현재 Windows의 BIOS/UEFI/Unknown과 조회 상태를 기존 삼성 보고서에 추가합니다. 공식 enum 문서는 실제 부팅 방식을 설명하며 legacy에서는 표준 EFI 변수 API가 지원되지 않습니다. BIOS는 그 특정 OS 소비경로를 제외할 수 있을 뿐 다른 firmware/SMM/driver 부재가 아닙니다. UEFI·Unknown·오류는 actual proxy/cache·indexed 보호 순서를 입증하지 않습니다. 현재 노트북의 결과는 아직 없습니다.

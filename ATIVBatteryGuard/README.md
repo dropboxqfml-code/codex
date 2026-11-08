@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 부팅 관측 수신 / 2026-11-08:** 사용자가 [조회 Complete·실행 당시 UEFI](WINDOWS_BOOT_UEFI_RESULT.md)를 전달했습니다. 새 부팅 항목의 동작을 사용자 보고로 확인했으며 특정 Windows EFI 변수 경로는 분석 범위에 남습니다. 실제 통신 선택·보호 순서·충전 제어를 입증하지 않으며 공개 차단·Unsupported를 유지합니다. 추가 파일 제출·같은 조회 반복이나 프로그램 교체는 필요 없습니다. 아래는 이전 기록입니다.
+
 **최신 — Windows 부팅 방식 읽기 전용 보고 / 2026-11-08:** [프로그램 ZIP](../downloads/ATIVBatteryGuard-BOOT-FIRMWARE.zip)과 [변경·검증 안내](WINDOWS_BOOT_FIRMWARE_UPDATE.md)를 추가했습니다. 기존 삼성 파일 정보 만들기에 GetFirmwareType 1회 관측과 조회 상태를 함께 표시합니다. BIOS는 표준 Windows EFI 변수 API 경로의 적용 범위를 좁히고, UEFI/Unknown은 실제 통신 보호 순서를 입증하지 않습니다. 새18개 포함646개 통과·테스트/전체 net48 Release 빌드 경고·오류0, Windows 실기/API 실행은 미확인입니다. ZIP 하나만 풀면 되며 삼성 DLL·실험 EXE는 없습니다. 공개 시험 entry 차단·실제 보호 조회/충전 제어 Unsupported는 유지합니다. 아래는 이전 기록입니다.
 
 **최신 — 통신 보호 순서 조사 결과 / 2026-11-08:** [조사 기록](INDEXED_ORDERING_CONTRACT_REVIEW.md)에서 bootstrap·실제 SMI entry·메시지 입력을 분리하고 기존 busy/nesting/hook 상태의 보호 범위를 대조했습니다. 새 표준 통신 경로 또는 SABI와의 공통 owner는 확보하지 못했습니다. 실기 전 핵심 첫 단계는 미완료이며, 같은 검색·검산을 반복해 준비 완료로 표시하지 않습니다. 제품·배포물 변경 없이 공개 차단·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.

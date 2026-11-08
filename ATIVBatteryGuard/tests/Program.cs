@@ -17,9 +17,11 @@ internal static partial class Program
 
     private static async Task<int> Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--offline-rehearsal")
+            return await WriteOfflineRehearsalAsync(args[1]);
         if (args.Length != 0 && (args.Length != 2 || args[0] != "--report"))
         {
-            Console.Error.WriteLine("Usage: PortableTests [--report path.json]");
+            Console.Error.WriteLine("Usage: PortableTests [--report path.json | --offline-rehearsal new-local-report.json]");
             return 2;
         }
         RegisterTests();
@@ -430,6 +432,7 @@ internal static partial class Program
         RegisterWsabiWmiSdkBindingLifetimeTests();
         RegisterWsabiWmiReadTrialEntryTests();
         RegisterWsabiWmiWindowsMutexGateTests();
+        RegisterOfflineRehearsalTests();
     }
 
     private static void Add(string name, Action action) { Tests.Add(new KeyValuePair<string, Func<Task>>(name, () => { action(); return Task.CompletedTask; })); }

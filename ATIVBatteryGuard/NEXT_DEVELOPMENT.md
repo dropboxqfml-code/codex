@@ -1,5 +1,25 @@
 # 다음 개발 재개 메모
 
+## 최신 — 실기 전 오프라인 리허설과 정제 checkpoint / 2026-11-08
+
+기준 `108259b` 다음 작업입니다. [READ_TRIAL_REHEARSAL_PLAN.md](READ_TRIAL_REHEARSAL_PLAN.md), [고정 시험안](FIXED_MODE_READ_PROPOSAL.md), [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. 사용자는 시험 시나리오·기록·중단 조건을 준비하라는 설명 뒤 작업을 승인했습니다. 실기 호출이나 공개 entry 활성화 승인은 아닙니다.
+
+변경 코드는 tests의 OfflineReadTrialRehearsal.cs 신규, Program.cs option/등록, PortableTests.csproj include뿐입니다. 생산 Core/Windows 소스·앱·기존 OneShot/예약·SDK typed dispatch는 바꾸지 않았습니다. `--offline-rehearsal new-local-report.json`은 테스트 assembly의 System.Management stand-in을 확인하고 6사례만 실행합니다. 합성 fixture 요청은 재사용하지만 실제 삼성 template/address pair/nonce generator는 없습니다.
+
+시나리오는 public ReadSpecificationUnavailable/사전 취소(각 하위0), 내부 대역 gateTimedOut(실제 fake gate status와 Invoke0별도기록), earlyterminal+callreturn대기 동안 UI timeout, terminal없이SDKfake throw 뒤 pending, validfakeframe 귀속불명입니다. 관측 enum·nullable상태·fake 호출/이벤트 emission/표시·구독·Dispose·lease·run/close·final cleanup을 DTO에 복사합니다. raw request/frame·원문 exception·경로·계정/ID/장치정보는 출력하지 않습니다. actualOEM/System.Management0, UsesSdkStandIns=true, RealTrialReadiness=NotEstablished, Unsupported를 명시합니다.
+
+bounded timeout snapshot과 합성 finally 정리 snapshot을 분리합니다. earlyterminal은 구독0일 수 있어도 call-return 전 lease/input 유지가 핵심입니다. terminalmissing은 오류·timeout을 종료로 바꾸지 않습니다. finally가 fake blocked call을 풀고 필요한 fake terminal을 공급한 뒤 join하며 SyntheticCleanupUsed=true로 표시합니다. event emission 횟수는 source 소비/포착 완료가 아니고 FakeInvokeHookExited도 전체SDK 종료가 아닙니다. preparation InputCleanupStatus와 실제 FinalCleanupStatus도 구분합니다.
+
+독립 읽기 검토에서 gate거부 예상과 달리 fakeInvoke가 일어난 경우의 drain, cleanup Failed 뒤 run fault의 최종snapshot 유실을 지적했습니다. 기본fakehook의 terminal/finally와 정리결과 snapshot finally를 보강하고 두 fault-injection 회귀를 추가했습니다. failed case는 Disposition Indeterminate이며 source 원문을 JSON/CLI에 내보내지 않습니다. report는 로컬 .json만 받고 FileMode.CreateNew로 이전파일을 보존합니다. 파일/CLI 오류는 고정 error code와 exit2, scenario failure는 exit1입니다.
+
+최종 검증은 새11개 포함628passed/0failed/0skipped(기존617재실행포함), CLI6passed/0failed이며 서로 겹칩니다. portable test build와 전체 net48 참조 Release build는 각각0warnings/0errors입니다. 초기 SDK first-run은 읽기 전용 사용자 위치에 쓰려다 실패해 DOTNET_CLI_HOME을 workspace cache로 지정했습니다. Linux WPF task MSB4062는 COMPlus_ReadyToRun=0을 개발 빌드 프로세스에만 적용해 해결했습니다. 노트북 설정·보안·프로젝트 타깃을 바꾼 해결이 아닙니다. 실제 Windows .NET48/System.Management/provider/GUI 실행 근거는 아닙니다.
+
+실측 리허설은 reports/read-trial-offline-rehearsal.json, 정제 검증 메타데이터는 reports/read-trial-rehearsal-validation.json입니다. private `20261108/read-trial-rehearsal-validation`에 최종 suite JSON/log·build log·source hashes·실행 기록과 초기 환경 실패/중간검증 로그를 보존합니다. 정상suite의 전체 예외/상세로그를 공개보고서로 복사하지 않습니다.
+
+public PrepareSdkAsync는 여전히 ReadSpecificationUnavailable이고 보호 조회/제어 Unsupported입니다. A의 method최대1/handshake·초기화·재시도·쓰기·B fallback0, old consumed 예약 접근/초기화/삭제/재사용/우회 금지를 유지합니다. 실제OEM/SDK/hardware/Global·삼성원본 실행/로드/에뮬레이션·driver/service/security/firmware/cloud 변경0이며 새 노트북 실행·자료 제출은 불필요합니다. 노트북용 EXE/ZIP은 바꾸지 않습니다.
+
+다음 실제 조회 준비에는 고정 읽기 명세·해당 경로의 관련 입력 보호·귀속/실제 완료 계약을 적용할 근거가 필요합니다. 이번 리허설 성공으로 provider 미연결을 닫았다고 하지 않고, 앞서 동결한 같은 검색을 반복 성과로 세지도 않습니다. 조건이 갖춰진 뒤 실제 요청/생성/거부 parser와 시험용 빌드를 별도 검토합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 표준 제공자 후보·역방향 조사와 동결 범위 / 2026-11-08
 
 기준 `4c46e8d` 다음 작업입니다. [COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md), [부팅 경로](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md), [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. **이번에도 실제 표준 제공자 함수→typed dispatch는 확보하지 못했습니다.** 후보 제외·새 자료 범위와 불필요한 수신 인수 조건을 정리했으며 실행 코드는 없습니다.

@@ -1,0 +1,145 @@
+{
+  "dateKst": "2026-11-08",
+  "previousRepositoryCommit": "108259b",
+  "scope": "Test-only offline read-trial rehearsal, sanitized checkpoint schema and stopping/cleanup plan; not a firmware invocation or real trial approval",
+  "testSourcePins": [
+    {
+      "projectFile": "ATIVBatteryGuard/tests/Program.cs",
+      "bytes": 33909,
+      "sha256": "52306ebbe0bd610818ba4ac4915ae14b480667015db13d830a414c9df01d6615"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/tests/ATIVBatteryGuard.PortableTests.csproj",
+      "bytes": 5478,
+      "sha256": "841450fc013b4a3c341ce28c370555eb412f0e184769ce5b224f6df8b71f80f5"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/tests/OfflineReadTrialRehearsal.cs",
+      "bytes": 23665,
+      "sha256": "ce171c312e9406fbde3025f56bd6149a96134694d6c4e358a6f031c39eff34a8"
+    }
+  ],
+  "currentPortableSuite": {
+    "passed": 628,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 628,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "offlineRehearsal": {
+    "scenarios": 6,
+    "passed": 6,
+    "failed": 0,
+    "partOfFullSuiteNotAdditionalSix": true,
+    "report": "reports/read-trial-offline-rehearsal.json",
+    "bytes": 9301,
+    "sha256": "6ddda48d001c2f5e322b4276be56c02a19905d44e70f8f0dd4ac875ea66e3630"
+  },
+  "newRegressionTests": {
+    "count": 11,
+    "integrationScenarios": 6,
+    "privacyPathPreservationAndFaultCases": 5,
+    "baseline617AlsoRerun": true
+  },
+  "checkpointContract": {
+    "observedEnumsAndFakeCountersOnly": true,
+    "eventEmissionsAreNotCaptureCompletion": true,
+    "fakeHookExitIsNotWholeSdkCompletion": true,
+    "preparationCleanupSnapshotSeparateFromFinalCleanup": true,
+    "timeoutRecordRemainsTimeoutAfterLateFakeSettlement": true,
+    "earlyTerminalDoesNotBypassCallReturn": true,
+    "pendingSnapshotSeparateFromSyntheticCleanup": true,
+    "failedScenariosUseIndeterminate": true,
+    "cleanupFailureSnapshotSurvivesRunFault": true,
+    "unexpectedFakeDispatchDrainedAndFailed": true
+  },
+  "reportWriting": {
+    "localJsonOnly": true,
+    "createsNewFileOnly": true,
+    "existingFilesPreserved": true,
+    "exceptionTextObjectsRawFramesPathsOrDeviceIdsSerialized": false,
+    "fixedCliErrorCode": true
+  },
+  "builds": {
+    "portableTests": {
+      "configuration": "Release",
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0
+    },
+    "fullSolutionNet48References": {
+      "configuration": "Release",
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "actualWindowsRuntimeOrGuiExecuted": false
+    }
+  },
+  "environmentCorrections": {
+    "initialSdkFirstUseTriedReadonlyUserLocation": true,
+    "cliHomeRedirectedToWorkspaceCache": true,
+    "initialWholeSolutionWindowsReadyToRunTaskLoadFailure": "MSB4062",
+    "finalBuildProcessReadyToRunDisabled": true,
+    "notebookProductOrSecuritySettingsChanged": false,
+    "newDependenciesInstalledOrDownloaded": false
+  },
+  "review": {
+    "independentCodeReadReviewCompleted": true,
+    "harnessFailureEdgesFoundByReadingNotClaimedAsPriorFailedTestReproduction": true,
+    "faultRegressionTestsAddedAndPassed": true,
+    "reviewerExecutedTests": false
+  },
+  "privateVerificationArtifactPins": [
+    {
+      "privateArtifact": "suite-final.json",
+      "bytes": 106,
+      "sha256": "4a831c2238d8aa4f5b492b5789153565dbbdf07e5860a851b526b8513252ffd0"
+    },
+    {
+      "privateArtifact": "suite-final.log",
+      "bytes": 54023,
+      "sha256": "f639c8ad4274e2842a86ae48ffb6b517aa7b45e878f511b7ee4874276a27bae9"
+    },
+    {
+      "privateArtifact": "test-build-final.log",
+      "bytes": 227,
+      "sha256": "12e73978a6822b58c9af259a2b917272447fd5866b1c1efc4972bb3f023e6702"
+    },
+    {
+      "privateArtifact": "solution-build-r2r-off.log",
+      "bytes": 1477,
+      "sha256": "7c16f5b5551466a4ee45b476820a131f16c16d5a287b857c4facf580955d5a91"
+    },
+    {
+      "privateArtifact": "rehearsal-initial.json",
+      "bytes": 9301,
+      "sha256": "6ddda48d001c2f5e322b4276be56c02a19905d44e70f8f0dd4ac875ea66e3630"
+    },
+    {
+      "privateArtifact": "solution-build-initial.log",
+      "bytes": 73,
+      "sha256": "3795a52f9989130544f9be569a4792ebcce657220e4aba798f56c4f7f68ca881"
+    },
+    {
+      "privateArtifact": "solution-build-serial.log",
+      "bytes": 44103,
+      "sha256": "059e5fc8e9b7fe6b304a086759d56712c4504645dfdbf748df5ea6c68c6bc109"
+    }
+  ],
+  "boundary": {
+    "productionSourceChanged": false,
+    "realSystemManagementRuntimeExecuted": false,
+    "actualOemHardwareGlobalObjectOrConsumedMarkerAccessed": false,
+    "originalSamsungFirmwareDllOrAmlExecutedLoadedOrEmulated": false,
+    "realFirmwareRequestAddressPairOrNonceGeneratorCreated": false,
+    "existingSyntheticTestFramesReused": true,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "firmwareCandidateSearchRepeated": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndControl": "Unsupported",
+    "actualProviderToTypedDispatchGapClosed": false,
+    "realTrialReadyOrApproved": false,
+    "newNotebookRunOrRepeatedUploadRequested": false,
+    "distributedProductExeOrZipChanged": false
+  }
+}

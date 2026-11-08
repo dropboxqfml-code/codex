@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 조회 시험 전 오프라인 리허설 / 2026-11-08:** [시험·기록 계획](READ_TRIAL_REHEARSAL_PLAN.md)과 테스트 전용 `--offline-rehearsal`을 추가했습니다. 실제 checkpoint를 정제 JSON에 남기며 시간 초과 시 보유 상태와 가짜 정리 뒤 결과를 구분합니다. 6시나리오 통과·새11개 포함 전체628개 통과, 테스트/전체 net48 Release 빌드 경고·오류0입니다. 6개 리허설은 전체 회귀와 겹치며 실제 OEM/System.Management 호출은0입니다. 제품 코드·배포 ZIP·공개 entry 차단과 조회/제어 Unsupported는 유지합니다. 아래는 이전 기록입니다.
+
 **최신 — 표준 통신 제공자 후보 조사 / 2026-11-08:** [조사 기록](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)에서 실제 게시 함수와 역방향 호출·index 밖 자료를 대조했으나 제공자→typed SMM dispatch 연결은 확보하지 못했습니다. Base2 method0은 InSmm으로 제외했고 수신자가 쓰지 않는 buffer 인수의 동일성도 추가 요구에서 제거했습니다. 코드·EXE/ZIP 변경 없이 공개 차단·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.
 
 **최신 — Runtime의 부팅 후 전송 선택 / 2026-11-08:** [정적 검토](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md)에서 선택된 BDS 분기의 알림 처리가 이미지 실행보다 앞서는 연결을 확보했습니다. 정상 proxy 교체와 초기 direct-host 예외를 분리하고, 제공자 캐시가 NULL일 때만 legacy fallback을 선택함을 확인했습니다. 제공자 오류 뒤 자동 fallback은 없으며 실제 method0→typed dispatch 연결은 미완료입니다. 코드·배포물 변경 없이 공개 차단·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.

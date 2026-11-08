@@ -30,6 +30,8 @@
 
 [제공자 후보 후속](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)에서도 표준 객체→typed 선택은 미연결입니다. 실제 공급된 Base2 InSmm은 후보에서 제외하고, 수신자가 쓰지 않는 incoming buffer alias를 추가 조건에서 제거합니다. inverse operand·index 밖 자료의 유한한 negative 결과를 provider 부재·실제 위험·모든 경로의 새 blocker로 확대하지 않습니다. 동일 탐색은 동결하며 새 구체 source 근거가 생긴 범위만 재개합니다. 실제 공개 entry·충전 지원 상태는 그대로입니다.
 
+[오프라인 리허설](READ_TRIAL_REHEARSAL_PLAN.md)은 테스트 전용6사례와 정제checkpoint를 구현하고 새11개 포함628회귀·전체 net48 참조 Release0/0을 검증했습니다. early/누락 terminal의 bounded 결과와 합성 finally 정리를 분리하고 실패 기록도 보존합니다. 실제 고정 읽기 명세·입력 보호·공급자 연결의 하드웨어 근거가 아니며 public ReadSpecificationUnavailable·실제 조회/제어 Unsupported를 유지합니다. production source·배포물 변경이나 새 실기 요구는 없습니다.
+
 모델·BIOS·제조사 원본과 여러 해석 anchor는 임시 CandidateProfile 근거로 유지합니다. live 함수 포인터·EC 전체 hash를 직접 관측하지 못했다는 사실 하나만을 절대 중단 조건으로 쓰지 않습니다. 동시에 위 실제 미완료 연결을 정상성 가정이나 사후 내용 비교만으로 메우지 않습니다.
 
 Global 접근 권한을 별도 사전 수집하는 것도 절대 조건은 아닙니다. 유한 Acquire가 접근 거부로 끝나면 하위 호출 없이 실패할 수 있습니다. 조회 진입 자체의 typed provider 발견도 필수조건에서 제외합니다. 남는 것은 gate를 포함한 선택 안의 유용성·관련 참여와 마지막 접근/재사용·입력 비훼손·응답 귀속이며, 별도 Runtime 경로는 실제 관련 게시자 조건으로만 평가합니다.

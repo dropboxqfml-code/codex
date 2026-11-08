@@ -1,5 +1,7 @@
 # 고정 보호 저장 byte의 조건부 시험안 — 비실행 문서
 
+**오프라인 시험 준비:** [시나리오·정제 기록](READ_TRIAL_REHEARSAL_PLAN.md)은 public 사전차단부터 내부 대역의 pending/cleanup까지 재현합니다. 생성된 기록은 가짜 SDK의 관측이며 실제 요청 명세·제공자 연결·입력 보호의 하드웨어 근거나 실행 승인이 아닙니다. A/B 호출 수·상태 영향·실행 보류를 유지합니다.
+
 **제공자 후보 후속:** [구조·역방향 조사](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)에서도 실제 표준 제공자 연결은 미확정입니다. Base2 동적 InSmm을 통신 후보에서 제외하며, Nvram 수신자가 쓰지 않는 incoming buffer와 retained buffer의 동일성을 새 조건으로 두지 않습니다. 기존 정상 legacy 경로는 유지하고 nonnull 분기의 긍정적 순서 근거 한계를 실제 위험 관측으로 바꾸지 않습니다. A/B 실행 보류와 호출 수는 유지합니다.
 
 **Runtime 부팅 경로 후속:** [선택된 알림 처리 지점](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md)은 정상 교체 조건과 초기화 예외를 구분합니다. 성공 반환 0만으로 교체를 인증하지 않으며, 정상 proxy 설치 시 초기 direct-host 경로를 같은 분기의 경쟁자로 중복 취급하지 않습니다. NULL 캐시의 legacy 순서 근거는 유지하고 nonnull 제공자 method0의 실제 dispatch 연결은 미완료입니다. A/B 호출 수·권한·실행 보류는 그대로입니다.

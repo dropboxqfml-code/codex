@@ -12,6 +12,7 @@
     <Compile Include="../src/ATIVBatteryGuard.App/ViewModels/*.cs" />
     <Compile Include="../src/ATIVBatteryGuard.App/Services/IUserInteraction.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="OfflineReadTrialRehearsal.cs" />
     <Compile Include="WmiSchemaTests.cs" />
     <Compile Include="SettingsPolicyTests.cs" />
     <Compile Include="BatteryCapabilitiesTests.cs" />

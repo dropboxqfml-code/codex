@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 실기 전 오프라인 시나리오·정제 기록 구현 / 2026-11-08
+
+**소프트웨어 준비:** [리허설 계획](READ_TRIAL_REHEARSAL_PLAN.md)과 test-only CLI로 공개 차단·사전 취소·fake gate timeout·early terminal/call-exit 대기·terminal 유실·유효 frame 귀속 불명의 6사례를 실행했습니다. 실제 관측 enum/카운터만 기록하고 bounded timeout과 합성 정리 후 상태를 분리합니다. 예상 밖 fake Invoke와 input cleanup 실패의 회귀도 보강했습니다.
+
+**검증:** 새11개 포함628개 통과·실패/skip0, 리허설6개 통과(전체와 중복), portable 테스트/전체 net48 참조 Release 빌드 경고/오류0입니다. 초기 Linux WPF task의 MSB4062는 개발 빌드 프로세스에서 ReadyToRun을 끄고 해결했으며 노트북·제품 정책 변경은 없습니다. 실제 SDK/provider/OEM/hardware/Global/소모 예약 접근은0입니다.
+
+**남은 범위:** 원래 공급자/실행 영역 미연결과 실제 고정 읽기 명세는 해결되지 않았습니다. 펌웨어 재검색은 하지 않았고 생산 코드·앱/배포물·실제 제어 상태는 그대로입니다. 테스트 대역의 IsValidFrame/Ready나 fake cleanup을 실기 완료로 승격하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 표준 통신 제공자 후보·역방향 source 조사 / 2026-11-08
 
 **조사 결과:** [후속 검토](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)에서도 실제 제공자→typed dispatch를 확보하지 못했습니다. 실제 게시 Base2 method0의 동적 공급원이 완전한 InSmm 출력 leaf임을 연결해 후보에서 제외했습니다. 역방향 native slot operand 검색의 호출 후보6개는 USBRT 계산 record이고 SMST receiver로 연결되지 않아 typed 호출로 수용하지 않습니다. 전역적인 제공자 부재나 실제 위험 actor 발견이 아닙니다.

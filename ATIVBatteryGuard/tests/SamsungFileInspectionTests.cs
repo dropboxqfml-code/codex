@@ -10,6 +10,7 @@ internal static partial class Program
 {
     private static void RegisterSamsungFileInspectionTests()
     {
+        RegisterBootEnvironmentProtocolTests();
         Add("SABI name presence is typed metadata and never device or firmware access", () =>
         {
             foreach(SabiDriverLinkStatus status in Enum.GetValues(typeof(SabiDriverLinkStatus)))

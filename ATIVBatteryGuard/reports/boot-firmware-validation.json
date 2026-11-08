@@ -1,0 +1,292 @@
+{
+  "dateKst": "2026-11-08",
+  "previousRepositoryCommit": "1472aab1b5de02731878dc528018da75cb446269",
+  "scope": "Implement a standard read-only current Windows boot classification in the existing Samsung metadata report; no protection read/control or firmware experiment",
+  "reviewDocument": "WINDOWS_BOOT_FIRMWARE_UPDATE.md",
+  "implementation": {
+    "nativeApi": "GetFirmwareType",
+    "maximumNewNativeQueriesPerInspection": 1,
+    "startupOrPeriodicQueryAdded": false,
+    "privilegeElevationOrFirmwareVariableApiCallsAdded": false,
+    "statusAndFirmwareTypeEnumsOnly": true,
+    "failedOutValueDiscarded": true,
+    "successfulUnknownPreserved": true,
+    "undefinedSuccessTypeRejected": true,
+    "exceptionPathsUserOrDeviceIdsRetained": false,
+    "biosExcludesOnlyCurrentStandardWindowsEfiVariableApiConsumerPath": true,
+    "biosProvesOtherFirmwareDriverOrSmmCallersAbsent": false,
+    "uefiProvesActualProxyCacheTypedDispatchOrIndexedOrdering": false,
+    "bootObservationEnablesHardwareCapabilityOrTrial": false,
+    "workerOverallTimeoutIsNotProofGetFirmwareTypeHung": true
+  },
+  "localIpc": {
+    "encodedVersion": 6,
+    "version5WithoutBootMapsTo": "NotCollected",
+    "currentBootObjectRequired": true,
+    "strictJsonIntegerEnumAndStatusTypeChecks": true,
+    "coercedOrFailedPlausibleTypeAccepted": false,
+    "independentCompletedObservationsRetained": true
+  },
+  "sourcePins": [
+    {
+      "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Models/WindowsBootEnvironmentReport.cs",
+      "bytes": 4065,
+      "sha256": "3ce03e8b670a4daed8564a6c0f8750a359cef35f2bbba0e0fd903fa83c717ae6"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Models/SamsungFileInspectionReport.cs",
+      "bytes": 17155,
+      "sha256": "417ec3a9b8270e6d86532137d7d5203cabacd95728087a1eedcb00d8cbe70bd4"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/SamsungFileInspectionProtocol.cs",
+      "bytes": 23944,
+      "sha256": "bfd1c18d7c86a01c7a2709fec02535a79a22aeb9c45a0bc748b7edfd295804fa"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Diagnostics/WindowsBootEnvironmentProbe.cs",
+      "bytes": 3503,
+      "sha256": "a66f6acbe60723961aa09419e9aa41a9788fe1f9e67361b3d928d4a3bcc56066"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Diagnostics/SamsungFileInspector.cs",
+      "bytes": 16712,
+      "sha256": "389e54ecfa7308bf5d6d06bf5e7a9cee2ba6dee8015109b0c0322f679196882f"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Diagnostics/SamsungFileInspectionWorker.cs",
+      "bytes": 2127,
+      "sha256": "33c3b4155b1d2a922ec706236bf2db02438af809844d038a5c09bb054d3afc47"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Diagnostics/WindowsSamsungFileInspectionProvider.cs",
+      "bytes": 7475,
+      "sha256": "b54b936c3df83cbcf2a050be387b20b34f30ede6895a522552330e54547f2637"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/tests/WindowsBootEnvironmentTests.cs",
+      "bytes": 8236,
+      "sha256": "912d9e2e3ba0f4ee46788ae39ffe04ba8f8b91a3a4889f81f4f8b1693835c315"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/tests/BootEnvironmentProtocolTests.cs",
+      "bytes": 7848,
+      "sha256": "92e2248f61bb5c1bcda9902cd933e3fd25556798a943f558d00f6a561f7213a8"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/tests/SamsungFileInspectionTests.cs",
+      "bytes": 34291,
+      "sha256": "5432de791011c5a655bf3df1b93a04cd88304c94198d94f4487f0472147ad00b"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/tests/Program.cs",
+      "bytes": 33956,
+      "sha256": "e32d49fb21f75d5d7afdefe68d071eb119f8805f432df8a6f0ddc9235553886a"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/tests/ATIVBatteryGuard.PortableTests.csproj",
+      "bytes": 5728,
+      "sha256": "14cadd2cc2ae63c5fb81b306dcbafd470bd6412ab23c97df3892e15e97f7c9ff"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/scripts/package_boot_firmware.py",
+      "bytes": 7662,
+      "sha256": "c44082959f23ed0f9e822ec1e40cdb007ccf5ad7bbfcec311f15e5e790d156e6"
+    },
+    {
+      "projectFile": "ATIVBatteryGuard/scripts/package_preview.py",
+      "bytes": 16866,
+      "sha256": "4c8e197066b80162df6eb1be6f7222e7763c8784ee73ea44c2e8f03f98b764e9"
+    }
+  ],
+  "officialApiTextSources": [
+    {
+      "file": "GetFirmwareType.md",
+      "bytes": 2143,
+      "sha256": "6538156f91cfd36a1362a0c44f81d2fb4e463e6d268e929cdda54586c5fae4f9",
+      "repository": "MicrosoftDocs/sdk-api",
+      "commit": "656e9656bfaef34dd29cd7ee9e1146aec17e924c",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/sdk-api/656e9656bfaef34dd29cd7ee9e1146aec17e924c/sdk-api-src/content/winbase/nf-winbase-getfirmwaretype.md"
+    },
+    {
+      "file": "FIRMWARE_TYPE.md",
+      "bytes": 2150,
+      "sha256": "ec2de688f973fa57b82a84b305e362bb1a8958f8424492efd86454ee9ac63a91",
+      "repository": "MicrosoftDocs/sdk-api",
+      "commit": "656e9656bfaef34dd29cd7ee9e1146aec17e924c",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/sdk-api/656e9656bfaef34dd29cd7ee9e1146aec17e924c/sdk-api-src/content/winnt/ne-winnt-firmware_type.md"
+    },
+    {
+      "file": "SetFirmwareEnvironmentVariableW.md",
+      "bytes": 6623,
+      "sha256": "e1b568fcb560d8d93062bd3eaf58e879965d375a8440c6a79bab3e51798db9e1",
+      "repository": "MicrosoftDocs/sdk-api",
+      "commit": "656e9656bfaef34dd29cd7ee9e1146aec17e924c",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/sdk-api/656e9656bfaef34dd29cd7ee9e1146aec17e924c/sdk-api-src/content/winbase/nf-winbase-setfirmwareenvironmentvariablew.md"
+    }
+  ],
+  "currentVerification": {
+    "portableSuite": {
+      "passed": 646,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 646,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "newTests": 18,
+    "newProbeAndModelCases": 10,
+    "newIpcCases": 8,
+    "previous628AlsoRerun": true,
+    "portableReleaseBuild": {
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0
+    },
+    "fullNet48ReferenceReleaseBuild": {
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0
+    },
+    "buildProcessReadyToRunDisabledForLinuxWpfTasks": true,
+    "actualWindowsRuntimeGuiOrGetFirmwareTypeExecuted": false,
+    "actualSystemManagementOemOrFirmwareCallsExecuted": false,
+    "independentCodeReadReviewCompleted": true,
+    "independentZipReadbackWithTrustedParsersCompleted": true,
+    "independentReviewerExecutedAppOrPackageScript": false
+  },
+  "package": {
+    "projectFile": "downloads/ATIVBatteryGuard-BOOT-FIRMWARE.zip",
+    "bytes": 149116,
+    "sha256": "d7b9b6286a0aa5570fa12c5a17977a331a5149ffa948e43339c1032d8c674e58",
+    "entries": [
+      {
+        "file": "ATIVBatteryGuard.Core.dll",
+        "bytes": 244224,
+        "sha256": "0634cabbfc41b40c0b64a7b02b85132a50b4aafbb31d5785d9ce497a8f7815fe"
+      },
+      {
+        "file": "ATIVBatteryGuard.exe",
+        "bytes": 99840,
+        "sha256": "707dd579e7b56e05b741c5c47e9df3b245c7c9ebdcda34e08dc2326f139549b0"
+      },
+      {
+        "file": "ATIVBatteryGuard.exe.config",
+        "bytes": 288,
+        "sha256": "e93cd9ad206868a0b95473a44b3b45580e3ecf4a85b355d7432a4b1f81dce0a0"
+      },
+      {
+        "file": "BUILD-INFO.json",
+        "bytes": 1596,
+        "sha256": "3306ef3076d2b0aa704c57ec029e20640d3567dc094609a6a68ed1d97f0ceded"
+      },
+      {
+        "file": "SHA256SUMS.txt",
+        "bytes": 448,
+        "sha256": "25704778ffe9c142827556976d83d3e592a10816becdedfc7be10838c410626b"
+      },
+      {
+        "file": "먼저 읽어주세요.txt",
+        "bytes": 2063,
+        "sha256": "ea60837e19955c6aec02f57c3ddbc2ab4b8a8a46f065a3d4b32dc36df5ba8862"
+      }
+    ],
+    "productSourceFingerprintSha256": "d0e923f753bb0e812e1577ec0a1f6e92ad8186b728caa21beed73119e756df06",
+    "exactAllowedSixEntries": true,
+    "internalChecksumsVerified": 5,
+    "crcAndBuildBytesVerified": true,
+    "managedX64AsInvokerUiAccessFalseAndNet48Verified": true,
+    "digitallySigned": false,
+    "vendorOriginalOrOtherExperimentExecutablesIncluded": false,
+    "existingDownloadArtifactsReplaced": false
+  },
+  "newEvidenceSelection": {
+    "metadataImagesPinned": 231,
+    "declaredDebugCoffExportMetadataAbsentInSelectedHeaders": true,
+    "metadataSupplierSelectors": 0,
+    "neighborFirmware": "P04ACJ retained same-model source",
+    "p04ChangedFvOutputRecordsVerified": 313,
+    "p04StandardGuidOccurrences": 1,
+    "p04OnlyKnownNvramConsumerObserved": true,
+    "newNonConsumerProviderCandidates": 0,
+    "p04WholeImagePromotedToP05ExecutionIdentity": false,
+    "sameP05GuidOperandOrEntryStateSearchesRepeated": false,
+    "newSupplierTypedOrSharedOrderingEdges": 0,
+    "theseTwoNewSelectionScopesFrozen": true,
+    "developmentDiscoveryOutputCorrection": "An initial filenames/history search printed existing OEM PDB paths. No raw path was copied into public reports or the ZIP; the new extractor handles basenames only.",
+    "pins": [
+      {
+        "privateArtifact": "debug_metadata/inspect_debug_metadata.private.py",
+        "bytes": 6488,
+        "sha256": "e216283b739aa1279724b03ce42bf737f6ec6775f922f844e376b12f7bbb0e87"
+      },
+      {
+        "privateArtifact": "debug_metadata/debug-metadata-proof.private.json",
+        "bytes": 144730,
+        "sha256": "5960528ea875934f120fa906ebe94f5322e4a1e3f68e2c383e0e13ffd12a8aad"
+      },
+      {
+        "privateArtifact": "debug_metadata/findings.private.md",
+        "bytes": 2662,
+        "sha256": "eacaf3f9c2def2ce16e56949756f5b45c3400249678b1d7604ce87aa1e0064e6"
+      },
+      {
+        "privateArtifact": "neighbor_source/select_p04_provider.private.py",
+        "bytes": 8053,
+        "sha256": "c8e9617bda2fa3aaf5011d8c841baa354ce3fb7cfb614db4c67f77399ebfed8f"
+      },
+      {
+        "privateArtifact": "neighbor_source/p04-provider-selection.private.json",
+        "bytes": 116050,
+        "sha256": "946fdffa791a28c36bcd6283e0dff72047ef41ac6033f2122958d2e7d416561c"
+      },
+      {
+        "privateArtifact": "neighbor_source/findings.private.md",
+        "bytes": 5570,
+        "sha256": "d645fc72b9c1f8edafc47bdc8460b97bbae624a6249e320854e1d57dee77224a"
+      }
+    ]
+  },
+  "privateVerificationLogs": [
+    {
+      "privateArtifact": "portable-build.log",
+      "bytes": 227,
+      "sha256": "5a670b1892b37565f33ed9145bbe765c66eb3b8760469351442f9a2dfb833b0f"
+    },
+    {
+      "privateArtifact": "suite.json",
+      "bytes": 106,
+      "sha256": "06a05015ac079a0672d2fe582ae101fe3513228dd0eccf8de1e2512905c3a8ba"
+    },
+    {
+      "privateArtifact": "suite.log",
+      "bytes": 55318,
+      "sha256": "fa99a3d492f1e7b75cbe5d7daaa7b9be03b58636a665a70041c012a333bc82eb"
+    },
+    {
+      "privateArtifact": "solution-build.log",
+      "bytes": 1477,
+      "sha256": "007235a1d4cf929d0119912cc4c8507c0cfd455a1f78f5ee1c1460fc559f8211"
+    },
+    {
+      "privateArtifact": "package.log",
+      "bytes": 258,
+      "sha256": "931c6437bf4cf447ec6cc094096ef88fe299e714ff633897a1b25a2cf739c96e"
+    }
+  ],
+  "boundary": {
+    "newControlOrFirmwareRequestAddressPairFrameNonceGeneratorCreated": false,
+    "publicSdkReadTrialEntryChanged": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "oldConsumedReservationAccessedResetDeletedReusedOrBypassed": false,
+    "samsungOriginalExecutedLoadedEmulatedOrDistributed": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "newHardwareExperimentOrFirmwareCallApproved": false,
+    "programRuntimeNetworkingAdded": false,
+    "repeatedTxtDllExeOrDiagnosticUploadRequired": false,
+    "onlyNewNotebookFieldsToReview": [
+      "Boot query status",
+      "Observed BIOS/UEFI/Unknown"
+    ]
+  }
+}

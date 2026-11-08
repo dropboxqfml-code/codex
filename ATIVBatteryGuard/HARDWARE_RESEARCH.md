@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — Windows 부팅 방식과 표준 EFI 변수 경로의 적용 범위 / 2026-11-08
+
+**새 관측 기능:** [구현·공식 계약](WINDOWS_BOOT_FIRMWARE_UPDATE.md)은 GetFirmwareType으로 현재 Windows의 BIOS/UEFI/Unknown과 조회 상태를 기존 삼성 보고서에 추가합니다. 공식 enum 문서는 실제 부팅 방식을 설명하며 legacy에서는 표준 EFI 변수 API가 지원되지 않습니다. BIOS는 그 특정 OS 소비경로를 제외할 수 있을 뿐 다른 firmware/SMM/driver 부재가 아닙니다. UEFI·Unknown·오류는 actual proxy/cache·indexed 보호 순서를 입증하지 않습니다. 현재 노트북의 결과는 아직 없습니다.
+
+**새 source 범위:** 기존 231PE의 선언 debug/COFF/export metadata와 저장된 P04 changed FV 출력313개를 후보 선택에 사용했으나 새 공급자·typed/보호 edge0입니다. 동일 P05 GUID/operand·entry/state 검사는 재개하지 않았습니다. 이 메타데이터 조사 성공을 통신 경로 복구로 세지 않습니다.
+
+**검증·경계:** 새18개 포함646C# 통과, portable/전체 net48 Release 경고·오류0이며 새 ZIP의6항목/CRC/5체크섬/build-byte/source fingerprint/asInvoker/x64/net48을 독립 확인했습니다. Windows API/GUI 실기는 미확인입니다. EFI 변수 접근·OEM·삼성DLL 초기화·실험실행·예약·보안/드라이버/펌웨어 변경은 없으며 실제 보호 조회/충전 제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 통신 진입과 공통 owner 대조 / 2026-11-08
 
 **결과:** [보호 순서 조사](INDEXED_ORDERING_CONTRACT_REVIEW.md)에서도 새 supplier/typed 경로·공통 owner를 확보하지 못했습니다. 실기 전 핵심 첫 단계는 미완료입니다. 기존 정상 root·legacy fallback·proxy 조건과 입력 분리·ISR·SDK의 긍정 근거를 유지하며 미관측을 실제 race나 영구 미지원으로 바꾸지 않습니다.

@@ -433,6 +433,7 @@ internal static partial class Program
         RegisterWsabiWmiReadTrialEntryTests();
         RegisterWsabiWmiWindowsMutexGateTests();
         RegisterOfflineRehearsalTests();
+        RegisterWindowsBootEnvironmentTests();
     }
 
     private static void Add(string name, Action action) { Tests.Add(new KeyValuePair<string, Func<Task>>(name, () => { action(); return Task.CompletedTask; })); }

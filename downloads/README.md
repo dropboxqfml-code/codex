@@ -1,3 +1,15 @@
+# ATIV Battery Guard — Windows 부팅 방식 확인판
+
+2026-11-08. [프로그램 ZIP](ATIVBatteryGuard-BOOT-FIRMWARE.zip) · [SHA-256](ATIVBatteryGuard-BOOT-FIRMWARE-SHA256SUMS.txt) · [변경·검증 안내](../ATIVBatteryGuard/WINDOWS_BOOT_FIRMWARE_UPDATE.md)
+
+**프로그램 ZIP 하나만** 새 폴더에 전부 풀고 ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 다른 분석 ZIP이나 삼성 DLL은 필요 없습니다. 기존 **삼성 파일 정보 만들기**를 선택하면 TXT에 **현재 Windows 부팅 방식**의 조회 상태와 **관측: BIOS / UEFI / Unknown**이 추가됩니다. 새 정보는 이 두 항목만 전달할 수 있고 기존 TXT·진단·삼성 DLL·EXE 전체를 다시 제출할 필요는 없습니다.
+
+표준 GetFirmwareType 읽기 최대1회이며 EFI 변수 API·OEM 호출·삼성 DLL 초기화·권한 상승·설정 변경은 없습니다. BIOS는 특정 Windows EFI 변수 경로를 제외하는 범위 정보이고 UEFI/Unknown은 실제 통신 보호 순서를 입증하지 않습니다. 실제 보호 조회·충전 제어는 Unsupported입니다.
+
+새18개 포함646C# 통과·portable/전체 net48 Release 빌드 경고·오류0입니다. ZIP6항목·5내부체크섬·CRC·빌드바이트·source fingerprint·x64/asInvoker/net48을 독립 검증했습니다. 미서명 개발 빌드이며 새 Windows API/GUI 실기는 아직 미확인입니다. 삼성 원본·실험 실행 파일은 포함하지 않았고 기존 다운로드는 보존했습니다.
+
+아래는 이전 기록입니다.
+
 # ATIV Battery Guard — 전송 취소 보강 개발 소스
 
 2026-11-07 한국 시간. [개발 소스 ZIP](ATIVBatteryGuard-WMI-CANCELLATION-SOURCE.zip) · [SHA-256](ATIVBatteryGuard-WMI-CANCELLATION-SHA256SUMS.txt) · [수정·검증 안내](../ATIVBatteryGuard/WMI_CANCELLATION_BOUNDARY_UPDATE.md)

@@ -1,5 +1,7 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
+**2026-11-08 부팅 방식 관측 추가:** [표준 메타데이터 구현](WINDOWS_BOOT_FIRMWARE_UPDATE.md)은 현재 Windows의 특정 EFI 변수 OS 경로 적용 여부를 좁히기 위한 정보입니다. BIOS 결과도 제어 지원·시험 승인으로 쓰지 않으며 UEFI/Unknown은 기존 순서 미완료를 닫지 않습니다. 실제 노트북 관측은 아직 없고 public SDK 차단·Unsupported는 유지합니다.
+
 **2026-11-08 보호 순서 조사:** [entry·owner 대조](INDEXED_ORDERING_CONTRACT_REVIEW.md)에서도 핵심 순서의 새 연결은 확보하지 못했습니다. 실기 전 첫 단계는 미완료이며 정상 legacy의 긍정 근거·조건부 명세는 유지합니다. bootstrap·등록 flag·family-local 상태를 공통 보호의 증거로 대체하지 않고 동일 검색/검산은 동결합니다. 실제 공개 entry·시험 빌드 연결은 보류합니다.
 
 **2026-11-08 대상·SDK 적용 후속:** [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md)는 저장값의 조건부 역할과 .NET48 대상 API 문서를 대응시켰습니다. mode1만으로 현재80/75임계값·실제 제한을 판정하지 않습니다. 정상 proxy의 실제 EC 공유 footprint를 private Runtime hook으로 한정했으며 그 관련 순서의 새 연결은 확보하지 못했습니다. source·SDK 문서의 긍정 근거와 실제 Windows 미관측을 구분하고 공개 차단·Unsupported를 유지합니다.

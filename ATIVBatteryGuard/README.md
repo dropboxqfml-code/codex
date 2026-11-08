@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — Windows 부팅 방식 읽기 전용 보고 / 2026-11-08:** [프로그램 ZIP](../downloads/ATIVBatteryGuard-BOOT-FIRMWARE.zip)과 [변경·검증 안내](WINDOWS_BOOT_FIRMWARE_UPDATE.md)를 추가했습니다. 기존 삼성 파일 정보 만들기에 GetFirmwareType 1회 관측과 조회 상태를 함께 표시합니다. BIOS는 표준 Windows EFI 변수 API 경로의 적용 범위를 좁히고, UEFI/Unknown은 실제 통신 보호 순서를 입증하지 않습니다. 새18개 포함646개 통과·테스트/전체 net48 Release 빌드 경고·오류0, Windows 실기/API 실행은 미확인입니다. ZIP 하나만 풀면 되며 삼성 DLL·실험 EXE는 없습니다. 공개 시험 entry 차단·실제 보호 조회/충전 제어 Unsupported는 유지합니다. 아래는 이전 기록입니다.
+
 **최신 — 통신 보호 순서 조사 결과 / 2026-11-08:** [조사 기록](INDEXED_ORDERING_CONTRACT_REVIEW.md)에서 bootstrap·실제 SMI entry·메시지 입력을 분리하고 기존 busy/nesting/hook 상태의 보호 범위를 대조했습니다. 새 표준 통신 경로 또는 SABI와의 공통 owner는 확보하지 못했습니다. 실기 전 핵심 첫 단계는 미완료이며, 같은 검색·검산을 반복해 준비 완료로 표시하지 않습니다. 제품·배포물 변경 없이 공개 차단·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.
 
 **최신 — 고정 조회 대상·자원·SDK 적용 검토 / 2026-11-08:** [검토 결과](FIXED_READ_APPLICABILITY_REVIEW.md)에서 보호 저장값의 조건부 역할, host 처리와 실제 EC 공유 구간, .NET48 대상 API 문서를 대조했습니다. 후보1만으로80/75임계값·실제 충전 제한을 확인하지 않으며 알려진 관련 EC 접근은 private Runtime hook의 보호 순서로 한정합니다. 실제 해당 순서의 새 연결은 확보하지 못해 실행은 보류합니다. 제품·배포물 변경 없이 문서·정적 검산만 갱신했고628/빌드0/0은 ae8f8e7 이전 기록입니다. 아래는 이전 기록입니다.

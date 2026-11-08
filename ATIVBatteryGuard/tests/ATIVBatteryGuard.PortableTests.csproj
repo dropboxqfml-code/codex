@@ -18,6 +18,9 @@
     <Compile Include="BatteryCapabilitiesTests.cs" />
     <Compile Include="SamsungFileInspectionTests.cs" />
     <Compile Include="SamsungKernelDriverTests.cs" />
+    <Compile Include="WindowsBootEnvironmentTests.cs" />
+    <Compile Include="BootEnvironmentProtocolTests.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.App/Diagnostics/WindowsBootEnvironmentProbe.cs" Link="WindowsBootEnvironmentProbe.cs" />
     <Compile Include="WmiInstanceTests.cs" />
     <Compile Include="WmiAccessTraceTests.cs" />
     <Compile Include="WmiAccessCheckCaptureTests.cs" />

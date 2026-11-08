@@ -1,5 +1,25 @@
 # 다음 개발 재개 메모
 
+## 최신 — 현재 Windows 부팅 방식 관측 구현·배포 / 2026-11-08
+
+기준 `1472aab` 다음 작업입니다. [WINDOWS_BOOT_FIRMWARE_UPDATE.md](WINDOWS_BOOT_FIRMWARE_UPDATE.md), [미완료 순서 판정](INDEXED_ORDERING_CONTRACT_REVIEW.md), [조회 명세](FIXED_READ_TRIAL_SPECIFICATION.md)를 먼저 읽습니다. 동결한 source 검색을 반복하지 않고 새 source 범위를 확인한 뒤, 기존에 없던 현재 부팅 방식의 표준 읽기 전용 관측을 구현했습니다.
+
+새 source 후보 선택은 P05 231PE의 Debug/CodeView·COFF·Export metadata와 저장된 동일 모델 P04 changed FV4/5/6의313출력입니다. 전자는 선언metadata0, 후자는 표준 통신 GUID가 알려진 Nvram 소비자1곳뿐이어서 새 공급자/typed 경로/공통 owner0입니다. 두 범위도 동결했고 P05 코드·일반 문자열·GUID/operand 검색을 재개하지 않았습니다. P04 framework 세 모듈의 선택 section 동일성을 전체 이미지나 P05 현재 실행 증거로 확대하지 않습니다.
+
+새 적용 계약은 MicrosoftDocs/sdk-api docs commit `656e9656bfaef34dd29cd7ee9e1146aec17e924c`의 GetFirmwareType/FIRMWARE_TYPE/SetFirmwareEnvironmentVariableW 문서3개입니다. enum은 현재 legacy BIOS/UEFI 부팅을 명시하며 표준 EFI 변수 API는 legacy 부팅에서 지원되지 않습니다. 마지막 함수는 문서 참고만 했고 선언·dummy probe·권한 변경·호출을 추가하지 않았습니다.
+
+모델 WindowsBootEnvironmentReport는 조회 상태와 firmware type enum만 보유합니다. Probe는 기존 버튼의 worker 안에서 GetFirmwareType 최대1회, nonWindows0회, 실패 즉시LastError분류 후 out폐기, Unknown성공 보존/미정의성공 InvalidResponse/예외정제입니다. 결과는 삼성 파일·드라이버/WMI 관측과 독립적으로 보고하며 기존 worker10초 한도·fallback 상태·process 보유/정리를 유지합니다. worker timeout은 결과미회수이며 GetFirmwareType 자체가 멈췄다는 원인 판정이 아닙니다. startup/timer·권한상승·EFI변수/OEM/삼성DLL 호출은 추가하지 않았습니다.
+
+로컬 IPC는v6의 필수 BootEnvironment(Status,FirmwareType)와 실제JSON정수/enum/status-kind조합을 검증합니다. v5의 부팅 항목 없는 결과는NotCollected로만 호환하고 v6누락/불일치/강제변환은InvalidResponse로 버립니다. 기존 개체 검사와 개인정보 필터는 유지합니다. Boot 결과로 transport/controller/실기 entry를 선택하지 않습니다.
+
+현재 검증은 새10개모델/대역/ABI+8개IPC를 포함한646passed/0failed/0skipped입니다. 기존628도 재실행했으며 portable 및 전체net48참조Release가 각각0warnings/0errors입니다. 이 클라우드의 실제Windows/.NET48/GUI/GetFirmwareType·SDK/OEM 호출은0입니다. 새프로그램은downloads/ATIVBatteryGuard-BOOT-FIRMWARE.zip이며 자체3파일+README+BUILDINFO+checksum=6항목, CRC/5내부체크섬/build-byte/sourcefingerprint/asInvoker/x64/net48/미서명을 독립 검증했습니다. source ZIP은 실행에 필요 없고 삼성원본/실험EXE는 포함하지 않습니다. package_boot_firmware.py는 그 allowlist를 재현하며 legacy package_preview의protocol metadata도6으로 갱신했습니다.
+
+정제 기록은 reports/boot-firmware-validation.json, private `20261108/boot-environment-validation`와 `provider-new-evidence-next`에 build/suite/package log·검산script/proof/공식문서핀·개발기록을 보존합니다. debugmetadata의 초기 기존기록 검색에서 이전 OEM PDB 경로 일부가 tool출력에 나온 실수는 private findings에 원문 없이 구분했고 공개기록/ZIP에는 복사하지 않았습니다. 새extractor는basename만 취급하며 선언debug0 결과입니다.
+
+다음 실제 새 관측이 오면 **조회 상태 + 관측 BIOS/UEFI/Unknown 두 항목만** 분석합니다. 기존 TXT/DLL/EXE 전체 재제출·관리자 비교·OEM재호출은 요구하지 않습니다. 정상BIOS는현재Windows의특정표준EFI변수OS경로만제외하며 다른firmware/SMM/driver부재를 뜻하지 않습니다. UEFI/Unknown/실패는기존순서미완료를닫지않습니다. BIOS결과도제어허가/지원확정이아니며관련남은계약을평가합니다. 새결과가없으면현재부팅방식을추정하지않습니다.
+
+publicReadSpecificationUnavailable/실제조회·제어Unsupported, A최대1method/sample0~1/handshake·초기화·재시도·쓰기·Bfallback0, oldconsumed예약접근·초기화·삭제·재사용·우회금지는유지합니다. 실행request/addresspair/frame/nonce/generator·firmware제어코드·driver/service/security/firmware/cloud변경은없습니다. 추가된것은표준Windows메타데이터이며실제호출시험승인과혼동하지않습니다. 아래는이전기록입니다.
+
 ## 최신 — 보호 순서의 진입·소유권 대조와 미완료 판정 / 2026-11-08
 
 기준 `8aa006a` 다음 작업입니다. [INDEXED_ORDERING_CONTRACT_REVIEW.md](INDEXED_ORDERING_CONTRACT_REVIEW.md), [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md), [통합 명세](FIXED_READ_TRIAL_SPECIFICATION.md)를 먼저 읽습니다. 사용자는 남은 기술 작업 세 단계 중 첫째인 통신 보호 순서 확보를 시작하라고 했으며 실제 호출·펌웨어 제어 코드 연결을 승인한 것은 아닙니다.

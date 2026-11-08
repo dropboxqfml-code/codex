@@ -106,16 +106,18 @@ namespace ATIVBatteryGuard.Core.Models
         public SabiDriverLinkStatus DriverLink { get; }
         public SamsungKernelDriverReport KernelDrivers { get; }
         public SamsungWmiInstanceReport WmiInstances { get; }
+        public WindowsBootEnvironmentReport BootEnvironment { get; }
         public bool HardwareWriteAllowed => false;
 
         public SamsungFileInspectionReport(SamsungFileInspectionStatus status = SamsungFileInspectionStatus.NotCollected,
             IEnumerable<SamsungFileInspectionEntry> entries = null, bool limited = false,
             SabiDriverLinkStatus driverLink = SabiDriverLinkStatus.NotChecked, SamsungKernelDriverReport kernelDrivers = null,
-            SamsungWmiInstanceReport wmiInstances = null)
+            SamsungWmiInstanceReport wmiInstances = null, WindowsBootEnvironmentReport bootEnvironment = null)
         {
             DriverLink = Enum.IsDefined(typeof(SabiDriverLinkStatus), driverLink) ? driverLink : SabiDriverLinkStatus.Unavailable;
             KernelDrivers = kernelDrivers ?? new SamsungKernelDriverReport();
             WmiInstances = wmiInstances ?? new SamsungWmiInstanceReport();
+            BootEnvironment = bootEnvironment ?? new WindowsBootEnvironmentReport();
             Status = Enum.IsDefined(typeof(SamsungFileInspectionStatus), status) ? status : SamsungFileInspectionStatus.InvalidResponse;
             var copy = new List<SamsungFileInspectionEntry>();
             if (entries != null && (Status == SamsungFileInspectionStatus.Complete || Status == SamsungFileInspectionStatus.Partial))
@@ -140,6 +142,7 @@ namespace ATIVBatteryGuard.Core.Models
             var text = new StringBuilder();
             text.AppendLine("ATIV Battery Guard — 삼성 파일의 읽기 전용 식별 보고서");
             text.AppendLine("조회 결과: " + StatusText(Status));
+            text.AppendLine(BootEnvironment.ToDisplayText());
             text.AppendLine("대상: Sabi3.dll / wsabi.dll / BatteryToast.exe / PowerAudit.exe");
             text.AppendLine(ATIVBatteryGuard.Core.Services.SamsungTransportAssessment.Evaluate(this).ToDisplayText());
             text.AppendLine("SABI 장치 연결 이름: " + DriverLinkText(DriverLink));

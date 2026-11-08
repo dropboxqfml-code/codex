@@ -1,5 +1,7 @@
 # Runtime의 부팅 후 중계 선택과 조회 순서 — 2026-11-08
 
+**후속 후보 조사:** [제공자 후보·역방향 검토](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)는 Base2 동적 method0을 InSmm으로 제외하고, operand 후보와 index 밖 자료를 대조했습니다. 실제 표준 제공자→typed dispatch는 찾지 못했으며 해당 수신자가 쓰지 않는 incoming buffer와 retained buffer의 동일성을 추가 조건으로 요구하지 않습니다. 아래는 부팅 경로 검토 시점 기록입니다.
+
 **선택된 부팅 분기에서 중계 설치 알림을 이미지 실행 전에 처리할 소스 연결을 확보했습니다.** 정상 교체가 완료된 분기에 초기 direct-host 게시자를 계속 남는 경쟁자로 동시에 넣지 않습니다. 실제 조회·충전 제어는 Unsupported이며, 제공자 객체의 함수에서 typed SMM dispatch로 이어지는 연결은 미완료입니다.
 
 [응답 거부 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md)의 후속입니다. 이번에는 저장된 CORE/NvramSmi/Runtime 원본을 데이터로 읽었습니다. 새 범위는 제한된 부팅 순서 연결과 인터페이스 객체의 공급·선택 수명입니다. 원본 실행·로드·에뮬레이션이나 하드웨어 호출은 없습니다.

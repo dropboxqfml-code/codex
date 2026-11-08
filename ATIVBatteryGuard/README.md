@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 표준 통신 제공자 후보 조사 / 2026-11-08:** [조사 기록](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)에서 실제 게시 함수와 역방향 호출·index 밖 자료를 대조했으나 제공자→typed SMM dispatch 연결은 확보하지 못했습니다. Base2 method0은 InSmm으로 제외했고 수신자가 쓰지 않는 buffer 인수의 동일성도 추가 요구에서 제거했습니다. 코드·EXE/ZIP 변경 없이 공개 차단·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.
+
 **최신 — Runtime의 부팅 후 전송 선택 / 2026-11-08:** [정적 검토](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md)에서 선택된 BDS 분기의 알림 처리가 이미지 실행보다 앞서는 연결을 확보했습니다. 정상 proxy 교체와 초기 direct-host 예외를 분리하고, 제공자 캐시가 NULL일 때만 legacy fallback을 선택함을 확인했습니다. 제공자 오류 뒤 자동 fallback은 없으며 실제 method0→typed dispatch 연결은 미완료입니다. 코드·배포물 변경 없이 공개 차단·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.
 
 **최신 — 응답 거부 명세와 구체 참여자 범위 / 2026-11-08:** [비실행 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md)에 실패·echo·불일치·no-copy 거부와 조건부 내용 충돌 모델을 정리했습니다. 14사례·256추상 관측 조합의 검산은 앱/실기 테스트가 아닙니다. 같은 자원으로 연결된 host Runtime 변수 저장 경로의 순서·보호는 미완료입니다. 코드·EXE/ZIP 변경 없이 공개 차단·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.

@@ -1,5 +1,25 @@
 # 다음 개발 재개 메모
 
+## 최신 — 표준 제공자 후보·역방향 조사와 동결 범위 / 2026-11-08
+
+기준 `4c46e8d` 다음 작업입니다. [COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md), [부팅 경로](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md), [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [판정](FIXED_MODE_READ_DECISION.md)을 먼저 읽습니다. **이번에도 실제 표준 제공자 함수→typed dispatch는 확보하지 못했습니다.** 후보 제외·새 자료 범위와 불필요한 수신 인수 조건을 정리했으며 실행 코드는 없습니다.
+
+실제 SmmBase 게시 pair의 Base2 method0 공급원을 추적했습니다. firmware가 runtime-code로 복사하는 inert28byte template는 출력 포인터 검사→한 byte 쓰기→반환뿐인 InSmm이며 legacy InSmm slot도 같은 pointer를 받습니다. 따라서 이 특정 동적 method0을 표준3인자 Communicate 후보에서 제외합니다. 분석기는 원본을 데이터로 읽고 정적 decode만 했으며 실행 가능 메모리 로드/실행/에뮬레이션은 없습니다.
+
+native SMST slot의 inverse operand 검색은231개 pinned PE/executable raw3,118,464byte를 새 방향으로 조사했습니다. call/jump 후보6개는 모두USBRT의 computed device index record이고 base도 별도 protocol object+8에서 공급됩니다. SMST getter receiver로 연결되지 않아 SmiManage로 인정하지 않습니다. 다른 동일 slot operand485개와 computed/aliased slot·register call·미인식 code는 부재 증명이 아닙니다. 자기 module direct caller는 기존 NULL walk1개이며 typed 선택으로 승격하지 않습니다.
+
+inventory는 이전7FV·390표준압축·231PE section coverage를 재사용하고 section/index hash multiset을 교차 확인했습니다. 새로 index 밖252nonPE 출력/21RAW·PAD body/1CAP gap=274겹침 영역을 후보 선택했습니다. 새 연속GUID/bounded PE·TE 후보0이지만 변환·비PE code나 외부 공급자 부재의 증명은 아닙니다. 기존 SecLoJack nested3개 중 AMD64 EFI application53760byte는 outer literal검색 범위에는 이미 포함됐고 독립 machine/section decode 단위는 아니었습니다. private bounded copy를 남겼으며 root의 별도 lookup 후보는 다른 protocol이었습니다. 모든 계산된 게시 경로를 닫았다는 뜻은 아닙니다.
+
+완전한 Nvram typed wrapper와 server는 incoming context/data/size를 소비하지 않고 retained SMM slot을 다시 읽어 하위 변수 인수를 구성합니다. 따라서 manage.R8==retained buffer라는 추가 alias 조건은 필요하지 않습니다. 실제 nonnull GUID handler 선택·실행 영역·retained slot 유효성·공유 자료 관계·의도한 private wrapper 게시 성공은 기존 별도 전제입니다.
+
+검산: 게시source27행/inert template28byte, inverse 원본pin3/단언16/본문decode122행, inventory274영역 및 기존 coverage crosswalk, root source27행/완전handler8행/server23행/관계9를 통과했습니다. root는 final verifiers4개를 실행했고 전체231 operand discovery 자체를 중복 실행하지는 않았습니다. 수치는 서로 겹치며 앱 테스트·고유 발견·coverage로 합산하지 않습니다. 새 표준 제공자/실제provider→typed edge/실기trace는0입니다.
+
+정제 기록 reports/communication-provider-candidate-audit.json, private `20261108/communication-provider-resolution-next`의 publisher_route/typed_dispatch/inventory/root에 scripts/proofs/findings/source pins·실행 기록을 보관합니다. firmware template·nested payload·raw주소·전체 경로는 공개하지 않습니다. 기존 code6핀은 유지됐고 C#/SDK/test/EXE/ZIP 변경이 없어 빌드/C# 회귀는 재실행하지 않았습니다. 617/빌드0/0은62f2d2e의 이전 기록입니다.
+
+공개 ReadSpecificationUnavailable·조회/제어 Unsupported, 정상proxy+NULL legacy의 긍정 순서, A의 method최대1/handshake·초기화·재시도·쓰기·Bfallback0을 유지합니다. nonnull 미연결을 direct-host writer/race로 추론하거나 모든 실기 경로에 표준 provider 복구를 요구하지 않습니다. old consumed 예약 접근·초기화·삭제·재사용·우회, 원본 실행/실행코드 로드/에뮬레이션·SDK/OEM/hardware/Global·driver/service/security/firmware/cloud 변경·actual request/address pair/frame/nonce/generator는 없습니다. 추가 노트북 실행·같은 자료 재제출도 요구하지 않습니다.
+
+이번 후보군·inverse operand·추가 자료 범위는 동결합니다. 같은 검색을 반복 성과로 세지 않습니다. 구체적인 새 게시 객체·실제 함수 공급원·nonnull 선택 caller 또는 새 실행 자료가 나올 때 해당 source 범위만 다시 엽니다. API 계약 가정과 P05 구현의 root/CPU/host 전후 자원 순서 근거를 구분하며 현재 미연결을 시험 준비 완료로 표시하지 않습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 선택된 부팅 경로의 Runtime proxy 설치와 객체 전송 / 2026-11-08
 
 기준 `450f0cc` 다음 작업입니다. [RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md), [응답 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 정상 postboot 분기와 초기 direct-host 예외를 분리했고, 제공자 객체의 공급·선택 수명을 좁혔습니다.

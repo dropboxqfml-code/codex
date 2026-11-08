@@ -1,0 +1,252 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "4c46e8d",
+  "outcome": {
+    "requestedStandardProviderToTypedDispatchEdgeRecovered": false,
+    "newStandardProviderCandidates": 0,
+    "actualNotebookTraceOrChargeControlSuccess": false
+  },
+  "scope": "Actual published object-method supplier exclusion, inverse native-slot candidate classification, non-indexed data coverage and receiver-input refinement. Not provider absence or a completed safe-read specification.",
+  "originalSourceIdentities": [
+    {
+      "name": "SmmBase.efi",
+      "bytes": 16800,
+      "sha256": "59f9c1af4a8e5bf77e166269669d24e75ca343b99a8eed3085434641a64ccaa3"
+    },
+    {
+      "module": "USBRT/1.efi",
+      "bytes": 102240,
+      "sha256": "3836cbedca299ca961707c14db0827b9b86bef46fa1cc3fb35289a1e1ac689fa"
+    },
+    {
+      "module": "SmmDispatcher.efi",
+      "bytes": 24096,
+      "sha256": "56fb1eb673e12d524f9be5670a8e0f640035f3b73409a27acbe518840f1d6bb7"
+    },
+    {
+      "module": "NvramSmi/1.efi",
+      "bytes": 6752,
+      "sha256": "bc6bb8d872475c689a9eff7988f9c49527f478682321b853b26fe46f26404b02"
+    },
+    {
+      "name": "previously known nested EFI application",
+      "bytes": 53760,
+      "sha256": "54e70248a424e1143e956b0bca344ee1fa07f558d123f3d20a7c65bd9b73a2fb"
+    }
+  ],
+  "privateAnalysisArtifactPins": [
+    {
+      "privateArtifact": "publisher_route/verify_base2_supplier.private.py",
+      "bytes": 10864,
+      "sha256": "2f194dd59cf218fb1f47d13c34de8950e0958a886b2646400f4208ba924cbe7f"
+    },
+    {
+      "privateArtifact": "publisher_route/base2-supplier-proof.private.json",
+      "bytes": 9108,
+      "sha256": "a41a1bd22a85477eee8fb7907e297c3b495d09c19b2eb49bcd61d9e5021db31d"
+    },
+    {
+      "privateArtifact": "publisher_route/findings.private.md",
+      "bytes": 5081,
+      "sha256": "aa435229d978a3de8b366d93b4bd3ccc4671e55066b16ab8de8ae70d0b42d27e"
+    },
+    {
+      "privateArtifact": "typed_dispatch/discover_native_manage.private.py",
+      "bytes": 2858,
+      "sha256": "5d50d07861748bd0c8d52144b4c8966cb6eda7ec5b1ad9fddf92326f3351fd6d"
+    },
+    {
+      "privateArtifact": "typed_dispatch/native-manage-discovery.private.json",
+      "bytes": 856888,
+      "sha256": "cb70a597c65c6805ec5069d16bbb8722f8670a8438f8ac2fb52342da1dbb3392"
+    },
+    {
+      "privateArtifact": "typed_dispatch/verify_typed_inverse.private.py",
+      "bytes": 8245,
+      "sha256": "23a52e9b61c61bac84255d0008751ee469c9c3a99d002da0de6d8dcce803b000"
+    },
+    {
+      "privateArtifact": "typed_dispatch/typed-inverse-proof.private.json",
+      "bytes": 24221,
+      "sha256": "069b811504e291a75ea32f1340ef3c784843df4fb03df7e4bbcadaa5b3fd48f0"
+    },
+    {
+      "privateArtifact": "typed_dispatch/findings.private.md",
+      "bytes": 6848,
+      "sha256": "cbe743030fabfe7bb6e163da95f3664ab6fde41fa37724c5a1144e7ea96be905"
+    },
+    {
+      "privateArtifact": "typed_dispatch/artifact-pins.private.json",
+      "bytes": 936,
+      "sha256": "e1fac81b26764b06f8365a5db61c55554ad9011d1b19adbe3f8858bc7abae8ca"
+    },
+    {
+      "privateArtifact": "inventory/verify_inventory.private.py",
+      "bytes": 10755,
+      "sha256": "7bff23ecc5980567838bf962b3c25d14167a633f6f4646ef7433e6129a2e27f5"
+    },
+    {
+      "privateArtifact": "inventory/inventory-proof.private.json",
+      "bytes": 107480,
+      "sha256": "fcf3edc143cb7c7e00533fecc36ba86b74762bc30ced2c85f36b09d2323068a2"
+    },
+    {
+      "privateArtifact": "inventory/findings.private.md",
+      "bytes": 5510,
+      "sha256": "cb500d3fd0ab064614afd5183da1f3021c6970c91f0206eaf993ac9c5c9a431c"
+    },
+    {
+      "privateArtifact": "inventory/artifact-pins.private.json",
+      "bytes": 637,
+      "sha256": "dc263228659df367c3a805585d016f05dc1caa55f4756911d7c61b4de0e09632"
+    },
+    {
+      "privateArtifact": "root/verify_retained_input.private.py",
+      "bytes": 8427,
+      "sha256": "611c65f1cb92aca1ab3081c7a8aed54da8f3afbf95067affdd36288a4ee111bd"
+    },
+    {
+      "privateArtifact": "root/retained-input-proof.private.json",
+      "bytes": 5428,
+      "sha256": "6039dd6655f9caa3bf1a0731be76a59196de0f50b861156017980540ebc86774"
+    }
+  ],
+  "publishedObjectCandidate": {
+    "actualPublicationPairsAndMethodSupplierBound": true,
+    "dynamicRuntimeCodeTemplateBytes": 28,
+    "completeMethodIsInSmmOutputByteLeafNotStandardCommunicate": true,
+    "sameSupplierAlsoFillsLegacyInSmmSlot": true,
+    "arityOrMethodZeroPositionAloneUsedAsProof": false,
+    "candidateExclusionEstablishesProviderAbsence": false,
+    "analyzerLoadsTemplateAsExecutableOrSimulatesIt": false
+  },
+  "inverseDiscovery": {
+    "pinnedImages": 231,
+    "executableRawBytes": 3118464,
+    "slotD8CallJumpCandidates": 6,
+    "otherD8Operands": 485,
+    "ownModuleDirectManageCalls": 1,
+    "newActualTypedCaller": 0
+  },
+  "inverseCandidateLimits": {
+    "sixCandidatesAreComputedUsbRecordsNotSourceBoundNativeSmstReceivers": true,
+    "actualUsbTargetsGloballyClassifiedOrSmmReachabilityImpossibleProved": false,
+    "knownOwnModuleDirectNullWalkPromotedToNonnullTypedSelection": false,
+    "computedAliasedRegisterIndirectCallsOrAllCodeBoundariesClosed": false,
+    "old231PeGuidLiteralSplitNegativeSearchRepeated": false
+  },
+  "inventory": {
+    "reusedCoverage": {
+      "volumes": 7,
+      "standardCompressedSections": 390,
+      "peSectionPayloads": 231,
+      "peIndexImages": 231,
+      "exactPayloadHashMultisetEqualsIndex": true,
+      "tePicFvImageGuidDefinedOrUnknownNodes": 0,
+      "decompressionRerun": false,
+      "oldNestedPeCandidates": 3
+    },
+    "newNonIndexedRegions": 274,
+    "regionRoles": {
+      "non-PE extractor output": 252,
+      "opaque RAW/PAD FFS body": 21,
+      "opaque capsule carve gap": 1
+    },
+    "regionsOverlap": true,
+    "contiguousCommunicationGuidMatchesOutsideIndex": 0,
+    "boundedRecognizedExecutableCandidatesOutsideIndex": 0,
+    "newMissingRecognizedExecutableSectionFound": false,
+    "transformedNonPeExternalOrComputedProvidersExcluded": false,
+    "providerAbsenceProved": false
+  },
+  "knownNestedEfiApplication": {
+    "alreadyKnownBoundedPayloadNotNewDiscovery": true,
+    "machine": "AMD64",
+    "subsystem": "EFI application",
+    "outerBytesAlreadyInOldWholeFileGuidScope": true,
+    "previousIndependentMachineSectionDecodeUnitIn231Index": false,
+    "rootBoundedDecodeExecutableBytes": 21504,
+    "fixedDisplacementCandidateCalls": 1,
+    "selectedLookupIsTargetCommunicationProtocol": false,
+    "allComputedPublishingOrAliasedCallsExcluded": false,
+    "sourcePayloadPublished": false
+  },
+  "receiverRefinement": {
+    "completeTypedWrapperConsumesIncomingContextBufferSize": false,
+    "serverReloadsRetainedSmmBufferAndDerivesDownstreamArguments": true,
+    "incomingBufferEqualsRetainedBufferAddedAsNecessaryObligation": false,
+    "retainedSlotValidityAndClientServerBindingAndPrivateWrapperPublicationRemainSeparatePremises": true,
+    "actualNonnullHandlerSelectionAndInvocationDomainRecovered": false
+  },
+  "frozenScope": {
+    "families": [
+      "Actual Base2 method-zero supplier",
+      "Pinned231-image native-slot inverse operand discovery",
+      "New non-indexed274-region coverage and known nested application selected lookup"
+    ],
+    "reopenOn": [
+      "Concrete new published object",
+      "Actual method supplier",
+      "Actual nonnull typed caller",
+      "New relevant executable source"
+    ],
+    "repeatSameSearchAsNewProgress": false,
+    "missingNonnullEdgePromotedToDirectHostActorRaceOrUniversalAllPathBlocker": false,
+    "knownNormalLegacyFallbackPositiveRetained": true
+  },
+  "verification": {
+    "publishedSupplier": {
+      "sourceRows": 27,
+      "completeInertTemplateBytes": 28,
+      "passed": true
+    },
+    "inverseCandidates": {
+      "originalPins": 3,
+      "exactAssertions": 16,
+      "overlappingBoundedDecodeRows": 122,
+      "passed": true
+    },
+    "inventoryCrosswalkAndNewRegionChecksPassed": true,
+    "rootIndependentReceiverAndNestedSource": {
+      "selectedInstructions": 27,
+      "completeHandlerRows": 8,
+      "completeServerRows": 23,
+      "relations": 9,
+      "passed": true
+    },
+    "rootExecutedAllFourFinalVerifiers": true,
+    "rootReranFull231ImageInverseDiscovery": false,
+    "independentReadReviewCompleted": true,
+    "independentReviewerExecutedScripts": false,
+    "countsOverlapNotUniqueDiscoveriesAppTestsOrCoverage": true,
+    "trustedTools": {
+      "pefile": "2024.8.26",
+      "capstone": "5.0.6"
+    },
+    "currentCsharpBuildOrAppUnitTestsRun": false,
+    "previousCodeValidationOnly": {
+      "codeCommit": "62f2d2e",
+      "csharpPassed": 617,
+      "failed": 0,
+      "skipped": 0,
+      "net48ReleaseWarnings": 0,
+      "net48ReleaseErrors": 0,
+      "sixPriorTestedSourcePinsStillMatch": true
+    }
+  },
+  "boundary": {
+    "applicationCoreSdkTestOrExistingReleaseArchiveChanged": false,
+    "actualRequestAddressPairFrameNonceOrGeneratorCreated": false,
+    "originalFirmwareDllAmlExecutedLoadedAsCodeOrEmulated": false,
+    "actualSdkOemHardwareGlobalOrConsumedMarkerAccessed": false,
+    "newDependencyInstallOrExternalSourceDownload": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "handshakeInitializationRetryWriteOrAlternativeFallbackAdded": false,
+    "publicEntryReopenedOrRealTrialApproved": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "newLaptopRunOrRepeatedFileUploadRequested": false
+  },
+  "nextEvidence": "Reopen only on a concrete new object, supplier, nonnull caller or relevant source; do not substitute repeated bounded-negative scans for the missing positive provider/ordering evidence."
+}

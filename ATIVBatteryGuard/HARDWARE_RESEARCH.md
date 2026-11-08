@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 표준 통신 제공자 후보·역방향 source 조사 / 2026-11-08
+
+**조사 결과:** [후속 검토](COMMUNICATION_PROVIDER_CANDIDATE_REVIEW.md)에서도 실제 제공자→typed dispatch를 확보하지 못했습니다. 실제 게시 Base2 method0의 동적 공급원이 완전한 InSmm 출력 leaf임을 연결해 후보에서 제외했습니다. 역방향 native slot operand 검색의 호출 후보6개는 USBRT 계산 record이고 SMST receiver로 연결되지 않아 typed 호출로 수용하지 않습니다. 전역적인 제공자 부재나 실제 위험 actor 발견이 아닙니다.
+
+**자료·수신 조건:** 기존 section/index231 hash multiset·7FV/390표준압축 coverage는 재사용했습니다. index 밖274개 겹침 영역에서 이번 bounded 후보를 찾지 못했으며, 기존 nested EFI application의 별도 decoder 범위도 확인했습니다. 완전 Nvram wrapper/server는 retained buffer에서 입력을 구성하므로 사용하지 않는 incoming buffer와의 alias를 추가 요구할 이유가 없습니다. 실제 handler 선택·영역·retained slot 유효성은 별도입니다.
+
+**범위와 검증:** 후보군과 탐색 범위를 동결하며 새 게시 객체/함수 공급원/nonnull 선택 caller/새 실행 자료 근거가 있을 때만 재개합니다. 담당·root의 정적 검산 및 독립 읽기 검토를 통과했지만 provideredge/새제공자/실기race0이며 검사 수는 앱 테스트·분석률이 아닙니다. 코드·배포물 변경 없이 공개 ReadSpecificationUnavailable·조회/제어 Unsupported를 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — Runtime의 부팅 후 중계와 선택된 알림 처리 경계 / 2026-11-08
 
 **새 연결:** [후속 검토](RUNTIME_POSTBOOT_TRANSPORT_REVIEW.md)는 BDS의 기존 marker 다음 선택 continuation이 실제 RestoreTPL4를 거쳐 이미지 Load/Start로 가는 연결을 확보했습니다. 정상 pending/live Event·버퍼·선택 진행 조건에서 TPL8 교체 알림이 해당 restore 반환 전에 처리됩니다. 모든 Windows 부팅 경로나 현재 장치의 실제 전달을 입증한 결과는 아닙니다.

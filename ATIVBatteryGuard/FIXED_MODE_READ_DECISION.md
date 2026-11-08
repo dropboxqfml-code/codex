@@ -22,6 +22,8 @@
 
 후속 byte 계약은 현재 주소와 반환을 함께 제공할 선택 generic 분기, payload 주소 순서, 반환 창/지워지는 tail을 좁혔습니다. 공통 실패와 command-only에서도 sample 자리가 zero일 수 있어 sample-only mode 해석을 허용하지 않습니다. 기존 실패 prefix 표시는 유지하고 현재 제품 오류/실기 관측으로 세지 않습니다. [정적 합성 검토](FIXED_READ_BYTE_CONTRACT_REVIEW.md)는 새 함수 edge 0이며 공개 entry 차단과 세 적용 조건의 미완료는 유지합니다. 코드 변경이 없어 이번 빌드/C# 회귀는 재실행하지 않았습니다.
 
+[입력 보호·포착 후속](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md)은 ready 이후 copyout 보호를 따로 명시하고 upload30/반환 prefix10/전체 indexed I/O의 수명을 구분했습니다. 정상 같은 SMM 순서는 EC copyout을 덮지만 바깥 WMI frame 회수는 실제 관련 참여자의 전체 교환 보호가 필요합니다. 기존 source의 조건부 합성이고 실기 입력 안정성·새 게시/reader 실행 인증이나 현재 제품 오류 발견은 아닙니다. 공개 entry 차단과 세 조건 미완료를 유지합니다.
+
 모델·BIOS·제조사 원본과 여러 해석 anchor는 임시 CandidateProfile 근거로 유지합니다. live 함수 포인터·EC 전체 hash를 직접 관측하지 못했다는 사실 하나만을 절대 중단 조건으로 쓰지 않습니다. 동시에 위 실제 미완료 연결을 정상성 가정이나 사후 내용 비교만으로 메우지 않습니다.
 
 Global 접근 권한을 별도 사전 수집하는 것도 절대 조건은 아닙니다. 유한 Acquire가 접근 거부로 끝나면 하위 호출 없이 실패할 수 있습니다. 조회 진입 자체의 typed provider 발견도 필수조건에서 제외합니다. 남는 것은 gate를 포함한 선택 안의 유용성·관련 참여와 마지막 접근/재사용·입력 비훼손·응답 귀속이며, 별도 Runtime 경로는 실제 관련 게시자 조건으로만 평가합니다.

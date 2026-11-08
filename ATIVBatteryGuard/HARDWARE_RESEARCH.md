@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 입력 보호·응답 회수 구간의 합성 / 2026-11-08 한국 시간
+
+**확인 범위:** [후속 검토](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md)는 command clear 뒤 ready가 열려도 현재 EC 응답 복사가 끝난 것은 아님을 source 순서에 연결했습니다. 현재 입력은 30바이트 upload되며 반환에 쓰는 앞 10바이트가 먼저 local로 포착됩니다. 뒤 20바이트 local 저장은 그 prefix를 덮지 않지만 indexed I/O는 전체 download까지 계속됩니다. 새 함수/edge·실제 race 발견은 0입니다.
+
+**조건부 보호와 한계:** 정상 같은 SMM domain의 비중첩은 EC copyout을 덮고, 정상 획득한 전체 교환 협력 mutex는 참여 호출자의 바깥 WMI frame 회수까지 덮습니다. 전자는 SMM 밖 입력 저장·반환 읽기를 자동 보호하지 않으며 후자는 비참여 경로를 자동 포함하지 않습니다. 실제 참여자 가입·입력 안정성·새 게시/reader 실행 인증은 여전히 미완료입니다. 기존 worker inline 소비·영역 분리/ISR 보존·stale/echo 분석은 재사용 맥락입니다.
+
+**검증·범위:** 담당별 정적 검산과 root 부분순서/footprint 검산·독립 읽기 검토를 수행했습니다. 검사 수는 중복되며 앱 테스트나 분석률이 아닙니다. 코드/테스트/배포물 변경이 없어 빌드/C# 테스트는 재실행하지 않았고 617개·빌드 0/0은 62f2d2e 기록입니다. 공개 ReadSpecificationUnavailable·조회/제어 Unsupported와 실제 호출 0은 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — Windows/EC 바이트 계약의 합성 / 2026-11-08 한국 시간
 
 **새 합성 범위:** [byte 계약](FIXED_READ_BYTE_CONTRACT_REVIEW.md)은 기존 개별 본문을 합쳐 현재 주소+반환을 함께 제공하는 upload/receive 분기만 남기고, payload high→low 주소 순서와 sample 치환/실제 보존 8개 셀·WMI tail4 소거를 확인했습니다. 새 firmware 함수/edge는 0이며 새 request/frame은 만들지 않았습니다.

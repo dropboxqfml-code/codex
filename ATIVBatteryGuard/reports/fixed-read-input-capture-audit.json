@@ -1,0 +1,188 @@
+{
+  "dateKst": "2026-11-08",
+  "timezone": "Asia/Seoul",
+  "previousRepositoryCommit": "4c0ae25",
+  "scope": "Conditional source composition of input last-consume, response capture and indexed resource lifetime; no new firmware edge, live participation or fresh-response observation",
+  "originalSourcesRehashed": [
+    {
+      "role": "selected generic bridge",
+      "bytes": 29952,
+      "sha256": "2795669f18e3fb787d908ba00e2e9da7ab7d398ee599f27aa2f068129b46f310"
+    },
+    {
+      "role": "saved capsule",
+      "bytes": 5242880,
+      "sha256": "052660c18e967f7f73b2881379066bde4b90b29192ce4292c8d29bef1ce92ab0"
+    },
+    {
+      "role": "selected raw EC slice, conditional 8051 bank model",
+      "bytes": 98304,
+      "sha256": "2c8aeabe90b844b9d5bc09a05656aa08be1ef927b2d80006e6bd4fb0cc983d04"
+    },
+    {
+      "role": "known SOSI x64 cooperative participant",
+      "bytes": 24368,
+      "sha256": "99fc3a6a93987706bb161550f70a3739590e3571134aebb60eaeb3fb5328df58"
+    },
+    {
+      "role": "reused normal-SMM indexed participant context only",
+      "bytes": 83776,
+      "sha256": "10a6f228664bada8eaad309879ab3b17d007ce8d5ccb5561a9038d89adb3840a"
+    },
+    {
+      "role": "reused initialized normal-epoch context only",
+      "bytes": 24096,
+      "sha256": "56fb1eb673e12d524f9be5670a8e0f640035f3b73409a27acbe518840f1d6bb7"
+    },
+    {
+      "role": "saved raw AML: capsule-table-14.aml",
+      "bytes": 71849,
+      "sha256": "e65919be72fd7e7bd51ca6561a6a94754ea22c929743a04727188f4638dda7a5"
+    },
+    {
+      "role": "saved raw AML: public-table-00.aml",
+      "bytes": 71849,
+      "sha256": "d3e7aa7172ee20b1762aae5b941e1fdf3bd90ef8ed74043d37de57a69537676a"
+    },
+    {
+      "role": "saved service WSABI",
+      "bytes": 22920,
+      "sha256": "564b640d62db2a4e4b56c6331e0e526bad2ac1fcf438a41a9e5241551f457b6e"
+    }
+  ],
+  "capSliceIsDerivedNotIndependentFirmwareSource": true,
+  "privateAnalysisArtifactPins": [
+    {
+      "privateArtifact": "input_stability/verify_input_stability.private.py",
+      "bytes": 15424,
+      "sha256": "c3b1a184f13a3dacef17f9c9130493359ed0ab5fe01043182d697cbadbdd2f5b"
+    },
+    {
+      "privateArtifact": "input_stability/input-stability-proof.private.json",
+      "bytes": 18261,
+      "sha256": "3e6aa8464654d5b4b7c98c4e182f1d435594383873de6063067a7ee0304d3b34"
+    },
+    {
+      "privateArtifact": "input_stability/findings.private.md",
+      "bytes": 8862,
+      "sha256": "45565f48f3dde7d8a7561a7dc22aa10101dff40292928f610087fa5418af842d"
+    },
+    {
+      "privateArtifact": "input_stability/artifact-pins.private.json",
+      "bytes": 591,
+      "sha256": "30883190498f4a5d87518be33f66b75672484e0108fbd776417fbd8acbf978ab"
+    },
+    {
+      "privateArtifact": "response_attribution/verify_projection_lifetime.private.py",
+      "bytes": 9082,
+      "sha256": "35a2c2043c5c52018ecb721bf4421f52699e7035943ba44404222a40888a926e"
+    },
+    {
+      "privateArtifact": "response_attribution/projection-lifetime-proof.private.json",
+      "bytes": 12401,
+      "sha256": "5950c32c55d030f5741bb4cd202136a05e9e3b013f271017ab56cc7081e3ef84"
+    },
+    {
+      "privateArtifact": "response_attribution/findings.private.md",
+      "bytes": 6524,
+      "sha256": "50fa8b90f6a758d08399e48c7e7bed39486231a3cc342e3602de3691a0a3f1d0"
+    },
+    {
+      "privateArtifact": "root/verify_capture_cuts.private.py",
+      "bytes": 9987,
+      "sha256": "85554181fe97f462ca075e23181c8b39e8ba24194ecaf0b200968717b3ae02f9"
+    },
+    {
+      "privateArtifact": "root/capture-cuts-proof.private.json",
+      "bytes": 8320,
+      "sha256": "8a689ddfbc019905cd53bfd5fb1a4460cb90d83c4817fa2449e5a08ef837f820"
+    }
+  ],
+  "protectionCuts": {
+    "zeroReadyIsAdmissionNotPrePostReservation": true,
+    "zeroReadyDoesNotFreezeCompletedResponseUntilCopyout": true,
+    "physicalUploadBytes": 30,
+    "physicalDownloadBytes": 30,
+    "returnedDataPrefixBytes": 10,
+    "laterTwentyLocalDestinationStoresOverwriteCapturedPrefix": false,
+    "prefixCaptureAllowsEarlyIndexedResourceRelease": false,
+    "sameInitializedNonreentrantSmmStreamCanCoverIdentifiedDownstreamExchange": true,
+    "sameSmmOrderingAloneProtectsOuterWm00InputAndReturn": false,
+    "actualNormalWholeExchangeCooperationCanCoverInputPreparationThroughPrivateResponseCapture": true,
+    "normalOwnershipAndActualRelatedParticipationArePremisesNotLiveFindings": true,
+    "currentParticipantMembershipEstablished": false,
+    "lateClearPromotedToNewSampleWriter": false,
+    "inputLastConsumeAndOutputCaptureAndPortLastAccessAreDifferentCuts": true,
+    "inputAddressStabilityProvesTargetPolicyOrElectricalChargeStateStable": false
+  },
+  "causality": {
+    "newCurrentRequestPostedAndIntendedReaderExecutedEstablished": false,
+    "returnedContentPreservationIsIndependentCompletionIdentity": false,
+    "readyAckNormalApiPrefixOrSampleZeroOneAloneCertifiesNewRead": false,
+    "existingFailurePrefixIndicatorRetained": true,
+    "staleEchoFailureAndAmbiguousAttributionMustBeRejectedBeforeModeInterpretation": true,
+    "everyAttemptMustProduceFreshSuccessfulSample": false,
+    "normalMapperAndHostWindowToEcMailboxCorrespondenceRemainConditional": true,
+    "actualFixedReadSpecificationComplete": false
+  },
+  "verification": {
+    "inputStability": {
+      "reusedOriginalByteAssertions": 45,
+      "reusedRawAmlPacketAssertions": 4,
+      "boundedSourceOrderRelations": 10,
+      "participantCutsRecorded": 6,
+      "passed": true
+    },
+    "responseAttribution": {
+      "reusedSourceInstructionRows": 45,
+      "sourceIdentityCheck": 1,
+      "composedRangeRelations": 8,
+      "passed": true
+    },
+    "independentRoot": {
+      "reusedContextChecks": 41,
+      "conditionalOrderAndFootprintRelations": 15,
+      "passed": true,
+      "method": "Trusted pefile/Capstone static decode, exact inert EC bytes and explicit-premise partial-order algebra"
+    },
+    "rootExecutedAllThreeFinalVerifiers": true,
+    "trustedTools": {
+      "pefile": "2024.8.26",
+      "capstone": "5.0.6"
+    },
+    "countsOverlapNotUniqueDiscoveriesAppTestsOrCoverage": true,
+    "newFirmwareFunctionEdges": 0,
+    "newRelevantActors": 0,
+    "actualRaceOrCorruptionObserved": false,
+    "independentReadReviewCompleted": true,
+    "independentReviewerExecutedScripts": false,
+    "derivedDslReusedAsPreviouslyReviewedContextNotRederivedFromAml": true,
+    "rawAmlPacketsAlsoCheckedByInputStabilityLane": true,
+    "initialRootVerifierMetadataCorrection": "Incorrect DSDT length literal corrected from 48028 to observed 71849 and checked against ACPI header length plus unchanged SHA; verifier metadata error, not source/product discrepancy",
+    "currentCsharpBuildOrAppUnitTestsRun": false,
+    "previousCodeValidationOnly": {
+      "codeCommit": "62f2d2e",
+      "csharpPassed": 617,
+      "failed": 0,
+      "skipped": 0,
+      "net48ReleaseWarnings": 0,
+      "net48ReleaseErrors": 0,
+      "sixPriorTestedSourcePinsStillMatch": true
+    }
+  },
+  "boundary": {
+    "applicationCoreSdkTestOrExistingReleaseArchiveChanged": false,
+    "actualRequestAddressPairFrameNonceOrGeneratorConstructed": false,
+    "firmwareDllOrAmlExecutedLoadedOrEmulated": false,
+    "actualSdkOemHardwareGlobalOrConsumedMarkerAccessed": false,
+    "newDependencyInstallOrExternalSourceDownload": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "allWritersIrqsWholeLiveHashOrLiveGateOpenMadeAbsoluteCondition": false,
+    "handshakeInitializationRetryWriteOrAlternativeFallbackAdded": false,
+    "publicSdkEntryReopenedOrRealTrialApproved": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "newLaptopRunOrRepeatedUploadRequested": false
+  },
+  "next": "Bind these three protection intervals to the actual related participants of the fixed read proposal, and specify rejection of uncertain new-post/reader attribution without constructing a live request."
+}

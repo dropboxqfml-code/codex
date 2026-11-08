@@ -1,5 +1,21 @@
 # 다음 개발 재개 메모
 
+## 최신 — ready 이후 응답 포착과 관련 참여자의 보호 구간 / 2026-11-08 한국 시간
+
+기준 커밋 `4c0ae25` 다음 작업입니다. [FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md), [바이트 계약](FIXED_READ_BYTE_CONTRACT_REVIEW.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 새로운 source edge가 아닌 기존 source의 부분순서·footprint 합성이며 코드나 gate wrapper 변경은 없습니다.
+
+선택 sender는 ready 뒤 upload30/post, reader는 주소 두 성분 소비→sample write→dispatcher clear, receiver는 두 번째 ready 뒤 download30을 수행합니다. clear는 다음 규약 sender의 admission도 열지만 현재 응답 복사 완료와의 순서를 만들지 않습니다. 따라서 pending 입력 보호와 완료 후 결과 포착을 분리했습니다. 실제 actor/race·새 게시·reader 실행 관측은 아닙니다.
+
+반환에 쓰는 prefix10은 local에 먼저 포착되며 suffix20의 local store가 이를 덮지 않습니다. 그러나 upload의 기존 작업 영향 범위는30이고 indexed selector/port의 접근도 전체30 read까지입니다. 의미상 반환 prefix 포착 경계를 전체 resource release로 축소하지 않습니다. 코드의 기존 actual-end/정리 규약도 바꾸지 않았습니다.
+
+정상 같은 SMM domain 비중첩은 EC copyout을 조건부 보호하지만 WM00 공유 frame 최종 읽기는 SMM 밖입니다. 같은 SMM만으로 다음 host 입력 쓰기를 그 뒤로 보내지 못합니다. 네 WSABI의 정상 획득 whole-exchange mutex 규약은 실제 참여자 사이에서 준비→최종 private 응답 복사까지 덮습니다. native/직접 WMI·ACPI/Runtime의 실제 관련 참여를 자동 포함하지 않습니다. 현재 membership·무결성·새 게시/귀속의 연결은 미완료입니다. 기존 worker inline/분리·ISR 보존을 새 미해결이나 발견으로 다시 세지 않습니다.
+
+검산은 원본 byte/정적 decode와 명시 전제의 부분순서/footprint 검사를 구분합니다. root의 자체 검산은 재사용 context41·관계15를 통과했습니다. 담당별 검사는 root와 서로 겹치므로 합산한 발견/앱 test/coverage가 아닙니다. root DSDT 길이 상수48028 오기를 실제71849/header/기존SHA로 고친 후 통과했으며 source/product 오류가 아닙니다. 기존 파생 DSL은 맥락으로 재사용했고 이번 AML 재역컴파일·파생 재증명은 없습니다.
+
+정제 source/artifact pins는 reports/fixed-read-input-capture-audit.json, private는 `20261108/input-freshness-contract-next`의 input_stability/response_attribution/root에 보관합니다. 코드·test·EXE/ZIP이 같아 C#617/build0/0을 다시 실행하지 않았으며 이는 이전62f2d2e 기록입니다. 원본 실행/로드/에뮬레이션·SDK/OEM/hardware/Global/소모 marker·driver/service/security/firmware/cloud 변경·실제 frame/address pair/nonce 생성은0입니다. 공개 entry ReadSpecificationUnavailable·보호 조회/제어 Unsupported를 유지하며 새 노트북 실행/자료 제출은 불필요합니다.
+
+다음은 세 보호 구간을 고정 조회안의 실제 관련 참여자에 대응시키고 새 게시·선택 reader 실행이 불명확한 응답의 거부 조건을 명세로 묶는 일입니다. 보호되지 않는 구체 관련 구간만 남기며 all-writer/IRQ·전체 live hash·gate-open 실측을 새 절대조건으로 만들지 않습니다. A의 handshake/초기화/재시도/쓰기/B fallback0 및 old consumed 예약 접근·재사용 금지를 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 실제 요청/reader의 조건부 바이트 계약 합성 / 2026-11-08 한국 시간
 
 기준 커밋 `62f2d2e` 다음 작업입니다. [FIXED_READ_BYTE_CONTRACT_REVIEW.md](FIXED_READ_BYTE_CONTRACT_REVIEW.md), [실기 entry 조건](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md), [판정](FIXED_MODE_READ_DECISION.md), [A/B 시험안](FIXED_MODE_READ_PROPOSAL.md)을 먼저 읽습니다. 기존 original bodies의 새 교차층 합성 정적 분석이며 앱/SDK/Core/test 수정이나 gate wrapper 추가는 없습니다.

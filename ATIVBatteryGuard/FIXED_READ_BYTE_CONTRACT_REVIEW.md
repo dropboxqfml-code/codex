@@ -1,5 +1,7 @@
 # 고정 읽기 후보의 요청·응답 바이트 계약 — 2026-11-08 한국 시간
 
+**후속:** [입력 보호·응답 포착 경계](FIXED_READ_INPUT_AND_CAPTURE_REVIEW.md)는 ready 이후 copyout 구간과 30바이트 전송/10바이트 반환의 수명 차이를 관련 SMM·협력 잠금 구간에 연결했습니다. 아래는 바이트 계약 합성 시점의 기록입니다.
+
 **선택한 generic callback과 EC byte reader 사이의 바이트 대응을 합성해, 현재 입력 주소와 반환 sample을 함께 다룰 후보 분기를 하나로 좁혔습니다.** 공통 실패와 명령 전용 분기에서도 sample 자리가 0이 될 수 있어, sample 하나만 읽어 저장 모드 후보로 해석할 수 없다는 관계도 확인했습니다. 실제 읽기 요청 명세를 완성하거나 공개 entry를 연 것은 아니며 충전 제어는 Unsupported입니다.
 
 [실기 진입 조건](READ_TRIAL_ENTRY_CONDITIONS_UPDATE.md)의 후속입니다. 보존된 원본을 데이터로 읽고 기존에 개별 확인한 본문들을 합성했습니다. 새 firmware 함수/edge 발견은 0개이며 기존 byte reader·echo-domain 분석을 새 발견으로 세지 않습니다. 실제 노트북·SDK/OEM 호출이나 요청/주소 조합·frame·nonce 생성은 없습니다.

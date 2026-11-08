@@ -1,5 +1,8 @@
 # 고정 보호 저장 byte 단발 조회 — 구현 승인 검토안
 
+**후속 승인·구현:** 이 구체안에 사용자가 **“그래 진행해.”**로 별도 명시 승인했습니다. [실제 구현·제공 기록](FIXED_READ_A_IMPLEMENTATION.md)과 새 시험 ZIP을 추가했습니다. 실제 실행은 제공 도구에서 사용자가 START를 직접 입력할 때만 최대1method이며, 클라우드 실제호출은 없습니다. 아래는 승인 전 검토안 원문이고 설정 변경·재시도·B는 승인 범위가 아닙니다.
+
+
 **현재 상태: 조건부 구현 제안 검토 가능 / 실제 firmware 호출 구현·실행 미승인.** 이번 문서는 고정 요청·실행 코드가 아니라 다음에 구현할 정확한 범위입니다. 공개 `PrepareSdkAsync`의 `ReadSpecificationUnavailable`과 실제 보호 조회·충전 제어 `Unsupported`는 그대로입니다. [현재 명세](FIXED_READ_TRIAL_SPECIFICATION.md)와 [취소 수명 수정](SDK_CALL_CANCELED_LIFETIME_FIX.md)을 적용합니다.
 
 ## 앞선 허용 기준의 정정

@@ -1,5 +1,20 @@
 # 다음 개발 재개 메모
 
+## 최신 — 승인된 고정 저장 byte 단발 조회 A 구현·배포 / 2026-11-08
+
+기준 `7488a2d` 뒤 사용자가 구체안의 구현·검증·제공을 **“그래 진행해.”**로 승인했습니다. [구현·사용 안내](FIXED_READ_A_IMPLEMENTATION.md)를 먼저 읽습니다. 새 ZIP은 [ATIVBatteryGuard-FIXED-READ-A.zip](../downloads/ATIVBatteryGuard-FIXED-READ-A.zip) 하나이며 일반 권한의 별도 도구입니다. 기존 부팅 UI ZIP은 그대로입니다.
+
+Main의 직접 START 후 새 목적 `FixedModeReadA-v1.attempt`를 고정 LocalAppData 위치에 먼저 CreateNew/flush합니다. 불명·실패도 반복하지 않고 과거 소모 예약은 전혀 접근하지 않습니다. 기존 모델/BIOS 원천·고정 schema/단일Active대상·실제SDK참조를 확인하고 sealed attempt의 고정 요청을 새 PrepareFixedReadAAsync에 연결합니다. 일반 PrepareSdkAsync 차단은 유지합니다. method최대1/sample0~1, handshake·초기화·재시도·설정/임계값 쓰기·B fallback0, owner획득2초/표시10초/actualclose별도join입니다.
+
+새 Core는 RNG8byte1회/전체zero중단·엄격한 실패prefix/echo/보존내용/후보0or1 거부를 구현했습니다. 후보는 임계값·충전 적용 증거가 아니며 앱의 보호 조회/충전 제어 Unsupported는 유지합니다. 정상 등록·inline 관련 처리·같은 초기화 완료/비재진입 stream은 여전히 명시적 적용 전제이지 새P05제공자/typed edge나 현재 실기 관측이 아닙니다.
+
+입력 소유권을 준비 결과와 명시적으로 인계하고 실제 RunAndClose와 close 뒤만 대상·입력을 정리합니다. CallCanceled/timeout/실제종료불명은 조기해제 근거가 아닙니다. Ctrl+C는 localstop만 전달하고 준비/close불명은 static참조 보유+pending, SDKCancel/합성final/watchdog/강제종료0입니다. TXT 실패도 추가호출/조기정리로 바꾸지 않습니다.
+
+현재 root 검증은 새39개 포함 **688통과·0실패·0skip**, portable/전체 net48참조 Release 각각0경고·0오류입니다. 기존649도 재실행했습니다. template↔저장proof 독립27대조와 코드 읽기 검토를 수행했습니다. 실제 WindowsSDK/WMI/OEM/hardware/Global/노트북예약 접근은0이고 새 실기 결과는 아직 없습니다. 온라인 NuGet audit 실패 기록과 최종 캐시전용 restore를 구분하며 해당 검사를 완료했다고 주장하지 않습니다.
+
+다음 사용자 작업은 새ZIP을 별도폴더에 풀고 한 번 START하여 생성한 새 `fixed-read-a-result-*.txt`만 전달하는 것입니다. Pending이면 강제종료·재실행하지 않습니다. 같은 오래된 진단·DLL·EXE·부팅 재확인은 불필요합니다. 새 결과가 거부/gate/FF/timeout이어도 handshake·B·재시도는 승인되지 않았습니다. 충전 설정 변경은 별도 근거와 별도 승인 범위로 남깁니다. [정제검증](reports/fixed-read-a-implementation-validation.json)을 보존하며 아래는 이전 시점 기록입니다.
+
+
 ## 최신 — SDK 내부 취소 수명 수정·단발 조회 구현 검토안 / 2026-11-08
 
 기준 `d71ac35` 다음 작업입니다. [수정·현재 검증](SDK_CALL_CANCELED_LIFETIME_FIX.md)과 [구체 구현 승인안](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)을 먼저 읽습니다. .NET48 문서의 내부 `CallCanceled`는 실제 중단 보장이 아닌데 Windows adapter가 모든 Completed를 실제 terminal로 전달하던 결함을 수정했습니다. 해당 상태는 실패만 기록하며 capture·입력·observer·lease를 조기 해제하지 않습니다. 후속 실제 final이 없으면 pending이며, 일반 오류 final은 기존대로 정리합니다.

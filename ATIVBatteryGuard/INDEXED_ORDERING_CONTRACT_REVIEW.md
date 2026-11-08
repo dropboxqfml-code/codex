@@ -1,5 +1,8 @@
 # 관련 EC 접근의 보호 순서 조사 — 2026-11-08
 
+**구현 후속:** 별도 사용자 승인 뒤 [고정 A 도구](FIXED_READ_A_IMPLEMENTATION.md)를 추가했습니다. 명시적 정상 플랫폼 전제를 실제 runtime관측으로 승격하지 않으며 새로운P05제공자/typed edge발견은0입니다. 일반 entry차단과Unsupported·설정쓰기/재시도/B금지, 후속실기결과미수신을 유지합니다. 아래는 이전 조사·판정 기록입니다.
+
+
 **후속 판정 정정:** [현재 구현 검토안](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)은 정상 등록·inline 관련 처리·같은 초기화 완료/비재진입 P05 stream을 명시적 적용 전제로 사용합니다. 새 공식 대표 Core source에서 참조 IPL의 Context→실제 entry→typed 처리→NULL-root→반환을 연결했으며 실제 P05 provider/typed edge 발견은0입니다. provider 본문과 별도 공통 owner를 같은 stream 근거에 중복 요구하지 않습니다. 아래 미연결은 source 발견 상태의 기록이며 조건부 제안 자체를 막는 절대조건으로 바꾸지 않습니다. 새 firmware 호출 구현에는 별도 명시 승인이 필요합니다. 사용자 Complete·UEFI 결과는 이미 [수신 기록](WINDOWS_BOOT_UEFI_RESULT.md)에 있으나 위 전제나 실제 보호 순서 관측은 아닙니다.
 
 **이전 관측 기능 추가 시점:** [Windows 부팅 방식 보고](WINDOWS_BOOT_FIRMWARE_UPDATE.md)를 추가했습니다. 이는 기존에 없던 표준 메타데이터로 특정 OS EFI 변수 경로의 적용 범위를 좁히는 방법이며, 아래 source 미연결을 복구한 것은 아닙니다. 당시 노트북 결과는 아직 없었고 실제 조회·제어는 보류했습니다.

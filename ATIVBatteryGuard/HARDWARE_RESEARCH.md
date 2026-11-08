@@ -1,5 +1,12 @@
 # 하드웨어 조사
 
+## 최신 — 승인된 fixed read A 구현 / 2026-11-08
+
+**구현:** [별도 단발 도구](FIXED_READ_A_IMPLEMENTATION.md)는 사용자가 승인한 고정 저장 byte 조회만 연결합니다. 새 목적 영속1회 예약→exact profile/metadata→sealed request→고정SDK entry→관련 actualclose 순서이며 method최대1/sample0~1/handshake·초기화·재시도·설정 쓰기·B fallback0입니다. 정상 플랫폼 전제는 구체안대로 유지하고 실제P05 provider/typed edge를 새로 발견했다고 주장하지 않습니다.
+
+**검증/한계:** 새39개 포함688C# 통과·portable/전체net48참조 Release0경고·0오류, 독립template/proof27대조와 읽기 검토를 수행했습니다. 실제Windows SDK·OEM·하드웨어·Global·노트북예약 접근은0입니다. 후보0/1은 현재임계값·충전 적용의 증거가 아니며 실제 제어 Unsupported입니다. 새ZIP은 삼성원본/firmware/과거실험EXE 없이 별도도구만 제공합니다. 새 결과TXT만 필요하고 기존자료 재제출은 불필요합니다. 아래는 이전 기록입니다.
+
+
 ## 최신 — SDK 취소 수명 보강·조건부 단발 구현 제안 / 2026-11-08
 
 **확인한 결함:** .NET48 문서는 내부 `CallCanceled`도 실제 중단을 보장하지 않는다고 명시합니다. Windows adapter가 이를 terminal로 전달하던 [조기 정리 결함을 수정](SDK_CALL_CANCELED_LIFETIME_FIX.md)했습니다. 새3개 포함649C# 통과, portable/전체 net48 참조 Release0경고·0오류입니다. 실제 노트북에서 이 결함을 관측했거나 SDK를 실행한 결과는 아닙니다.

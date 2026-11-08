@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 1,
+  "recordDate": "2026-11-08",
+  "baseCommit": "7488a2dcbadb9446550bcb8d5461797b2b7f656d",
+  "scope": "Approved fixed stored-mode byte read trial A implementation, offline validation and separate downloadable tool. No charge-control implementation.",
+  "authorization": {
+    "userResponse": "그래 진행해.",
+    "proposal": "READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md",
+    "scope": "Fixed one-shot read implementation, build, offline validation and tool provision; user starts the actual trial manually.",
+    "settingWritesHandshakeBOrRetriesApproved": false
+  },
+  "entryAndReservation": {
+    "separateTool": "ATIVBatteryGuard.FixedReadTrial.exe",
+    "manualStart": "Interactive START only; arguments and redirected input/output rejected.",
+    "elevation": "asInvoker, no automatic elevation, no administrator retry requirement.",
+    "order": "START -> new fixed-purpose durable claim -> read-only preflight -> fixed attempt -> SDK preparation -> at most one invocation -> actual close join.",
+    "purpose": "FixedModeReadA-v1",
+    "markerFile": "FixedModeReadA-v1.attempt",
+    "reservation": "Fixed per-user LocalApplicationData application Experiments location; CreateNew, WriteThrough and Flush(true); existing empty/corrupt marker consumes the trial; no repair/reset/delete/path/account fallback.",
+    "oldConsumedReservationAccessedResetDeletedReusedOrBypassed": false,
+    "perUserReservationIsMachineWideSecurityBoundary": false,
+    "genericSdkEntry": "PrepareSdkAsync remains ReadSpecificationUnavailable.",
+    "fixedSdkEntry": "PrepareFixedReadAAsync accepts sealed attempt without arbitrary command/address/frame/timeout/dispatch arguments; attempt/plan/binding one-use checks retained."
+  },
+  "fixedProfileAndRequest": {
+    "platform": "Windows10x64 only; manifest-aware major10 build10240 through21999.",
+    "deviceSources": [
+      "Win32_ComputerSystemProduct.Name",
+      "Win32_BIOS.SMBIOSBIOSVersion"
+    ],
+    "deviceProfile": "940X3G/930X3G; P05ACJ.128.140819.dg",
+    "metadata": "Local fixed namespace/class/GUID/methodID1/in-outDataBuffer/Bytes UInt8[]; complete sole Active instance and actual SDK identity.",
+    "unknownOrMismatch": "No method call; no alternate profile.",
+    "request": "One source-matched fixed generic read branch and one stored mode byte; no arbitrary runtime input.",
+    "comparison": "One standard RNG eight-byte fill; all-zero/failure abort before invocation; deterministic internal seam only in automated tests.",
+    "rawCommandsAddressesFramesComparisonContentInPublicReports": false,
+    "maximumMethodInvocations": 1,
+    "maximumFixedByteSamples": 1,
+    "handshakes": 0,
+    "oemInitializations": 0,
+    "retries": 0,
+    "settingOrThresholdWrites": 0,
+    "fallbackB": 0,
+    "communicationBufferAndMailboxPublicationAndExchange": true
+  },
+  "lifetime": {
+    "cooperativeOwnerAcquireSecondsMaximum": 2,
+    "responseDisplayDeadlineSeconds": 10,
+    "metadataBudgetSeconds": 6,
+    "metadataIndividualOptionSecondsMaximum": 2,
+    "deadlinesGuaranteeActualReturnOrStop": false,
+    "joins": "Same invocation RunAndClose and RequestClose; SDK call-exit, applicable terminal, detached capture, callbacks and owned inputs/owner close retained.",
+    "callCanceled": "Existing cancellation failure latch retained; not forwarded as actual terminal.",
+    "unknown": "Retain related references and wait without extra disposal or new calls. Some cleanup may already have happened; not a claim that every lease remains held.",
+    "controlC": "Prevent default termination and pass local stop intent only.",
+    "sdkCancelSyntheticProductionFinalWatchdogForceKillAutomaticRestart": false,
+    "journalFailure": "Before Run, join close without calling; after invocation, preserve actual-close join and never retry.",
+    "externalForcedTerminationPreventedOrUndone": false
+  },
+  "acceptance": {
+    "required": "Method envelope, structural ACK/shape, failure-prefix rejection, control/tail/echo/preserved-address/eight-byte-content checks and candidate domain0or1.",
+    "result": "Sanitized stored-mode candidate only; raw frame, comparison content, paths, accounts, unique identifiers and exception text excluded.",
+    "candidateConfirmsThresholdOrActualChargeLimit": false,
+    "actualAppProtectionReadAndChargeControl": "Unsupported",
+    "desiredModeActualModeAndWindowsPercentMerged": false,
+    "normalPlatformPremises": "Normal proxy/private backend initialization, inline related typed handling and same initialized nonreentrant P05 stream; existing conditional ISA/bank/host-to-XDATA and whole-exchange contracts.",
+    "premisesNewlyObservedOnLaptop": false,
+    "newActualP05ProviderOrTypedEdges": 0,
+    "reevaluateOn": "Concrete related independent AP/direct/domain bypass, deferred indexed work or inapplicable normal registration/stream conditions.",
+    "closedGate": "May yield no sample; no handshake, retry or fallback."
+  },
+  "rootVerification": {
+    "suite": {
+      "passed": 688,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 688,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "newTests": {
+      "fixedRequestAndAcceptance": 15,
+      "newReservation": 8,
+      "fixedSdkPreparation": 8,
+      "hostAndJournal": 8
+    },
+    "portableReleaseBuild": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    "fullNet48ReferenceReleaseBuild": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    "restore": "Final serial restore used existing clear-source test configuration and cached reference packages; no new dependency installed.",
+    "earlierRestore": "Saved silent parallel-graph failure and initial online vulnerability-data unavailable warning; serial cache-only restore removed the network dependency. No warning suppression used.",
+    "onlinePackageVulnerabilityAuditCompleted": false,
+    "logs": [
+      {
+        "file": "portable-build.log",
+        "bytes": 227,
+        "sha256": "1bd67b6f55f32c1f55112776b9edd7c2d051b562b0441457115e7b207cfa524b"
+      },
+      {
+        "file": "suite.json",
+        "bytes": 106,
+        "sha256": "d65116c6b1cb15164a9da016cf29c4ac45c8f345af9af54b657d9e7fc174d904"
+      },
+      {
+        "file": "suite.log",
+        "bytes": 58893,
+        "sha256": "88ba28b82d5e70127fb69ed33369f6339ead79c32bc18dac275e09640bacb15d"
+      },
+      {
+        "file": "restore.log",
+        "bytes": 37,
+        "sha256": "c329f2e5bf20a1827c9a6a206937d166ae309f96376e450013bc4519180278d3"
+      },
+      {
+        "file": "restore-diagnostic.log",
+        "bytes": 751992,
+        "sha256": "66fc28a31a616752c78319a78da101fb78a94d3b423cc7d86f132bbbee9c7646"
+      },
+      {
+        "file": "restore-serial.log",
+        "bytes": 1564,
+        "sha256": "6d6ed83270e0ecd8a92e838f445791829e4bdf599458873430a6407f23c2b644"
+      },
+      {
+        "file": "restore-offline.log",
+        "bytes": 468,
+        "sha256": "da52de3847166c4d71223d8cf55c2910eb227793091f14b7c57c80e413736a2a"
+      },
+      {
+        "file": "solution-build.log",
+        "bytes": 3320,
+        "sha256": "8382f087bc09a7c95ef16c0a98b00ce12db75390c39428ff591cce12e7c245b5"
+      },
+      {
+        "file": "solution-build-final.log",
+        "bytes": 1659,
+        "sha256": "6c987a0fa24388f49bd778a01fd6316e4cc179f5905fed477fd37eb31b3cb87c"
+      },
+      {
+        "file": "package.json",
+        "bytes": 250,
+        "sha256": "7d6fb621273e899fb6b106c72cb6e2e4fdb3ad91855d6b793db35b2519d8f061"
+      }
+    ],
+    "fixedTemplateCrosswalkChecks": 27,
+    "crosswalkRootReexecuted": true,
+    "crosswalkPins": [
+      {
+        "file": "verify_implementation.private.py",
+        "bytes": 6413,
+        "sha256": "58cc7b6acb9cd7a3bfd0f3618710eb077da86683fd9bc99a70aaf1efe154a7b3"
+      },
+      {
+        "file": "implementation-crosswalk.private.json",
+        "bytes": 4975,
+        "sha256": "f08b58e1880b642cf4c0dff1ac02dead316c0a428d30c924ab689f42e7c2843b"
+      },
+      {
+        "file": "findings.private.md",
+        "bytes": 4363,
+        "sha256": "f725b4a7699e915e271224cee045267ef9dbf34f7df1dd30ceef6775cd76e6e2"
+      }
+    ],
+    "crosswalkMeaning": "New implementation literals compared with saved static proofs; no new firmware decode/execution, runtime frame generation or hardware discovery.",
+    "reservationTests": "Temporary directories and separate objects/concurrent Tasks, not executed Windows cross-process or power-loss tests.",
+    "actualWindowsRuntimeSdkWmiOemHardwareGlobalOrNotebookReservationExecuted": false
+  },
+  "sourcePins": [
+    {
+      "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFixedModeReadAttempt.cs",
+      "bytes": 8390,
+      "sha256": "04d7f79d759d8c97b822e5d35355442a3a9c0fe2046b6372532311e365de2aab"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.Core/Storage/WsabiWmiFixedModeReadAFileReservation.cs",
+      "bytes": 3360,
+      "sha256": "7e52eb617c8ad43c662d2184b93cd51108d15089a78379eaa026ec54cbbf5063"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsFixedReadPreparation.cs",
+      "bytes": 2284,
+      "sha256": "fbfefd2ce01b3931c89aecbebcc89105a573789f4eddf414ab55f11ccf6bb3af"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs",
+      "bytes": 20864,
+      "sha256": "cf84e9f68c72fe8fde14af6dee44716703d0917ead1eaec16d2016a1b13f229d"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/Program.cs",
+      "bytes": 13164,
+      "sha256": "1c59773a194dfc0d768a345bc9f6c5f53a982d44b8285d20179377d0c3e3efa6"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/FixedReadTrialLifetime.cs",
+      "bytes": 1868,
+      "sha256": "c8c524f37840b4585af50629a5a6af5f392d7312d636ff6de46e09d714417c76"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/FixedReadTrialJournal.cs",
+      "bytes": 2181,
+      "sha256": "bdbcc60a03856c95400b480171f7623daf9255c9b9c7652ae9bb1784ff0b9086"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/WindowsFixedReadPreflight.cs",
+      "bytes": 22963,
+      "sha256": "37bd5f3ce51b122a971a6db8324880552d5dee051ec1976322956ae502fcb9d4"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/ATIVBatteryGuard.FixedReadTrial.csproj",
+      "bytes": 915,
+      "sha256": "3a14c5b7b97175ff2e286dca25a4a5b33f048f5e48891b2d85c3fff8b76bcbbd"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/app.manifest",
+      "bytes": 624,
+      "sha256": "52c31aa8e8a7671ce066cefb7f653ceef156bc0cd0f00c36f3536aefc3d4c390"
+    },
+    {
+      "file": "tests/WsabiWmiFixedModeReadTests.cs",
+      "bytes": 14601,
+      "sha256": "f61b302bc8d4f7ddff43af4396d97c071b6a8a2ca507c0ddef34090871a2ecc6"
+    },
+    {
+      "file": "tests/WsabiWmiFixedModeReadAReservationTests.cs",
+      "bytes": 8988,
+      "sha256": "2d0e75e0ef37992bff195f3941644ea7c406be4b7e4a1ea9f7ca9926cabe8b81"
+    },
+    {
+      "file": "tests/WsabiWmiFixedReadPreparationTests.cs",
+      "bytes": 13894,
+      "sha256": "d5b552cb58320f0094db68d764a8b2d0fb9a96b8adc03286b56f1fb1c3da25ac"
+    },
+    {
+      "file": "tests/FixedReadTrialHostTests.cs",
+      "bytes": 5942,
+      "sha256": "b571344830e00efeab36dbea6b184fc7652ec9e9ba0af9e6e170d012e5ef200b"
+    },
+    {
+      "file": "tests/Program.cs",
+      "bytes": 34156,
+      "sha256": "6a5562cd362c087cdf895127e732d1cece831a1182ce780b68ba2c8debbacd93"
+    },
+    {
+      "file": "tests/ATIVBatteryGuard.PortableTests.csproj",
+      "bytes": 6401,
+      "sha256": "fa3831be6743e51f0616db80306bb28cc19698030ade6186b1e50221e78efe47"
+    },
+    {
+      "file": "scripts/package_fixed_read_a.py",
+      "bytes": 8965,
+      "sha256": "df1fa33cd7074ae9a5aa45242ab42277531d52448fc6d6e58c7af122b6e9c738"
+    },
+    {
+      "file": "ATIVBatteryGuard.sln",
+      "bytes": 6020,
+      "sha256": "8edd593b00de637d824f2171d5699dd2473c9a6134bebee20a10d6ba61c66a43"
+    }
+  ],
+  "distribution": {
+    "file": "ATIVBatteryGuard-FIXED-READ-A.zip",
+    "bytes": 141137,
+    "sha256": "f99e1255d7fa4500a68596ad067761bff39dded8a7edd1849d2dcf78a817eaf4",
+    "entries": 7,
+    "sourceFingerprintSha256": "eb1804276756cd9af46a8394d86fa70b17f602d9f0a854deae2356f6ebef0a4e",
+    "programFiles": 4,
+    "totalEntries": 7,
+    "oemOriginalFirmwareOldExperimentExePdbIncluded": false,
+    "existingBootArchiveUnchanged": {
+      "file": "ATIVBatteryGuard-BOOT-FIRMWARE.zip",
+      "bytes": 149116,
+      "sha256": "d7b9b6286a0aa5570fa12c5a17977a331a5149ffa948e43339c1032d8c674e58"
+    },
+    "normalAppControllerAndOldExperimentSourcesUnchanged": true,
+    "compiledBeforePublicationCommit": "Product source fingerprint pins the actual build input; no claim of a build against the later publication commit ID."
+  },
+  "review": {
+    "fixedTemplateAndCoreIndependentReadReview": "No blocking findings.",
+    "sdkIntegrationIndependentReadReview": "No blocking findings.",
+    "hostPreflightReservationAndTestsIndependentReadReview": "No blocking findings; final wording and post-preparation journal close-only branch applied.",
+    "artifactIndependentVerification": {
+      "checksPassed": 44,
+      "allPassed": true,
+      "rootReexecuted": true,
+      "scope": "Allowlist, CRC, checksums, four build-byte matches, source fingerprint, net48/x64/manifest/unsigned and bounded CLI metadata/IL call-site plus report-expression review. Not a hardware test or proof that all possible strings/paths/actors are absent.",
+      "pins": [
+        {
+          "file": "verify_package.private.py",
+          "bytes": 15122,
+          "sha256": "097f2b8b448f6956f6a70bf27fbece32ff4b1beb1f7cc250f8bced195556ac00"
+        },
+        {
+          "file": "proof.private.json",
+          "bytes": 11402,
+          "sha256": "73cfb2a2d51d54474a73c805d8ebf322068081e49156535d2775e7987291e23a"
+        },
+        {
+          "file": "final.log",
+          "bytes": 184,
+          "sha256": "a125b45952a0355be857f6810a5aa8f327497b95633434f2aab87f88c407a818"
+        },
+        {
+          "file": "execution-and-pins.private.json",
+          "bytes": 1160,
+          "sha256": "edb30f96bb1ec4df26f5e6a778216f5aa53eef532d3895532aca277f26cce64b"
+        }
+      ],
+      "rootLog": {
+        "file": "root-artifact-verification.log",
+        "bytes": 184,
+        "sha256": "a125b45952a0355be857f6810a5aa8f327497b95633434f2aab87f88c407a818"
+      }
+    },
+    "finalDocumentationIndependentReadReview": "No blocking findings; proposal approval, historical states, current validation, fixed limits, applicability premises and pending wording are consistent. Read-only review."
+  },
+  "environment": "No cloud configuration publication, driver/service/ACL/security/firmware flash changes or original binary execution.",
+  "privacy": "Sanitized enums, bounded candidate and source/build hashes only. No local absolute paths, raw firmware contents, command/address pairs, frames, comparison content, identities or raw exception text."
+}

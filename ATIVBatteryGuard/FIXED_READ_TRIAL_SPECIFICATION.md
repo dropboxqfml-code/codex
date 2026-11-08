@@ -1,5 +1,8 @@
 # 고정 보호 저장값 단발 조회 명세 — 비실행 검토본
 
+**후속 승인·구현:** 사용자 별도 명시 승인 뒤 [고정 A 도구](FIXED_READ_A_IMPLEMENTATION.md)를 구현·검증·제공했습니다. 임의 요청을 허용하는 일반 entry는 계속 차단하고 sealed fixed-purpose 경로만 추가했습니다. 새영속1회예약·2초획득/10초표시/실제closejoin·688현재회귀/전체빌드0/0을 적용했습니다. 실제Windows SDK/노트북 실행·충전제어 성공은 아니며 아래의 승인 대기는 당시 기록입니다.
+
+
 **2026-11-08 최신 적용 판정:** [구체 구현 승인안 A](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)에 정상 등록·inline 관련 처리·같은 초기화 완료/비재진입 P05 stream을 명시적 전제로 기록했습니다. 새 실제 P05 source edge는 없으나 같은 stream의 근거에 제공자 본문과 별도 공통 lock을 다시 요구하지 않는 기준으로 정정합니다. 새 firmware 호출 구현은 별도 명시 승인 전까지 보류하며 공개 entry·Unsupported는 유지합니다. [CallCanceled 수명 수정](SDK_CALL_CANCELED_LIFETIME_FIX.md)을 실제 연결 전에 적용합니다. 아래 두 후속의 미완료는 당시 source 발견 상태입니다.
 
 **보호 순서 조사 후속:** [entry·owner 대조](INDEXED_ORDERING_CONTRACT_REVIEW.md)에서 새 공통 owner 또는 표준 통신의 실제 보호 순서 연결을 확보하지 못했습니다. 조건부 명세는 유지하되 실기 전 첫 단계는 미완료이며 실제 요청·entry 활성화는 보류합니다.

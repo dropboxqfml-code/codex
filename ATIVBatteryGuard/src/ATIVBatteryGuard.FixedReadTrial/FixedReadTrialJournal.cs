@@ -1,0 +1,60 @@
+using System;
+using System.IO;
+using System.Text;
+using ATIVBatteryGuard.Core.Storage;
+
+namespace ATIVBatteryGuard.FixedReadTrial
+{
+    // Only caller-selected fixed text, enums and a validated candidate 0/1 are
+    // written. No reflection/exception/SDK object formatting occurs here.
+    internal sealed class FixedReadTrialJournal : IDisposable
+    {
+        private readonly object gate = new object();
+        private readonly TextWriter writer;
+        private readonly Action<string> display;
+        internal bool WriteFailed { get; private set; }
+
+        internal FixedReadTrialJournal(TextWriter writer, Action<string> display)
+        { this.writer = writer; this.display = display; }
+
+        internal static FixedReadTrialJournal TryCreate(string directory)
+        {
+            FileStream stream = null;
+            try
+            {
+                string local = LocalPathPolicy.NormalizeDirectory(directory);
+                LocalPathPolicy.EnsureNoReparsePoints(local);
+                string name = "fixed-read-a-result-" + DateTime.UtcNow.ToString("yyyyMMddTHHmmssfff",
+                    System.Globalization.CultureInfo.InvariantCulture) + ".txt";
+                string path = Path.Combine(local, name);
+                LocalPathPolicy.EnsureNoReparsePoints(path);
+                stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+                return new FixedReadTrialJournal(new StreamWriter(stream, new UTF8Encoding(false)), Console.WriteLine);
+            }
+            catch
+            {
+                try { if (stream != null) stream.Dispose(); } catch { }
+                return null;
+            }
+        }
+
+        internal void Write(string line)
+        {
+            lock (gate)
+            {
+                try { display(line); } catch { }
+                if (WriteFailed) return;
+                try { writer.WriteLine(line); writer.Flush(); }
+                catch { WriteFailed = true; }
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (gate)
+            {
+                try { writer.Dispose(); } catch { WriteFailed = true; }
+            }
+        }
+    }
+}

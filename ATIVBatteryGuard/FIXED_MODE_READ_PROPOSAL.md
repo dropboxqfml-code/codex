@@ -1,5 +1,8 @@
 # 고정 보호 저장 byte의 조건부 시험안 — 비실행 문서
 
+**후속 승인·구현:** 사용자 승인 후 [A의 실제 구현·제공 기록](FIXED_READ_A_IMPLEMENTATION.md)을 추가했습니다. 고정 대상의 최대1method/sample0~1·초기화/재시도/설정쓰기/Bfallback0와 새로운purpose의영속1회예약을 구현했습니다. 일반 entry 차단·제어Unsupported·정상플랫폼전제를 유지하며 실기 결과는 아직 없습니다. 아래는 승인 전 제안 이력입니다.
+
+
 **2026-11-08 최신 후속:** [구체 구현 승인안 A](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)에 고정 profile·최대1method·저장 byte 샘플0~1·획득2초/표시10초·새 목적의 영속1회 예약과 응답 거부를 모았습니다. 정상 등록·inline 관련 처리·같은 초기화 완료/비재진입 stream을 명시적 적용 전제로 둔 조건부 제안이며 실제 P05 연결 발견은 아닙니다. 별도 승인 전에는 실제 호출 코드를 추가하지 않습니다. B·설정 변경·재시도·과거 소모 예약 재사용은 범위 밖입니다. public 차단·Unsupported를 유지합니다. 아래는 이전 검토 기록입니다.
 
 **통합 명세 후속:** [단발 조회 명세](FIXED_READ_TRIAL_SPECIFICATION.md)와 [PI 출처·계약 대조](PI_COMMUNICATION_CONTRACT_REVIEW.md)에 대상·예산·관련 보호·거부·actual end/정리를 묶었습니다. 표준 제공자 기계코드 자체를 유일한 해법으로 두지 않고 동일 보호 순서의 적용 근거를 평가합니다. 조건부 제안은 검토 가능하나 실제 template/SDK 연결·실기 실행은 보류합니다. 아래 source 미연결 기록을 규약 가정의 증명이나 모든 경로의 추가 필수조건으로 바꾸지 않습니다. A/B 호출 수·공개 차단·Unsupported는 유지합니다.

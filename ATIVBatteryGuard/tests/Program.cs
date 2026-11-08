@@ -432,6 +432,10 @@ internal static partial class Program
         RegisterWsabiWmiSdkBindingLifetimeTests();
         RegisterWsabiWmiReadTrialEntryTests();
         RegisterWsabiWmiWindowsMutexGateTests();
+        RegisterWsabiWmiFixedModeReadTests();
+        RegisterWsabiWmiFixedModeReadAReservationTests();
+        RegisterWsabiWmiFixedReadPreparationTests();
+        RegisterFixedReadTrialHostTests();
         RegisterOfflineRehearsalTests();
         RegisterWindowsBootEnvironmentTests();
     }

@@ -55,7 +55,7 @@ namespace ATIVBatteryGuard.WmiInterop
         }
     }
 
-    public static class WsabiWmiWindowsSingleReadPreparation
+    public static partial class WsabiWmiWindowsSingleReadPreparation
     {
         private static readonly ConditionalWeakTable<WsabiWmiSingleReadPlan, Attempt> Attempts =
             new ConditionalWeakTable<WsabiWmiSingleReadPlan, Attempt>();
@@ -95,10 +95,10 @@ namespace ATIVBatteryGuard.WmiInterop
                 exchangeGate, acquireTimeout, responseTimeout, cancellationToken);
         }
 
-        // Real read-trial entry. A valid envelope/SDK binding is not a reviewed
-        // firmware read specification. None is available in this build, so no
-        // caller-supplied bytes can reach SDK preparation here. There is no
-        // runtime approval flag or fallback to the internal mechanism below.
+        // Generic caller-supplied-request entry remains blocked: a valid
+        // envelope/SDK binding does not supply a reviewed read specification.
+        // Fixed A has its own sealed-attempt entry; this API never converts
+        // caller bytes into that path or uses a runtime approval flag.
         public static Task<WsabiWmiSingleReadPreparationResult> PrepareSdkAsync(WsabiWmiSingleReadPlan plan,
             WsabiWmiWindowsSdkBinding binding, WsabiWmiMethodRequest fixedRequest,
             IWsabiWmiExchangeGate exchangeGate, TimeSpan acquireTimeout, TimeSpan responseTimeout,
@@ -112,9 +112,9 @@ namespace ATIVBatteryGuard.WmiInterop
                 WsabiWmiSingleReadPreparationStatus.ReadSpecificationUnavailable));
         }
 
-        // Mechanical SDK integration only, kept internal while the public
-        // trial entry has no reviewed fixed read specification. Stand-in tests
-        // exercise this path without representing a permitted hardware trial.
+        // Mechanical SDK integration kept internal. The separate fixed A entry
+        // delegates here after its sealed-attempt claim; the generic public
+        // entry stays blocked. Stand-in tests never conduct a hardware trial.
         internal static Task<WsabiWmiSingleReadPreparationResult> PrepareSdkBindingAsync(WsabiWmiSingleReadPlan plan,
             WsabiWmiWindowsSdkBinding binding, WsabiWmiMethodRequest fixedRequest,
             IWsabiWmiExchangeGate exchangeGate, TimeSpan acquireTimeout, TimeSpan responseTimeout,

@@ -1,5 +1,8 @@
 # ATIV Battery Guard
 
+**최신 — 승인된 고정 저장값 단발 조회 A / 2026-11-08:** [시험 도구 ZIP](../downloads/ATIVBatteryGuard-FIXED-READ-A.zip)과 [사용·검증 안내](FIXED_READ_A_IMPLEMENTATION.md)를 추가했습니다. 새 폴더에 ZIP 하나를 풀어 일반 권한으로 실행하고 START를 직접 입력할 때만 고정1byte 조회를 최대1method로 시도합니다. 초기화·재시도·설정 변경0, 새영속1회예약·timeout/취소의 실제close대기를 적용했습니다. 새39개 포함688개 통과·portable/전체net48참조빌드0경고·0오류이며 실제WindowsSDK/노트북 실행은 아직 없습니다. 저장 후보0/1은 충전 제한 성공이 아니며 제어 Unsupported를 유지합니다. 기존 자료 재제출 대신 이번 새TXT만 결과로 사용합니다. 아래는 이전 기록입니다.
+
+
 **최신 — WMI 취소 수명 수정·단발 조회 구현 검토안 / 2026-11-08:** [내부 취소를 실제 종료로 오인하던 결함](SDK_CALL_CANCELED_LIFETIME_FIX.md)을 수정했습니다. 새3개 포함649개 통과, portable/전체 net48 참조 Release 빌드 경고·오류0입니다. [고정 byte 단발 조회안](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)은 정상 플랫폼 전제를 명시한 조건부 구현 승인안이며 새로운 P05 연결 발견이나 실제 호출 결과가 아닙니다. 별도 승인 전에는 새 firmware 호출 코드를 추가하지 않습니다. public 차단·실제 보호 조회/제어 Unsupported와 기존 부팅 보고 ZIP을 유지하며 추가 실행·자료 제출은 필요 없습니다. 아래는 이전 기록입니다.
 
 

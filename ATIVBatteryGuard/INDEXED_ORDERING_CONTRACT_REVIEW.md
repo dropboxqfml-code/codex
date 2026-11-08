@@ -1,6 +1,8 @@
 # 관련 EC 접근의 보호 순서 조사 — 2026-11-08
 
-**후속 관측 기능:** [Windows 부팅 방식 보고](WINDOWS_BOOT_FIRMWARE_UPDATE.md)를 추가했습니다. 이는 기존에 없던 표준 메타데이터로 특정 OS EFI 변수 경로의 적용 범위를 좁히는 방법이며, 아래 source 미연결을 복구한 것은 아닙니다. 현재 노트북 결과는 아직 없고 실제 조회·제어는 보류합니다.
+**후속 판정 정정:** [현재 구현 검토안](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)은 정상 등록·inline 관련 처리·같은 초기화 완료/비재진입 P05 stream을 명시적 적용 전제로 사용합니다. 새 공식 대표 Core source에서 참조 IPL의 Context→실제 entry→typed 처리→NULL-root→반환을 연결했으며 실제 P05 provider/typed edge 발견은0입니다. provider 본문과 별도 공통 owner를 같은 stream 근거에 중복 요구하지 않습니다. 아래 미연결은 source 발견 상태의 기록이며 조건부 제안 자체를 막는 절대조건으로 바꾸지 않습니다. 새 firmware 호출 구현에는 별도 명시 승인이 필요합니다. 사용자 Complete·UEFI 결과는 이미 [수신 기록](WINDOWS_BOOT_UEFI_RESULT.md)에 있으나 위 전제나 실제 보호 순서 관측은 아닙니다.
+
+**이전 관측 기능 추가 시점:** [Windows 부팅 방식 보고](WINDOWS_BOOT_FIRMWARE_UPDATE.md)를 추가했습니다. 이는 기존에 없던 표준 메타데이터로 특정 OS EFI 변수 경로의 적용 범위를 좁히는 방법이며, 아래 source 미연결을 복구한 것은 아닙니다. 당시 노트북 결과는 아직 없었고 실제 조회·제어는 보류했습니다.
 
 **이번 조사로도 핵심 보호 순서의 새 연결을 확보하지 못했습니다. 실기 전 첫 단계는 아직 미완료입니다.** [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md)에서 한정한 private Runtime hook의 EC 접근을 고정 조회와 같은 보호 순서에 연결하는 근거를 조사했습니다. 부팅 초기화·실제 SMI 진입·통신 입력을 구분하고, 기존 상태값이 공통 자원 owner를 제공하는지도 대조했습니다. 실제 보호값 조회나 충전 제어의 성공을 보고하는 문서가 아닙니다.
 

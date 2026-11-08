@@ -253,10 +253,19 @@ namespace ATIVBatteryGuard.WmiInterop
             try
             {
                 if (!armed) return; // Not a terminal for our not-yet-started call.
-                int status = (int)args.Status;
+                ManagementStatus status = args.Status;
+                if (status == ManagementStatus.CallCanceled)
+                {
+                    // This can be internal/client cancellation while the
+                    // implementing method still runs. Keep the completion
+                    // phase failure, but do not settle capture or release the
+                    // selected output/inputs/lease without an applicable final.
+                    lock (gate) failed = true;
+                    return;
+                }
                 // StatusObject and Context stay outside our ownership. Do not
                 // read, retain, report or treat them as ObjectReady output.
-                terminal(status);
+                terminal((int)status);
             }
             catch { lock (gate) failed = true; }
             finally { if (admitted) LeaveHandler(false, armed); }

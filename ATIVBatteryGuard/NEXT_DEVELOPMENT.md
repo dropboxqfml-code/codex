@@ -1,5 +1,18 @@
 # 다음 개발 재개 메모
 
+## 최신 — SDK 내부 취소 수명 수정·단발 조회 구현 검토안 / 2026-11-08
+
+기준 `d71ac35` 다음 작업입니다. [수정·현재 검증](SDK_CALL_CANCELED_LIFETIME_FIX.md)과 [구체 구현 승인안](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)을 먼저 읽습니다. .NET48 문서의 내부 `CallCanceled`는 실제 중단 보장이 아닌데 Windows adapter가 모든 Completed를 실제 terminal로 전달하던 결함을 수정했습니다. 해당 상태는 실패만 기록하며 capture·입력·observer·lease를 조기 해제하지 않습니다. 후속 실제 final이 없으면 pending이며, 일반 오류 final은 기존대로 정리합니다.
+
+새 회귀3개 포함 root 재실행 **649통과·0실패·0skip**, portable/전체 net48 참조 Release 빌드 각각 경고·오류0입니다. 수정 전 대역 회귀는647통과·2실패였습니다. 실제 Windows SDK/OEM/hardware 호출은 없고 App/Core·공개 entry·과거 예약 source는 바꾸지 않았습니다. 기존 f474e6f 부팅 보고 ZIP은 그대로이며 새 UI 배포는 없습니다. 새 빌드와 기존 ZIP의 모든 byte 동일성은 주장하지 않습니다.
+
+공식 UDK2014 PiSmmCore 텍스트1개를 새로 확보해 참조 IPL의 같은 Context→실제 entry→inline typed 처리→NULL-root→반환 관계를 완성했습니다. P05 제공자/typed source edge를 새로 발견한 것은 아닙니다. **정상 등록·inline 관련 처리·초기화 완료/비재진입의 같은 P05 stream을 명시적 적용 전제로 두어 조건부 구현 제안까지 검토하는 기준으로 정정합니다.** 이미 그 stream이 보호하는 구간에 제공자 본문 복구와 별도 공통 lock을 다시 쌓지 않습니다. 관련 실제 AP/direct/domain 우회·deferred indexed 처리·정상 조건 불적용이라는 구체 반례가 생기면 해당 범위만 재평가합니다. UEFI 관측이 위 전제를 입증한다는 뜻은 아닙니다.
+
+다음 단계는 별도 승인 뒤의 **고정 저장 byte 단발 조회 도구 구현·빌드·오프라인 검증·제공**입니다. 고정 profile/metadata 불일치·불명은 호출0, method 최대1/sample0~1, handshake·DLL 초기화·재시도·설정 쓰기·B fallback0입니다. owner 획득 최대2초/표시 deadline10초와 실제 종료 join을 분리합니다. 새 목적의 영속1회 예약은 승인 후 구현하며 old consumed 예약은 확인·초기화·삭제·재사용·우회하지 않습니다. 실제 실행 request/address pair/frame/nonce/generator는 아직 없습니다.
+
+[AGENTS.md](AGENTS.md)의 별도 명시 승인 규정 때문에 새 firmware 호출 구현은 보류합니다. public ReadSpecificationUnavailable·보호 조회/충전 제어 Unsupported는 유지합니다. 설정 변경이나 충전 제한 구현은 이번 승인안 범위가 아닙니다. 새 노트북 실행·같은 TXT/DLL/EXE 제출·부팅 재확인은 필요 없습니다. 정제 검증 기록은 [reports/sdk-cancellation-readiness-validation.json](reports/sdk-cancellation-readiness-validation.json)입니다. 아래는 이전 시점 기록이며 당시의 미완료 기준은 이 최신 판정으로 갱신됩니다.
+
+
 ## 최신 — 사용자 부팅 관측 Complete·UEFI / 2026-11-08 수신
 
 기준 `f474e6f` 다음 기록입니다. [WINDOWS_BOOT_UEFI_RESULT.md](WINDOWS_BOOT_UEFI_RESULT.md)와 reports/windows-boot-user-observation.json을 먼저 읽습니다. 사용자가 요청한 두 항목을 전달했습니다: 조회 정상 Complete, 실행 당시 UEFI 부팅. 추가 TXT·DLL·EXE·관리자 비교·같은 조회 반복은 필요 없습니다. 실제 실행 시각·권한·노트북 파일 해시는 전달되지 않았으며 수신일을 실행일로 추정하지 않습니다.

@@ -1,5 +1,7 @@
 # 고정 보호 저장값 단발 조회 명세 — 비실행 검토본
 
+**2026-11-08 최신 적용 판정:** [구체 구현 승인안 A](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)에 정상 등록·inline 관련 처리·같은 초기화 완료/비재진입 P05 stream을 명시적 전제로 기록했습니다. 새 실제 P05 source edge는 없으나 같은 stream의 근거에 제공자 본문과 별도 공통 lock을 다시 요구하지 않는 기준으로 정정합니다. 새 firmware 호출 구현은 별도 명시 승인 전까지 보류하며 공개 entry·Unsupported는 유지합니다. [CallCanceled 수명 수정](SDK_CALL_CANCELED_LIFETIME_FIX.md)을 실제 연결 전에 적용합니다. 아래 두 후속의 미완료는 당시 source 발견 상태입니다.
+
 **보호 순서 조사 후속:** [entry·owner 대조](INDEXED_ORDERING_CONTRACT_REVIEW.md)에서 새 공통 owner 또는 표준 통신의 실제 보호 순서 연결을 확보하지 못했습니다. 조건부 명세는 유지하되 실기 전 첫 단계는 미완료이며 실제 요청·entry 활성화는 보류합니다.
 
 **적용 검토 후속:** [대상·자원·SDK crosswalk](FIXED_READ_APPLICABILITY_REVIEW.md)에서 저장값의 조건부 의미와 SDK 대상 API 문서를 대조했습니다. mode 후보1만으로 현재80/75임계값·실제80%제한을 입증하지 않습니다. 정상 proxy의 알려진 EC 공유 footprint는 private Runtime hook에 한정하며, 해당 구간의 동일 보호 순서 근거는 여전히 미완료입니다. 실제 요청·공개 entry·실기 실행은 보류합니다.
@@ -56,7 +58,7 @@ normal proxy/private wrapper 게시가 성립한 분기에 초기 direct-host �
 
 ## 표시 시간과 실제 종료·정리
 
-UI deadline은 기다림의 표시 한도이며 provider 중단이나 안전한 해제를 뜻하지 않습니다. SDK 즉시 반환·throw·사용자 취소만으로 terminal을 생성하지 않습니다. 확실한 사전 미진입은 해당 local 분기로 따로 끝낼 수 있습니다.
+UI deadline은 기다림의 표시 한도이며 provider 중단이나 안전한 해제를 뜻하지 않습니다. SDK 즉시 반환·throw·사용자 취소·내부 CallCanceled 통지만으로 적용 가능한 terminal을 생성하지 않습니다. 확실한 사전 미진입은 해당 local 분기로 따로 끝낼 수 있습니다.
 
 실제 진입한 호출은 call stack 반환, 해당 method에 적용되는 terminal, 선택 capture 접근 종료를 함께 기다립니다. FrameExchange의 late 결과·취소 callback worker, Windows handler 접근·구독 해제 시도·출력 정리, owned 입력 해제, owner thread의 lease 해제를 기존 수명 계약으로 join합니다. 입력은 parameters와 buffer를 각각 정리하며 borrowed target을 소유 대상으로 바꾸지 않습니다.
 
@@ -64,6 +66,6 @@ UI deadline은 기다림의 표시 한도이며 provider 중단이나 안전한 
 
 ## 남은 적용 검토와 사용자 작업
 
-이 명세로 **실행 여부를 검토할 구체 제안**은 갖췄습니다. [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md)는 source의 대상 역할·주소 공간·조건부 모델과 실제 대상 SDK API 문서를 대응시켰습니다. 실제 요청 template를 생성한 결과는 아닙니다. 남은 구체 순서 근거는 관련 private Runtime hook의 indexed 접근을 조회와 같은 보호 순서에 귀속시키는 계약입니다. 실제 연결 전에는 이 근거와 고정 template·SDK 수명 적용 결과를 함께 제시해야 하며 현재 결과를 준비 완료로 표시하지 않습니다.
+이 명세와 [현재 승인안](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)으로 **조건부 구현 여부를 검토할 구체 제안**은 갖췄습니다. [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md)는 source의 대상 역할·주소 공간·조건부 모델과 실제 대상 SDK API 문서를 대응시켰습니다. 같은 stream의 적용 전제는 최신 승인안에 명시했고, 실제 요청 template를 생성한 결과나 실행 준비 완료는 아닙니다. 승인 후 고정 template의 독립 byte/역할 검증, profile·영속1회 제한·응답 거부·SDK 취소/종료 불명 수명 검증과 전체 빌드가 남습니다.
 
-커널/펌웨어 제어 코드의 추가와 실기 호출은 이번에 수행하지 않았습니다. [AGENTS.md](AGENTS.md)의 별도 명시 승인·안전성/모델 적합성 조건을 유지합니다. 지금 승인을 요구하거나 사용자에게 새 프로그램 실행·같은 진단·DLL·TXT 재제출을 요구하는 단계는 아닙니다. 제품 코드·노트북용 EXE/ZIP 변경도 없습니다.
+커널/펌웨어 제어 코드의 추가와 실기 호출은 이번에 수행하지 않았습니다. [AGENTS.md](AGENTS.md)의 별도 명시 승인·안전성/모델 적합성 조건을 유지하며 현재 승인 대상으로 제시하는 범위는 위 단발 조회용 코드 구현·검증·도구 제공입니다. 사용자에게 새 프로그램 실행·같은 진단·DLL·TXT 재제출을 요구하지 않습니다. 기존 부팅 보고 App/Core source·노트북용 ZIP 변경도 없습니다.

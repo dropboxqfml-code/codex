@@ -1,5 +1,14 @@
 # 하드웨어 조사
 
+## 최신 — SDK 취소 수명 보강·조건부 단발 구현 제안 / 2026-11-08
+
+**확인한 결함:** .NET48 문서는 내부 `CallCanceled`도 실제 중단을 보장하지 않는다고 명시합니다. Windows adapter가 이를 terminal로 전달하던 [조기 정리 결함을 수정](SDK_CALL_CANCELED_LIFETIME_FIX.md)했습니다. 새3개 포함649C# 통과, portable/전체 net48 참조 Release0경고·0오류입니다. 실제 노트북에서 이 결함을 관측했거나 SDK를 실행한 결과는 아닙니다.
+
+**전제와 판정:** 새 공식 대표 PiSmmCore source는 참조 IPL의 공유 Context→실제 normal entry→inline typed 처리→NULL-root→반환을 연결합니다. P05의 실제 제공자/typed edge 발견은0입니다. [구현 검토안](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)은 정상 등록·inline 관련 처리·같은 초기화 완료/비재진입 P05 stream을 **명시적 적용 전제**로 사용합니다. 같은 stream 근거에 제공자 본문 복구와 별도 공통 lock을 추가로 요구하던 기준을 정정한 것이며 UEFI나 API 성공이 위 전제를 증명하는 것은 아닙니다. 관련 독립 AP/direct/domain 우회·deferred 처리·정상 조건 불적용의 구체 반례가 있으면 재평가합니다.
+
+**경계:** 새 firmware 호출 코드·실제 요청은 별도 명시 승인 전까지 추가하지 않습니다. method최대1/sample0~1, handshake·초기화·재시도·설정 쓰기·B fallback0의 고정 저장 byte 조회안입니다. 후보0/1은 실제80/75임계값·충전 제한 증거가 아닙니다. public 차단·보호 조회/제어 Unsupported·old consumed 예약 금지와 기존 ZIP을 유지합니다. 추가 실기/자료 제출은 불필요합니다. 아래는 이전 기록입니다.
+
+
 ## 최신 — 실행 당시 UEFI 부팅 사용자 관측 / 2026-11-08 수신
 
 **관측:** 사용자 보고의 새 부팅 항목이 Complete·UEFI였습니다. [관측 기록](WINDOWS_BOOT_UEFI_RESULT.md)은 실행 당시 범위이며 시각·권한·파일 해시는 미관측입니다. legacy BIOS를 이유로 특정 Windows EFI 변수 OS 경로를 제외할 수 없으므로 해당 경로를 분석 범위에 유지합니다.

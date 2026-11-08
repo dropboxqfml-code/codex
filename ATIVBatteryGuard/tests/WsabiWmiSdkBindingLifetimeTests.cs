@@ -14,6 +14,131 @@ internal static partial class Program
     // No System.Management runtime, discovery, device or reservation executes.
     private static void RegisterWsabiWmiSdkBindingLifetimeTests()
     {
+        AddAsync("SDK binding cancellation status retains returned dispatch ownership past the UI deadline", async () =>
+        {
+            var target = new ManagementObject(); var facts = SingleReadTarget(target); var plan = SingleReadPlanCreate(facts);
+            var sdk = new ManagementOperationObserver(); var gate = new CooperativeTestGate(); var pair = InputPreparationPair.Create();
+            var entered = CooperativeCompletion(); var published = CooperativeCompletion();
+            var output = new ManagementBaseObject(); int reads = 0, reports = 0; WsabiWmiFrameExchangeResult shown = null;
+            output.OnGetProperties = () => { Interlocked.Increment(ref reads); throw new InvalidOperationException("PRIVATE-SDK cancelled output"); };
+            target.OnInvoke = (observer, method, input, options) =>
+            {
+                observer.EmitObjectReady(output); entered.TrySetResult(true);
+                // Return normally, without a test gate keeping the SDK call open.
+            };
+            var prepared = await SdkLifeReady(SdkLifePrepare(plan, facts, target, sdk, pair, gate,
+                TimeSpan.FromMilliseconds(500)));
+            var invocation = prepared.Invocation;
+            var run = invocation.RunAndCloseAsync(value =>
+            {
+                Interlocked.Increment(ref reports); shown = value; published.TrySetResult(true);
+            });
+            try
+            {
+                await CooperativeAwait(entered.Task);
+                sdk.EmitCompleted(ManagementStatus.CallCanceled);
+                await CooperativeAwait(published.Task);
+                AssertFrameExchangeFailure(shown, WsabiWmiFrameExchangeStatus.TimedOut);
+                var close = invocation.RequestCloseAsync();
+                Check(!run.IsCompleted && !close.IsCompleted && gate.LastLease.IsHeld,
+                    "cancellation status ended ownership after a returned SDK dispatch");
+                Equal(1, target.InvokeCalls); Equal(0, output.ConcreteDisposeCalls); Equal(0, reads);
+                SdkLifeAssertPairDisposes(pair, 0); SdkLifeAssertBorrowedTarget(target);
+                Equal(1, sdk.ObjectReadySubscriberCount); Equal(1, sdk.CompletedSubscriberCount);
+                sdk.EmitCompleted(ManagementStatus.CallCanceled);
+                Check(!run.IsCompleted && !close.IsCompleted && gate.LastLease.IsHeld,
+                    "repeated cancellation status invented method termination");
+
+                // Stand-in applicable final for bounded test cleanup only. A
+                // real cancelled sink may never deliver another terminal.
+                sdk.EmitCompleted(ManagementStatus.AccessDenied);
+                await CooperativeAwait(run);
+                Check(ReferenceEquals(shown, await run), "late cleanup replaced the UI timeout result");
+                Equal(WsabiWmiWindowsCleanupStatus.Complete, await close);
+                Equal(1, reports); Equal(1, target.InvokeCalls); Equal(1, output.ConcreteDisposeCalls); Equal(0, reads);
+                Equal(1, gate.LastLease.DisposeCalls); Equal(gate.AcquireThread, gate.LastLease.DisposeThread);
+                SdkLifeAssertPairDisposes(pair, 1); SdkLifeAssertBorrowedTarget(target); SdkLifeAssertUnsubscribed(sdk);
+            }
+            finally
+            {
+                var close = invocation.RequestCloseAsync();
+                try
+                {
+                    // Synthetic final joins this stand-in's resources; it is
+                    // never a production recovery or actual SDK-stop claim.
+                    if (target.InvokeCalls != 0) sdk.EmitCompleted(ManagementStatus.AccessDenied);
+                }
+                finally
+                {
+                    try { await CooperativeAwait(close); }
+                    finally { await CooperativeAwait(run); }
+                }
+            }
+        });
+
+        AddAsync("SDK binding cancellation remains failure when a later applicable success finally ends cleanup", async () =>
+        {
+            var target = new ManagementObject(); var facts = SingleReadTarget(target); var plan = SingleReadPlanCreate(facts);
+            var sdk = new ManagementOperationObserver(); var gate = new CooperativeTestGate(); var pair = InputPreparationPair.Create();
+            ManagementBaseObject embedded; var output = WindowsOutputFixture(BoundChannelReply(), out embedded);
+            target.OnInvoke = (observer, method, input, options) =>
+            {
+                observer.EmitObjectReady(output);
+                observer.EmitCompleted(ManagementStatus.CallCanceled);
+                Equal(0, output.ConcreteDisposeCalls); SdkLifeAssertPairDisposes(pair, 0);
+                Check(gate.LastLease.IsHeld, "cancellation released the active attempt");
+                observer.EmitCompleted(ManagementStatus.NoError); // Explicit applicable stand-in final.
+            };
+            var prepared = await SdkLifeReady(SdkLifePrepare(plan, facts, target, sdk, pair, gate));
+            var run = prepared.Invocation.RunAndCloseAsync(value => { });
+            try
+            {
+                await CooperativeAwait(run);
+                AssertFrameExchangeFailure(await run, WsabiWmiFrameExchangeStatus.TransportFailure);
+                Equal(WsabiWmiWindowsCleanupStatus.Complete, await prepared.Invocation.RequestCloseAsync());
+                Equal(1, target.InvokeCalls); Equal(1, output.ConcreteDisposeCalls); Equal(1, embedded.ConcreteDisposeCalls);
+                Equal(1, gate.LastLease.DisposeCalls);
+                SdkLifeAssertPairDisposes(pair, 1); SdkLifeAssertBorrowedTarget(target); SdkLifeAssertUnsubscribed(sdk);
+            }
+            finally
+            {
+                // Synthetic fallback final only prevents a failed assertion
+                // inside the stand-in dispatch from stranding this test.
+                if (target.InvokeCalls != 0) sdk.EmitCompleted(ManagementStatus.AccessDenied);
+                try { await CooperativeAwait(prepared.Invocation.RequestCloseAsync()); }
+                finally { await CooperativeAwait(run); }
+            }
+        });
+
+        AddAsync("SDK binding ordinary applicable access denied final still releases owned resources", async () =>
+        {
+            var target = new ManagementObject(); var facts = SingleReadTarget(target); var plan = SingleReadPlanCreate(facts);
+            var sdk = new ManagementOperationObserver(); var gate = new CooperativeTestGate(); var pair = InputPreparationPair.Create();
+            var output = new ManagementBaseObject { OnGetProperties = () => throw new InvalidOperationException("PRIVATE-SDK error output") };
+            target.OnInvoke = (observer, method, input, options) =>
+            {
+                observer.EmitObjectReady(output); observer.EmitCompleted(ManagementStatus.AccessDenied);
+            };
+            var prepared = await SdkLifeReady(SdkLifePrepare(plan, facts, target, sdk, pair, gate));
+            var run = prepared.Invocation.RunAndCloseAsync(value => { });
+            try
+            {
+                await CooperativeAwait(run); var result = await run;
+                Equal(WsabiWmiFrameExchangeStatus.ReplyReceived, result.Status);
+                Equal(WsabiWmiReplyStatus.ApiNotSuccessful, result.Reply.Status);
+                Check(!result.IsValidFrame && result.Payload.Length == 0, "error final retained successful output");
+                Equal(WsabiWmiWindowsCleanupStatus.Complete, await prepared.Invocation.RequestCloseAsync());
+                Equal(1, target.InvokeCalls); Equal(1, output.ConcreteDisposeCalls); Equal(1, gate.LastLease.DisposeCalls);
+                SdkLifeAssertPairDisposes(pair, 1); SdkLifeAssertBorrowedTarget(target); SdkLifeAssertUnsubscribed(sdk);
+            }
+            finally
+            {
+                if (target.InvokeCalls != 0) sdk.EmitCompleted(ManagementStatus.AccessDenied); // Stand-in cleanup only.
+                try { await CooperativeAwait(prepared.Invocation.RequestCloseAsync()); }
+                finally { await CooperativeAwait(run); }
+            }
+        });
+
         AddAsync("SDK binding lifetime cancellation waits for target validation before refusing input ownership", async () =>
         {
             using (var releaseValidation = new ManualResetEventSlim())

@@ -1,5 +1,7 @@
 # 고정 보호 모드 1회 읽기 시험 판정 — 2026-11-07 한국 시간
 
+**2026-11-08 최신 판정 — 조건부 구현 승인안:** [고정 단발 구현 제안](READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md)은 정상 등록·inline 관련 처리·같은 초기화 완료/비재진입 P05 stream을 명시적 적용 전제로 둡니다. 같은 stream의 근거 위에 제공자 본문 복구와 별도 공통 lock을 중복 요구하던 기준을 정정했습니다. 새 실제 P05 edge·실기 순서 관측은 없으며 UEFI가 전제를 입증하는 것도 아닙니다. 새 firmware 호출 코드 구현은 AGENTS의 별도 명시 승인 전까지 보류합니다. 공개 차단·Unsupported·A의 method최대1/sample0~1·handshake/초기화/재시도/설정 쓰기/B fallback0·과거 소모 예약 금지는 유지합니다. [SDK 내부 취소 조기 정리 수정](SDK_CALL_CANCELED_LIFETIME_FIX.md) 후 root 전체649회귀와 portable/전체 net48 참조 빌드0/0을 현재 검증했습니다. 아래의 순서 미완료 판정은 당시 source 발견 상태의 기록이며 최신 제안 기준과 구분합니다.
+
 **2026-11-08 사용자 UEFI 결과:** [Complete·UEFI 관측](WINDOWS_BOOT_UEFI_RESULT.md)에는 legacy 부팅을 이유로 특정 EFI 변수 OS 경로를 제외할 수 없습니다. UEFI 부팅을 proxy cache nonnull·표준 제공자 선택·보호 순서 입증으로 바꾸지 않으며 정상 legacy fallback의 조건부 긍정 근거도 유지합니다. 실제 entry·보호 조회/제어 상태는 그대로입니다.
 
 **2026-11-08 부팅 방식 관측 추가:** [표준 메타데이터 구현](WINDOWS_BOOT_FIRMWARE_UPDATE.md)은 현재 Windows의 특정 EFI 변수 OS 경로 적용 여부를 좁히기 위한 정보입니다. BIOS 결과도 제어 지원·시험 승인으로 쓰지 않으며 UEFI/Unknown은 기존 순서 미완료를 닫지 않습니다. 실제 노트북 관측은 아직 없고 public SDK 차단·Unsupported는 유지합니다.

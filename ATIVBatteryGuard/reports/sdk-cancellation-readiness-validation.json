@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "recordDate": "2026-11-08",
+  "baseCommit": "d71ac3548e98d0324ec96268c23bf46a64b695b1",
+  "scope": "Existing Windows callback adapter lifetime defect fix, offline regression validation and a non-executing fixed-read implementation proposal.",
+  "sdkDefect": {
+    "status": "CallCanceled",
+    "enumValue": -2147217358,
+    "documentedMeaning": "Internal or user cancellation may not actually cancel the asynchronous operation.",
+    "oldBehavior": "Every Completed status was forwarded as a method terminal and could settle capture and resource ownership too early.",
+    "observedPreFixOutcome": "ReplyReceived classification and premature lifetime completion in SDK stand-ins; no valid protection value or charge-control success claim.",
+    "fixedBehavior": "Latch failure without forwarding CallCanceled as a terminal or settling capture; retain observer, selected output, owned inputs and lease until applicable actual final/call-exit/capture joins.",
+    "laterFinal": "An applicable final can join cleanup without promoting the earlier cancellation failure to success.",
+    "ordinaryErrors": "An applicable ordinary AccessDenied final preserves normal error cleanup.",
+    "missingFinal": "Related Run/Close can remain pending; no SDK Cancel, synthetic production final, retry or forced process termination."
+  },
+  "targetReferenceEvidence": [
+    {
+      "file": "System.Management.xml",
+      "bytes": 237189,
+      "sha256": "a4a85fc4d62c92565fc87b52f27280cb145b320a46e36596c04b38e53da9ae63",
+      "kind": "Target net48 API documentation",
+      "selectedMember": "ManagementStatus.CallCanceled"
+    },
+    {
+      "file": "System.Management.dll",
+      "bytes": 61488,
+      "sha256": "23b6d4e6fc3514b0b44feb5acf96e8bd6e1d76c79a39e17f5c3714e7aa3fb965",
+      "kind": "Target reference assembly; enum metadata inspected as inert bytes, not loaded or executed"
+    }
+  ],
+  "currentRootVerification": {
+    "suite": {
+      "passed": 649,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 649,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "newRegressionCases": 3,
+    "portableReleaseBuild": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    "fullNet48ReferenceReleaseBuild": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0,
+      "windowsRuntimeExecution": false
+    },
+    "logs": [
+      {
+        "file": "portable-build.log",
+        "bytes": 227,
+        "sha256": "f69fb7f9e19a280f01787b4c943bcd80f81f0a2ef86e3e67903b9524836284ed"
+      },
+      {
+        "file": "suite.json",
+        "bytes": 106,
+        "sha256": "11052e25138131e8a25644d2dd497ceca19d6b1bf704cfe209bfc0002198d6a0"
+      },
+      {
+        "file": "suite.log",
+        "bytes": 55599,
+        "sha256": "abc2311212b063cf5aec126ce2a90279c270f1c49af1b0a54ffc9eddfa38c18b"
+      },
+      {
+        "file": "solution-build.log",
+        "bytes": 1477,
+        "sha256": "3e25bf9701b1adaba0dd9df82216349b77627c08c34ecede8f75139ad1ec2d88"
+      }
+    ],
+    "newReferenceAndEnumVerifierReexecuted": true
+  },
+  "preFixReproduction": {
+    "executor": "Delegated SDK lifetime reviewer; root inspected the saved result, not a root pre-fix execution.",
+    "suite": {
+      "passed": 647,
+      "failed": 2,
+      "skipped": 0,
+      "registered": 649,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "logs": [
+      {
+        "file": "pre-fix-suite.json",
+        "bytes": 106,
+        "sha256": "d585cacb7b5e05eb19e2f6ddf774eb33388c90d8674093aa9aba83c6a25b46e5"
+      },
+      {
+        "file": "pre-fix-suite.log",
+        "bytes": 56307,
+        "sha256": "0d20071bbf26027117da9f3840236e273765d224524471489cd6ffdb5a394352"
+      }
+    ]
+  },
+  "sourcePins": [
+    {
+      "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsCallbackSource.cs",
+      "bytes": 15237,
+      "sha256": "0ec2ea7023794851f2820fb8179c02b9d38601e74146695f52c198a115a69001"
+    },
+    {
+      "file": "tests/Fakes/ManagementSdkFakes.cs",
+      "bytes": 11064,
+      "sha256": "e83fe385c780ae4a33d01b7542e3c66b9b94338a141d0c216216c01a17a555cb"
+    },
+    {
+      "file": "tests/WsabiWmiSdkBindingLifetimeTests.cs",
+      "bytes": 37283,
+      "sha256": "1d419219591f0d6633b0436a3677f2fb643546811e82858ba4fde8e4a8460036"
+    }
+  ],
+  "privateEvidencePins": [
+    {
+      "file": "findings.private.md",
+      "bytes": 8268,
+      "sha256": "a578a340763239a3ce95cccd26f5a1f1e5106261190e9cd4c69a3ef11f4dd070"
+    },
+    {
+      "file": "verify_target_enum.private.py",
+      "bytes": 2284,
+      "sha256": "30c614e0fe9c1c2edea3f3f9c107e42f85b929769cdbbb6836d0b4bd7e6dddc2"
+    },
+    {
+      "file": "target-enum-proof.private.json",
+      "bytes": 764,
+      "sha256": "0e8b432ef5408e96d8442536ad24d10f9781cdf678273d640d23ef786953f498"
+    },
+    {
+      "file": "fix-execution.private.json",
+      "bytes": 1847,
+      "sha256": "50f400b5250034762875806d45a6f3eb5c32f93c071f148a21c960a5bfb3717e"
+    },
+    {
+      "file": "verify_standard_entry.private.py",
+      "bytes": 12115,
+      "sha256": "3f8dcf253b5f1d3e3495b71119c05e33e80b39e8af3667454fd7337ff5617590"
+    },
+    {
+      "file": "standard-entry-proof.private.json",
+      "bytes": 12299,
+      "sha256": "a4ec363b6fa359c5e1a778bc2765e2ec2b2d226d0da4284987e30dc19fdc05b9"
+    }
+  ],
+  "representativePlatformEvidence": {
+    "source": {
+      "file": "PiSmmCore.c",
+      "bytes": 13361,
+      "sha256": "c8bb0c184c31670bb345af257e556d3b0c7c34c47c6ac67a59147ee557562f09",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/3ccd6d8b75b7fab66a35da9e77312eaca167c0f0/MdeModulePkg/Core/PiSmmCore/PiSmmCore.c"
+    },
+    "authority": "Official UDK2014 representative implementation, not normative PI text or a P05 binary match.",
+    "newFiles": 1,
+    "selectedExcerpts": 5,
+    "referenceChain": "Shared IPL bootstrap Context -> Core supplies actual Foundation entry -> registered normal entry -> inline typed management -> shared typed result -> NULL-root management -> return.",
+    "newActualP05ProviderOrTypedEdges": 0,
+    "allCpuExclusionProvedByReferenceCore": false
+  },
+  "conditionalReadinessDecision": {
+    "state": "Concrete conditional implementation proposal; separate explicit approval required before new firmware invocation code.",
+    "criterionCorrection": "Do not stack actual provider-body recovery and a separate common lock on top of accepted same-normal-stream ordering evidence.",
+    "explicitApplicabilityPremises": [
+      "Normal proxy/private wrapper and backend initialization apply.",
+      "The normally registered Foundation entry invokes the related typed handler inline and finishes its relevant indexed work before return.",
+      "The entry belongs to the initialized, nonreentrant P05 normal stream already reviewed for the query.",
+      "Existing conditional ISA/bank/indexed-to-XDATA mapping and SDK/whole-exchange contracts apply."
+    ],
+    "concreteReevaluationTriggers": [
+      "Evidence of related independent AP offload, direct-host/direct-dispatch or another execution domain.",
+      "Relevant indexed work deferred beyond handler return.",
+      "The assumed normal registration, initialization or nonreentrant stream does not apply."
+    ],
+    "userUefiReportProvesPremises": false,
+    "newAbsoluteAllWriterLiveHashGatePointerRequirements": false,
+    "implementationProposal": "READ_TRIAL_A_IMPLEMENTATION_PROPOSAL.md",
+    "proposedBudget": {
+      "methodMaximum": 1,
+      "fixedByteSamplesMaximum": 1,
+      "ownerAcquireSecondsMaximum": 2,
+      "displayDeadlineSeconds": 10,
+      "handshakes": 0,
+      "oemInitializations": 0,
+      "retries": 0,
+      "settingsWrites": 0,
+      "fallbackB": 0
+    },
+    "newPurposeDurableAttemptReservation": "Proposed only after separate approval; old consumed reservation is not read, reset, deleted, reused or bypassed.",
+    "readTransactionSideEffects": "Existing communication-buffer/mailbox publication and response exchange remain; target mode and threshold writes are excluded.",
+    "successMeaning": "Stored mode candidate 0 or 1 only; no threshold, actual charge limit or charge-control success claim."
+  },
+  "distribution": {
+    "existingArchive": {
+      "file": "ATIVBatteryGuard-BOOT-FIRMWARE.zip",
+      "bytes": 149116,
+      "sha256": "d7b9b6286a0aa5570fa12c5a17977a331a5149ffa948e43339c1032d8c674e58"
+    },
+    "existingReleaseCommit": "f474e6fa28c2a2fd49f084f467a4e8202a8df566",
+    "archiveUnchanged": true,
+    "newUiArchiveCreated": false,
+    "appAndCoreSourceUnchanged": true,
+    "currentBuildByteIdentityWithOldArchiveEstablished": false,
+    "scratchComparison": "An attempted current App build-to-old-archive equality assertion did not pass; no cause is asserted and those new bytes are not distributed."
+  },
+  "boundaries": {
+    "publicReadSpecificationUnavailableRetained": true,
+    "protectionReadAndControl": "Unsupported",
+    "newActualRequestAddressPairFrameNonceOrGenerator": false,
+    "firmwareInvocationImplementationAdded": false,
+    "hardwareOemActualSdkGlobalAccess": false,
+    "oldConsumedReservationAccess": false,
+    "originalFirmwareDllAmlLoadedExecutedOrEmulated": false,
+    "driverServiceFirmwareSecurityOrCloudEnvironmentChanges": false,
+    "newNotebookExecutionOrDuplicateUploadRequired": false
+  },
+  "review": {
+    "independentCodeAndRegressionReadReview": "No blocking findings; execution evidence is the separate saved root build/suite run.",
+    "independentProposalAndFixDocumentReadReview": "No blocking findings; assumptions distinguished from observations, scope and reservation/lifetime boundaries retained.",
+    "independentFinalStatusDocumentsAndSanitizedReportReadReview": "No blocking findings. Clarified the specification to say proposed approval scope rather than an already approved scope; review did not execute hardware or tests."
+  },
+  "privacy": "No local absolute paths, account names, device identifiers, raw frames, nonces, original firmware contents or raw exception text."
+}

@@ -12,7 +12,8 @@ namespace System.Management
     {
         NoError = 0,
         NotFound = unchecked((int)0x80041002),
-        AccessDenied = unchecked((int)0x80041003)
+        AccessDenied = unchecked((int)0x80041003),
+        CallCanceled = unchecked((int)0x80041032)
     }
 
     public sealed class PropertyData

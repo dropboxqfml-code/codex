@@ -1,4 +1,14 @@
-# ATIV Battery Guard — 승인된 추가 단발 조회 Access1
+# ATIV Battery Guard — Access1 조회 기록 검토판
+
+2026-11-08. [일반권한 메인앱 ZIP](ATIVBatteryGuard-ACCESS1-RECORD-REVIEW.zip) · [결과·실행안내](../ATIVBatteryGuard/ACCESS1_STORED_ZERO_RESULT_AND_NEXT.md) · [다음 전환검토](../ATIVBatteryGuard/PROTECTION_TRANSITION_REVIEW.md)
+
+ZIP 하나를 새 폴더에 모두 풀고 **ATIVBatteryGuard.exe를 일반 권한으로 실행**합니다. ‘고정 보호 저장값 조회 기록 · Access1’에 이미 만든 TXT를 붙여넣어 과거 도구의 후보/정리 판정만 확인할 수 있습니다. 새 실험이나 자료 재제출은 필요 없습니다.
+
+727테스트와 portable/전체net48참조 빌드0경고·0오류입니다. 기록검토는 장치/WMI/OEM/예약·원문 저장·실제 모드 변경을 하지 않으며 제어 Unsupported입니다. 새GUI의 Windows 실행은 아직 미확인입니다. 삼성원본/firmware/실험EXE는 포함하지 않습니다.
+
+**아래 Access1·과거 단발 시험은 모두 종료·소모됐습니다. 실행 절차를 반복하거나 예약을 변경하지 않습니다.**
+
+## 이전 — 승인된 추가 단발 조회 Access1
 
 2026-11-08. [Access1 ZIP 다운로드](ATIVBatteryGuard-FIXED-READ-A-ACCESS1.zip) · [실행·검증 안내](../ATIVBatteryGuard/FIXED_READ_ACCESS1_IMPLEMENTATION.md)
 

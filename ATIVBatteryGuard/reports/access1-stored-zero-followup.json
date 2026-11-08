@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 1,
+  "receiptDate": "2026-11-08",
+  "baseCommit": "4452b036523ff204e953fc9be173e4460b183b93",
+  "input": {
+    "file": "user-submitted-access1-result.txt",
+    "bytes": 1106,
+    "sha256": "15b7ce0cb6788bd75630b927cdb074232f08ee3801326cdd187a65c6208296a8",
+    "treatment": "Observation data only; source raw file not copied to repository or release.",
+    "executionTimeInferredFromFileName": false,
+    "runningBinaryHashDeviceAccountOrTimeIndependentlyAuthenticated": false
+  },
+  "userReportedToolObservation": {
+    "purpose": "FixedModeReadA-Access1",
+    "token": "Elevated",
+    "reservation": "Claimed",
+    "preflight": "Ready",
+    "preflightStage": "Ready",
+    "enumerationSubstep": "None",
+    "enumerationError": "None",
+    "cleanupErrorObserved": "No",
+    "fixedRequest": "Created",
+    "sdkPreparation": "Ready",
+    "sdkTarget": "Ready",
+    "registration": "Ready",
+    "input": "Populated",
+    "exchange": "ReplyReceived",
+    "verdict": "StoredModeCandidate",
+    "storedCandidate": 0,
+    "relatedCleanup": "Complete",
+    "meaning": "The laptop tool reported acceptance of the fixed stored-mode byte and related lifetime cleanup, beyond metadata-only preparation.",
+    "notEstablished": [
+      "Current protection OFF or a 100-percent setting",
+      "Current upper/lower thresholds",
+      "Actual charger enforcement or electrical charge limiting",
+      "Persistent state or a fresh pre-write baseline",
+      "Independent raw-response/content-correlation verification"
+    ],
+    "reportedArtifactScope": "Status text matched with the released source flow; no raw frame/comparison content supplied.",
+    "sourceFlowAcceptance": "Method envelope, shape/ACK, failure-prefix/echo rejection, preserved address/content and candidate domain checks precede the reported candidate.",
+    "allPreviousTrialBudgetsSpent": true,
+    "oldOrAccess1ExperimentRerunOrMarkerAccessRequested": false
+  },
+  "implementedOfflineFeature": {
+    "description": "Separate Access1 historical-record panel in the ordinary-permission main application.",
+    "parser": "Exact purpose/unique ordered fields/allowlisted statuses/required readiness and complete cleanup tuple; bounded to8192 characters,64lines,512perline.",
+    "failurePolicy": "Missing/duplicate/unknown/inconsistent states, failure warnings or pending completion never yield an accepted completed candidate.",
+    "classification": "Reported stored candidate0or1 only, not a live observation or raw reply revalidation.",
+    "inputLifecycle": "Reset old candidate on edit; clear raw input after review/clear/dispose; no raw text persisted.",
+    "startup": "Empty; actual user result/candidate0 not embedded.",
+    "separateFromQuery65": true,
+    "actualModeDesiredModeControllerMockPreferencesBatteryProvidersOrStorageChangedByReview": false,
+    "additionalWmiOemReservationOrNetworkCallsByReview": false,
+    "actualModeLabel": "Clarified that the normal application does not query live protection state; Unsupported controller and write denial retained.",
+    "newHardwareTrialOrDuplicateUserUploadRequired": false
+  },
+  "rootVerification": {
+    "suite": {
+      "passed": 727,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 727,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "newTests": {
+      "strictAccess1ParserAndModel": 12,
+      "viewModelIsolationAndInputLifecycle": 6
+    },
+    "portableReleaseBuild": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    "fullNet48ReferenceReleaseBuild": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    "exactUploadedTextImportProbe": {
+      "result": {
+        "status": "ReportedStoredModeCandidate",
+        "reportedCandidate": 0,
+        "hasReportedCandidate": true,
+        "source": "user-submitted historical Access1 text",
+        "rawFrameOrComparisonReverified": false,
+        "liveHardwareObservation": false,
+        "chargeLimitConfirmed": false,
+        "canReadHardware": false,
+        "canWriteHardware": false,
+        "canInvokeMethods": false,
+        "windowsSdkOrHardwareCalled": false
+      },
+      "scope": "Trusted development .NET8 probe executes the new pure parser on the actual uploaded text; no firmware/vendor assembly or product Windows runtime loaded.",
+      "pins": [
+        {
+          "file": "user-report-import.json",
+          "bytes": 395,
+          "sha256": "f9bb2c89855eb4594654cab2a87e74ad99ddc894f9d019dfd68b2aa3d97f89b4"
+        },
+        {
+          "file": "user-report-import.log",
+          "bytes": 102,
+          "sha256": "8dcc5647e16af9e6ca79657751ab64f9839b5e17e352153eb092a6223c05655a"
+        },
+        {
+          "file": "import-probe-restore.log",
+          "bytes": 176,
+          "sha256": "72778da8535ed47883d9da366530a4ad229695fd4eaeb5cd4f768e6966fc1c04"
+        },
+        {
+          "file": "import-probe-build.log",
+          "bytes": 225,
+          "sha256": "3347dbf11d83ae729a4c684b36812bad4716f5aad40759f053819236dea633bb"
+        }
+      ]
+    },
+    "logs": [
+      {
+        "file": "portable-build.log",
+        "bytes": 227,
+        "sha256": "31d4b8036b93d4f06a0e814736c6937bdd561a0e0f09ca0281fba0d9759a40af"
+      },
+      {
+        "file": "solution-build.log",
+        "bytes": 1659,
+        "sha256": "63bc6d4d18b204c88344b6bb1920ac2b8ec88c570213702ea1b8b7443a053a34"
+      },
+      {
+        "file": "suite.json",
+        "bytes": 106,
+        "sha256": "ca8abd2ba10f51a24fa002a875c5f8755a52ff93de4d6b8e16480e60db706a03"
+      },
+      {
+        "file": "suite.log",
+        "bytes": 62446,
+        "sha256": "6001f6d6a154747805e978a16dc8724958703984a4f4a883e6b9ffe2caf80c30"
+      },
+      {
+        "file": "package.json",
+        "bytes": 266,
+        "sha256": "87d5c96cdabede79d81b10b61a57aae5460afc07ab94c5145b57bf468d72d0d2"
+      },
+      {
+        "file": "root-package-verification.log",
+        "bytes": 359,
+        "sha256": "a5f61163db59be9647d058b6104aeaba4ecf907b8357fc88120159aeb9ce660b"
+      },
+      {
+        "file": "control-contract-verification.log",
+        "bytes": 170,
+        "sha256": "8218ef654fd9946b9b6613ec4a27bf12b56dab4d0bbf744c52a7845d231357f7"
+      }
+    ],
+    "actualNewWindowsGuiTokenSdkWmiOemHardwareGlobalOrNotebookReservationRunInCloud": false,
+    "dependenciesAddedOrInstalled": false
+  },
+  "independentArtifactVerification": {
+    "staticChecksPassed": 42,
+    "rootReexecuted": true,
+    "scope": "Six-entry allowlist/CRC/five internal checksums/three build-byte matches/source fingerprint/x64/net48/asInvoker/unsigned/WPF BAML and new bindings/noWmiInterop EXE reference.",
+    "reviewClosure": "Selected27 compiled methods including implicit static initializers; no path to WMI/reservation/IO/controller/CanApply. CanApply normalized IL matches the previous GUI.",
+    "limits": "Static bounded call/markup/source checks and unit stand-ins, not Windows GUI execution or proof about every external callback.",
+    "pins": [
+      {
+        "file": "verify_record_review.private.py",
+        "bytes": 16985,
+        "sha256": "77f97dd5897d3f83bbe10e4c5dc1a3e0d05d82ffbce7779e8f6c110f44717193"
+      },
+      {
+        "file": "proof.private.json",
+        "bytes": 9111,
+        "sha256": "5addd80c70bcc876f780d8d8c786a00b2f7b202674c3943325341e6864ac2ebb"
+      }
+    ]
+  },
+  "nextControlReview": {
+    "document": "PROTECTION_TRANSITION_REVIEW.md",
+    "actualWriteBudget": 0,
+    "newWriteFramesSettersExecutionApiOrMarkerImplemented": false,
+    "reusedStaticMeaning": {
+      "zeroToOne": "Store1 then initialize upper80/lower75.",
+      "oneToZero": "Store0 and reset separate software state; no100threshold write.",
+      "sameValue": "Early return; same1 does not repair thresholds.",
+      "normalPolicy": "Separate flag-dependent96/97 source branch; not measured thresholds."
+    },
+    "fixedSetterSelection": "Existing saved generic Windows bridge and semantic EC setter/input-position evidence combine statically; no new selector search prerequisite introduced.",
+    "futureDesign": "One0to1 comparison only: three fresh fixed pre-reads, semantic setter at most once only if pre-mode0, three post-reads; at most7methods if separately approved.",
+    "alternativeDesignCounts": "Five for fresh mode + one setter + three post-reads; three for mode-only1to0 but no threshold preservation/enforcement claim. Seven is a comparison design, not universal mandatory pre-reading.",
+    "concreteRemainingWork": [
+      "Fixed threshold getters and response classification",
+      "Fixed semantic setter input/response contract distinct from input echo",
+      "Single-use coordinator retaining the same owner through all stages and actual close",
+      "Failure/unknown stops further stages; no automatic rollback/retry/toggle"
+    ],
+    "currentPerFrameOwnersSatisfyWholeTransitionOwnership": false,
+    "readbackConfirmsElectricalChargingOrRebootPersistence": false,
+    "newAllWriterAbsenceFullLiveHashOrDuplicateDiagnosticsPrerequisites": false,
+    "staticCrosswalkChecksPassed": 28,
+    "rootReexecuted": true,
+    "pins": [
+      {
+        "file": "verify_transition_review.private.py",
+        "bytes": 10453,
+        "sha256": "72093d6330cd8331e9e02b09a5edb28d539e76dd00c9d8addff76a331882aa7f"
+      },
+      {
+        "file": "transition-review-proof.private.json",
+        "bytes": 7740,
+        "sha256": "deaa5db04cebb059dcde86628dd763e2365d3e05dd3cf9d7b03ae34b477f72ca"
+      },
+      {
+        "file": "findings.private.md",
+        "bytes": 5286,
+        "sha256": "a9994fbe44f4fda33f1c12263155da4e2b12858e6d26727800a425b291ddbb78"
+      }
+    ],
+    "newFirmwareDecodeSearchOrOriginalExecutionPerformed": false,
+    "newControlImplementationOrHardwareTestApproved": false
+  },
+  "sourcePins": [
+    {
+      "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiFixedReadAccess1Review.cs",
+      "bytes": 4623,
+      "sha256": "925028c8f50fd3e26db438070a92c916bbc955b90fc97f5712e702bd700d7031"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFixedReadAccess1ReviewParser.cs",
+      "bytes": 16110,
+      "sha256": "807ce22dac56c9b4fa4ee2c658e0927e1c7e31b19da8bb13c8dc7b785c80ee9f"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs",
+      "bytes": 31494,
+      "sha256": "7ee09f635fdeded6cd59e510520ccbb9e0d152a78b76a7043835f45f14167da7"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.App/Views/MainWindow.xaml",
+      "bytes": 16938,
+      "sha256": "05c4711e44bd17b6b83041e6e5cda6d90ef0de1374426646f216157d126d9ebf"
+    },
+    {
+      "file": "tests/WsabiWmiFixedReadAccess1ReviewTests.cs",
+      "bytes": 16222,
+      "sha256": "8eaed8fbda407824c431e328263066db9ceaef3c752fa825c22ab765bc60258c"
+    },
+    {
+      "file": "tests/FixedReadAccess1ReviewViewModelTests.cs",
+      "bytes": 8672,
+      "sha256": "bc41a95967c2e1e357e6c26a7aae85771b81b282170db3f604f21e9eafacb6f2"
+    },
+    {
+      "file": "tests/Program.cs",
+      "bytes": 34426,
+      "sha256": "49d42f439972678707ce746dabe2628812b838bb4a8108d7b2cd9fa4024e625a"
+    },
+    {
+      "file": "tests/ATIVBatteryGuard.PortableTests.csproj",
+      "bytes": 6862,
+      "sha256": "877a27b8704870a3036a96a72a39a13e21a4ae983ed3fbb4378ffeddea0c10d3"
+    },
+    {
+      "file": "scripts/package_access1_record_review.py",
+      "bytes": 8928,
+      "sha256": "c16c16b1a77c9a9d73c5ec3e83a84abf5a85221c2b0e140293c092c9dc5d2cda"
+    },
+    {
+      "file": "PROTECTION_TRANSITION_REVIEW.md",
+      "bytes": 14346,
+      "sha256": "72eff6a3b58ca6096e81b56d734c0e3b8a468074798be3acafc5c284deb1dd3f"
+    }
+  ],
+  "retainedBoundarySourcePins": [
+    {
+      "file": "src/ATIVBatteryGuard.Core/Hardware/UnsupportedChargeLimitController.cs",
+      "bytes": 696,
+      "sha256": "29da935d82448fc674657b7759c7da3b7eb92ffde50dd7e0afc4b296889b1cd3"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiExperimentReviewParser.cs",
+      "bytes": 8320,
+      "sha256": "6ca43d3821b921c44c051a5a762446e4f4766cf5de7b89d0f7b9cf061357ba2f"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiExperimentReview.cs",
+      "bytes": 6333,
+      "sha256": "e1de1e6532f9408facdb58bf0fdf5882a092889a4f01c94f3bd9d0db94fecadc"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFixedModeReadAttempt.cs",
+      "bytes": 8390,
+      "sha256": "04d7f79d759d8c97b822e5d35355442a3a9c0fe2046b6372532311e365de2aab"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.Core/Storage/WsabiWmiOneShotFileReservation.cs",
+      "bytes": 3420,
+      "sha256": "135ef5d7f499ef5245d97eb2ea42111df01d3de2517376105bb35b06872a95a1"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.Core/Storage/WsabiWmiFixedModeReadAFileReservation.cs",
+      "bytes": 3360,
+      "sha256": "7e52eb617c8ad43c662d2184b93cd51108d15089a78379eaa026ec54cbbf5063"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.Core/Storage/WsabiWmiFixedReadAccess1FileReservation.cs",
+      "bytes": 4016,
+      "sha256": "550c40dc70117daf8f51f4a8f65d076dc846eec55434a724927edb2726c6c049"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.FixedReadTrial/Program.cs",
+      "bytes": 14940,
+      "sha256": "4ae5c1f8d2167c301782ef3b370fbe36246a3535ab96a158358c346969a2f009"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsFixedReadPreparation.cs",
+      "bytes": 2284,
+      "sha256": "fbfefd2ce01b3931c89aecbebcc89105a573789f4eddf414ab55f11ccf6bb3af"
+    },
+    {
+      "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsCallbackSource.cs",
+      "bytes": 15237,
+      "sha256": "0ec2ea7023794851f2820fb8179c02b9d38601e74146695f52c198a115a69001"
+    }
+  ],
+  "distribution": {
+    "file": "ATIVBatteryGuard-ACCESS1-RECORD-REVIEW.zip",
+    "bytes": 156450,
+    "sha256": "5b8a799242838f77b4c723874c1fd6a45ac394be648990f79dd8e5bc5ed16418",
+    "entries": 6,
+    "productSourceFingerprintSha256": "1f31dd0c6c948382ddb058fdee76ddbb78dfd8effebc135c38b6380a79b02324",
+    "programFiles": 3,
+    "zipEntries": 6,
+    "oemOriginalFirmwareExperimentExeOrPdbIncluded": false,
+    "oldAccess1ArchiveUnchanged": {
+      "file": "ATIVBatteryGuard-FIXED-READ-A-ACCESS1.zip",
+      "bytes": 145563,
+      "sha256": "474d43f194740e07d01445db7b1477b1dbf73b1dfe3f1d026af20c213a20b4a0"
+    },
+    "normalMainAppManifest": "asInvoker/uiAccess=false",
+    "currentWindowsGuiRuntimeTested": false,
+    "buildBeforePublicationCommit": "Product source fingerprint pins the actual build source; no claim of a build against the later publication commit ID."
+  },
+  "review": {
+    "parserAndVm": "Independent read reviews found no blockers; no IO or controller coupling.",
+    "controlContract": "Independent source-doc review narrowed the7method design to one0to1 transition and clarified initialization-preservation limits.",
+    "finalDocumentsAndSanitizedReport": "No blocking findings. Tool-reported candidate0, parser format acceptance and development verification distinguished; no raw revalidation/current-mode/charge-success claim. All trial budgets spent; ordinary-user GUI only; future seven-call design remains unapproved and unimplemented. No sensitive raw content found. Read-only review."
+  },
+  "privacy": "Only reported categories/bounded candidate and artifact/source provenance hashes; no absolute local paths, raw frames/comparison content, personal identifiers or exception text in public report or review result."
+}

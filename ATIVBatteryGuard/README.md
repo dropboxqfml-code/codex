@@ -1,5 +1,8 @@
 # ATIV Battery Guard
 
+**최신 — Access1 저장 후보0 수신 / 2026-11-08:** 사용자도구가고정읽기후 후보0·관련정리Complete를보고했습니다. [결과·다음개발](ACCESS1_STORED_ZERO_RESULT_AND_NEXT.md)과 [일반권한기록검토앱ZIP](../downloads/ATIVBatteryGuard-ACCESS1-RECORD-REVIEW.zip)을추가했습니다. 이미받은TXT를붙여넣어과거판정만확인하며새장치/OEM/예약접근과실제모드변경은없습니다. 새18개포함727테스트·portable/전체net48참조빌드0경고·0오류입니다. 새시험/자료재제출은불필요하며기존모든단발도구는재실행하지않습니다. [0→1 전환·최대7method 설계](PROTECTION_TRANSITION_REVIEW.md)는미승인·미구현이며충전제어Unsupported입니다. 아래는이전기록입니다.
+
+
 **최신 — 승인된 추가 단발 Access1 / 2026-11-08:** [새 ZIP](../downloads/ATIVBatteryGuard-FIXED-READ-A-ACCESS1.zip)과 [실행·검증 안내](FIXED_READ_ACCESS1_IMPLEMENTATION.md)를 제공합니다. 같은계정에서 새도구만 수동관리자 실행해 Access1/Elevated를 확인한 뒤 START를 직접 입력합니다. 기존A예약은 유지하고 추가준비1회·method최대1만허용하며 준비실패도소모합니다. 새9개 포함709테스트통과·portable/전체net48참조0경고·0오류, 정적ZIP/CLI검산을완료했습니다. 새실기는아직없고제어Unsupported입니다. 기존ZIP과합치지않고이번새TXT만전달합니다. 아래는이전기록입니다.
 
 

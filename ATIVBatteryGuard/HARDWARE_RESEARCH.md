@@ -1,5 +1,14 @@
 # 하드웨어 조사
 
+## 최신 — 고정 읽기의 후보0 관측 / 2026-11-08
+
+[Access1결과](ACCESS1_STORED_ZERO_RESULT_AND_NEXT.md)는Elevated·준비/SDKReady·ReplyReceived·StoredModeCandidate0·정리Complete입니다. 실제노트북의선택된읽기를도구가판정한사용자보고로보존하며rawbyte독립재검증/현재보호OFF/임계값/충전제어성공으로확대하지않습니다. 실제binary/장치/계정/시각해시를새로요구하지않습니다. 모든과거예약소모유지·재실행0입니다.
+
+새일반GUI는기존TXT의오프라인기록검토만추가해actualMode/controller/desiredMode와분리했습니다. parser12/VM6 포함727회귀·두Release빌드0/0과실제제출텍스트의순수parser실행을검증했습니다. 새SDK/OEM/Global/노트북예약접근0입니다.
+
+[전환설계](PROTECTION_TRANSITION_REVIEW.md)는knownsemanticsetter/0→1초기화80·75/동일값조기return/비활성reset/normal96·97/ACKvsreadback/지속성미확정을정리합니다. 향후0→1기준7method(3read+1set+3read)는사전0만진행하며fixedthresholdgetter와setter응답명세·전체ownercoordinator가남았습니다. source재검색/모든writer부재조건을추가하지않고현재write승인/코드/시험0·Unsupported를유지합니다. 아래는이전기록입니다.
+
+
 ## 최신 — 승인된 추가 예산 Access1 연결 / 2026-11-08
 
 [Access1 도구](FIXED_READ_ACCESS1_IMPLEMENTATION.md)는 사용자 별도명시승인에 따라 기존A소모를유지한 추가준비1회/method최대1만 구현했습니다. 같은계정수동관리자·TOKEN_QUERY/Elevated사전차단·직접START·새전용영속예약선소모 순서입니다. 예전예약읽기/복구0,실패뒤자동추가시험0입니다.

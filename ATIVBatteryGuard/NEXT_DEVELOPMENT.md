@@ -1,5 +1,18 @@
 # 다음 개발 재개 메모
 
+## 최신 — Access1 후보0·정리Complete 수신과 기록 검토 앱 / 2026-11-08
+
+기준 `4452b03` 뒤 사용자실기TXT가 **Elevated/Ready/ReplyReceived/StoredModeCandidate0/관련정리Complete**를보고했습니다. [관측·새앱안내](ACCESS1_STORED_ZERO_RESULT_AND_NEXT.md)와 [전환검토](PROTECTION_TRANSITION_REVIEW.md)를먼저읽습니다. 사용자보고의선택된고정byte읽기성공이며rawframe/비교값독립재검증·현재actualMode/임계값/충전성공으로확대하지않습니다. 원래A·Access1·Query65는모두소모상태유지,기존EXE재실행/예약확인·리셋·재사용0입니다.
+
+새 메인GUI ZIP [ATIVBatteryGuard-ACCESS1-RECORD-REVIEW.zip](../downloads/ATIVBatteryGuard-ACCESS1-RECORD-REVIEW.zip)은 일반권한의 `ATIVBatteryGuard.exe`입니다. 새Access1카드에이미받은TXT를붙여넣어과거도구의판정기록만봅니다. 앱기본값은Empty이며관측0/원문을하드코딩하지않았습니다. 별도Query65와분리,strictheader/단일필드/필수tuple/Complete/후보0or1·크기검사,누락·모순·중복·Pending·실패경고거부,검토뒤raw입력삭제를적용했습니다. controller/actualMode/desiredMode/Mock/설정/로그/파일/provider는바꾸지않고새WMI/OEM/예약접근0입니다.
+
+새parser12+VM6 포함 **727통과·0실패·0skip**,portable/전체net48참조Release 각각0경고·0오류입니다. 실제제출TXT를별도신뢰된.NET8오프라인probe로읽어ReportedStoredModeCandidate0/capabilityfalse를확인했습니다. 이것은원문응답재검증이아닙니다. 현재GUI의Windows실행은미검증,cloud새SDK/OEM/Global/노트북예약접근0입니다. [정제검증](reports/access1-stored-zero-followup.json)에source/build/packagepin을보존합니다.
+
+저장source전환검토는0→1에서mode1/80·75초기화,동일1에서조기return,1→0에서별도상태reset을확인합니다. normal0분기는별도96/97조건으로서100%쓰기와같지않습니다. 후보0에서현재thresholds를추론하거나setterecho를readback으로쓰지않고자동토글/rollback0을유지합니다. 새sourcedecode/selector재탐색은하지않았습니다.
+
+다음구체작업은 fixedthresholdgetter/판정·read와구분된semanticsetter입력/응답명세·같은owner를전후단계내내유지하는single-usecoordinator입니다. **향후한번의0→1안**은사전mode/threshold3읽기→setter최대1→사후3읽기(상한7method),사전mode0만진행/1·Unknown·실패면setter0입니다. 이는설계값이며현재승인예산아닙니다. 원래단발객체7개반복/중첩owner로대체하지않습니다. 쓰기코드/추가예약/새실기연결0·제어Unsupported,중요미완료를닫은뒤별도명시승인범위를제시합니다. 새시험/과거자료재제출은현재불필요합니다. 아래는이전기록입니다.
+
+
 ## 최신 — 별도 승인된 추가 단발 조회 Access1 구현·배포 / 2026-11-08
 
 기준 `f030257` 뒤 사용자가 추가 시험안에 **“알겠어 진행해.”**로 명시 승인했습니다. [Access1 구현·사용 안내](FIXED_READ_ACCESS1_IMPLEMENTATION.md), [정제검증](reports/fixed-read-access1-validation.json)을 먼저 읽습니다. 새 ZIP은 [ATIVBatteryGuard-FIXED-READ-A-ACCESS1.zip](../downloads/ATIVBatteryGuard-FIXED-READ-A-ACCESS1.zip) 하나입니다. 같은계정에서 새도구만 수동관리자 실행하고 Access1/Elevated 확인→직접START가 승인된 실행 절차입니다. 일반앱상시상승/자동UAC/runas·다른계정암호/보안우회는 없습니다.

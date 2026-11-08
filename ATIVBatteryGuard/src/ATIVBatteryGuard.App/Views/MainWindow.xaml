@@ -81,7 +81,28 @@
 
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Text="과거 WMI 실험 결과 검토" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="고정 보호 저장값 조회 기록 · Access1" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="이미 만든 Access1 TXT를 붙여넣어 과거 도구의 판정 기록을 확인합니다. 현재 상태를 새로 조회하거나 실험을 다시 실행하지 않습니다."
+                               Style="{StaticResource Detail}" />
+                    <TextBox x:Name="FixedReadResultInput" Text="{Binding FixedReadReviewInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True" IsUndoEnabled="False" TextWrapping="Wrap" MinHeight="80" MaxHeight="150"
+                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,10"
+                             AutomationProperties.Name="과거 Access1 조회 결과 붙여넣기" />
+                    <WrapPanel>
+                        <Button x:Name="ReviewFixedReadResultButton" Content="Access1 기록 확인"
+                                Command="{Binding ReviewFixedReadResultCommand}" />
+                        <Button Content="Access1 기록 지우기" Command="{Binding ClearFixedReadReviewCommand}" />
+                    </WrapPanel>
+                    <TextBox x:Name="FixedReadResultReview" Text="{Binding FixedReadReviewText, Mode=OneWay}"
+                             IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
+                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
+                             AutomationProperties.Name="과거 Access1 도구 판정 기록" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="과거 WMI 실험 결과 검토 · Query65" Style="{StaticResource SectionTitle}" />
                     <TextBlock Text="현재 분석 내용을 확인하고, 필요하면 이미 받은 과거 콘솔 출력도 검토할 수 있습니다. 실험을 다시 실행할 필요는 없습니다."
                                Style="{StaticResource Detail}" />
                     <TextBlock Text="추가 장치 조회·OEM 호출·예약 파일 접근 없이 텍스트만 검토하며, 현재 배터리 보호 상태를 확인하는 기능은 아닙니다."

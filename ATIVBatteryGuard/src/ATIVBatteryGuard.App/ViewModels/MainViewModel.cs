@@ -36,6 +36,10 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private WsabiWmiExperimentReview experimentReview = WsabiWmiExperimentReview.Empty;
 
+		private string fixedReadReviewInput = string.Empty;
+
+		private WsabiWmiFixedReadAccess1Review fixedReadReview = WsabiWmiFixedReadAccess1Review.Empty;
+
 		private readonly ISamsungAnalysisBundleService samsungAnalysis;
 
 		private readonly Func<bool> confirmSamsungAnalysis;
@@ -136,6 +140,40 @@ namespace ATIVBatteryGuard.ViewModels
 		public WsabiWmiExperimentReviewStatus ExperimentReviewStatus => experimentReview.Status;
 
 		public bool ExperimentReviewHasValidatedFrame => experimentReview.HasValidatedFrame;
+
+		public RelayCommand ReviewFixedReadResultCommand { get; }
+
+		public RelayCommand ClearFixedReadReviewCommand { get; }
+
+		public string FixedReadReviewInput
+		{
+			get { return fixedReadReviewInput; }
+			set
+			{
+				if (disposed) return;
+				string input = value ?? string.Empty;
+				if (input == fixedReadReviewInput) return;
+				if (input.Length > WsabiWmiFixedReadAccess1ReviewParser.MaximumCharacters)
+				{
+					fixedReadReviewInput = string.Empty;
+					fixedReadReview = WsabiWmiFixedReadAccess1ReviewParser.Parse(input);
+				}
+				else
+				{
+					fixedReadReviewInput = input;
+					fixedReadReview = WsabiWmiFixedReadAccess1Review.Empty;
+				}
+				NotifyFixedReadReview();
+			}
+		}
+
+		public string FixedReadReviewText => fixedReadReview.ToDisplayText();
+
+		public WsabiWmiFixedReadAccess1ReviewStatus FixedReadReviewStatus => fixedReadReview.Status;
+
+		public bool FixedReadReviewHasReportedStoredModeCandidate => fixedReadReview.HasReportedStoredModeCandidate;
+
+		public int? FixedReadReviewStoredModeCandidate => fixedReadReview.StoredModeCandidate;
 
 		public bool SamsungFileInspectionBusy => samsungFileInspectionBusy;
 
@@ -339,7 +377,7 @@ namespace ATIVBatteryGuard.ViewModels
 				{
 					return "알 수 없음";
 				}
-				return "미지원 · 실제 펌웨어 상태를 읽을 수 없음";
+				return "미지원 · 앱에서 실시간 보호 상태를 조회하지 않습니다";
 			}
 		}
 
@@ -560,6 +598,10 @@ namespace ATIVBatteryGuard.ViewModels
 				() => !mainViewModel.disposed && !string.IsNullOrWhiteSpace(mainViewModel.experimentReviewInput));
 			ClearExperimentReviewCommand = new RelayCommand(ClearExperimentReview,
 				() => !mainViewModel.disposed);
+			ReviewFixedReadResultCommand = new RelayCommand(ReviewFixedReadResult,
+				() => !mainViewModel.disposed && !string.IsNullOrWhiteSpace(mainViewModel.fixedReadReviewInput));
+			ClearFixedReadReviewCommand = new RelayCommand(ClearFixedReadReview,
+				() => !mainViewModel.disposed);
 			log.Write("APP_STARTED");
 			log.Write(string.IsNullOrEmpty(settingsLoadResult.Warning) ? "SETTINGS_LOADED" : "SETTINGS_RECOVERED");
 			RefreshBattery();
@@ -591,6 +633,35 @@ namespace ATIVBatteryGuard.ViewModels
 			Changed("ExperimentReviewHasValidatedFrame");
 			ReviewExperimentResultCommand?.Refresh();
 			ClearExperimentReviewCommand?.Refresh();
+		}
+
+		public void ReviewFixedReadResult()
+		{
+			if (disposed) return;
+			// Historical text only. No provider, reservation, controller,
+			// settings, log or file is reached by this review action.
+			fixedReadReview = WsabiWmiFixedReadAccess1ReviewParser.Parse(fixedReadReviewInput);
+			fixedReadReviewInput = string.Empty;
+			NotifyFixedReadReview();
+		}
+
+		private void ClearFixedReadReview()
+		{
+			if (disposed) return;
+			fixedReadReviewInput = string.Empty;
+			fixedReadReview = WsabiWmiFixedReadAccess1Review.Empty;
+			NotifyFixedReadReview();
+		}
+
+		private void NotifyFixedReadReview()
+		{
+			Changed("FixedReadReviewInput");
+			Changed("FixedReadReviewText");
+			Changed("FixedReadReviewStatus");
+			Changed("FixedReadReviewHasReportedStoredModeCandidate");
+			Changed("FixedReadReviewStoredModeCandidate");
+			ReviewFixedReadResultCommand?.Refresh();
+			ClearFixedReadReviewCommand?.Refresh();
 		}
 
 		private void SelectMode(ChargeMode mode)
@@ -915,6 +986,7 @@ namespace ATIVBatteryGuard.ViewModels
 				}
 				disposed = true;
 				experimentReviewInput = string.Empty;
+				fixedReadReviewInput = string.Empty;
 				ApplyCommand.Refresh();
 				SaveCommand.Refresh();
 				RefreshCommand.Refresh();
@@ -929,6 +1001,8 @@ namespace ATIVBatteryGuard.ViewModels
 				InspectSamsungFilesCommand.Refresh();
 				ReviewExperimentResultCommand.Refresh();
 				ClearExperimentReviewCommand.Refresh();
+				ReviewFixedReadResultCommand.Refresh();
+				ClearFixedReadReviewCommand.Refresh();
 				log.Write("APP_STOPPED");
 			}
 		}

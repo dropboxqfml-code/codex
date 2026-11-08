@@ -436,6 +436,8 @@ internal static partial class Program
         RegisterWsabiWmiFixedModeReadAReservationTests();
         RegisterWsabiWmiFixedReadAccess1ReservationTests();
         RegisterWsabiWmiFixedReadAccess1ReviewTests();
+        RegisterWsabiWmiProtectionTransitionReviewTests();
+        RegisterWsabiWmiSevenStageCoordinatorTests();
         RegisterFixedReadAccess1ReviewViewModelTests();
         RegisterWsabiWmiFixedReadPreparationTests();
         RegisterFixedReadTrialHostTests();

@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 전환 순서·전체 owner의 대역 구현 / 2026-11-08
+
+[고정 명세와 내부 원형](SEVEN_STAGE_COORDINATOR_PROTOTYPE.md)을 구현했습니다. 기존 source의0→1 기대값과 실제 관측 필드를 분리하고 사전0·사후1/80/75를 판정합니다. 단일 owner의 전 단계 유지·actual close 인계·stop/deadline·별도 peer 경합은 가짜 역할과 수명으로 검증했습니다. 새32개 포함759회귀와 두 Release 빌드0경고·0오류입니다.
+
+새 source decode나 실기 관측은 없습니다. Access1의 과거 후보0을 새 사전값으로 사용하지 않으며 응답 귀속·fixed threshold getter·setter ACK의 실제 codec·SDK 연결은 남아 있습니다. gate 소유권 자체가 불명인 영구 보유 경로는 소스 검토 범위입니다. 실제 쓰기 코드·예약·App 연결0·Unsupported를 유지하며 새 노트북 실행·자료 재제출은 불필요합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 고정 읽기의 후보0 관측 / 2026-11-08
 
 [Access1결과](ACCESS1_STORED_ZERO_RESULT_AND_NEXT.md)는Elevated·준비/SDKReady·ReplyReceived·StoredModeCandidate0·정리Complete입니다. 실제노트북의선택된읽기를도구가판정한사용자보고로보존하며rawbyte독립재검증/현재보호OFF/임계값/충전제어성공으로확대하지않습니다. 실제binary/장치/계정/시각해시를새로요구하지않습니다. 모든과거예약소모유지·재실행0입니다.

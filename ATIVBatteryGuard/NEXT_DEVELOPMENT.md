@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 고정7단계 판정 모델·전체 owner 내부 원형 / 2026-11-08
+
+기준 `e989e1d` 다음 개발입니다. [구현·검증·한계](SEVEN_STAGE_COORDINATOR_PROTOTYPE.md)와 [전환 근거](PROTECTION_TRANSITION_REVIEW.md)를 먼저 읽습니다. 순수 모델은 사전 모드0·임계값2개 → 의미상 설정1 ACK → 사후1/80/75의 고정 순서이며 과거 Access1 후보0은 새 사전 관측으로 수용하지 않습니다. 예상값·관측값·ACK를 분리하고 첫 실패에서 재진입 없이 중단합니다.
+
+새 internal coordinator는 역할·정규화한 숫자·가짜 수명만 받습니다. 한 owner thread의 gate 획득1회부터 각 단계 실제 close와 lease 해제까지 유지하고, 표시 deadline·중단 뒤 늦은 성공으로 진행하지 않습니다. operation/lifetime은 프로세스 내 일회용, Start throw/null·close 불명은 실제 종료 증거까지 보유합니다. gate 획득 throw/null·해제 예외의 영구 대기 분기는 소스 검토만 했으며 프로세스 내 회귀로 실행하지 않았습니다. fake close를 실제 SDK 복구 경로로 해석하지 않습니다.
+
+새 모델15개·coordinator17개 포함 **759통과·0실패·0skip**, portable/전체 net48 참조 Release 각각0경고·0오류입니다. [정제 기록](reports/seven-stage-coordinator-validation.json)에 소스·검증 pin과 실행 범위를 남깁니다. 실제 Windows/SDK/OEM/Global/하드웨어·노트북 예약 접근0이며 새 request/frame/nonce/encoder/marker/live adapter/App 연결0입니다. 기존 SDK·단발 요청·controller·App source와 배포 ZIP은 그대로입니다. 새 GUI ZIP·노트북 실행·자료 재제출은 필요 없습니다.
+
+**다음은 임계값 두 개의 고정 읽기 응답 명세와 설정1의 입력·응답 계약**을 저장 근거에 연결하는 작업입니다. 그 뒤 실제 SDK 단계의 응답 귀속·입력 보호·actual-close 인계를 검토합니다. 현재 원형을 실제7method 연결 완료나 쓰기 승인으로 표시하지 않습니다. 실제 쓰기 예산0·Unsupported와 기존 A/Access1/Query65 소모 상태를 유지합니다. 구체 제어 시험의 중요한 미완료를 닫은 뒤 별도 명시 승인 범위를 제시합니다. 아래는 이전 기록입니다.
+
 ## 최신 — Access1 후보0·정리Complete 수신과 기록 검토 앱 / 2026-11-08
 
 기준 `4452b03` 뒤 사용자실기TXT가 **Elevated/Ready/ReplyReceived/StoredModeCandidate0/관련정리Complete**를보고했습니다. [관측·새앱안내](ACCESS1_STORED_ZERO_RESULT_AND_NEXT.md)와 [전환검토](PROTECTION_TRANSITION_REVIEW.md)를먼저읽습니다. 사용자보고의선택된고정byte읽기성공이며rawframe/비교값독립재검증·현재actualMode/임계값/충전성공으로확대하지않습니다. 원래A·Access1·Query65는모두소모상태유지,기존EXE재실행/예약확인·리셋·재사용0입니다.

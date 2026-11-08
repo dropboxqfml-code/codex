@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "date": "2026-11-08",
+  "baseline_commit": "e989e1d2ba33b90f44d7a051824d80a36555c3e3",
+  "scope": "Pure seven-stage numeric review and internal fake-seam-only whole-owner coordinator prototype",
+  "source_sha256": {
+    "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionTransitionReview.cs": "388985348e12a7de4d8f5d96e34a15a87c0555e1317d7429fc28d8e05c91342b",
+    "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiSevenStageCoordinator.cs": "4a51e42b0fd4c480617328c1d2f79c9f219e5b9d8128b7fcbf0101456d8e81a9",
+    "ATIVBatteryGuard/tests/WsabiWmiProtectionTransitionReviewTests.cs": "07f4369f163207570eae092bd3fe9f3215b63e32947f42d10797f9c5bd227084",
+    "ATIVBatteryGuard/tests/WsabiWmiSevenStageCoordinatorTests.cs": "4876be5cd767da6a8234c7f174092730882768a9e18f6fd7f4c79fefabffa2f0",
+    "ATIVBatteryGuard/tests/Program.cs": "c66f5a4e6e3dbbd4e3d3af5a78ebd967d9ef31090eb78163405fbcdfb23a4c6d",
+    "ATIVBatteryGuard/tests/ATIVBatteryGuard.PortableTests.csproj": "76f9a858da98d631d92f31abe5d4341992a863ec25b48709ad42d5b7bdb387bc"
+  },
+  "validation": {
+    "portable_suite": {
+      "passed": 759,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 759,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "new_registered_groups": {
+      "pure_review": 15,
+      "coordinator": 17
+    },
+    "parameter_iterations_are_not_additional_tests": true,
+    "portable_release": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "full_net48_reference_release": {
+      "warnings": 0,
+      "errors": 0,
+      "runtime_execution": false
+    },
+    "private_evidence_sha256": {
+      "portable-build-final.log": "1743b30d9a522ffe4e014d34a698730fb6d0480df863a4bf7303da75268559fa",
+      "net48-build.log": "f67445befd4fab407db39d4b2e95ce286719f6e4005fb80c2f6976957507ea14",
+      "suite-final.json": "f5c6c729c6f10cc7565252599654c719ffcc26c64a0927ba51f7cfbdecb057ae",
+      "suite-final.log": "9ecbb67a2e742c95a44aebec8b8ed02b114953809556ee3a46643f17abe81a81",
+      "audit.py": "c4a80e3100577c73ff132ae72e3a78878fa9367e2151abe97bc9c5c3c1e37bfb"
+    },
+    "independent_source_review": "Two readers reviewed coordinator lifetime, stop, setup and concurrent-use paths; pure review also separately read",
+    "review_fixes_before_final_validation": [
+      "Read-only source stop view",
+      "Local completion for setup failure before owner start"
+    ],
+    "tested_cleanup_boundary": "Matched numeric snapshot plus blocked final lease release remains TimedOut until actual cleanup",
+    "source_review_only": [
+      "Unknown gate acquire throw or null",
+      "Lease release exception with permanently pending owner",
+      "Pre-owner registration or thread setup failure"
+    ]
+  },
+  "preserved": {
+    "all_previously_tracked_project_source_files_byte_equal": true,
+    "source_file_count": 176,
+    "all_previously_tracked_download_files_byte_equal": true,
+    "download_file_count": 87,
+    "old_query65_a_access1_reservations_accessed_or_rearmed": false,
+    "existing_normal_gui_zip_remains_available": true,
+    "new_gui_or_experiment_archive_created": false
+  },
+  "interpretation": {
+    "historical_access1": "User-reported StoredModeCandidate0 and cleanup Complete, preserved without new notebook observation",
+    "fixed_role_order": [
+      "PreMode",
+      "PreUpper",
+      "PreLower",
+      "SemanticSet1",
+      "PostMode",
+      "PostUpper",
+      "PostLower"
+    ],
+    "expected_candidates_are_not_measured": {
+      "pre_mode": 0,
+      "post_mode": 1,
+      "post_upper": 80,
+      "post_lower": 75
+    },
+    "normalized_current_evidence_is_not_freshness_authentication": true,
+    "setter_role_admission_is_not_actual_method_invocation": true,
+    "hardware_control": "Unsupported",
+    "actual_new_hardware_read_or_write_budget": 0,
+    "actual_windows_sdk_oem_global_or_notebook_reservation_accesses": 0,
+    "new_sdk_adapter_request_frame_nonce_encoder_marker_or_app_caller": false,
+    "genuine_sdk_close_recovery_implemented": false,
+    "new_firmware_source_decode_or_search": false,
+    "additional_notebook_run_or_upload_needed": false
+  },
+  "next": [
+    "Fixed threshold read response specification",
+    "Semantic setter input and acknowledgement contract",
+    "Concrete SDK request attribution and actual-close handoff design before separately approved control code"
+  ]
+}

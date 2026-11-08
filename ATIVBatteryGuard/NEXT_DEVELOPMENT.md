@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 모드·임계값/설정 응답의 순수 분류 / 2026-11-09 한국 시간
+
+기준 `b6c99e5` 다음 개발입니다. [응답 판정 계약](PROTECTION_REPLY_CONTRACTS.md)을 먼저 읽습니다. internal `WsabiWmiProtectionReadReplyReview`는 여섯 읽기역할의 strict envelope/frame·실패prefix·control/tail·보존성분/8개비교를 검사합니다. mode는0/1,threshold는0..255이지만 sample==input-first는 합법byte여도 `AmbiguousInputEcho`, Candidate없음입니다. 역할label이나 비교일치를 target/fresh/current 인증으로 승격하지 않습니다.
+
+internal `WsabiWmiProtectionSetterReplyReview`는 의미입력1만 받고 전체10개메시지byte의 보존을 검사해 `ReceiptOnly`로만 분류합니다. 둘째byte는 setter주소가 아닙니다. 선택setter가 입력first를 독립저장값으로 바꾸지 않아 normal처리와 upload-only echo가 같은 응답일 수 있습니다. 모든 execution/semanticACK/storedChange/actualClose/charge/자동transition flags는false입니다. 기존 `AcceptedCurrentRead`/`SetterAcknowledged`를 자동 생성하지 않고 기존 모델·coordinator source는 바꾸지 않았습니다.
+
+새 read15+setter12 포함 **786통과·0실패·0skip**, portable/전체net48참조 Release 각각0경고·0오류입니다. [정제 검증](reports/protection-reply-contracts-validation.json)에 source/build/suite·기존proof pin을 보존합니다. 새 응답은 합성test data이며 실제노트북/WindowsSDK/OEM/Global/예약접근0입니다. 원본 decode·검색0, request/frame/nonce/RNG/targetresolver/encoder/SDK/App 추가0, 모든 기존src와ZIP 보존입니다. 새 실행프로그램·노트북시험·같은자료재제출은 필요 없습니다.
+
+**다음은 고정 대상·기대값·응답의 대응과 SDK actual-close를 전체owner에 인계하는 adapter 설계 및 대역 연결 검증입니다.** 기존 frame별owner session7개를 반복하거나 중첩하지 않습니다. 엄격히수용한receipt+실제close뒤 setter효과Unknown을 유지한 독립readback을 허용하는 전이도 명시적으로 설계해야 합니다. 독립setter성공코드가없다는이유만으로영구postread금지를새조건으로만들지않습니다. 비교8셀의 단발충돌수치를7단계신뢰도로확대하지않고 단계간대응·입력/회수보호를 함께 구분합니다. 그뒤 실제설정용code/tool/구체시험의별도명시승인범위를제시합니다. 현재실제쓰기0·Unsupported·기존모든소모예약접근/초기화/재사용0유지입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 고정7단계 판정 모델·전체 owner 내부 원형 / 2026-11-08
 
 기준 `e989e1d` 다음 개발입니다. [구현·검증·한계](SEVEN_STAGE_COORDINATOR_PROTOTYPE.md)와 [전환 근거](PROTECTION_TRANSITION_REVIEW.md)를 먼저 읽습니다. 순수 모델은 사전 모드0·임계값2개 → 의미상 설정1 ACK → 사후1/80/75의 고정 순서이며 과거 Access1 후보0은 새 사전 관측으로 수용하지 않습니다. 예상값·관측값·ACK를 분리하고 첫 실패에서 재진입 없이 중단합니다.

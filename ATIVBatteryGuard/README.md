@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 임계값 조회·설정 응답 판정 / 2026-11-09 한국 시간:** [분리된 응답의 판정기 두 개](PROTECTION_REPLY_CONTRACTS.md)를 추가했습니다. 모드0/1과 임계값byte를 구분하고 실제 값과 입력echo가 겹치면 후보 없이 보류합니다. 정상 설정 응답은 `ReceiptOnly`로 분류해 저장 변화·실제 종료·충전 성공과 분리했습니다. 새27개 포함786테스트 통과, 두 Release 빌드 각각0경고·0오류입니다. 실제 요청·SDK·App 연결은 없으며 Unsupported를 유지합니다. 새 실행·자료 제출은 필요 없고 다음은 전체 owner와 고정 대상·SDK 수명의 adapter 설계입니다. 아래는 이전 기록입니다.
+
 **최신 — 전환 판정·전체 owner 원형 / 2026-11-08:** [고정7단계 판정 모델과 internal coordinator](SEVEN_STAGE_COORDINATOR_PROTOTYPE.md)를 추가했습니다. 사전 모드0 조건, 사후1/80/75 비교, 단계별 실제 종료 대기와 stop/timeout 후 진행 차단을 대역으로 검증했습니다. 새32개 포함759테스트 통과, portable/전체 net48 참조 Release 빌드 각각0경고·0오류입니다. 실제 SDK adapter·설정 명령·App 연결은 없으며 충전 제어는 Unsupported입니다. 새 노트북 시험·자료 재제출·실행 ZIP은 필요 없습니다. 다음은 고정 임계값 조회와 setter 응답 계약입니다. 아래는 이전 기록입니다.
 
 **최신 — Access1 저장 후보0 수신 / 2026-11-08:** 사용자도구가고정읽기후 후보0·관련정리Complete를보고했습니다. [결과·다음개발](ACCESS1_STORED_ZERO_RESULT_AND_NEXT.md)과 [일반권한기록검토앱ZIP](../downloads/ATIVBatteryGuard-ACCESS1-RECORD-REVIEW.zip)을추가했습니다. 이미받은TXT를붙여넣어과거판정만확인하며새장치/OEM/예약접근과실제모드변경은없습니다. 새18개포함727테스트·portable/전체net48참조빌드0경고·0오류입니다. 새시험/자료재제출은불필요하며기존모든단발도구는재실행하지않습니다. [0→1 전환·최대7method 설계](PROTECTION_TRANSITION_REVIEW.md)는미승인·미구현이며충전제어Unsupported입니다. 아래는이전기록입니다.

@@ -88,6 +88,8 @@
     <Compile Include="WsabiWmiFixedReadAccess1ReviewTests.cs" />
     <Compile Include="WsabiWmiProtectionTransitionReviewTests.cs" />
     <Compile Include="WsabiWmiSevenStageCoordinatorTests.cs" />
+    <Compile Include="WsabiWmiProtectionReadReplyReviewTests.cs" />
+    <Compile Include="WsabiWmiProtectionSetterReplyReviewTests.cs" />
     <Compile Include="FixedReadAccess1ReviewViewModelTests.cs" />
     <Compile Include="WsabiWmiFixedReadPreparationTests.cs" />
     <Compile Include="FixedReadTrialHostTests.cs" />

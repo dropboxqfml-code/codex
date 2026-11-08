@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 조회 후보와 setter 응답의 의미 분리 / 2026-11-09 한국 시간
+
+[순수 응답 판정기](PROTECTION_REPLY_CONTRACTS.md)를 구현했습니다. 임계값 전체byte 영역은 입력 첫 성분과 겹치므로 같은 값은 합법적인 read와 미갱신echo를 구별하지 못하며 후보 없이 보류합니다. 선택 setter는 전체10개 메시지byte를 보존하므로 정상echo도 `ReceiptOnly`입니다. 이는 저장된 proof의 재적용이며 새 firmware decode·source 발견·실기 관측이 아닙니다. 공통 실패의0표본, 형식·보존·domain 검사와 귀속 한계를 회귀로 보존했습니다.
+
+새27개 포함786C# 통과·portable/전체net48참조 Release 각각0경고·0오류입니다. 실제 설정 명령·SDK·App 연결·예약 접근0·Unsupported를 유지합니다. 독립적인 setter 성공코드 부재를 영구 조회 금지 조건으로 삼지 않고, 향후 엄격한receipt+실제close 뒤 독립readback의 전이를 구체 시험 계약에서 분리해 검토합니다. 새 노트북 실행·자료 재제출은 불필요합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 전환 순서·전체 owner의 대역 구현 / 2026-11-08
 
 [고정 명세와 내부 원형](SEVEN_STAGE_COORDINATOR_PROTOTYPE.md)을 구현했습니다. 기존 source의0→1 기대값과 실제 관측 필드를 분리하고 사전0·사후1/80/75를 판정합니다. 단일 owner의 전 단계 유지·actual close 인계·stop/deadline·별도 peer 경합은 가짜 역할과 수명으로 검증했습니다. 새32개 포함759회귀와 두 Release 빌드0경고·0오류입니다.

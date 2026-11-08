@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "date_korea": "2026-11-09",
+  "baseline_commit": "b6c99e5731fca379720f905092cbdbf7231bc0b0",
+  "scope": "Internal detached-response read and semantic setter receipt review; no executable request or live adapter",
+  "source_sha256": {
+    "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionReadReplyReview.cs": "faf6e35368f35fdffe22a070c12ed3471e4c4b515e7f83ee2e0a46667e59d66b",
+    "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionSetterReplyReview.cs": "d82b182be2bb28027effa1904a72d7dbd125f7f2615bf2dbfe334bc9374f47d2",
+    "ATIVBatteryGuard/tests/WsabiWmiProtectionReadReplyReviewTests.cs": "1d639c0d969db5c2b7c73765308f3eb02d8b714b4cd522b84c91b8959104512e",
+    "ATIVBatteryGuard/tests/WsabiWmiProtectionSetterReplyReviewTests.cs": "0c6cf3d987b2b230cd5db11eb877b77422365f3824858ec5fa89908741d254d0",
+    "ATIVBatteryGuard/tests/Program.cs": "321932a6cdfdd2b4ff3877c603cd6d6627fdcce3cdf8ca8f7357d337fc833c7d",
+    "ATIVBatteryGuard/tests/ATIVBatteryGuard.PortableTests.csproj": "6c43812d409fa7fe3a8c378b98e12731641aeaa14cd331f61f461008eb846741"
+  },
+  "reused_saved_proof_sha256": {
+    "selected-mode-readback-proof.private.json": "b216f35f194ed4660cd3bfcdd7a1589cf3dd1a2ed992dc45f95d180916ac4574",
+    "generic-ec-source-bridge.private.json": "c2cfcd3585c2e62f356aa37ab545deec38017cd87a15cf6990d5294a55d78c53"
+  },
+  "saved_proofs_are_not_new_independent_firmware_observations": true,
+  "validation": {
+    "portable_suite": {
+      "passed": 786,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 786,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "new_registered_groups": {
+      "read_reply": 15,
+      "setter_reply": 12
+    },
+    "parameter_iterations_are_not_additional_tests": true,
+    "portable_release": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "full_net48_reference_release": {
+      "warnings": 0,
+      "errors": 0,
+      "runtime_execution": false
+    },
+    "private_evidence_sha256": {
+      "portable-build.log": "3c8e3a37bccec63658e55864b278c32cd543daf2c5d4b1fed42c617c4460f0be",
+      "net48-build.log": "b559d6db45459e0da7b5842f47e2c673dce56bba92621b680196b3b37209f31b",
+      "suite.json": "865508fe43c7fabdd915fc5188ac3b6ed3c1db927383a47458ee472c3c1dc970",
+      "suite.log": "b3256093464b591e2931c648e2510a67d4dd380213134287aa8a3d56384aa363",
+      "audit.py": "e0ca6b243bd5a3c75f290c1d17f76df4a24f53647173fcb137dad63deb285184"
+    },
+    "independent_source_review": "Saved-source read and setter contracts checked independently; two code/test reviewers found no blocker",
+    "new_regression_scope": [
+      "All six read roles and all byte candidates; mode domain separated from threshold domain",
+      "Legitimate stored byte equal to input component remains ambiguous with no candidate",
+      "Strict envelope, frame, failure prefix, control, tail and every preservation cell",
+      "Zero sample in common failure, no-copy zero, incorrect prior comparison",
+      "Setter input echo is receipt only, including the upload-only indistinguishable case",
+      "Detached comparison and reply ownership; immutable sanitized results",
+      "Role labels and matching comparison cannot authenticate target, freshness, close or transition evidence"
+    ]
+  },
+  "preserved": {
+    "previously_tracked_project_source_files_byte_equal": true,
+    "project_source_file_count": 178,
+    "previously_tracked_download_files_byte_equal": true,
+    "download_file_count": 87,
+    "old_query65_a_access1_reservations_accessed_or_rearmed": false,
+    "new_archive_created": false
+  },
+  "interpretation": {
+    "hardware_control": "Unsupported",
+    "new_notebook_observations": 0,
+    "actual_windows_sdk_oem_global_or_hardware_calls": 0,
+    "actual_setting_write_budget": 0,
+    "new_target_resolver_request_frame_nonce_rng_encoder_sdk_adapter_or_app_caller": false,
+    "new_firmware_decode_search_execution_or_emulation": false,
+    "read_candidate_is_current_or_authenticated": false,
+    "threshold_echo_overlap_means_invalid_stored_value_or_permanent_unsupported": false,
+    "setter_receipt_means_execution_state_change_actual_close_or_charging_success": false,
+    "automatic_accepted_current_read_or_setter_acknowledged_conversion": false,
+    "single_comparison_collision_model_is_whole_sequence_reliability": false,
+    "independent_semantic_setter_success_code_is_a_new_permanent_prerequisite": false,
+    "additional_notebook_run_or_upload_needed": false
+  },
+  "next": [
+    "Fixed target, expectation and reply attribution design",
+    "Concrete SDK actual-close handoff under one owner without per-frame nested sessions",
+    "Explicit receipt-plus-close to independent-readback transition contract and fake validation",
+    "Separately authorized concrete setting implementation and notebook trial after design review"
+  ]
+}

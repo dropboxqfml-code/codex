@@ -1,5 +1,7 @@
 # 보호 모드 전환 검토와 다음 시험 설계 — 2026-11-08
 
+**2026-11-09 한국 시간 후속:** [모드·임계값 읽기와 설정 응답 판정](PROTECTION_REPLY_CONTRACTS.md)을 internal 순수 코드로 구현했습니다. 정상 setter echo는 `ReceiptOnly`이며 실제 실행·저장 상태·close를 입증하지 않습니다. 현재 `SetterAcknowledged` 모델로 자동 연결하지 않고, 향후 receipt+actual-close 뒤 독립 readback의 전이 계약을 명시적으로 검토합니다. 실제 쓰기는 여전히0입니다.
+
 **후속 구현:** [고정7단계 판정 모델·전체 owner 내부 원형](SEVEN_STAGE_COORDINATOR_PROTOTYPE.md)을 대역으로 검증했습니다. 새32개 포함759테스트 통과·두 Release 빌드0경고·0오류입니다. 실제 SDK adapter·설정 인코딩·새 실행 도구는 없으며, 아래 시험 설계는 실제 쓰기 승인이나 실행 결과가 아닙니다.
 
 **Access1은 저장 모드 후보0을 반환했습니다. 다음 개발은 이 관측과 저장된 setter·정책 근거를 연결해 전환 시험의 범위를 정하는 단계입니다. 실제 설정 변경은 아직 승인·구현하지 않았으며 충전 제어는 Unsupported입니다.**

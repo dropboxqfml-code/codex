@@ -1,5 +1,21 @@
 # 다음 개발 재개 메모
 
+## 최신 — 보호 순서의 진입·소유권 대조와 미완료 판정 / 2026-11-08
+
+기준 `8aa006a` 다음 작업입니다. [INDEXED_ORDERING_CONTRACT_REVIEW.md](INDEXED_ORDERING_CONTRACT_REVIEW.md), [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md), [통합 명세](FIXED_READ_TRIAL_SPECIFICATION.md)를 먼저 읽습니다. 사용자는 남은 기술 작업 세 단계 중 첫째인 통신 보호 순서 확보를 시작하라고 했으며 실제 호출·펌웨어 제어 코드 연결을 승인한 것은 아닙니다.
+
+**첫 단계는 아직 미완료입니다.** 이번 대조에서도 실제 표준 통신의 supplier/typed dispatch 연결, 관련 indexed 접근의 새 공통 owner를 확보하지 못했습니다. 기존 정상 proxy/private wrapper 조건과 NULL cache legacy의 같은 정상 root 순서, 초기화 완료·비재진입의 같은 실행 stream, worker 입력 분리·ISR 보존·SDK 수명 근거는 유지합니다. 하드웨어 영구 미지원이나 현재 race를 판정한 것이 아닙니다.
+
+entry 대조는 이미 취득한 UDK2014 PiSmmIpl의 새 선택 문맥과 기존 P05 proof를 사용했습니다. loaded PE bootstrap에 넘기는 shared Context, 별도 receiver의 실제 SMI entry 등록, runtime message/size와 Trigger는 서로 다른 단계입니다. 등록 뒤 assertion/registered flag를 실제 성공의 독립 token으로 쓰지 않습니다. P05 special record의 deferred function을 reference의 message pointer에 대응시키거나 NULL root walk를 새 typed 선택으로 승격할 근거는 없습니다. 기존 P05 legacy 본문을 다시 decode하거나 GUID/operand 검색을 재개하지 않았습니다.
+
+owner 대조는 variable-family busy, flash-context nesting/method-local busy, selected hook의 상태 flag를 구분했습니다. private helper의 context 동기화와 PIC mask/일반 RAM 처리를 SABI 공통 owner로 바꾸지 않습니다. 선택 callback/list의 source 초기값을 현재 바인딩으로 추론하지 않고, family-local 상태가 실제 관련 구간을 포함하는 범위와 SABI의 같은 소유권 참여 미확정을 분리합니다. 이번 결과는 새로운 lock이나 순서 edge가 아니라 적용 범위 정밀화입니다.
+
+정제 기록은 reports/indexed-ordering-contract-audit.json이며 private `20261108/indexed-ordering-contract-next`의 entry_contract/hook_owner/root에 script·proof·findings·pin을 남깁니다. root가 최종 검산기를 실행하고 독립 읽기 검토했습니다. 검산 수는 기존 source와 겹치며 앱 테스트·새 firmware 함수·분석률로 합산하지 않습니다. C#/SDK/tests·프로젝트·배포 EXE/ZIP이 같아 빌드/C#회귀는 미실행이고 628/전체 net48 Release0/0은 ae8f8e7 이전 기록입니다.
+
+공개 ReadSpecificationUnavailable·조회/제어 Unsupported, A 최대1method/샘플0~1/handshake·초기화·재시도·쓰기·B fallback0, old consumed 예약 접근·초기화·삭제·재사용·우회 금지를 유지합니다. 원본 실행/로드/에뮬레이션·실제 SDK/OEM/hardware/Global·driver/service/security/firmware/cloud 변경·실행 request/address pair/frame/nonce/generator는 없습니다. 새 노트북 실행·같은 자료 제출도 불필요합니다.
+
+**이 entry 비교와 상태 분류는 동결합니다.** 같은 source·negative 검색·helper 검산만 추가해 시험에 가까워졌다고 보고하지 않습니다. 재개에 필요한 것은 실제 공급 객체/호출자→정상 진입·typed 선택, 해당 실행 순서에 적용되는 플랫폼 계약, 또는 두 관련 경로의 같은 자원 owner 중 구체적인 새 연결입니다. 이 예들을 모두 동시에 요구하거나 provider 기계코드를 유일한 해법으로 고정하지 않습니다. 전체 writer/IRQ 부재·live hash·gate-open·SDK 원문·반복 수집을 추가 조건으로 만들지 않습니다. 새 단서가 없으면 미연결 상태를 그대로 보고합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 고정 대상·자원 범위·대상 SDK 적용 crosswalk / 2026-11-08
 
 기준 `ba185d3` 다음 작업입니다. [FIXED_READ_APPLICABILITY_REVIEW.md](FIXED_READ_APPLICABILITY_REVIEW.md), [통합 명세](FIXED_READ_TRIAL_SPECIFICATION.md), [PI 계약 검토](PI_COMMUNICATION_CONTRACT_REVIEW.md)를 먼저 읽습니다. 실제 template/SDK 활성화·실기 호출 승인은 아니며 기존 source와 적용 계약을 대조했습니다.

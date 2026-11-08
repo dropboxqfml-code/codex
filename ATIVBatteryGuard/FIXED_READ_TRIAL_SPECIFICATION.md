@@ -1,5 +1,7 @@
 # 고정 보호 저장값 단발 조회 명세 — 비실행 검토본
 
+**보호 순서 조사 후속:** [entry·owner 대조](INDEXED_ORDERING_CONTRACT_REVIEW.md)에서 새 공통 owner 또는 표준 통신의 실제 보호 순서 연결을 확보하지 못했습니다. 조건부 명세는 유지하되 실기 전 첫 단계는 미완료이며 실제 요청·entry 활성화는 보류합니다.
+
 **적용 검토 후속:** [대상·자원·SDK crosswalk](FIXED_READ_APPLICABILITY_REVIEW.md)에서 저장값의 조건부 의미와 SDK 대상 API 문서를 대조했습니다. mode 후보1만으로 현재80/75임계값·실제80%제한을 입증하지 않습니다. 정상 proxy의 알려진 EC 공유 footprint는 private Runtime hook에 한정하며, 해당 구간의 동일 보호 순서 근거는 여전히 미완료입니다. 실제 요청·공개 entry·실기 실행은 보류합니다.
 
 **검토 상태: 조건부 제안 작성 완료 / 실제 요청·시험 빌드 연결 보류.** [PI 계약 대조](PI_COMMUNICATION_CONTRACT_REVIEW.md), [A/B 제안](FIXED_MODE_READ_PROPOSAL.md), [응답 거부 명세](FIXED_READ_ACCEPTANCE_SPECIFICATION.md), [오프라인 리허설](READ_TRIAL_REHEARSAL_PLAN.md)을 하나의 흐름으로 묶었습니다. 실행용 command/address·frame·nonce·generator·승인 flag가 없는 문서입니다. 공개 `PrepareSdkAsync`의 `ReadSpecificationUnavailable`과 보호 조회·충전 제어 `Unsupported`를 유지합니다.

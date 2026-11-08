@@ -1,5 +1,13 @@
 # 하드웨어 조사
 
+## 최신 — 통신 진입과 공통 owner 대조 / 2026-11-08
+
+**결과:** [보호 순서 조사](INDEXED_ORDERING_CONTRACT_REVIEW.md)에서도 새 supplier/typed 경로·공통 owner를 확보하지 못했습니다. 실기 전 핵심 첫 단계는 미완료입니다. 기존 정상 root·legacy fallback·proxy 조건과 입력 분리·ISR·SDK의 긍정 근거를 유지하며 미관측을 실제 race나 영구 미지원으로 바꾸지 않습니다.
+
+**확인한 구분:** 대표 구현의 PE bootstrap, 실제 SMI entry 등록, runtime message/Trigger는 다른 경계입니다. assertion 뒤 flag를 성공 인증으로 쓰거나 P05 deferred function을 reference message pointer에 대응시키지 않습니다. variable-family busy·flash nesting/local busy·hook state도 공통 자원 소유권과 구분합니다. 이 선택 범위에 SABI가 같은 owner로 참여한다는 새 source 연결은 없습니다.
+
+**범위:** 기존 자료의 대조·한정 검산·독립 읽기 검토만 수행했습니다. 같은 검색·legacy decode는 재개하지 않았고 이 대조도 동결합니다. C#/SDK/tests·EXE/ZIP이 같아 빌드/C#회귀는 미실행이며628/전체 net48 Release0/0은ae8f8e7 이전 기록입니다. 실제 호출·원본 실행·예약 접근·환경 변경0, 공개 차단·Unsupported 유지이며 새 실기·파일 제출은 필요 없습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 고정 대상 의미·EC 공유 구간·SDK 수명 적용 / 2026-11-08
 
 **대상:** [적용 검토](FIXED_READ_APPLICABILITY_REVIEW.md)는 초기화/설정 writer/충전 정책 consumer의 같은 mode cell과 generic XDATA reader를 조건부 모델 아래 대응시켰습니다. unchanged1은80/75를 다시 쓰지 않으므로 후보1만으로 현재 임계값이나 실제 충전 제한을 입증하지 않습니다. 옛32/32 exploratory와 후속48/16모형, 동일 byte의 재검산과 다른 role anchor를 분리하며 새 이미지 불일치나 분석 재시작으로 해석하지 않습니다.

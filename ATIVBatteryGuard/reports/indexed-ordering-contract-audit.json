@@ -1,0 +1,192 @@
+{
+  "dateKst": "2026-11-08",
+  "previousRepositoryCommit": "8aa006ae5aee8d9a16386730332dcbb62806d53c",
+  "scope": "Attempt to establish the remaining related indexed-resource ordering contract through entry provenance and source-local owner intervals; no new ordering connection recovered",
+  "reviewDocument": "INDEXED_ORDERING_CONTRACT_REVIEW.md",
+  "outcome": {
+    "orderingEvidence": "NotEstablished",
+    "firstPreTrialStage": "Incomplete",
+    "newActualSupplierTypedEntryEdges": 0,
+    "newSharedIndexedOwnerOrSabiJoinEdges": 0,
+    "actualRaceObserved": false,
+    "hardwarePermanentlyUnsupportedConcluded": false,
+    "actualReadTrialReadyOrApproved": false
+  },
+  "entryComparison": {
+    "cachedRepresentativeSource": {
+      "bytes": 44613,
+      "sha256": "9d3aa052699549e024dd8b1a756aa51b8ef99e0af46e03b45170a8f97d73c80d",
+      "commit": "3ccd6d8b75b7fab66a35da9e77312eaca167c0f0",
+      "url": "https://raw.githubusercontent.com/tianocore/edk2/3ccd6d8b75b7fab66a35da9e77312eaca167c0f0/MdeModulePkg/Core/PiSmmCore/PiSmmIpl.c",
+      "authority": "official-representative-implementation-not-normative-and-not-P05",
+      "file": "PiSmmIpl.c"
+    },
+    "newReferenceExcerptGroups": 6,
+    "crosswalkRows": [
+      {
+        "boundary": "Loaded PE bootstrap initialization",
+        "usableConclusion": "Bootstrap argument provenance is concrete in each source, with different ABIs/objects.",
+        "notInferred": "Their Context layouts, pointers, loaded source identities or runtime dispatch inputs are interchangeable."
+      },
+      {
+        "boundary": "Actual future SMI entry registration",
+        "usableConclusion": "A PE bootstrap invocation and actual later SMI entry are distinct stages.",
+        "notInferred": "The reference Configuration receiver or shared runtime-entry field supplies a newly selected P05 provider/entry."
+      },
+      {
+        "boundary": "Runtime communication input handoff",
+        "usableConclusion": "A deferred function slot is not a standard incoming message slot.",
+        "notInferred": "Reference CommunicationBuffer corresponds to the P05 special record or its field zero."
+      },
+      {
+        "boundary": "Typed GUID selection and same protection order",
+        "usableConclusion": "Normal delivery and same protected execution stream are separate applicable premises.",
+        "notInferred": "A reference API pattern or default NULL-root walk closes the nonnull standard path or indexed noninterference."
+      }
+    ],
+    "frozenP05ProofPinsReused": 7,
+    "p05OriginalPinsReusedNotReverified": 2,
+    "peBootstrapAndActualSmiEntryRegistrationSeparated": true,
+    "registeredFlagAfterAssertionIsIndependentSuccessProof": false,
+    "runtimeMessageAndDeferredFunctionInputsTreatedAsInterchangeable": false,
+    "newP05ConcreteSupplierOrEntrySelected": false,
+    "missingBoundary": "An applicable actual input/entry/typed-dispatch contract that places the private Runtime indexed hook in the same protected execution order as the read. Representative structure alone does not provide it."
+  },
+  "ownerScope": {
+    "source": {
+      "bytes": 83776,
+      "sha256": "10a6f228664bada8eaad309879ab3b17d007ce8d5ccb5561a9038d89adb3840a",
+      "file": "Runtime.efi"
+    },
+    "reusedInstructionAssertions": 74,
+    "decodeChecksOfSameInstructions": 74,
+    "intervalAndProvenanceCompositions": 13,
+    "mechanisms": [
+      {
+        "role": "Variable-family busy",
+        "scope": "Selected variable-service entry/context/core and release interval",
+        "limit": "Not a new SABI participation edge; its release precedes remaining selected platform/PIC restoration."
+      },
+      {
+        "role": "Flash method-local busy",
+        "scope": "Each Begin or End method separately",
+        "limit": "Released before each method returns, not continuously held until a later End."
+      },
+      {
+        "role": "Flash nesting",
+        "scope": "Outermost begin/end transition state",
+        "limit": "A count/state transition is not proof of shared indexed ownership."
+      },
+      {
+        "role": "Upper transition callbacks",
+        "scope": "Source-local pre/post notification lists and transition state",
+        "limit": "Initial null list heads are not current nullness or proof of no callback-provided protection."
+      },
+      {
+        "role": "Selected EC hook state",
+        "scope": "Persistent pre/post state changed before selected sender",
+        "limit": "Not an acquire/release lease around each indexed operation."
+      }
+    ],
+    "privateContextSynchronizationEstablishedAsCommonOwner": false,
+    "allCallerOrAllLockAbsenceProved": false,
+    "limits": [
+      "No all-caller or transitive all-lock absence claim.",
+      "No current initialization, pointer, hook, race, or overlap observation.",
+      "Initial null callback lists are not current nullness.",
+      "Same-stream positive conditions do not independently require these different family guards to become one lock."
+    ],
+    "manualStateFlagArithmeticCorrection": "A draft manually calculated RIP-relative state-flag location was rejected and corrected against the original byte/decode relation; no source discrepancy or product failure."
+  },
+  "preservedPositivePremises": [
+    "Normal proxy/private wrapper/backend initialization conditions",
+    "Known NULL-cache legacy fallback membership in the same normal root",
+    "Initialized nonreentrant same normal execution stream orders relevant indexed accesses",
+    "Known inline worker input consumption, separated buffers and ISR preservation",
+    "Whole WMI exchange and local SDK lifetime contracts remain separate and retained"
+  ],
+  "investigationDisposition": {
+    "theseEntryAndLocalStateComparisonsFrozen": true,
+    "sameGuidOperandLegacyCopyOrReaderChecksToBeRepeatedAsProgress": false,
+    "reopenForConcreteNewEvidenceOnly": [
+      "Actual supplied standard communication object/caller bound to normal entry and typed selection",
+      "Applicable platform contract placing these related accesses in the same protected order",
+      "Concrete resource ownership shared by the two related paths"
+    ],
+    "allThreeExamplesRequiredTogether": false,
+    "providerMachineCodeRecoveryIsUniqueRequiredSolution": false,
+    "allWritersIrqsLiveHashGateOpenSdkOriginalOrRepeatedUploadsAddedAsAbsoluteConditions": false
+  },
+  "verification": {
+    "rootExecutedBothFinalVerifiers": true,
+    "independentReadOnlyReviewsCompleted": true,
+    "rootDocumentReviewerExecutedScripts": false,
+    "frozenProviderGuidOperandScansReopened": false,
+    "entryComparisonReranOldLegacyBodyDecoding": false,
+    "newAbstractOrderingModelsOrAppTestsAdded": false,
+    "currentApplicationBuildOrCsharpTestsRun": false,
+    "reason": "C#/SDK/test source, projects and distributed EXE/ZIP unchanged",
+    "countsOverlapNotNewFirmwareEdgesTestsOrAnalysisPercentages": true,
+    "previousCodeValidationOnly": {
+      "codeCommit": "ae8f8e78a4a2d898f8050e8b6ef4193ed877bd38",
+      "csharpPassed": 628,
+      "failed": 0,
+      "skipped": 0,
+      "fullNet48ReleaseWarnings": 0,
+      "fullNet48ReleaseErrors": 0,
+      "actualWindowsRuntimeOrGuiExecuted": false
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "privateArtifact": "entry_contract/verify_entry_crosswalk.private.py",
+      "bytes": 10934,
+      "sha256": "9b051483abaad23172f5c892964beb21405e61e89d3588ef088f4e1b1cb67673"
+    },
+    {
+      "privateArtifact": "entry_contract/entry-contract-crosswalk.private.json",
+      "bytes": 13736,
+      "sha256": "986d9ae11425d116d1692f0eb83028064197d39daa575099c874ea592e6201bd"
+    },
+    {
+      "privateArtifact": "entry_contract/findings.private.md",
+      "bytes": 5991,
+      "sha256": "1c6ce0096b0ec243ad0b51ecc6495561a2159d88862f2942a1f87ac7ae8d6eb4"
+    },
+    {
+      "privateArtifact": "hook_owner/verify_hook_owner.private.py",
+      "bytes": 9058,
+      "sha256": "65b01a78de290e15808113d4292965670c91b3c574dc9529b2c5d22e78c0322c"
+    },
+    {
+      "privateArtifact": "hook_owner/verification.private.json",
+      "bytes": 4461,
+      "sha256": "419b81131abdd218eee336a03da44376bb5fb291255eab8aea0ed49d899fb106"
+    },
+    {
+      "privateArtifact": "hook_owner/findings.private.md",
+      "bytes": 7496,
+      "sha256": "f9d3256d05b9b26be9ccc212b59bfab4687b7366e5cae778f3d6ae5102f9bdc7"
+    }
+  ],
+  "unchangedPublicPreparationSource": {
+    "projectFile": "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs",
+    "bytes": 20867,
+    "sha256": "63c183f8f915a789a25f05ff247bd19a6047cf1790c9dcbabd7c7ef1f35b7cde"
+  },
+  "boundary": {
+    "applicationCoreSdkTestsOrDistributedExeZipChanged": false,
+    "newNetworkAcquisitionOrDependenciesInstalled": false,
+    "originalFirmwareDllAmlExecutedLoadedAsCodeOrEmulated": false,
+    "actualSdkOemHardwareGlobalOrConsumedMarkerAccessed": false,
+    "actualRequestAddressPairFrameNonceGeneratorOrApprovalFlagCreated": false,
+    "driverServiceSecurityFirmwareOrCloudEnvironmentChanged": false,
+    "publicEntryReopenedOrActualTrialApproved": false,
+    "publicEntryStatus": "ReadSpecificationUnavailable",
+    "protectionReadAndChargeControl": "Unsupported",
+    "maximumFutureTrialMethodCalls": 1,
+    "futureFixedByteSamples": "0..1",
+    "handshakeInitializationRetryWriteOrAlternativeFallbackCalls": 0,
+    "newLaptopRunOrRepeatedUploadRequested": false
+  }
+}

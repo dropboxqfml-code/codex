@@ -76,6 +76,11 @@ namespace ATIVBatteryGuard.Diagnostics
 				return "관찰 기록 저장 모의 처리";
 			}
 
+			public string SaveManualProtectionResult(string text)
+			{
+				throw new SmokeFailure("UNEXPECTED_MANUAL_RESULT_SAVE");
+			}
+
 			public void ShowLog()
 			{
 				throw new SmokeFailure("UNEXPECTED_LOG_ACTION");

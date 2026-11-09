@@ -94,11 +94,17 @@ namespace ATIVBatteryGuard.Services
 
 		public string SaveBatteryObservation(string text)
 		{
-			SaveLocalText("battery-observation-", text);
-			return "관찰 기록을 설정 폴더의 새 battery-observation TXT에 저장했습니다. 업로드하지 않았습니다.";
+			string fileName = SaveLocalText("battery-observation-", text);
+			return "관찰 TXT 저장 완료: " + fileName + " · ‘관찰 저장 폴더 열기’에서 확인하세요. 업로드하지 않았습니다.";
 		}
 
-		private void SaveLocalText(string prefix, string text)
+		public string SaveManualProtectionResult(string text)
+		{
+			string fileName = SaveLocalText("manual-control-", text);
+			return "제어 결과 TXT 저장 완료: " + fileName + " · ‘결과 저장 폴더 열기’에서 확인하세요. 업로드하지 않았습니다.";
+		}
+
+		private string SaveLocalText(string prefix, string text)
 		{
 			EnsureLocalDirectory();
 			string path = prefix + DateTime.UtcNow.ToString("yyyyMMddTHHmmss") + "-" + Guid.NewGuid().ToString("N") + ".txt";
@@ -109,6 +115,7 @@ namespace ATIVBatteryGuard.Services
 					streamWriter.Write(text);
 				}
 			}
+			return path;
 		}
 
 		private void EnsureLocalDirectory()

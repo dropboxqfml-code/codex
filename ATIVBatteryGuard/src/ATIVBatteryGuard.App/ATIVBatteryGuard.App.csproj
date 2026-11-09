@@ -17,11 +17,20 @@
     <Compile Remove="Diagnostics/SamsungAnalysisBundleService.cs" />
     <Compile Remove="Diagnostics/SamsungSettingsLocator.cs" />
     <ProjectReference Include="../ATIVBatteryGuard.Core/ATIVBatteryGuard.Core.csproj" />
+    <ProjectReference Include="../ATIVBatteryGuard.ManualProtectionHelper/ATIVBatteryGuard.ManualProtectionHelper.csproj" ReferenceOutputAssembly="false" />
     <Reference Include="System.Management" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
   </ItemGroup>
+  <Target Name="CopyManualProtectionHelper" AfterTargets="Build">
+    <ItemGroup>
+      <ManualHelperFiles Include="$(MSBuildProjectDirectory)/../ATIVBatteryGuard.ManualProtectionHelper/bin/$(Configuration)/net48/ATIVBatteryGuard.ManualProtectionHelper.exe" />
+      <ManualHelperFiles Include="$(MSBuildProjectDirectory)/../ATIVBatteryGuard.ManualProtectionHelper/bin/$(Configuration)/net48/ATIVBatteryGuard.ManualProtectionHelper.exe.config" />
+      <ManualHelperFiles Include="$(MSBuildProjectDirectory)/../ATIVBatteryGuard.ManualProtectionHelper/bin/$(Configuration)/net48/ATIVBatteryGuard.WmiInterop.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ManualHelperFiles)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
   <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>

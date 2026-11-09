@@ -20,7 +20,7 @@
                 </StackPanel>
                 <Border Grid.Column="1" Background="#006DC2" CornerRadius="6"
                         Padding="14,12" VerticalAlignment="Center">
-                    <TextBlock Text="실제 충전 제한 미지원" Foreground="White" FontWeight="SemiBold" />
+                    <TextBlock Text="수동 보호 제어 베타" Foreground="White" FontWeight="SemiBold" />
                 </Border>
             </Grid>
 
@@ -58,6 +58,45 @@
                 </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource Card}" BorderBrush="#006DC2">
+                <StackPanel>
+                    <TextBlock Text="수동 보호 제어" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="먼저 보호 상태 확인을 누르세요. Windows10 x64 · 940X3G/930X3G · P05ACJ 범위를 확인한 뒤에만 켜기·해제를 요청할 수 있습니다."
+                               Style="{StaticResource Detail}" />
+                    <TextBlock Text="앱은 일반 권한으로 실행합니다. 각 버튼을 직접 누를 때만 별도 관리자 확인을 받으며, 시작·10초 배터리 갱신·재부팅 때 자동 제어하지 않습니다."
+                               Style="{StaticResource Detail}" />
+                    <WrapPanel>
+                        <Button x:Name="ManualReadProtectionButton" Content="보호 상태 확인" Command="{Binding ManualReadProtectionCommand}" />
+                        <Button x:Name="ManualEnableProtectionButton" Content="80% 보호 켜기" Command="{Binding ManualEnableProtectionCommand}" />
+                        <Button x:Name="ManualDisableProtectionButton" Content="보호 해제 · 일반 충전" Command="{Binding ManualDisableProtectionCommand}" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding ManualProtectionPhaseText}" Foreground="#006DC2" FontWeight="SemiBold" Margin="0,4,0,6" />
+                    <TextBlock x:Name="ManualProtectionStateLabel" Text="{Binding ManualProtectionStateText}" FontSize="23" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <TextBlock x:Name="ManualProtectionNoticeLabel" Text="{Binding ManualProtectionNotice}" Style="{StaticResource Detail}"
+                               AutomationProperties.LiveSetting="Polite" />
+                    <TextBox Text="{Binding ManualProtectionText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                             MaxHeight="210" VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
+                             AutomationProperties.Name="이번 수동 보호 요청 결과와 마지막 조회 후보" />
+                    <WrapPanel Margin="0,8,0,0">
+                        <Button x:Name="ManualSaveResultButton" Content="제어 결과 TXT 저장" Command="{Binding ManualSaveResultCommand}" />
+                        <Button Content="결과 저장 폴더 열기" Command="{Binding OpenSettingsFolderCommand}" />
+                    </WrapPanel>
+                    <TextBlock x:Name="ManualSaveStatusLabel" Text="{Binding ManualSaveStatusText}" TextWrapping="Wrap"
+                               FontWeight="SemiBold" AutomationProperties.LiveSetting="Polite">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#00603A" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ManualSaveFailed}" Value="True">
+                                        <Setter Property="Foreground" Value="#9C2F18" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Text="보호 설정 전환 기록 · 과거 결과 검토" Style="{StaticResource SectionTitle}" />
@@ -92,7 +131,21 @@
                         <Button Content="관찰 중단" Command="{Binding StopBatteryObservationCommand}" />
                         <Button Content="관찰 지우기" Command="{Binding ClearBatteryObservationCommand}" />
                         <Button x:Name="SaveBatteryObservationButton" Content="관찰 TXT 저장" Command="{Binding SaveBatteryObservationCommand}" />
+                        <Button x:Name="OpenBatteryObservationFolderButton" Content="관찰 저장 폴더 열기" Command="{Binding OpenSettingsFolderCommand}" />
                     </WrapPanel>
+                    <TextBlock x:Name="BatteryObservationSaveStatus" Text="{Binding ObservationSaveStatusText}" TextWrapping="Wrap"
+                               FontWeight="SemiBold" Margin="0,2,0,10" AutomationProperties.LiveSetting="Polite">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#00603A" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ObservationSaveFailed}" Value="True">
+                                        <Setter Property="Foreground" Value="#9C2F18" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <TextBox x:Name="BatteryObservationText" Text="{Binding ObservationText, Mode=OneWay}"
                              IsReadOnly="True" TextWrapping="Wrap" MaxHeight="280"
                              VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
@@ -102,7 +155,7 @@
 
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Text="실제 하드웨어 상태" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="장치 정보 · 마지막 보호 조회" Style="{StaticResource SectionTitle}" />
                     <TextBlock x:Name="ActualHardwareState" Text="{Binding ActualModeText}"
                                FontSize="25" FontWeight="SemiBold" Margin="0,0,0,14" />
                     <TextBlock Text="{Binding SupportReason}" Style="{StaticResource Detail}" />
@@ -191,6 +244,7 @@
                 <StackPanel>
                     <TextBlock Text="시뮬레이션 — 실제 충전 제어 없음" Style="{StaticResource SectionTitle}" />
                     <CheckBox x:Name="MockSwitch" Content="개발용 시뮬레이션 켜기(_M)"
+                              IsEnabled="{Binding CanChangeMockMode}"
                               IsChecked="{Binding IsMockMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Text="{Binding MockModeText}" Style="{StaticResource Detail}" />
                     <TextBlock Text="{Binding MockActualModeText}" Margin="0,0,0,12" FontWeight="SemiBold" />

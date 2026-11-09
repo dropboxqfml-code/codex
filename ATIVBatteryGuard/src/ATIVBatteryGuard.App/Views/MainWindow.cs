@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using System.Windows;
+using ATIVBatteryGuard.ViewModels;
 
 namespace ATIVBatteryGuard.Views
 {
@@ -7,6 +9,17 @@ namespace ATIVBatteryGuard.Views
         public MainWindow()
         {
             InitializeComponent();
+        }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            var viewModel = DataContext as MainViewModel;
+            if (viewModel != null && viewModel.ManualProtectionBusy)
+            {
+                e.Cancel = true;
+                viewModel.NotifyManualCloseBlocked();
+            }
+            base.OnClosing(e);
         }
     }
 }

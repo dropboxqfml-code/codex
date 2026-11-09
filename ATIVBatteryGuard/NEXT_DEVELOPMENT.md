@@ -1,5 +1,20 @@
 # 다음 개발 재개 메모
 
+## 최신 — 일반 GUI 수동 제어 베타 구현·배포 / 2026-11-10 한국 시간
+
+기준 `cf068c0`의 구체적인 GUI 계획을 보고 사용자가 “다음 개발 시작해.”라고 지시한 범위로 구현했습니다. [수동 베타 안내](MANUAL_CONTROL_BETA.md), [사용 순서](MANUAL_CONTROL_BETA_USER_STEPS.txt), [정제 검증](reports/manual-control-beta-validation.json)을 먼저 읽습니다. [새 ZIP](../downloads/ATIVBatteryGuard-MANUAL-CONTROL-BETA.zip) 하나를 새 폴더에 모두 풀고 ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 앱 시작과 배터리 polling에는 OEM 호출이 없습니다. 사용자가 **보호 상태 확인**(최대3회), **80% 보호 켜기**(최대7회·설정1 최대 1회), **보호 해제 · 일반 충전**(최대3회·설정0 최대 1회)을 직접 누를 때만 같은 계정의 `runas` helper를 사용합니다. 초기 상태·시뮬레이션·절전 복귀·불명 상태에서는 쓰기를 허용하지 않으며, 상태 조회부터 확인합니다. 모드1만으로 임계값 80/75를 추론하지 않습니다.
+
+새 `ManualProtection-v1` attempt·owner·factory는 고정 3/7/3단계, 24/56바이트 단일 난수 생성과 같은 attempt·frame·target·observer·index를 검사합니다. 이미 목표 모드이면 첫 조회 뒤 쓰기 없이 종료합니다. 일반 GUI의 캐시 getter는 OEM을 호출하지 않고, 배터리 갱신은 기존 GSP 10초 주기를 유지합니다. 처리 중 재클릭·시뮬레이션 변경·창 닫기를 막으며, 절전 복귀 시 상태 버전과 늦은 진행·결과를 검사해 오래된 값을 채택하지 않습니다. 비공개 pipe는 현재 SID의 ACL과 Network SID 거부를 적용하고, helper는 `Identification` 수준과 4096바이트 이하의 엄격한 프로토콜을 사용합니다. SID는 내부 ACL에만 사용하며 출력하지 않습니다.
+
+완료 순서는 실제 join·target 정리 → `Result` → ACK → 자기 작업의 새 원장 해제 → `Released`입니다. 시작 취소는 SDK 호출 없이 끝납니다. 통신 유실은 다음 단계의 중단 의사만 전달하며 실제 종료 대기는 계속합니다. SDKCancel·Kill은 없습니다. 불명 상태나 ACK 누락이면 `active.operation`을 보유하며 과거 marker로 우회하지 않습니다.
+
+관찰·제어 카드에 저장 완료, 파일명, 폴더 열기와 중복 저장 방지를 추가했습니다. 제어 결과는 명시적으로 저장할 때 새 `manual-control-*.txt`를 만듭니다. 같은 불변 결과는 한 번만, 관찰은 같은 세션·샘플 수에 대해 한 번만 저장합니다. 실패 시에는 제어를 반복하지 않고 저장만 다시 시도할 수 있습니다. 과거 보고서는 절전 복귀 뒤 현재 모드나 쓰기 권한을 복원하지 않으며 저장만 가능합니다. 다음 사용자 확인은 새 GUI의 조회, UAC·동작 확인, 원하는 켜기·해제, `Complete`·마지막 후보, 저장 UI입니다. 새 제어 결과 TXT만 받으면 되고, 충전 경과를 기록했다면 그때의 새 관찰 TXT는 선택 사항입니다. 기존 진단·DLL·EXE·옛 결과 재제출이나 같은 실기 시험 반복은 요구하지 않습니다.
+
+새 108그룹을 포함해 **1081개 통과·실패0·건너뜀0**이며, Portable과 전체 net48 참조 Release 빌드는 각각 경고·오류 0개입니다. 소스 195개, ZIP 9항목·내부 SHA 8개·프로그램 파일 6개의 바이트, EXE 두 개의 `asInvoker`·x64·net48·미서명 상태, portable 전용 테스트 진입점 부재를 검증했고 독립 감사를 통과했습니다. App 빌드도 helper·config·Interop를 같은 폴더로 복사합니다. ZIP은 281062바이트, SHA `54da94e3e53827e0506cd9d848e245b570cd0e27de2166ca5f3e279b8b50acbb`, fingerprint `bea637127548010caeb4f9a9cf496f977f4fba5945aecf24f6146281d31a38c7`입니다. 기존 소스 213개 중 204개, 기존 테스트 91개 중 89개, 기존 ZIP 68개는 같은 바이트입니다. 허용된 기존 소스 9개만 수정했으며, SDK 입력 준비에는 typed entry 24줄만 추가했습니다.
+
+삼성 원본·firmware·PDB·단발 EXE를 포함하지 않은 미서명 베타입니다. 새 GUI/helper 조합의 Windows 실기와 클라우드의 실제 SDK·OEM·노트북 원장 접근은 없으며, 이전 80% 제한·해제 후 85% 충전 실기 성공과 구분합니다. 반복 수동 작업은 새 앱 목적과 현재 작업 원장을 사용하며 소모된 단발 예산의 복원이 아닙니다. 과거 Query65/A/Access1/0to1/1to0의 재실행과 marker 조회·삭제·재사용을 하지 않고, 새 Pending도 원장 수정·삭제로 복구하지 않습니다. 다음은 이 베타의 사용자 결과를 분석하고 발견된 구체적인 오류를 수정하는 일입니다. 원시 firmware 탐색이나 새 단발 도구부터 반복하지 않습니다. 서비스·부팅 자동 적용·범용 기기·75% 하한·재부팅 지속성·100% 보장·임의 임계값은 이번 범위 밖입니다. 아래는 이전 기록입니다.
+
+
 ## 최신 — 80% 충전 억제·1→0 해제 후85% 충전 실기 확인 / 2026-11-09 한국 시간
 
 기준 `e0666d6` 뒤사용자가해제전·해제·해제후TXT3개를제출했습니다. [결과와GUI계획](PROTECTION_CONTROL_FUNCTIONAL_RESULT_AND_GUI_PLAN.md), [정제집계](reports/protection-off-before-after-result-review.json), [전후그래프](reports/protection-before-after-charging.png)를먼저읽습니다. **이번노트북의전후시험에서80%충전억제와해제뒤충전재개를기능적으로확인했습니다.** 단일NotCharging표시나저장후보뿐인단계로축소하지않습니다.

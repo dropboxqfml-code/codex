@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using ATIVBatteryGuard.Core.Storage;
 using ATIVBatteryGuard.Diagnostics;
 using ATIVBatteryGuard.Services;
@@ -15,6 +16,8 @@ namespace ATIVBatteryGuard
     {
         private DispatcherTimer timer;
         private MainViewModel viewModel;
+        private WindowsManualProtectionOperationService manualProtection;
+        private bool powerEventsSubscribed;
 
         protected override async void OnStartup(StartupEventArgs e)
         {
@@ -48,14 +51,22 @@ namespace ATIVBatteryGuard
                 var store = new SettingsStore(directory);
                 var log = new LocalLog(directory);
                 var interaction = new LocalUserInteraction(directory, log);
+                manualProtection = new WindowsManualProtectionOperationService();
                 viewModel = new MainViewModel(
                     new WindowsBatteryStatusProvider(), store, log, interaction,
-                    new HardwareDiagnosticsCollector(), samsungFiles: new WindowsSamsungFileInspectionProvider());
+                    new HardwareDiagnosticsCollector(), samsungFiles: new WindowsSamsungFileInspectionProvider(),
+                    manualProtectionService: manualProtection);
                 var window = new MainWindow { DataContext = viewModel };
                 MainWindow = window;
                 if (viewModel.InitialWindowState == "Maximized")
                     window.WindowState = WindowState.Maximized;
-                window.Closing += delegate
+                window.Closing += (sender, closing) =>
+                {
+                    if (closing.Cancel) return;
+                    if (viewModel.ManualProtectionBusy)
+                    { closing.Cancel = true; viewModel.NotifyManualCloseBlocked(); }
+                };
+                window.Closed += delegate
                 {
                     timer?.Stop();
                     viewModel.RememberWindowState(window.WindowState == WindowState.Maximized);
@@ -65,6 +76,7 @@ namespace ATIVBatteryGuard
                 timer.Tick += PollBattery;
                 timer.Start();
                 window.Show();
+                try { SystemEvents.PowerModeChanged += PowerModeChanged; powerEventsSubscribed = true; } catch { }
                 viewModel.ShowDiagnosticsCommand.Execute(null);
             }
             catch
@@ -81,8 +93,21 @@ namespace ATIVBatteryGuard
             viewModel?.RefreshBattery();
         }
 
+        private void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
+        {
+            if (e.Mode != PowerModes.Resume && e.Mode != PowerModes.Suspend) return;
+            try
+            {
+                if (!Dispatcher.HasShutdownStarted)
+                    Dispatcher.BeginInvoke(new Action(() => viewModel?.InvalidateManualState()));
+            }
+            catch { }
+        }
+
         protected override void OnExit(ExitEventArgs e)
         {
+            if (powerEventsSubscribed) { try { SystemEvents.PowerModeChanged -= PowerModeChanged; } catch { } }
+            manualProtection?.Dispose();
             WindowsBatteryCapabilitiesProvider.StopForShutdown();
             WindowsSamsungFileInspectionProvider.StopForShutdown();
             if (timer != null)

@@ -437,6 +437,14 @@ internal static partial class Program
         RegisterWsabiWmiFixedReadAccess1ReservationTests();
         RegisterWsabiWmiFixedReadAccess1ReviewTests();
         RegisterWsabiWmiProtectionTransitionReviewTests();
+        RegisterManualProtectionModelTests();
+        RegisterManualProtectionWireTests();
+        RegisterManualProtectionCoreTests();
+        RegisterWsabiWmiWindowsManualProtectionTests();
+        RegisterManualProtectionLeaseTests();
+        RegisterManualHelperHostTests();
+        RegisterManualProtectionViewModelTests();
+        RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();
         RegisterWsabiWmiProtectionDisableReviewTests();
         RegisterWsabiWmiProtectionDisableSetterReplyReviewTests();
@@ -517,15 +525,20 @@ internal static partial class Program
         public Func<string, string> FileInspectionSaver;
         public string LastFileInspection;
         public int ObservationSaves;
+        public int FoldersOpened;
         public Func<string, string> ObservationSaver;
         public string LastObservation;
+        public int ManualResultSaves;
+        public Func<string, string> ManualResultSaver;
+        public string LastManualResult;
         public DeviceDiagnosticsResult ReadDiagnostics() { return Reader(); }
-        public void OpenSettingsFolder() { }
+        public void OpenSettingsFolder() { FoldersOpened++; }
         public void ShowLog() { }
         public void CopyDiagnostics(string text) { Copies++; LastCopiedText = text; }
         public string SaveDiagnostics(string text) { Saves++; return Saver == null ? "saved" : Saver(text); }
         public string SaveSamsungFileInspection(string text) { FileInspectionSaves++; LastFileInspection = text; return FileInspectionSaver == null ? "saved" : FileInspectionSaver(text); }
         public string SaveBatteryObservation(string text) { ObservationSaves++; LastObservation = text; return ObservationSaver == null ? "saved" : ObservationSaver(text); }
+        public string SaveManualProtectionResult(string text) { ManualResultSaves++; LastManualResult = text; return ManualResultSaver == null ? "saved" : ManualResultSaver(text); }
     }
     private sealed class FakeHardware : IHardwareDiagnosticsProvider
     {

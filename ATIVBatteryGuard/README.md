@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 일반 GUI 수동 제어 베타 / 2026-11-10 한국 시간:** [새 ZIP](../downloads/ATIVBatteryGuard-MANUAL-CONTROL-BETA.zip)과 [사용 안내](MANUAL_CONTROL_BETA.md)를 제공합니다. ZIP 하나를 새 폴더에 모두 풀고 **ATIVBatteryGuard.exe를 일반 권한으로 실행**합니다. **보호 상태 확인** 뒤 원하는 **80% 보호 켜기** 또는 **보호 해제 · 일반 충전**을 직접 누를 때만 관리자 helper가 동작합니다. 호출은 고정 3/7/3회 한도이며 마지막 조회 후보와 실제 정리를 표시합니다. 저장 완료·파일명·폴더 열기, 관찰·제어 TXT의 중복 저장 방지도 추가했습니다. 새 108개를 포함해 1081개 테스트와 두 Release 빌드(경고·오류 0개), 독립 패키지 검증을 통과했습니다. 새 GUI/helper 조합의 실제 노트북 실행은 아직 미검증입니다. [검증 기록](reports/manual-control-beta-validation.json)을 참조합니다. 이전 단발 EXE와 예약은 종료됐으므로 다시 사용하지 않습니다. 아래는 이전 기록입니다.
+
 **최신 — 충전 제한·해제 실기 성공 / 2026-11-09 한국 시간:** [세결과대조와다음GUI개발계획](PROTECTION_CONTROL_FUNCTIONAL_RESULT_AND_GUI_PLAN.md)에서AC연결62→80%뒤20회NotCharging,해제pre1→post0·SDK3/set1·Complete,이후80→85%Charging을확인했습니다. 이번모델·조건에서80%억제와해제재개의기능동작이확인됐습니다. 다음은일반GUI의수동ON/OFF·필요시별도관리자helper·명확한상태/저장UI를연결하는단계입니다. 일반GUI제어는아직미구현이고과거모든단발시험은종료·소모됐습니다. 현재추가실행·자료재제출은필요없으며아래실행절차를반복하지않습니다. 이번에는분석·계획만갱신했고기존프로그램은보존했습니다. 아래는이전기록입니다.
 
 **최신 — 승인된 보호 해제1회 도구 / 2026-11-09 한국 시간:** [새 해제 ZIP](../downloads/ATIVBatteryGuard-PROTECTION-1TO0.zip)과 [사용자 작업 순서](PROTECTION_1TO0_IMPLEMENTATION.md)를 제공합니다. 기존 일반 관찰 앱으로 **충전기 연결 상태의 기록을 먼저 저장**한 뒤, 별도 새 폴더의 새 해제EXE만 같은계정 수동관리자로 실행해 `Protection1To0-v1`·`Elevated` 확인 후 START를 한 번 입력합니다. 사전1 조회→설정0 최대1회→사후0 조회의 최대3호출이며 정상 후보일치·정리Complete 뒤에만 같은 충전기로 새 관찰을 비교합니다. 새973테스트통과·두Release빌드경고/오류0, 새Windows실기는미검증입니다. 자동ON복원·임계값복원·재실행은없고일반GUI제어Unsupported를유지합니다. 두ZIP파일은합치지않습니다. 아래는이전기록입니다.

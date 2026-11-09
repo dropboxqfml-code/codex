@@ -1,5 +1,12 @@
 # 하드웨어 조사
 
+## 최신 — 확인된 모델의 수동 GUI 제어 경로 연결 / 2026-11-10 한국 시간
+
+이전 노트북 전후 시험에서 확인한 80% 억제와 1→0 해제 후 85% 충전 재개를 기반으로 [수동 GUI 베타](MANUAL_CONTROL_BETA.md)를 구현했습니다. 일반 GUI의 `asInvoker`, 명시적 동작별 관리자 helper, 고정 상태조회 3회·켜기 7회·해제 3회와 설정 최대 1회를 연결했습니다. 실제 join → `Result` → ACK → 자기 원장 해제 → `Released` 순서를 따르며 새 `ManualProtection-v1`만 사용합니다. 이전 단발 예산·목적·원본 소스는 복원하지 않습니다. metadata·모델 범위는 기존 Windows 10 x64·940X3G/930X3G·P05ACJ를 유지합니다.
+
+1081개 회귀, 두 Release 빌드의 경고·오류 0개, 소스 195개·ZIP 9항목·Release IL 독립 검증을 [정제 기록](reports/manual-control-beta-validation.json)에 남겼습니다. 새 GUI/helper 조합의 실제 노트북 실행은 아직 미검증이며, 클라우드의 실제 OEM·SDK·노트북 marker 접근과 원본 decode·검색도 없습니다. 지원 조건이 불명확할 때는 쓰기를 허용하지 않고, 초기 상태·절전 복귀·실패 뒤에는 명시적 상태 확인부터 수행합니다. 자동 polling OEM 호출·재시도·원복·부팅 적용·드라이버/서비스/보안 변경은 없습니다. SID는 같은 계정의 pipe ACL에만 내부 사용하고 개인정보·nonce·raw frame을 보고하지 않습니다. 아래는 이전 기록입니다.
+
+
 ## 최신 — 80% 억제와 해제 뒤 충전 재개를 전후 실기로 확인 / 2026-11-09 한국 시간
 
 [전후기능검증](PROTECTION_CONTROL_FUNCTIONAL_RESULT_AND_GUI_PLAN.md):해제전AC연결중62→80%상승뒤80%/NotCharging20개샘플(첫끝241초),새1→0도구는pre1/post0·read2/receipt·SDK3/set1·Complete,해제후35개Connected/Charging·80→85%입니다. 오류·30초초과gap0으로기대된제어흐름과일치하며 **이모델·이번조건에서충전상한억제/해제재개를기능적으로확인한실기근거**입니다. 단일표시나저장후보만의관측으로축소하지않습니다.

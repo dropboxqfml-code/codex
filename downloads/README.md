@@ -1,4 +1,17 @@
-# ATIV Battery Guard — 충전 제한·해제 실기 확인
+# ATIV Battery Guard — 수동 충전 보호 제어 베타
+
+2026-11-10 한국 시간. [새 프로그램 ZIP](ATIVBatteryGuard-MANUAL-CONTROL-BETA.zip) · [사용 안내](../ATIVBatteryGuard/MANUAL_CONTROL_BETA.md) · [검증·해시](../ATIVBatteryGuard/reports/manual-control-beta-validation.json)
+
+ZIP 하나를 새 로컬 폴더에 모두 풀고 **ATIVBatteryGuard.exe를 일반 권한으로 실행**합니다. 시뮬레이션을 끈 뒤 **보호 상태 확인**을 누르고, 원하는 **80% 보호 켜기** 또는 **보호 해제 · 일반 충전**을 선택합니다. 해당 동작에 필요한 같은 계정의 관리자 helper만 실행합니다. 초기 상태·불명 상태·다른 기기에서는 쓰기를 허용하지 않습니다. 이전 ZIP 파일을 합치거나 별도 시험 EXE를 수동 실행하지 않습니다.
+
+새 제어 결과는 **제어 결과 TXT 저장 → 결과 저장 폴더 열기**로 확인합니다. 기존 `%LOCALAPPDATA%\ATIVBatteryGuard`의 `manual-control-*.txt`이며, 저장 완료와 파일명을 같은 카드에 표시합니다. 관찰 저장 폴더 버튼과 같은 내용의 중복 저장 방지도 추가했습니다. 새 베타 확인에 기존 진단·삼성 DLL·EXE·옛 결과를 다시 제출할 필요는 없습니다.
+
+1081개 테스트, 두 Release 빌드(각 경고·오류 0개), 독립 ZIP·IL·소스 검산을 통과한 미서명 Windows 10 x64/.NET Framework 4.8 개발 베타입니다. **새 GUI/helper 조합의 실제 노트북 실행은 아직 미검증입니다.** ZIP은 281062바이트이며 SHA256은 `54da94e3e53827e0506cd9d848e245b570cd0e27de2166ca5f3e279b8b50acbb`입니다. 자체 프로그램 6개와 안내·BUILDINFO·SHA의 총 9항목만 포함합니다. 삼성 원본·firmware·PDB·과거 시험 EXE는 없으며 기존 ZIP 68개를 보존했습니다.
+
+고정 동작당 상태조회 3회·켜기 7회·해제 3회, 설정 최대 1회로 제한합니다. 중복 실행과 실제 정리 대기 중 추가 작업을 차단하며, 자동 재시도·반대 방향 설정·원복·부팅 자동 적용은 하지 않습니다. Pending·통신 유실이면 강제 종료하거나 새 작업 원장·과거 예약을 삭제해 우회하지 말고, 새 제어 결과 TXT를 보관합니다. 기존 모든 단발 시험은 종료·소모됐으므로 다시 실행하지 않습니다.
+
+
+## 이전 — 충전 제한·해제 실기 확인
 
 2026-11-09 한국 시간. [전후실기결과와다음GUI개발계획](../ATIVBatteryGuard/PROTECTION_CONTROL_FUNCTIONAL_RESULT_AND_GUI_PLAN.md)
 

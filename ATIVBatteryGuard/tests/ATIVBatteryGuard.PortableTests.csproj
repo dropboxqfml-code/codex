@@ -13,6 +13,19 @@
     <Compile Include="../src/ATIVBatteryGuard.App/ViewModels/*.cs" />
     <Compile Include="../src/ATIVBatteryGuard.App/Services/IUserInteraction.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="ManualProtectionModelTests.cs" />
+    <Compile Include="ManualProtectionWireTests.cs" />
+    <Compile Include="ManualProtectionCoreTests.cs" />
+    <Compile Include="WsabiWmiWindowsManualProtectionTests.cs" />
+    <Compile Include="ManualProtectionLeaseTests.cs" />
+    <Compile Include="ManualHelperHostTests.cs" />
+    <Compile Include="ManualProtectionViewModelTests.cs" />
+    <Compile Include="ManualProtectionClientSessionTests.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsManualProtection.cs" Link="WmiInterop/WsabiWmiWindowsManualProtection.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperAdmission.cs" Link="ManualHelper/ManualHelperAdmission.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperLifetime.cs" Link="ManualHelper/ManualHelperLifetime.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperPipe.cs" Link="ManualHelper/ManualHelperPipe.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperResultFactory.cs" Link="ManualHelper/ManualHelperResultFactory.cs" />
     <Compile Include="WsabiWmiProtectionDisableAttemptTests.cs" />
     <Compile Include="WsabiWmiProtectionDisableReviewTests.cs" />
     <Compile Include="WsabiWmiProtectionDisableSetterReplyReviewTests.cs" />

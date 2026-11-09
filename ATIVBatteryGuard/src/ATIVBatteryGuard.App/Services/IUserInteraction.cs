@@ -17,5 +17,7 @@ namespace ATIVBatteryGuard.Services
 		string SaveSamsungFileInspection(string text);
 
 		string SaveBatteryObservation(string text);
+
+		string SaveManualProtectionResult(string text);
 	}
 }

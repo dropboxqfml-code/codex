@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 첫 관찰은 AC 미연결 방전·충전 효과 미평가 / 2026-11-09 한국 시간
+
+기준 `37a18d5` 뒤 사용자 관찰 TXT를 분석했습니다. 시작 후5~265초의16개 샘플 모두 `Disconnected/Discharging/Observed`, 잔량75→74%, 읽기오류·30초초과gap0입니다. 사용자가 충전기를 연결하지 않았다고 확인해 Windows 표시와 일치합니다. 배터리 기록·TXT 저장은 노트북에서 동작했지만 충전 중인 구간이 없어 제어 성공/실패를 판정하지 않습니다. [결과와 다음 AC 관찰](CHARGE_EFFECT_OBSERVATION_RESULT.md), [보호 해제 구체 구현 승인안](PROTECTION_1TO0_IMPLEMENTATION_PROPOSAL.md), [정제 검토](reports/charge-effect-and-off-proposal-review.json)를 먼저 읽습니다.
+
+현재 앱을 그대로 일반 권한으로 실행해 평소 AC 연결 상태의 잔량 상승과 상한 근처 동작을 먼저 관찰합니다. 새 설정·OEM·예약은0이며 강제 방전/재부팅·ON 재실행·자동repair를 하지 않습니다. 저장은 한 번만 누르고 새 `battery-observation` TXT를 사용합니다. 저장폴더 열기·완료 표시·반복클릭 중복파일 문제는 사용자 요청대로 후속 UI 수정 항목으로 보류했습니다. 기존 파일 삭제나 저장 동작 변경은 없습니다.
+
+다음 설정 기능은 새 `Protection1To0-v1` 전용 도구의 구현·검증·공유와 사용자가 AC 관찰 뒤 직접START하는 범위의 별도 명시승인 대상입니다. 사전모드1 읽기 → 설정0최대1회 → 실제close뒤 사후모드0 읽기의 최대3SDK/read2/set1이며, 임계값 읽기·쓰기·복원/100%보장·ON 재설정·retry0입니다. 공통mutex/quarantine을 존중하는 새3단계 owner·고정attempt·input0 receipt·typedSDKfactory가 필요하며 기존0→1의7역할/input1 코드·목적은 바꾸지 않습니다. 일반GUI 동기getter나Apply에 OEM 호출을 넣지 않습니다.
+
+이번 변경은 분석·구체안·정제report만이며 실제 펌웨어 호출용 코드·새 예약·EXE/ZIP은 없습니다. 기존 모든src/tests/ZIP을 보존했고 새실기예산0입니다. 빌드·C#회귀는 반복하지 않았으며887통과·두Release0/0은 `37a18d5`의 이전 검증입니다. 새승인이 오면 같은 분석을 반복하지 말고 위구체안의 구현·새회귀·빌드·다운로드 검증까지 완료합니다. 실제OFF 실행은 현재ON상태의AC관측보다 앞당기지 않습니다. 과거 모든시험은 종료·소모됐고 재실행·marker조회/변경0입니다. 아래는 이전 기록입니다.
+
 ## 최신 — 보호 저장값0/0/0→1/80/75 보고 수신·시험 종료 / 2026-11-09 한국 시간
 
 기준 `039492e` 뒤 사용자가 최초 설정 시험 결과를 전달했습니다. [결과·관찰 안내](STORED_TRANSITION_RESULT_AND_OBSERVATION.md)와 [새 검증 기록](reports/stored-transition-observation-validation.json)을 먼저 읽습니다. 사전 모드/상한/하한 `0 / 0 / 0`에서 사후 `1 / 80 / 75`로 저장 후보 전환이 보고됐고, 읽기 후보6개·설정 `ReceiptOnly`·실제 종료 뒤 SDK7/set1·관련 정리 `Complete`입니다. 이는 설정 저장 경로의 유의미한 성공 보고이며 충전기·전기적 제한·지금의 actualMode·지속성의 증거로 확대하지 않습니다. 기존 도구의 `설정 효과: Unknown`은 설정 역할 입장 시의 고정 주의 문구로 독립 사후 후보 일치를 취소하지 않습니다.

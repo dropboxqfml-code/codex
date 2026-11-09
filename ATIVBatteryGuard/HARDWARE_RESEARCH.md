@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 최초0→1 설정 시험의 조건부 구현 제안 / 2026-11-09 한국 시간
+
+[구체안](PROTECTION_0TO1_IMPLEMENTATION_PROPOSAL.md)은 저장setter근거·성공한과거모드읽기·804대역회귀를 적용해 새준비1회/최대7method(read6/set1)를 한정합니다. 실제쓰기/현재threshold/충전효과를 새로 관측한 것은 아닙니다. 정상플랫폼전제를 유지하며 새selector/전체writer/livehash조건을 추가하지 않습니다. 설정1은80/75를 덮어쓸 수 있고 역방향·복원·재부팅원복보장은 없습니다.
+
+SDK검토는 기존하위transport/input/callback/cleanup을 재사용하고 per-frameowner·A의settingwrites0경로를 새setter로확대하지 않는 구현지도를확정했습니다. 별도명시승인전 실제code/SDK호출·새artifact0,이번C#빌드/회귀미실행입니다. 804/두Release0/0은 이전2923cd6 기록이며src/tests/ZIP을 보존합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 단계별 응답 대응과 종료 인계의 대역 연결 / 2026-11-09 한국 시간
 
 [내부 바인딩 원형](BOUND_STAGE_HANDOFF_PROTOTYPE.md)으로 응답 판정과 전체 owner를 연결했습니다. 로컬 참조·자원 일회용·비교8tuple중복 검사와 세 종료task의 독립 join을 검증했고, 새 receipt evidence는 setter실행·저장변화·실제충전성공으로 승격하지 않습니다. 새18개 포함804통과·두 Release빌드0경고·0오류입니다. 이는 대역 연결 검증으로서 새 firmware source·노트북 관측이 아닙니다.

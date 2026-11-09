@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "date_korea": "2026-11-09",
+  "baseline_commit": "2923cd6f29bbec3927413a9024eb565d9162ddf2",
+  "status": "Pending separate explicit implementation approval; no new executable tool or firmware budget",
+  "proposal_file": "ATIVBatteryGuard/PROTECTION_0TO1_IMPLEMENTATION_PROPOSAL.md",
+  "proposal_sha256": "0fbb501ec15c8cfe94ae62e14a45f6e37797ea579bfca3887021c06cdcd15481",
+  "approval_rule": {
+    "file": "ATIVBatteryGuard/AGENTS.md",
+    "line": 52,
+    "quoted_text": "커널/펌웨어 제어 코드 추가 작업은 사용자에게 별도의 명시적 승인을 받은 뒤 안전성과 모델 적합성이 입증된 범위에서만 진행한다."
+  },
+  "proposed_only": {
+    "purpose": "Protection0To1-v1",
+    "marker_basename": "Protection0To1-v1.attempt",
+    "preparation_claims": 1,
+    "maximum_sdk_method_entries": 7,
+    "maximum_read_entries": 6,
+    "counted_sdk_method": "CallSabiFunction InvokeMethod entry, not metadata or property operations",
+    "maximum_semantic_set1_entries": 1,
+    "maximum_read_candidates": 6,
+    "stage_order": [
+      "PreMode",
+      "PreUpper",
+      "PreLower",
+      "SemanticSet1",
+      "PostMode",
+      "PostUpper",
+      "PostLower"
+    ],
+    "set_condition": "Accepted PreMode0 and both pre-threshold candidates, strict receipt/close rules thereafter",
+    "expected_post_candidates": [
+      1,
+      80,
+      75
+    ],
+    "pre_thresholds_are_byte_baseline_not_required_80_75": true,
+    "rng": {
+      "fill_calls": 1,
+      "bytes": 56,
+      "tuple_bytes": 8,
+      "tuple_count": 7,
+      "zero_or_duplicate_aborts": true,
+      "resamples": 0
+    },
+    "handshake_init_retries_fallback_direct_threshold_writes_reverse_or_rollback": 0,
+    "owner_acquire_seconds": 2,
+    "whole_procedure_display_seconds": 10,
+    "actual_close_has_no_synthetic_deadline": true,
+    "manual_same_account_elevated_and_explicit_start_only": true,
+    "old_a_access1_query65_marker_access_or_rearm": false,
+    "may_overwrite_thresholds_and_has_no_restore_function": true,
+    "stored_candidate_match_is_not_electrical_charge_limit_success": true
+  },
+  "implementation_design": {
+    "new_fixed_purpose_plan_not_reusing_a_write_zero_permission": true,
+    "core_narrow_facade_typed_contract_no_management_dependency_or_full_internals_exposure": true,
+    "wmiinterop_internal_lazy_leaf_factory": true,
+    "gate_free_lower_transport_not_nested_per_frame_session": true,
+    "actual_sdk_input_pair_and_observer_claims_preserved": true,
+    "typed_invocation_output_input_close_join": true,
+    "raw_command_frame_or_dispatch_not_accepted_at_live_entry": true
+  },
+  "review": {
+    "independent_trial_scope_and_sdk_crosswalk_reviews": true,
+    "read_only_reused_source_sha256": {
+      "src/ATIVBatteryGuard.Core/Services/WsabiWmiSingleReadPlan.cs": "5b52f5385acf546b1fe65aad2384f46782fe8cb482c85ed1c9a55e57bab0f940",
+      "src/ATIVBatteryGuard.Core/Services/WsabiWmiBoundFrameChannel.cs": "477197ccbf78202b2a308edf74c2a70b129ad26063bb0b1744e765cd49ef9af8",
+      "src/ATIVBatteryGuard.Core/Services/WsabiWmiInvocationSnapshotTransport.cs": "5c0b5777654a0b97931f5357c5682fbb6ec976910bc5833400d3d0c5c0d87431",
+      "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs": "cf84e9f68c72fe8fde14af6dee44716703d0917ead1eaec16d2016a1b13f229d",
+      "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsInputPreparation.cs": "74ec1807df285de919cbfd00a270a25e27bcb2202d0dbcd8e5b3724797775a87",
+      "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsCallbackSource.cs": "0ec2ea7023794851f2820fb8179c02b9d38601e74146695f52c198a115a69001",
+      "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsOwnedInputPair.cs": "6b95a1b150597babdb3d98ede62b3c1f8b42100fbcd7af62990608174a99d95c",
+      "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSdkBinding.cs": "cc197a2737b4912a1be7507f125e544f340c8c480d419798099cb377c8d33f5b"
+    },
+    "static_document_budget_link_and_source_preservation_audit": true,
+    "audit_script_sha256": "3d38298f62811b843a7b19aca51900563e7d73f960273218609e2e83a560cbb6"
+  },
+  "validation": {
+    "code_and_tests_unchanged": true,
+    "tracked_source_files": 181,
+    "tracked_test_files": 75,
+    "download_files_byte_equal": 87,
+    "new_csharp_build_or_suite_run": false,
+    "prior_validation_only": {
+      "commit": "2923cd6f29bbec3927413a9024eb565d9162ddf2",
+      "passed": 804,
+      "failed": 0,
+      "skipped": 0,
+      "portable_release_warnings_errors": [
+        0,
+        0
+      ],
+      "net48_reference_release_warnings_errors": [
+        0,
+        0
+      ]
+    },
+    "current_actual_firmware_method_or_setting_calls": 0,
+    "new_request_encoder_sdk_call_marker_or_artifact": false,
+    "new_firmware_decode_search_execution_or_emulation": false,
+    "additional_notebook_run_or_upload_requested_now": false
+  }
+}

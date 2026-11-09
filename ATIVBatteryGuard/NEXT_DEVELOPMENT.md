@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 최초 보호 설정0→1 단발 도구의 구체 구현 승인안 / 2026-11-09 한국 시간
+
+기준 `2923cd6` 뒤 [구현 승인 검토안](PROTECTION_0TO1_IMPLEMENTATION_PROPOSAL.md)을 작성하고 SDK재사용·assembly경계·시험영향을 독립 검토했습니다. 실제 코드 작성 전 별도 명시 승인을 받는 단계입니다. 과거 읽기승인/개발재개를 최초설정쓰기 승인으로 확대하지 않습니다. [AGENTS.md](AGENTS.md):52의명시승인규정이적용됩니다.
+
+제안범위는 새준비1회/CallSabiFunction SDK진입최대7(read최대6+semanticSet1최대1)/sample최대6,사전mode0과두threshold후보정상일때만setter,strictreceipt+실제close후독립post1/80/75비교입니다. 초기화/handshake/재시도/resample/B/직접threshold쓰기/역방향/rollback/추가조회0입니다. 기존threshold를80/75로덮어쓸수있고끄기·이전값복원기능/재부팅원복보장이없는시험임을먼저설명합니다. 사용자sameaccount수동Elevated→직접START→새고정purposeclaim/flush이며옛A/Access1/Query65marker접근0입니다.
+
+구현안은 새sealed7목적plan·Core좁은façade/typedleaf계약·WmiInterop내부lazyfactory·gate없는SnapshotTransport/BoundFrameChannel재사용입니다. 기존A의SingleReadPlan(settingwrites0)이나PrepareFixedReadAAsync를setter허가로쓰지않고per-frameowner를반복/중첩하지않습니다. internal공개/IVT/중복Corelink/System.Management Core의존성추가도없습니다. 실제SDK객체는Start안에서만만들고기존input-pair/observerclaim과3종료typedstatus를재사용합니다. RNG는56byte1fill→7×8분할/zero·중복abort/resample0안입니다.
+
+[정제 검토](reports/protection-0to1-proposal-review.json)에구현예산·코드대조·근거pin을남겼습니다. 이번변경은문서/정제record뿐이며src/tests/모든기존ZIP은동일합니다. C#빌드/회귀는재실행하지않았고804통과·두Release0경고/0오류는2923cd6의이전기록입니다. 새요청/인코더/SDK호출/marker/실행도구·firmwaredecode/검색0,실제쓰기예산0·Unsupported유지입니다.
+
+**다음사용자명시승인은이구체안의구현·오프라인검증·다운로드제공범위에만적용합니다.** 실제호출은승인후제공도구에서사용자가START할때1회이며cloud실기0입니다. 승인되면원래문서/모형작업을반복하지말고fixedpurposeplan·실제SDKleaf·새예약/계측/정제TXT·allowlistZIP까지완료하고새검증결과로제공합니다. 범위밖추가쓰기·상시controller지원·복원서비스를추가하지않습니다. 현재새노트북실행·옛자료재제출은필요없습니다. 아래는이전기록입니다.
+
 ## 최신 — 응답 판정→전체 owner의 단계별 연결 대역 검증 / 2026-11-09 한국 시간
 
 기준 `213cdba` 다음 개발입니다. [바인딩·수명 인계 원형](BOUND_STAGE_HANDOFF_PROTOTYPE.md)을 먼저 읽습니다. 새 internal Binding/BoundStage/BindingPlan은 고정7역할·같은 procedure/target 참조·단계별 distinct source/input/observer/capture를 검사하고 정확한binding응답만 받습니다.7개 비교8tuple 중복과 자원 재포장을 거부하며 procedure도 첫역할을 통해 global atomic claim에 포함합니다. target은 borrowed로 소비하지 않습니다. 모두로컬객체대응이며실제주소·producer·freshness인증이아닙니다.

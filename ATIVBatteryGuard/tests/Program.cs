@@ -441,6 +441,11 @@ internal static partial class Program
         RegisterWsabiWmiProtectionReadReplyReviewTests();
         RegisterWsabiWmiProtectionSetterReplyReviewTests();
         RegisterWsabiWmiBoundTransitionEvidenceTests();
+        RegisterWsabiWmiProtectionTransitionAttemptTests();
+        RegisterWsabiWmiProtection0To1ReservationTests();
+        RegisterWsabiWmiProtectionTransitionSessionTests();
+        RegisterWsabiWmiWindowsProtectionTrialTests();
+        RegisterProtectionTransitionHostTests();
         RegisterWsabiWmiProtectionStageBindingTests();
         RegisterFixedReadAccess1ReviewViewModelTests();
         RegisterWsabiWmiFixedReadPreparationTests();

@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "date_korea": "2026-11-09",
+  "baseline_commit": "462a7f2ab13b25bb23b2be3c40c0a20fc36f5f31",
+  "user_authorization": "Explicit approval of PROTECTION_0TO1_IMPLEMENTATION_PROPOSAL.md: 그래 진행해.",
+  "purpose": "Protection0To1-v1",
+  "source_sha256": {
+    "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionLeafContract.cs": "20856b4fb583897922d59a9a7b75d93eac4ee069c645abc3aebef149bc0658b0",
+    "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionTransitionAttempt.cs": "6c202c9f91a150b603dddee66ad1ca1d66a7e414b2e5236b0dd09f86adfa7059",
+    "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionTransitionSession.cs": "d415d500af3229917f98c0f44aa04513459e801672964d86e89efc3f69a676da",
+    "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionStageBinding.cs": "3e9716dd42eece8204d66ece955d924f0cfb9f4495485e92d6c7551ecf332e4e",
+    "src/ATIVBatteryGuard.Core/Storage/WsabiWmiProtection0To1FileReservation.cs": "c97fda72101a4f52da7ea8a73ab6de5d14225bc467168d81979630bee55b053d",
+    "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsProtectionTrial.cs": "e98e79b31d2e811afe09993c4dced5a1097ef80df65bf2a80a72f14e3649c5fd",
+    "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsInputPreparation.cs": "59a7595c409fce76984220472b02a798a97f516ac706ea0fe2b30fc83ecc1053",
+    "tests/WsabiWmiProtectionTransitionAttemptTests.cs": "ee1ea601a5e06bbdf601d776ed095f2afa69ea31cbcad2404d1afd0974fca5ac",
+    "tests/WsabiWmiProtection0To1ReservationTests.cs": "9162bda3824b949efa92acd6a263492959938858c713f0c59e4d9980fd10577e",
+    "tests/WsabiWmiProtectionTransitionSessionTests.cs": "43c5058f5618defcbb8edfca5eb5398812be3a772fe6d32a59a80f9c0ac6a918",
+    "tests/WsabiWmiWindowsProtectionTrialTests.cs": "b0ebfc53d58037a494438036d4a3272ebfedd1678078157b29c2bac852b45e74",
+    "tests/ProtectionTransitionHostTests.cs": "16e8ec8af950b11c7004a4ccac5956acf7e4cb540974926fd1b6ee43dae1d93d",
+    "tests/Program.cs": "8a69624c429ebda0b4f785f05866bfeb67fefe3a341d3dd0248e348bc0551992",
+    "tests/Fakes/ManagementSdkFakes.cs": "421551ecc9e32fba9e36b82312c84fac36108885253e841ff3ffb3a3f87c1a35",
+    "tests/ATIVBatteryGuard.PortableTests.csproj": "56db0d353ac229489b0104c661d4eeb4fcca9c68834e14e93cea95f20c82ea3f",
+    "scripts/package_protection_0to1.py": "b7d76a68f698bdfd4d3e4fcecead2c5f61f48ad38361882b4c398d25dd1405a0",
+    "src/ATIVBatteryGuard.ProtectionTransitionTrial/ATIVBatteryGuard.ProtectionTransitionTrial.csproj": "54733989d5335ff6eceaa37a48fd8bdc400aed7df1d66e73856575ce8209b16b",
+    "src/ATIVBatteryGuard.ProtectionTransitionTrial/Program.cs": "34519b2b296a24126b600ca1ded9ff153d864714bae297ee4057f19eb7b492e6",
+    "src/ATIVBatteryGuard.ProtectionTransitionTrial/App.config": "f7d392e55d67293ca77b32c6e7750f253dc893b8db04ecfada88d34274ef76d5",
+    "src/ATIVBatteryGuard.ProtectionTransitionTrial/ProtectionTrialLifetime.cs": "35163269e37a97eb0cc52da55525893c7ba82d51a8d0769e7d538d2f604b3646",
+    "src/ATIVBatteryGuard.ProtectionTransitionTrial/ProtectionTrialReport.cs": "c4986da52c5e9595da9a16f93d89a14e18634322c6822b40a61dcecc338bea86",
+    "src/ATIVBatteryGuard.ProtectionTransitionTrial/app.manifest": "75f64b5da9d25108b00f80d6f0d207181ef1760a5d3cdbf385ebd1d3110b8919",
+    "src/ATIVBatteryGuard.ProtectionTransitionTrial/WindowsProtectionPreflight.cs": "7a160d4efe756f20b387e380dcc88751436e066e76bbc2943d89b9c858ffd32a",
+    "src/ATIVBatteryGuard.ProtectionTransitionTrial/ProtectionTrialJournal.cs": "8ef34ac9ce735f846ffebc3b9bb9d636f028da9802a6a78c7bb52c7c7c75866d"
+  },
+  "validation": {
+    "portable_suite": {
+      "passed": 854,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 854,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "new_groups": {
+      "fixed_attempt": 11,
+      "reservation": 9,
+      "facade": 13,
+      "sdk_stand_in": 10,
+      "host": 7
+    },
+    "parameter_iterations_are_not_additional_tests": true,
+    "portable_release": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "full_net48_reference_release": {
+      "warnings": 0,
+      "errors": 0,
+      "windows_runtime_execution": false
+    },
+    "cache_only_new_tool_restore": true,
+    "compiled_release_api_audit": {
+      "ATIVBatteryGuard.Core.dll": {
+        "synthetic_close_test_helper": false,
+        "test_sdk_entry": false,
+        "management_fake_types": false,
+        "method_count": 1439
+      },
+      "ATIVBatteryGuard.WmiInterop.dll": {
+        "synthetic_close_test_helper": false,
+        "test_sdk_entry": false,
+        "management_fake_types": false,
+        "method_count": 184
+      },
+      "ATIVBatteryGuard.ProtectionTransitionTrial.exe": {
+        "synthetic_close_test_helper": false,
+        "test_sdk_entry": false,
+        "management_fake_types": false,
+        "method_count": 129
+      }
+    },
+    "independent_source_lifetime_host_and_release_reviews": "No remaining blocker reported",
+    "private_evidence_sha256": {
+      "portable-build.log": "6ad30ed17dd69680f47d3d6b58a7296a77c557b317d63d9bf266a519dbd6668b",
+      "net48-build.log": "0e2b9b3ab179ac1fdc619a5ff694a95d899da8d8d40c4f3e569a45d06cfc1138",
+      "tool-restore.log": "833a2a711d05b843e00d654891f4187c7a39eadf40d61d737699d205d0522c2c",
+      "suite.json": "ae5fe2583606b215ab90e695e2832faa2a382fde66d120cf87b88c7a803d43fd",
+      "suite.log": "7c457a59bd5b631d47baa9e2bca0afe85889d098ec748799c14c9c4f678b2ad3",
+      "package.log": "79bfd848dffcfec53e11d30177a1f75bce1536f4b0799763c61abd6508b6e9eb",
+      "release-api-audit.json": "0141c3637a2296b3703071c73562f892cb60437ea01f888fc2d92d34585d70da",
+      "release-independent/audit.py": "f8a3ab2382d15e655e6f90f989253ab2a5e20b1ac84bb42f6465ba4345489d63",
+      "release-independent/audit.json": "ee21d41b17d49b91a8b94c816f4c221bd0f6fd02e2638e06dfe532ff7882ffbd",
+      "audit.py": "ba18665810fbbaf2e1b9379e2dc23872afff286d4b0d50e593a5a62470dceb2f"
+    },
+    "unchanged_permanent_gate_failure_hold_paths_are_source_review_only": true
+  },
+  "archive": {
+    "file": "ATIVBatteryGuard-PROTECTION-0TO1.zip",
+    "bytes": 179605,
+    "sha256": "41dfca027365d1e3927754e6e24b7b754beee9fa51416feedb628828d97ef8d3",
+    "entries": 7,
+    "internal_checksums": 6,
+    "crc_and_build_bytes_and_source_files_match": true,
+    "source_fingerprint_sha256": "7b59fa5617934dca2a94ba93b086c50eb22668b9840ea258b898fc60d890fc31",
+    "source_files": 137,
+    "x64_net48_asinvoker_unsigned": true,
+    "oem_firmware_pdb_old_experiment_executables": false,
+    "synthetic_close_helper_test_sdk_entry_or_fake_management_types": false
+  },
+  "preserved": {
+    "unchanged_preexisting_source_files": 179,
+    "intentional_existing_source_changes": [
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionStageBinding.cs",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsInputPreparation.cs"
+    ],
+    "all_previous_download_files_byte_equal": true,
+    "previous_download_file_count": 87,
+    "app_controller_fixed_read_a_access1_query65_source_unchanged": true,
+    "old_experiment_marker_accessed_rearmed_or_deleted": false,
+    "generic_prepare_sdk_remains": "ReadSpecificationUnavailable"
+  },
+  "scope": {
+    "new_preparation_claims": 1,
+    "maximum_sdk_call_sabi_function_entries": 7,
+    "maximum_read_entries": 6,
+    "maximum_semantic_set1_entries": 1,
+    "maximum_accepted_byte_candidates": 6,
+    "requires_new_pre_mode_zero_and_pre_threshold_candidates": true,
+    "off_reverse_restore_direct_threshold_init_handshake_retry_resample_fallback_or_extra_queries": 0,
+    "rng_fill_calls": 1,
+    "rng_bytes": 56,
+    "nonzero_distinct_tuple_count": 7,
+    "owner_acquire_seconds_maximum": 2,
+    "whole_procedure_display_seconds": 10,
+    "actual_close_separate_and_unknown_holds_owner_and_inputs": true,
+    "sdk_count_zero_may_still_be_pending_after_source_admission_guard_failure": true,
+    "late_counter_and_stage_diagnostics_written_after_actual_join": true,
+    "runtime_networking_or_driver_service_security_flash_changes": false,
+    "existing_thresholds_may_be_overwritten_80_75_and_restore_not_included": true
+  },
+  "interpretation": {
+    "cloud_actual_windows_sdk_oem_global_or_notebook_firmware_calls": 0,
+    "new_notebook_runtime_tested": false,
+    "new_firmware_original_decode_search_execution_or_emulation": false,
+    "stored_candidate_match_or_receipt_is_electrical_charge_limit_success": false,
+    "main_app_charge_control": "Unsupported",
+    "next_input": "Only the new protection-0to1-result TXT from the one explicitly started trial",
+    "old_diagnostics_dll_or_exe_resubmission_needed": false
+  }
+}

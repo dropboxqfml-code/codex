@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 명시 승인된 최초0→1 설정 시험 도구 / 2026-11-09 한국 시간
+
+사용자가구체안에명시승인한뒤 [고정단발도구](PROTECTION_0TO1_IMPLEMENTATION.md)를구현했습니다. 저장proof의3개읽기대상과semanticsetter1을고정하고새purpose예약·같은전체owner·lazySDKleaf·세종료join·strict응답·정제계측을연결했습니다. Mode0일때만설정최대1/전체최대7이며80/75를덮어쓸수있고OFF/복원은없습니다. 기존A/Access1/Query65소모상태와일반앱Unsupported는유지합니다.
+
+새50개포함854회귀·두Release빌드0경고/0오류,Release테스트helper부재와ZIP7항목/CRC/6체크섬/빌드·137source지문을독립검증했습니다. 새Windows SDK·노트북·firmware설정호출은클라우드에서0이며새실기성공은아직없습니다. 저장source대조를재사용했고원본새decode/검색/실행0입니다. 다음은새도구의승인된1회결과만평가하며설정receipt·저장후보·충전기·전기적제한을구분합니다. 아래는이전기록입니다.
+
 ## 최신 — 최초0→1 설정 시험의 조건부 구현 제안 / 2026-11-09 한국 시간
 
 [구체안](PROTECTION_0TO1_IMPLEMENTATION_PROPOSAL.md)은 저장setter근거·성공한과거모드읽기·804대역회귀를 적용해 새준비1회/최대7method(read6/set1)를 한정합니다. 실제쓰기/현재threshold/충전효과를 새로 관측한 것은 아닙니다. 정상플랫폼전제를 유지하며 새selector/전체writer/livehash조건을 추가하지 않습니다. 설정1은80/75를 덮어쓸 수 있고 역방향·복원·재부팅원복보장은 없습니다.

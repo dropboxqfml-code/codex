@@ -1,5 +1,19 @@
 # 다음 개발 재개 메모
 
+## 최신 — 승인된 Protection0To1-v1 최초 설정 단발 도구 구현·배포 / 2026-11-09 한국 시간
+
+기준 `462a7f2` 뒤 사용자가 [구체안](PROTECTION_0TO1_IMPLEMENTATION_PROPOSAL.md)에 **“그래 진행해.”**로 명시 승인했습니다. [구현·실행 안내](PROTECTION_0TO1_IMPLEMENTATION.md)와 [정제 검증](reports/protection-0to1-implementation-validation.json)을 먼저 읽습니다. 새 ZIP은 [ATIVBatteryGuard-PROTECTION-0TO1.zip](../downloads/ATIVBatteryGuard-PROTECTION-0TO1.zip) 하나이며 같은계정수동관리자·새EXE·Protection0To1-v1/Elevated확인·직접START뒤에만 새준비1회/max7SDK(read6/set1)/sample6입니다. 모드1·80/75 덮어쓰기와 OFF/복원/재부팅원복보장없음을승인범위·도구·ZIP안내에명시했습니다.
+
+고정attempt는동일profile/metadata/단일Active/MethodID1·56byte1fill/zero·중복abort·7frozenframe을고정합니다. 사전mode0과두threshold후보뒤에만semanticSet1최대1회, strictReceiptOnly+actualclose뒤post1/80/75비교입니다. 새파일예약CreateNew/WriteThrough/Flush(true)를선소모하며A/Access1/Query65 marker접근·초기화·재사용0,handshake/init/retry/resample/B/직접threshold/역방향/rollback/추가조회0입니다.
+
+Core좁은façade/typedleaf가내부전체owner와gate없는transport를연결하고WmiInterop내부factory가Start안에서만SDKinputs/observer를만듭니다. 실제input-pair/observerclaim·동일frame/targetguard를재사용하며기존A API/settingwrites0/genericReadSpecificationUnavailable는유지했습니다. Source invoke-end→outputComplete→inputcleanup 순서이며불명/실패는입력·owner를보유합니다. dispatchguard가source입장뒤거부하면SDK0이어도Pending가능하며합성final로닫지않습니다. target은전체join뒤정리합니다.
+
+새50개(attempt11/reservation9/facade13/SDKstand-in10/host7) 포함 **854통과·0실패·0skip**, portable/전체net48참조Release각각0경고·0오류입니다. Release IL에서ConfirmDetachedForTests/PrepareForTests/fakeManagement타입부재·CoreSystem.Management의존성없음을확인했습니다. 새source대조·수명·패키지독립검토에차단결함없음입니다. 실제Windows/SDK/OEM/Global/노트북예약호출0,새노트북실기미검증입니다. firmware원본새decode/검색/실행0이며저장proof의Mode/Upper/Lower/semanticsetter대응을재사용했습니다.
+
+ZIP179605bytes/SHA256 `41dfca027365d1e3927754e6e24b7b754beee9fa51416feedb628828d97ef8d3`, sourcefingerprint `7b59fa5617934dca2a94ba93b086c50eb22668b9840ea258b898fc60d890fc31`, source137개입니다. 자체4program+안내/BUILDINFO/SHA7항목·CRC/내부6SHA/buildbytes/x64/net48/asInvoker/미서명·원본DLL/FW/PDB/옛EXE제외를독립확인했습니다. 기존ZIP은당시byte로보존했습니다.
+
+**다음은 승인된새도구를사용자가1회START한뒤생성된새 `protection-0to1-result-*.txt`만분석하는일**입니다. 같은계정수동관리자이며다른계정암호·보안우회는하지않습니다. 준비실패/권한/gate/timeout도소모,재실행·marker변경0입니다. Pending이면강제종료/재실행하지않고관련실제정리를기다립니다. 옛TXT/DLL/EXE 재제출·기존도구재실행은불필요합니다. 새실기예산의추가시도/역방향/복원은승인되지않았습니다. 값이1/80/75라도저장후보일치이며전기적충전성공이아니고일반앱제어Unsupported를유지합니다. 아래는이전기록입니다.
+
 ## 최신 — 최초 보호 설정0→1 단발 도구의 구체 구현 승인안 / 2026-11-09 한국 시간
 
 기준 `2923cd6` 뒤 [구현 승인 검토안](PROTECTION_0TO1_IMPLEMENTATION_PROPOSAL.md)을 작성하고 SDK재사용·assembly경계·시험영향을 독립 검토했습니다. 실제 코드 작성 전 별도 명시 승인을 받는 단계입니다. 과거 읽기승인/개발재개를 최초설정쓰기 승인으로 확대하지 않습니다. [AGENTS.md](AGENTS.md):52의명시승인규정이적용됩니다.

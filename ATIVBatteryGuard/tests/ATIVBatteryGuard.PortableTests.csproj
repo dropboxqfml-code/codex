@@ -6,6 +6,7 @@
     <Nullable>disable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <DefineConstants>$(DefineConstants);PORTABLE_TESTS</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../src/ATIVBatteryGuard.Core/**/*.cs" Exclude="../src/ATIVBatteryGuard.Core/Properties/**;../src/ATIVBatteryGuard.Core/obj/**;../src/ATIVBatteryGuard.Core/bin/**" />
@@ -91,6 +92,15 @@
     <Compile Include="WsabiWmiProtectionReadReplyReviewTests.cs" />
     <Compile Include="WsabiWmiProtectionSetterReplyReviewTests.cs" />
     <Compile Include="WsabiWmiBoundTransitionEvidenceTests.cs" />
+    <Compile Include="WsabiWmiProtectionTransitionAttemptTests.cs" />
+    <Compile Include="WsabiWmiProtection0To1ReservationTests.cs" />
+    <Compile Include="WsabiWmiProtectionTransitionSessionTests.cs" />
+    <Compile Include="WsabiWmiWindowsProtectionTrialTests.cs" />
+    <Compile Include="ProtectionTransitionHostTests.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ProtectionTransitionTrial/ProtectionTrialLifetime.cs" Link="ProtectionTransition/ProtectionTrialLifetime.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ProtectionTransitionTrial/ProtectionTrialJournal.cs" Link="ProtectionTransition/ProtectionTrialJournal.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ProtectionTransitionTrial/ProtectionTrialReport.cs" Link="ProtectionTransition/ProtectionTrialReport.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsProtectionTrial.cs" Link="WmiInterop/WsabiWmiWindowsProtectionTrial.cs" />
     <Compile Include="WsabiWmiProtectionStageBindingTests.cs" />
     <Compile Include="FixedReadAccess1ReviewViewModelTests.cs" />
     <Compile Include="WsabiWmiFixedReadPreparationTests.cs" />

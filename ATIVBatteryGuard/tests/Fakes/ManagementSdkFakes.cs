@@ -122,14 +122,23 @@ namespace System.Management
         public Func<ManagementScope> OnGetScope;
         public Func<ManagementPath> OnGetPath;
         public Action<ManagementOperationObserver, string, ManagementBaseObject, InvokeMethodOptions> OnInvoke;
+        public Func<string, ManagementBaseObject> OnGetMethodParameters;
         public int InvokeCalls => Volatile.Read(ref invokeCalls);
         public ManagementScope Scope { get => OnGetScope == null ? scope : OnGetScope(); set => scope = value; }
         public virtual ManagementPath Path { get => OnGetPath == null ? path : OnGetPath(); set => path = value; }
+        public ManagementBaseObject GetMethodParameters(string method) => OnGetMethodParameters == null
+            ? throw new InvalidOperationException("No test method-parameter allocator was supplied.") : OnGetMethodParameters(method);
         public void InvokeMethod(ManagementOperationObserver observer, string method,
             ManagementBaseObject input, InvokeMethodOptions options)
         {
             Interlocked.Increment(ref invokeCalls); OnInvoke?.Invoke(observer, method, input, options);
         }
+    }
+
+    public class ManagementClass : ManagementBaseObject
+    {
+        public ManagementClass(ManagementScope scope, ManagementPath path, object options) { }
+        public ManagementBaseObject CreateInstance() => throw new InvalidOperationException("Use the explicit test-only buffer allocator.");
     }
 
     public class ManagementBaseObject : Component

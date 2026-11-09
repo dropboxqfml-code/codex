@@ -56,18 +56,61 @@ namespace ATIVBatteryGuard.WmiInterop
                 Objects.Add(buffer, new Used());
                 if (takeOwnership) owned = new WsabiWmiWindowsOwnedInputPair(parameters, buffer, borrowedTarget);
             }
+            return PopulateFrozen(plan.Binder, frozen, parameters, buffer);
+        }
+
+        // New fixed-purpose lazy leaves claim each allocated wrapper before
+        // another allocation can fail. The same registry also protects A.
+        internal static bool TryClaimProtectionObject(ManagementBaseObject value, object owner,
+            ManagementBaseObject borrowedTarget)
+        {
+            if (value == null || owner == null || ReferenceEquals(value, borrowedTarget)) return false;
+            lock (ClaimGate)
+            {
+                Used ignored;
+                if (Objects.TryGetValue(value, out ignored)) return false;
+                Objects.Add(value, new Used(owner));
+                return true;
+            }
+        }
+
+        internal static WsabiWmiWindowsInputPreparationStatus PopulateProtectionOwned(
+            WsabiWmiProtectionLeafRequest request, WsabiWmiMethodBinder binder,
+            ManagementBaseObject parameters, ManagementBaseObject buffer, object owner,
+            out WsabiWmiWindowsOwnedInputPair owned, ManagementBaseObject borrowedTarget)
+        {
+            owned = null;
+            if (request == null || binder == null || !request.Matches(request.Request))
+                return WsabiWmiWindowsInputPreparationStatus.RequestMismatch;
+            if (parameters == null || buffer == null || ReferenceEquals(parameters, buffer) ||
+                ReferenceEquals(parameters, borrowedTarget) || ReferenceEquals(buffer, borrowedTarget))
+                return WsabiWmiWindowsInputPreparationStatus.ObjectsMissingOrAliased;
+            lock (ClaimGate)
+            {
+                Used first, second;
+                if (owner == null || !Objects.TryGetValue(parameters, out first) || !Objects.TryGetValue(buffer, out second) ||
+                    !ReferenceEquals(first.Owner, owner) || !ReferenceEquals(second.Owner, owner))
+                    return WsabiWmiWindowsInputPreparationStatus.ObjectsAlreadyUsed;
+                owned = new WsabiWmiWindowsOwnedInputPair(parameters, buffer, borrowedTarget);
+            }
+            return PopulateFrozen(binder, request.Request, parameters, buffer);
+        }
+
+        private static WsabiWmiWindowsInputPreparationStatus PopulateFrozen(WsabiWmiMethodBinder binder,
+            WsabiWmiMethodRequest frozen, ManagementBaseObject parameters, ManagementBaseObject buffer)
+        {
             try
             {
                 ManagementPath classPath = buffer.ClassPath;
-                if (classPath == null || !string.Equals(classPath.ClassName, plan.Binder.BufferClass,
+                if (classPath == null || !string.Equals(classPath.ClassName, binder.BufferClass,
                     StringComparison.OrdinalIgnoreCase)) return WsabiWmiWindowsInputPreparationStatus.ShapeMismatch;
                 PropertyDataCollection inputProperties = parameters.Properties;
                 PropertyDataCollection bufferProperties = buffer.Properties;
                 if (inputProperties == null || bufferProperties == null ||
                     inputProperties.Count != 1 || bufferProperties.Count != 1)
                     return WsabiWmiWindowsInputPreparationStatus.ShapeMismatch;
-                PropertyData inputProperty = inputProperties[plan.Binder.InputName];
-                PropertyData byteProperty = bufferProperties[plan.Binder.BytesName];
+                PropertyData inputProperty = inputProperties[binder.InputName];
+                PropertyData byteProperty = bufferProperties[binder.BytesName];
                 if (inputProperty == null || inputProperty.Type != CimType.Object || inputProperty.IsArray ||
                     byteProperty == null || byteProperty.Type != CimType.UInt8 || !byteProperty.IsArray)
                     return WsabiWmiWindowsInputPreparationStatus.ShapeMismatch;
@@ -87,6 +130,10 @@ namespace ATIVBatteryGuard.WmiInterop
             }
         }
 
-        private sealed class Used { }
+        private sealed class Used
+        {
+            internal readonly object Owner;
+            internal Used(object owner = null) { Owner = owner; }
+        }
     }
 }

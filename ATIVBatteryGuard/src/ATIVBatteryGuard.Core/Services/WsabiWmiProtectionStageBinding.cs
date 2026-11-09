@@ -59,9 +59,14 @@ namespace ATIVBatteryGuard.Core.Services
         private readonly WsabiWmiProtectionSetterReplyReview setterReview;
         private readonly byte[] comparison;
         private int started, reviewStatus;
+        private int readReplyStatus = -1, setterReplyStatus = -1;
         internal WsabiWmiProtectionStageBinding Binding { get; }
         internal WsabiWmiSevenStageOperation Operation { get; }
         internal WsabiWmiBoundStageReviewStatus ReviewStatus => (WsabiWmiBoundStageReviewStatus)Volatile.Read(ref reviewStatus);
+        internal string ReadVerdict => Volatile.Read(ref readReplyStatus) < 0 ? "NotReviewed"
+            : ((WsabiWmiProtectionReadReplyReviewStatus)Volatile.Read(ref readReplyStatus)).ToString();
+        internal string SetterVerdict => Volatile.Read(ref setterReplyStatus) < 0 ? "NotReviewed"
+            : ((WsabiWmiProtectionSetterReplyReviewStatus)Volatile.Read(ref setterReplyStatus)).ToString();
         internal bool IsExecutable => false;
         internal bool IsHardwareObservation => false;
         internal bool IsFreshnessProven => false;
@@ -154,12 +159,14 @@ namespace ATIVBatteryGuard.Core.Services
             if (setterReview != null)
             {
                 var result = setterReview.Evaluate(reply.Exchange);
+                Volatile.Write(ref setterReplyStatus, (int)result.Status);
                 if (!result.IsReceiptOnly) return Reject(WsabiWmiBoundStageReviewStatus.ReceiptRejected);
                 Volatile.Write(ref reviewStatus, (int)WsabiWmiBoundStageReviewStatus.ReceiptOnly);
                 return new WsabiWmiProtectionTransitionObservation(Binding.Role,
                     WsabiWmiProtectionTransitionEvidence.SetterReceiptAcceptedForReadback);
             }
             var read = readReview.Evaluate(reply.Exchange);
+            Volatile.Write(ref readReplyStatus, (int)read.Status);
             if (!read.IsCorrelatedStoredByteCandidate) return Reject(WsabiWmiBoundStageReviewStatus.ReadRejected);
             Volatile.Write(ref reviewStatus, (int)WsabiWmiBoundStageReviewStatus.ReadCandidate);
             return new WsabiWmiProtectionTransitionObservation(Binding.Role,

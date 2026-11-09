@@ -96,6 +96,30 @@ namespace ATIVBatteryGuard.WmiInterop
             return PopulateFrozen(binder, request.Request, parameters, buffer);
         }
 
+        // Separately approved fixed disable request only. The shared registry
+        // and private frozen-population helper do not admit arbitrary requests.
+        internal static WsabiWmiWindowsInputPreparationStatus PopulateProtectionDisableOwned(
+            WsabiWmiProtectionDisableLeafRequest request, WsabiWmiMethodBinder binder,
+            ManagementBaseObject parameters, ManagementBaseObject buffer, object owner,
+            out WsabiWmiWindowsOwnedInputPair owned, ManagementBaseObject borrowedTarget)
+        {
+            owned = null;
+            if (request == null || binder == null || !request.Matches(request.Request))
+                return WsabiWmiWindowsInputPreparationStatus.RequestMismatch;
+            if (parameters == null || buffer == null || ReferenceEquals(parameters, buffer) ||
+                ReferenceEquals(parameters, borrowedTarget) || ReferenceEquals(buffer, borrowedTarget))
+                return WsabiWmiWindowsInputPreparationStatus.ObjectsMissingOrAliased;
+            lock (ClaimGate)
+            {
+                Used first, second;
+                if (owner == null || !Objects.TryGetValue(parameters, out first) || !Objects.TryGetValue(buffer, out second) ||
+                    !ReferenceEquals(first.Owner, owner) || !ReferenceEquals(second.Owner, owner))
+                    return WsabiWmiWindowsInputPreparationStatus.ObjectsAlreadyUsed;
+                owned = new WsabiWmiWindowsOwnedInputPair(parameters, buffer, borrowedTarget);
+            }
+            return PopulateFrozen(binder, request.Request, parameters, buffer);
+        }
+
         private static WsabiWmiWindowsInputPreparationStatus PopulateFrozen(WsabiWmiMethodBinder binder,
             WsabiWmiMethodRequest frozen, ManagementBaseObject parameters, ManagementBaseObject buffer)
         {

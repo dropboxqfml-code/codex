@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 별도 승인된1→0 해제 도구 구현 / 2026-11-09 한국 시간
+
+[구현·사용 절차](PROTECTION_1TO0_IMPLEMENTATION.md)에따라새목적 `Protection1To0-v1`의사전1/read→semantic0/set최대1→사후0/read최대3SDK를구현했습니다. 저장source의mode0+소프트웨어상태reset 의미만사용하며임계값100설정/기존값복원/충전재개성공으로확대하지않습니다. 기존ON상태의AC관찰을먼저보관하고정상후보전환·실제정리Complete일때같은AC의후속관찰을안내합니다. 기존0→1실기1/80/75는과거보고이며새사전값을대체하지않습니다. 새1→0도구의실제Windows/노트북결과는아직없습니다.
+
+새86개포함973회귀·portable/전체net48참조Release각0경고/오류와Release테스트도우미부재·소스/ZIP독립대조를 [정제검증](reports/protection-1to0-implementation-validation.json)에남겼습니다. 실제원본새decode/검색·OEM/노트북예약접근은0이고이전모든시험소스·ZIP을보존했습니다. 새프로그램은사용자START뒤새purpose1회만다루며예전marker접근·초기화·retry·ON/원복·직접threshold·driver/service/보안변경0입니다. 일반GUI실제제어와상시상태조회는계속Unsupported입니다. 아래는이전기록입니다.
+
 ## 최신 — AC 미연결 관찰 수신·보호 해제 최소안 / 2026-11-09 한국 시간
 
 [첫 관찰](CHARGE_EFFECT_OBSERVATION_RESULT.md)의16개 샘플은 모두 AC 미연결·방전이며 잔량75→74%, 오류·긴gap0입니다. 사용자가 충전기를 연결하지 않았다고 확인했습니다. Windows 기록·로컬 저장은 동작했지만 충전 억제/재개는 관측 기회가 없어 성공·실패를 판정하지 않습니다. 직전1/80/75는 과거 저장 후보이고 이번 파일은 현재모드·지속성 조회가 아닙니다.

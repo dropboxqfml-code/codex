@@ -1,4 +1,16 @@
-# ATIV Battery Guard — 보호 전환 기록·Windows 배터리 관찰판
+# ATIV Battery Guard — 보호 해제1회 시험과 충전 경과 비교
+
+2026-11-09 한국 시간. [새 보호 해제 ZIP](ATIVBatteryGuard-PROTECTION-1TO0.zip) · [실행·검증 안내](../ATIVBatteryGuard/PROTECTION_1TO0_IMPLEMENTATION.md) · [사용자 작업 순서 전문](../ATIVBatteryGuard/PROTECTION_1TO0_USER_STEPS.txt)
+
+기존 일반 관찰 앱을 그대로 사용해 충전기를 연결한 상태의 **해제 전 기록을 먼저 저장**합니다. 그 뒤 새 ZIP 하나를 별도 새 폴더에 모두 풀고 **ATIVBatteryGuard.ProtectionDisableTrial.exe만 같은계정에서 수동 관리자 실행**합니다. `Protection1To0-v1`·`Elevated`·영향 안내를 확인하고 START를 한 번 입력합니다. 새 사전모드1일 때만 설정0최대1회, 사후모드0을 비교하며 전체최대3호출입니다.
+
+사전1·사후0 후보 일치·StoredReadbackMatchedCandidate·관련 정리Complete일 때 기존 관찰 앱으로 같은 충전기 연결 상태의 새 기록을 저장합니다. 새 해제TXT는 **해제EXE옆** `protection-1to0-result-*.txt`, 전후관찰TXT는기존AppData폴더의 `battery-observation-*.txt`입니다. 이 새해제TXT와새전후관찰TXT만전달합니다. 기존TXT·삼성DLL·EXE는다시올릴필요가없습니다. 관찰저장버튼은한번만누릅니다.
+
+새86개포함973테스트·두Release빌드각경고/오류0입니다. ZIP200554bytes/SHA256 `589a13491090d2cd6019f13e07bded9a16438311ab9d1e33b4ad1a7eea3179e4`이며소스/프로그램바이트·CRC/내부SHA/ReleaseIL을검산했습니다. 미서명Windows10x64/.NETFramework4.8개발판이며새노트북실기는아직없습니다. 삼성원본·firmware·PDB·다른실험EXE·일반GUI는포함하지않았습니다. **기존앱ZIP과새해제ZIP을합치지않습니다.**
+
+보호해제는설정변경이며충전이재개될수있습니다. 자동ON복원·임계값복원·100%/재부팅원복보장은없습니다. 실패·timeout·사전0도새1회를소모하며재실행/예약변경/계정·폴더우회는하지않습니다. Pending/실제정리대기면강제로닫지않고기다립니다. 이전모든단발도구는종료됐으므로재실행하지않습니다. 실제상시제어는Unsupported입니다.
+
+## 이전 — 보호 전환 기록·Windows 배터리 관찰판
 
 2026-11-09 한국 시간. [일반 권한 GUI ZIP](ATIVBatteryGuard-BATTERY-OBSERVATION.zip) · [결과·사용 안내](../ATIVBatteryGuard/STORED_TRANSITION_RESULT_AND_OBSERVATION.md) · [최신 검증·해시](../ATIVBatteryGuard/reports/stored-transition-observation-validation.json)
 

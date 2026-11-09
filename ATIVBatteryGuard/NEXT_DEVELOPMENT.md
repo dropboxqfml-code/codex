@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 승인된 보호 해제1→0 전용 도구 구현·배포 / 2026-11-09 한국 시간
+
+기준 `f5f00d8` 뒤 사용자가 [구체안](PROTECTION_1TO0_IMPLEMENTATION_PROPOSAL.md)의 구현·검증·공유와1회 시험 범위를 명시 승인했습니다. [구현·사용자 순서](PROTECTION_1TO0_IMPLEMENTATION.md), [사용 안내 전문](PROTECTION_1TO0_USER_STEPS.txt), [정제 검증](reports/protection-1to0-implementation-validation.json)을 먼저 읽습니다. 새 ZIP은 [ATIVBatteryGuard-PROTECTION-1TO0.zip](../downloads/ATIVBatteryGuard-PROTECTION-1TO0.zip) 하나이며 관찰 앱과 폴더를 합치지 않습니다.
+
+사용자 순서는 **기존 일반GUI로 AC 연결 중 해제 전 관찰·TXT한번저장 → 새 해제EXE만 같은계정 수동관리자·Protection1To0-v1/Elevated확인·START1개 → 사전1/사후0후보일치·StoredReadbackMatchedCandidate·관련정리Complete일때만 같은AC의 새 관찰·TXT한번저장 → 새 해제TXT와 새 전후관찰TXT 전달**입니다. 화면·ZIP안내에 이 순서를 명시했고 START에 사전관찰을 보관했다는 사용자 자기확인을 포함합니다. 자기확인은 장치 인증이 아닙니다. 관찰TXT는기존AppData폴더, 해제TXT는새EXE옆protection-1to0-result이며자동생성합니다. 이전 파일·DLL·EXE 재제출은 불필요합니다.
+
+새sealed attempt는24byte1fill/3×8비교·zero/중복abort와3frozen역할을 고정합니다. 새input0receipt·pre1/post0review·binding·단일owner/façade·lazySDKfactory가공통mutex/quarantine과source→output→inputjoin규약을유지합니다. 새typedinputentry24줄외에기존src196개와old0→1계약은byte동일입니다. 새purpose예약만CreateNew/WriteThrough/Flush(true)하며준비실패도소모,oldA/Access1/Query65/Protection0To1 marker접근0입니다. max3SDK/read2/set0≤1이고사전0/불명은쓰기0,threshold읽기/쓰기·ON복원·retry/handshake/fallback0입니다. acquire2초/display10초와실제정리를분리하고불명은owner/input/target보유Pending입니다. 일반GUI제어Unsupported·genericentry차단은유지했습니다.
+
+새86개(attempt11/review9/receipt12/session15/binding7/SDK12/reservation11/host9)포함 **973통과·0실패·0skip**, portable/전체net48참조Release각각0경고·0오류입니다. ReleaseIL에서PrepareForTests/ConfirmDetachedForTests/writeAndFlushForTests field·추가testctor 부재를확인했습니다. ZIP은200554bytes/SHA256 `589a13491090d2cd6019f13e07bded9a16438311ab9d1e33b4ad1a7eea3179e4`, source149개/fingerprint `8e40b29e3c47482525f38461420793b0ce1653a35897b724ae02c6c602d1bfbd`입니다. CRC/내부6SHA/buildbytes/가이드·source대조와독립검토를완료하며기존ZIP67개를보존합니다. 삼성원본/firmware/PDB/다른EXE없음·미서명이며새Windows/노트북실기는아직미검증입니다. 클라우드실제SDK/OEM/노트북예약접근0입니다.
+
+다음은사용자가위절차로확보한새결과만분석하는일입니다. 새해제시험은아직사용자가START하지않은예산1회이며,사용뒤실패·timeout·사전0도소모되어재실행/marker변경/다른계정·폴더우회0입니다. Pending이면강제종료하지않고관련실제정리를기다립니다. 새결과불일치/오류면추가해제·ON·자동복원하지않고TXT부터분석합니다. 저장후보1→0은임계값복원/100%충전·전기적결과가아닙니다. 다음일반제어설계에서동기IChargeLimitController getter에WMI를넣지않습니다. 사용자가보류한저장UI버그는이번변경범위가아닙니다. 아래는이전기록입니다.
+
 ## 최신 — 첫 관찰은 AC 미연결 방전·충전 효과 미평가 / 2026-11-09 한국 시간
 
 기준 `37a18d5` 뒤 사용자 관찰 TXT를 분석했습니다. 시작 후5~265초의16개 샘플 모두 `Disconnected/Discharging/Observed`, 잔량75→74%, 읽기오류·30초초과gap0입니다. 사용자가 충전기를 연결하지 않았다고 확인해 Windows 표시와 일치합니다. 배터리 기록·TXT 저장은 노트북에서 동작했지만 충전 중인 구간이 없어 제어 성공/실패를 판정하지 않습니다. [결과와 다음 AC 관찰](CHARGE_EFFECT_OBSERVATION_RESULT.md), [보호 해제 구체 구현 승인안](PROTECTION_1TO0_IMPLEMENTATION_PROPOSAL.md), [정제 검토](reports/charge-effect-and-off-proposal-review.json)를 먼저 읽습니다.

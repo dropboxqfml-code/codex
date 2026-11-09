@@ -13,6 +13,18 @@
     <Compile Include="../src/ATIVBatteryGuard.App/ViewModels/*.cs" />
     <Compile Include="../src/ATIVBatteryGuard.App/Services/IUserInteraction.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="WsabiWmiProtectionDisableAttemptTests.cs" />
+    <Compile Include="WsabiWmiProtectionDisableReviewTests.cs" />
+    <Compile Include="WsabiWmiProtectionDisableSetterReplyReviewTests.cs" />
+    <Compile Include="WsabiWmiProtectionDisableSessionTests.cs" />
+    <Compile Include="WsabiWmiProtectionDisableStageBindingTests.cs" />
+    <Compile Include="WsabiWmiWindowsProtectionDisableTrialTests.cs" />
+    <Compile Include="WsabiWmiProtection1To0ReservationTests.cs" />
+    <Compile Include="ProtectionDisableHostTests.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsProtectionDisableTrial.cs" Link="WmiInterop/WsabiWmiWindowsProtectionDisableTrial.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ProtectionDisableTrial/DisableTrialLifetime.cs" Link="ProtectionDisable/DisableTrialLifetime.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ProtectionDisableTrial/DisableTrialJournal.cs" Link="ProtectionDisable/DisableTrialJournal.cs" />
+    <Compile Include="../src/ATIVBatteryGuard.ProtectionDisableTrial/DisableTrialReport.cs" Link="ProtectionDisable/DisableTrialReport.cs" />
     <Compile Include="WsabiWmiProtection0To1ReviewTests.cs" />
     <Compile Include="BatteryObservationSessionTests.cs" />
     <Compile Include="ProtectionReviewObservationViewModelTests.cs" />

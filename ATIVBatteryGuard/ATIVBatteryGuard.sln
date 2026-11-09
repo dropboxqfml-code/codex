@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ATIVBatteryGuard.FixedReadT
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ATIVBatteryGuard.ProtectionTransitionTrial", "src\ATIVBatteryGuard.ProtectionTransitionTrial\ATIVBatteryGuard.ProtectionTransitionTrial.csproj", "{D4C45E7B-A852-431B-B5E0-10635DC6D7A4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ATIVBatteryGuard.ProtectionDisableTrial", "src\ATIVBatteryGuard.ProtectionDisableTrial\ATIVBatteryGuard.ProtectionDisableTrial.csproj", "{BE4DC3FF-FF8E-4DE0-B56E-1B07C1E396D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -70,6 +72,10 @@ Global
 		{D4C45E7B-A852-431B-B5E0-10635DC6D7A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D4C45E7B-A852-431B-B5E0-10635DC6D7A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D4C45E7B-A852-431B-B5E0-10635DC6D7A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE4DC3FF-FF8E-4DE0-B56E-1B07C1E396D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE4DC3FF-FF8E-4DE0-B56E-1B07C1E396D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE4DC3FF-FF8E-4DE0-B56E-1B07C1E396D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE4DC3FF-FF8E-4DE0-B56E-1B07C1E396D8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E0CEB533-418B-46A1-A7C2-BC8038D2BD6E} = {4EB66F9F-4A54-45C0-98AB-02608849F377}
@@ -80,5 +86,6 @@ Global
 		{F152D649-B1B6-4EBB-AE02-84E8E00A41DA} = {4EB66F9F-4A54-45C0-98AB-02608849F377}
 		{09DA4629-722A-4C0D-8F5A-A42B727D45C2} = {4EB66F9F-4A54-45C0-98AB-02608849F377}
 		{D4C45E7B-A852-431B-B5E0-10635DC6D7A4} = {4EB66F9F-4A54-45C0-98AB-02608849F377}
+		{BE4DC3FF-FF8E-4DE0-B56E-1B07C1E396D8} = {4EB66F9F-4A54-45C0-98AB-02608849F377}
 	EndGlobalSection
 EndGlobal

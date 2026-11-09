@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>ATIVBatteryGuard.ProtectionDisableTrial</AssemblyName>
+    <RootNamespace>ATIVBatteryGuard.ProtectionDisableTrial</RootNamespace>
+    <OutputType>Exe</OutputType>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <LangVersion>7.3</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ATIVBatteryGuard.Core/ATIVBatteryGuard.Core.csproj" />
+    <ProjectReference Include="../ATIVBatteryGuard.WmiInterop/ATIVBatteryGuard.WmiInterop.csproj" />
+    <Reference Include="System.Management" />
+    <Compile Include="../ATIVBatteryGuard.App/Diagnostics/ProcessElevationProbe.cs" Link="Diagnostics/ProcessElevationProbe.cs" />
+    <Compile Include="../ATIVBatteryGuard.FixedReadTrial/FixedReadPreflightTrace.cs" Link="Diagnostics/FixedReadPreflightTrace.cs" />
+    <Compile Include="../ATIVBatteryGuard.ProtectionTransitionTrial/WindowsProtectionPreflight.cs" Link="Diagnostics/WindowsProtectionPreflight.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

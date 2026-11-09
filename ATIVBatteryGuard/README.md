@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 승인된 보호 해제1회 도구 / 2026-11-09 한국 시간:** [새 해제 ZIP](../downloads/ATIVBatteryGuard-PROTECTION-1TO0.zip)과 [사용자 작업 순서](PROTECTION_1TO0_IMPLEMENTATION.md)를 제공합니다. 기존 일반 관찰 앱으로 **충전기 연결 상태의 기록을 먼저 저장**한 뒤, 별도 새 폴더의 새 해제EXE만 같은계정 수동관리자로 실행해 `Protection1To0-v1`·`Elevated` 확인 후 START를 한 번 입력합니다. 사전1 조회→설정0 최대1회→사후0 조회의 최대3호출이며 정상 후보일치·정리Complete 뒤에만 같은 충전기로 새 관찰을 비교합니다. 새973테스트통과·두Release빌드경고/오류0, 새Windows실기는미검증입니다. 자동ON복원·임계값복원·재실행은없고일반GUI제어Unsupported를유지합니다. 두ZIP파일은합치지않습니다. 아래는이전기록입니다.
+
 **최신 — 첫 관찰 수신·다음 제어 시험 구체화 / 2026-11-09 한국 시간:** [새 관찰 결과](CHARGE_EFFECT_OBSERVATION_RESULT.md)는 사용자가 충전기를 연결하지 않은16개의 방전 샘플(75→74%)입니다. 기록·저장은 동작했고 충전 제한 효과는 아직 평가할 구간이 없습니다. 현재 관찰 앱으로 AC 연결 중의 경과를 먼저 확인하며 새 설정은 하지 않습니다. [보호 해제 최소3회 구현 승인안](PROTECTION_1TO0_IMPLEMENTATION_PROPOSAL.md)을 작성했고 구현·새실기예산은 아직 없습니다. 저장 알림·폴더 접근·중복 파일 개선은 사용자 요청대로 후속 항목입니다. 코드·ZIP은 보존했고887테스트/두빌드0/0은 이전 검증입니다. 아래는 이전 기록입니다.
 
 **최신 — 보호 저장값 전환 확인·일반 권한 관찰판 / 2026-11-09 한국 시간:** 사용자 결과에서 사전 `0 / 0 / 0` → 사후 **`1 / 80 / 75`** 저장 후보 일치, SDK 7회·설정 1회·관련 정리 `Complete`가 보고됐습니다. [결과와 다음 개발](STORED_TRANSITION_RESULT_AND_OBSERVATION.md), [새 일반 GUI ZIP](../downloads/ATIVBatteryGuard-BATTERY-OBSERVATION.zip), [최신 검증](reports/stored-transition-observation-validation.json)을 제공합니다. 새 앱은 과거 TXT 검토와 기존 약 10초 주기 Windows 배터리 상태의 수동 관찰·로컬 저장을 추가합니다. 일반 권한으로 실행하며 새 OEM 조회·설정 호출은 없습니다. 실제 전기적 충전 제한과 현재 보호 상태는 미검증이므로 제어 `Unsupported`를 유지합니다. **아래 최초 설정 시험은 종료·소모됐으며 실행 절차를 반복하지 않습니다.** 기존 자료 재제출은 필요 없습니다. 아래는 이전 기록입니다.

@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "date_korea": "2026-11-09",
+  "baseline_commit": "213cdbae4ff55051e84624c431c259654d278b88",
+  "scope": "Internal fake-source routing and three-part actual-close handoff into fixed seven-stage owner; no live SDK leaf or request",
+  "source_sha256": {
+    "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionTransitionReview.cs": "3d5dbc02529cacf9f163e817151cc4633d042c79da38e21d8b24798e7e00f666",
+    "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiSevenStageCoordinator.cs": "2d1b40d961557202aaded95b8ef14a8df9a6ef323f8e01accb722ac019d28389",
+    "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionStageBinding.cs": "ec45508781505312e25ab46f803ddf14e002df6ca7615f0593a0ca1eec19f8ca",
+    "ATIVBatteryGuard/tests/WsabiWmiBoundTransitionEvidenceTests.cs": "13bef5051c01572993ddeeb5bbb1ede4a81ed31e3ea2b6504a0915b8a8fdfd10",
+    "ATIVBatteryGuard/tests/WsabiWmiProtectionStageBindingTests.cs": "2431bdbabcb1a66bfd5857f97706aced93c9bb46ec1ee1c1d85b911e82c4cb6e",
+    "ATIVBatteryGuard/tests/Program.cs": "fab595ec464a49d33c818e7533f7a21158672217fc8585a85ac4920a9ee6457a",
+    "ATIVBatteryGuard/tests/ATIVBatteryGuard.PortableTests.csproj": "1ed9469effa514969feb05fb9376f03236208cc8a68149431b351eba84900285"
+  },
+  "validation": {
+    "portable_suite": {
+      "passed": 804,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 804,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "new_groups": {
+      "evidence_model": 6,
+      "binding_handoff": 12
+    },
+    "parameter_iterations_are_not_additional_tests": true,
+    "portable_release": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "full_net48_reference_release": {
+      "warnings": 0,
+      "errors": 0,
+      "runtime_execution": false
+    },
+    "private_evidence_sha256": {
+      "portable-build.log": "89e7f452556c5c7964ec1a0e53b26d4cccb548499592314e4b54fff06f4b3cdd",
+      "net48-build.log": "c324861ff3b65a260c838f551ab8193d60ee0b292bfea53a4dc631b2567029bb",
+      "suite.json": "a0d339bd599978ad9509959748963f47fac628032b5b4e91e9814077f04a5f51",
+      "suite.log": "9f6e59010a3c97e9b5bc549ed15fb4e8f24db3ffd1628802cacc683ca3d43b72",
+      "audit.py": "7349a7e6246e27822d5cac390d46f83e74a3adcc0e7d60ec300868ddd71fd822"
+    },
+    "independent_review": "Binding, coordinator claim, model extension, and SDK handoff design read independently",
+    "review_fixes": [
+      "Snapshot stage array before validation",
+      "Atomic procedure claim through first role",
+      "Immediate uncertainty from a failed cleanup component while other components remain pending"
+    ],
+    "unchanged_permanent_gate_failure_hold_paths_are_source_review_only": true
+  },
+  "preserved": {
+    "unchanged_previous_source_files": 178,
+    "intentional_previous_core_source_changes": [
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionTransitionReview.cs",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WsabiWmiSevenStageCoordinator.cs"
+    ],
+    "all_previous_download_files_byte_equal": true,
+    "download_file_count": 87,
+    "sdk_app_fixed_requests_raw_reply_reviewers_controller_and_storage_source_unchanged": true,
+    "old_query65_a_access1_reservations_accessed_or_rearmed": false,
+    "new_archive_created": false
+  },
+  "contracts": {
+    "procedure_and_stage_resource_claims_are_process_local_not_trial_authorization": true,
+    "binding_check_uses_reference_identity_not_object_equals": true,
+    "same_target_reference_does_not_authenticate_firmware_address": true,
+    "stage_comparison_tuples_must_differ": true,
+    "comparison_uniqueness_does_not_prove_freshness_or_whole_sequence_reliability": true,
+    "actual_close_requires_invocation_end_output_cleanup_and_input_cleanup": true,
+    "failed_unknown_fault_or_cancel_is_not_complete": true,
+    "unused_stage_handles_must_have_no_prestarted_work_or_sdk_resources": true,
+    "fake_teardown_close_confirmation_is_not_production_recovery": true,
+    "new_read_evidence": "BoundReadCandidate",
+    "new_setter_evidence": "SetterReceiptAcceptedForReadback",
+    "legacy_acknowledgement_remains_distinct": true,
+    "old_public_enum_numeric_values_preserved": true,
+    "old_raw_reviewers_still_cannot_supply_current_observations": true
+  },
+  "interpretation": {
+    "hardware_control": "Unsupported",
+    "actual_write_budget": 0,
+    "new_notebook_windows_sdk_oem_global_or_hardware_observations": 0,
+    "new_request_frame_nonce_rng_target_resolver_encoder_sdk_leaf_or_app_entry": false,
+    "new_firmware_decode_search_execution_or_emulation": false,
+    "new_current_read_or_semantic_setter_success_evidence_produced": false,
+    "additional_notebook_run_or_upload_needed": false
+  },
+  "next": [
+    "Concrete fixed-request and gate-free SDK leaf implementation proposal",
+    "Separate explicit approval scope for setting implementation, offline verification and notebook trial"
+  ]
+}

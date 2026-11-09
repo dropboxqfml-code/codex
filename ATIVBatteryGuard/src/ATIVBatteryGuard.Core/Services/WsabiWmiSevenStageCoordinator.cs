@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -76,16 +77,19 @@ namespace ATIVBatteryGuard.Core.Services
     internal sealed class WsabiWmiSevenStageOperation
     {
         private readonly Func<WsabiWmiSevenStageStopView, Task<WsabiWmiProtectionTransitionObservation>> start;
+        private readonly object[] additionalClaimIdentities;
         internal WsabiWmiProtectionTransitionStage Role { get; }
         internal WsabiWmiSevenStageLifetime Lifetime { get; }
         internal WsabiWmiSevenStageOperation(WsabiWmiProtectionTransitionStage role,
             Func<WsabiWmiSevenStageStopView, Task<WsabiWmiProtectionTransitionObservation>> start,
-            WsabiWmiSevenStageLifetime lifetime)
+            WsabiWmiSevenStageLifetime lifetime, params object[] additionalClaimIdentities)
         {
             if (!Enum.IsDefined(typeof(WsabiWmiProtectionTransitionStage), role)) throw new ArgumentOutOfRangeException(nameof(role));
             Role = role; this.start = start ?? throw new ArgumentNullException(nameof(start));
             Lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
+            this.additionalClaimIdentities = (object[])(additionalClaimIdentities ?? throw new ArgumentNullException(nameof(additionalClaimIdentities))).Clone();
         }
+        internal object[] AdditionalClaimIdentities => (object[])additionalClaimIdentities.Clone();
         // Result is detached numeric evidence. ActualClose must cover Start's
         // stack, source workers, capture, input access and related cleanup.
         // Any result arriving after ActualClose must access no protected object.
@@ -120,6 +124,7 @@ namespace ATIVBatteryGuard.Core.Services
         private readonly object sync = new object();
         private readonly IWsabiWmiExchangeGate gate;
         private readonly WsabiWmiSevenStageOperation[] operations;
+        private readonly object[] claimIdentities;
         private readonly TimeSpan acquireTimeout, displayTimeout;
         private readonly WsabiWmiProtectionTransitionReview review = new WsabiWmiProtectionTransitionReview();
         private readonly WsabiWmiSevenStageStopIntent stop = new WsabiWmiSevenStageStopIntent();
@@ -146,15 +151,17 @@ namespace ATIVBatteryGuard.Core.Services
             if (operations.Length != WsabiWmiProtectionTransitionReview.MaximumStages)
                 throw new ArgumentException("The fixed seven roles are required.", nameof(operations));
             this.operations = (WsabiWmiSevenStageOperation[])operations.Clone();
+            var identities = new List<object>();
             for (int i = 0; i < this.operations.Length; i++)
             {
                 var item = this.operations[i];
                 if (item == null || item.Role != WsabiWmiProtectionTransitionReview.StageOrder[i])
                     throw new ArgumentException("The fixed evidence order is required.", nameof(operations));
-                for (int j = 0; j < i; j++)
-                    if (ReferenceEquals(item, this.operations[j]) || ReferenceEquals(item.Lifetime, this.operations[j].Lifetime))
-                        throw new ArgumentException("Each role needs its own operation and lifetime.", nameof(operations));
+                AddIdentity(identities, item);
+                AddIdentity(identities, item.Lifetime);
+                foreach (var identity in item.AdditionalClaimIdentities) AddIdentity(identities, identity);
             }
+            claimIdentities = identities.ToArray();
             if (acquireTimeout <= TimeSpan.Zero || acquireTimeout > WsabiWmiCooperativeFrameChannel.MaximumAcquireTimeout)
                 throw new ArgumentOutOfRangeException(nameof(acquireTimeout));
             if (displayTimeout <= TimeSpan.Zero || displayTimeout > WsabiWmiFrameExchange.MaximumTimeout)
@@ -352,13 +359,19 @@ namespace ATIVBatteryGuard.Core.Services
         {
             lock (claimSync)
             {
-                foreach (var operation in operations)
-                    if (claims.GetValue(operation, _ => new Claim()).Used || claims.GetValue(operation.Lifetime, _ => new Claim()).Used)
+                foreach (var identity in claimIdentities)
+                    if (claims.GetValue(identity, _ => new Claim()).Used)
                         return false;
-                foreach (var operation in operations)
-                { claims.GetValue(operation, _ => new Claim()).Used = true; claims.GetValue(operation.Lifetime, _ => new Claim()).Used = true; }
+                foreach (var identity in claimIdentities) claims.GetValue(identity, _ => new Claim()).Used = true;
                 return true;
             }
+        }
+        private static void AddIdentity(List<object> identities, object identity)
+        {
+            if (identity == null) throw new ArgumentException("Claim identities must be non-null.");
+            foreach (var existing in identities)
+                if (ReferenceEquals(existing, identity)) throw new ArgumentException("Stage resources must be distinct.");
+            identities.Add(identity);
         }
         private bool Stopped() { lock (sync) return stopReason.HasValue; }
         private WsabiWmiSevenStageStatus StopStatus() { lock (sync) return stopReason ?? WsabiWmiSevenStageStatus.Cancelled; }

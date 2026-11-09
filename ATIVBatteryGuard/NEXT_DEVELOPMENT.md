@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 응답 판정→전체 owner의 단계별 연결 대역 검증 / 2026-11-09 한국 시간
+
+기준 `213cdba` 다음 개발입니다. [바인딩·수명 인계 원형](BOUND_STAGE_HANDOFF_PROTOTYPE.md)을 먼저 읽습니다. 새 internal Binding/BoundStage/BindingPlan은 고정7역할·같은 procedure/target 참조·단계별 distinct source/input/observer/capture를 검사하고 정확한binding응답만 받습니다.7개 비교8tuple 중복과 자원 재포장을 거부하며 procedure도 첫역할을 통해 global atomic claim에 포함합니다. target은 borrowed로 소비하지 않습니다. 모두로컬객체대응이며실제주소·producer·freshness인증이아닙니다.
+
+세종료task(invocationEnd/outputClose/inputClose)를 별도로 인계해 모두정상/typedComplete여야 ActualClose입니다. 하나의실패/Unknown/fault/cancel은 다른taskpending중에도즉시Uncertainty이며조기해제하지않습니다. directStart throw/null은동기경계를유지합니다. Start전에는자원/작업0이어야하며 SDKobserver7개선등록의unused정리누락을허용하지않습니다. 실제SDKleaf는lazy준비또는절차전체unusedbarrier가필요합니다. 기존per-frameowner를반복/중첩하지않습니다.
+
+puremodel에 `BoundReadCandidate`·`SetterReceiptAcceptedForReadback` evidence를append하고기존enum숫자를보존했습니다. 새path는현재읽기/legacySetterAcknowledged를생성하지않으며 snapshot receipt=true/ack=false/boundcount6로구분합니다. 정상receipt뒤에도actualclose전에는postread0, close뒤에만독립readback을검토합니다. 모든caps/실제설정/충전성공false입니다.
+
+새model6+binding12 포함 **804통과·0실패·0skip**, portable/전체net48참조Release각각0경고·0오류입니다. [정제기록](reports/bound-stage-handoff-validation.json)에source/build/suite pin·범위를보존했습니다. Coremodel/coordinator/newbinding만의도수정했고실제SDK/App/기존고정요청/raw판정기/controller/storage와모든기존ZIP은보존했습니다. 실제Windows/SDK/OEM/Global/노트북예약접근0,원본decode/검색/실행0,request/frame/nonce/RNG/targetresolver/encoder/SDKleaf/Appentry추가0입니다. fake종료teardown은실제SDK복구가아니며기존gate영구불명분기는소스검토범위입니다.
+
+**다음은 gate를갖지않는일회용SDKleaf와고정요청을구현할구체안및별도명시승인범위를정하는작업**입니다. source의종료약속·binding참조를현재firmware/정확한대상/응답신선도의독립증거로바꾸지않습니다. 동결한selector/firmware검색·모든writer/livehash조건을재개하지않습니다. 실제쓰기예산0·Unsupported와기존A/Access1/Query65소모·marker조회/삭제/초기화/재사용0을유지합니다. 현재추가노트북실행·자료재제출·새GUI ZIP은필요없습니다. 아래는이전기록입니다.
+
 ## 최신 — 모드·임계값/설정 응답의 순수 분류 / 2026-11-09 한국 시간
 
 기준 `b6c99e5` 다음 개발입니다. [응답 판정 계약](PROTECTION_REPLY_CONTRACTS.md)을 먼저 읽습니다. internal `WsabiWmiProtectionReadReplyReview`는 여섯 읽기역할의 strict envelope/frame·실패prefix·control/tail·보존성분/8개비교를 검사합니다. mode는0/1,threshold는0..255이지만 sample==input-first는 합법byte여도 `AmbiguousInputEcho`, Candidate없음입니다. 역할label이나 비교일치를 target/fresh/current 인증으로 승격하지 않습니다.

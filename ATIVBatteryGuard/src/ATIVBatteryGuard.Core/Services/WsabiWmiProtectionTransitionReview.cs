@@ -10,7 +10,8 @@ namespace ATIVBatteryGuard.Core.Services
 
     public enum WsabiWmiProtectionTransitionEvidence
     {
-        Unknown, AcceptedCurrentRead, SetterAcknowledged, HistoricalRead, Rejected
+        Unknown, AcceptedCurrentRead, SetterAcknowledged, HistoricalRead, Rejected,
+        BoundReadCandidate, SetterReceiptAcceptedForReadback
     }
 
     public enum WsabiWmiProtectionTransitionReviewStatus
@@ -26,8 +27,10 @@ namespace ATIVBatteryGuard.Core.Services
         PostUpperMismatch, PostLowerMismatch, AlreadyTerminal
     }
 
-    // A caller-normalized fact for this pure review. AcceptedCurrentRead is not
-    // a freshness validator, SDK completion, hardware permission or approval.
+    // Caller-normalized categories for this pure review. AcceptedCurrentRead
+    // and BoundReadCandidate are not freshness validators, SDK completion,
+    // hardware permission or approval. A bound candidate's local association
+    // does not authenticate the target or firmware producer.
     // In particular, a historical Access1 result cannot be admitted as a current
     // observation merely because its numeric candidate was zero.
     public sealed class WsabiWmiProtectionTransitionObservation
@@ -63,6 +66,11 @@ namespace ATIVBatteryGuard.Core.Services
         public int? ObservedPreUpperByte { get; }
         public int? ObservedPreLowerByte { get; }
         public bool SetterAcknowledged { get; }
+        // The separate receipt path permits considering independent readback;
+        // it never states that the setter executed or changed stored state.
+        public bool SetterReceiptAccepted { get; }
+        // Accepted numeric stages only; not a count of hardware reads.
+        public int BoundReadCandidateCount { get; }
         public int? ObservedPostModeByte { get; }
         public int? ObservedPostUpperByte { get; }
         public int? ObservedPostLowerByte { get; }
@@ -76,11 +84,12 @@ namespace ATIVBatteryGuard.Core.Services
 
         internal WsabiWmiProtectionTransitionSnapshot(WsabiWmiProtectionTransitionReviewStatus status,
             WsabiWmiProtectionTransitionStage? nextStage, int acceptedStages, int?[] observations,
-            bool setterAcknowledged)
+            bool setterAcknowledged, bool setterReceiptAccepted, int boundReadCandidateCount)
         {
             Status = status; NextStage = nextStage; AcceptedStages = acceptedStages;
             ObservedPreModeByte = observations[0]; ObservedPreUpperByte = observations[1];
             ObservedPreLowerByte = observations[2]; SetterAcknowledged = setterAcknowledged;
+            SetterReceiptAccepted = setterReceiptAccepted; BoundReadCandidateCount = boundReadCandidateCount;
             ObservedPostModeByte = observations[4]; ObservedPostUpperByte = observations[5];
             ObservedPostLowerByte = observations[6];
         }
@@ -131,6 +140,8 @@ namespace ATIVBatteryGuard.Core.Services
         private readonly int?[] observations = new int?[MaximumStages];
         private int acceptedStages;
         private bool setterAcknowledged;
+        private bool setterReceiptAccepted;
+        private int boundReadCandidateCount;
         private WsabiWmiProtectionTransitionReviewStatus status = WsabiWmiProtectionTransitionReviewStatus.AwaitingObservation;
 
         // Required evidence order only, never an executable dispatch schedule.
@@ -162,17 +173,22 @@ namespace ATIVBatteryGuard.Core.Services
 
                 if (observation.Role == WsabiWmiProtectionTransitionStage.SemanticSet1)
                 {
-                    if (observation.Evidence != WsabiWmiProtectionTransitionEvidence.SetterAcknowledged)
+                    if (observation.Evidence != WsabiWmiProtectionTransitionEvidence.SetterAcknowledged &&
+                        observation.Evidence != WsabiWmiProtectionTransitionEvidence.SetterReceiptAcceptedForReadback)
                         return Stop(WsabiWmiProtectionTransitionDecisionStatus.UnexpectedEvidence);
                     if (observation.ByteValue.HasValue)
                         return Stop(WsabiWmiProtectionTransitionDecisionStatus.InvalidByteValue);
-                    // The acknowledgement merely permits considering the next
-                    // review stage. It is never interpreted as stored state.
-                    setterAcknowledged = true;
+                    // These are distinct caller-normalized categories. The
+                    // receipt path permits independent readback review without
+                    // pretending that a semantic setter success ACK exists.
+                    // Neither category is stored state or actual-close proof.
+                    setterAcknowledged = observation.Evidence == WsabiWmiProtectionTransitionEvidence.SetterAcknowledged;
+                    setterReceiptAccepted = observation.Evidence == WsabiWmiProtectionTransitionEvidence.SetterReceiptAcceptedForReadback;
                 }
                 else
                 {
-                    if (observation.Evidence != WsabiWmiProtectionTransitionEvidence.AcceptedCurrentRead)
+                    if (observation.Evidence != WsabiWmiProtectionTransitionEvidence.AcceptedCurrentRead &&
+                        observation.Evidence != WsabiWmiProtectionTransitionEvidence.BoundReadCandidate)
                         return Stop(WsabiWmiProtectionTransitionDecisionStatus.UnexpectedEvidence);
                     if (!observation.ByteValue.HasValue || observation.ByteValue.Value < 0 || observation.ByteValue.Value > 255)
                         return Stop(WsabiWmiProtectionTransitionDecisionStatus.InvalidByteValue);
@@ -193,6 +209,8 @@ namespace ATIVBatteryGuard.Core.Services
                             if (value != 75) return Stop(WsabiWmiProtectionTransitionDecisionStatus.PostLowerMismatch);
                             break;
                     }
+                    if (observation.Evidence == WsabiWmiProtectionTransitionEvidence.BoundReadCandidate)
+                        boundReadCandidateCount++;
                 }
 
                 acceptedStages++;
@@ -210,7 +228,8 @@ namespace ATIVBatteryGuard.Core.Services
                 ? (WsabiWmiProtectionTransitionStage?)stages[acceptedStages] : null;
 
         private WsabiWmiProtectionTransitionSnapshot SnapshotCore()
-            => new WsabiWmiProtectionTransitionSnapshot(status, NextStageCore(), acceptedStages, observations, setterAcknowledged);
+            => new WsabiWmiProtectionTransitionSnapshot(status, NextStageCore(), acceptedStages, observations,
+                setterAcknowledged, setterReceiptAccepted, boundReadCandidateCount);
 
         private WsabiWmiProtectionTransitionDecision Decision(WsabiWmiProtectionTransitionDecisionStatus decision)
             => new WsabiWmiProtectionTransitionDecision(decision, SnapshotCore());

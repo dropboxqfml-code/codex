@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 단계별 응답 대응과 종료 인계의 대역 연결 / 2026-11-09 한국 시간
+
+[내부 바인딩 원형](BOUND_STAGE_HANDOFF_PROTOTYPE.md)으로 응답 판정과 전체 owner를 연결했습니다. 로컬 참조·자원 일회용·비교8tuple중복 검사와 세 종료task의 독립 join을 검증했고, 새 receipt evidence는 setter실행·저장변화·실제충전성공으로 승격하지 않습니다. 새18개 포함804통과·두 Release빌드0경고·0오류입니다. 이는 대역 연결 검증으로서 새 firmware source·노트북 관측이 아닙니다.
+
+실제 고정주소/요청·SDKleaf·App은 추가하지 않았습니다. SDK수명설계는 기존invoke stack/terminal/capture·handler/output/subscription·input정리의 합성이며 미시작단계자원을 선등록하지 않는 조건을 명시합니다. 로컬 binding이나 종료task약속은 hardware/freshness인증이 아닙니다. 실제쓰기0·Unsupported·기존소모예약보존,새실기/자료재제출불필요를 유지합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 조회 후보와 setter 응답의 의미 분리 / 2026-11-09 한국 시간
 
 [순수 응답 판정기](PROTECTION_REPLY_CONTRACTS.md)를 구현했습니다. 임계값 전체byte 영역은 입력 첫 성분과 겹치므로 같은 값은 합법적인 read와 미갱신echo를 구별하지 못하며 후보 없이 보류합니다. 선택 setter는 전체10개 메시지byte를 보존하므로 정상echo도 `ReceiptOnly`입니다. 이는 저장된 proof의 재적용이며 새 firmware decode·source 발견·실기 관측이 아닙니다. 공통 실패의0표본, 형식·보존·domain 검사와 귀속 한계를 회귀로 보존했습니다.

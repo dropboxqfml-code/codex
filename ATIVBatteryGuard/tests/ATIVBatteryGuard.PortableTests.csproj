@@ -90,6 +90,8 @@
     <Compile Include="WsabiWmiSevenStageCoordinatorTests.cs" />
     <Compile Include="WsabiWmiProtectionReadReplyReviewTests.cs" />
     <Compile Include="WsabiWmiProtectionSetterReplyReviewTests.cs" />
+    <Compile Include="WsabiWmiBoundTransitionEvidenceTests.cs" />
+    <Compile Include="WsabiWmiProtectionStageBindingTests.cs" />
     <Compile Include="FixedReadAccess1ReviewViewModelTests.cs" />
     <Compile Include="WsabiWmiFixedReadPreparationTests.cs" />
     <Compile Include="FixedReadTrialHostTests.cs" />

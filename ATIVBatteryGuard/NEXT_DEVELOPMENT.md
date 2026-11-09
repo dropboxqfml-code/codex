@@ -1,5 +1,17 @@
 # 다음 개발 재개 메모
 
+## 최신 — 80% 충전 억제·1→0 해제 후85% 충전 실기 확인 / 2026-11-09 한국 시간
+
+기준 `e0666d6` 뒤사용자가해제전·해제·해제후TXT3개를제출했습니다. [결과와GUI계획](PROTECTION_CONTROL_FUNCTIONAL_RESULT_AND_GUI_PLAN.md), [정제집계](reports/protection-off-before-after-result-review.json), [전후그래프](reports/protection-before-after-charging.png)를먼저읽습니다. **이번노트북의전후시험에서80%충전억제와해제뒤충전재개를기능적으로확인했습니다.** 단일NotCharging표시나저장후보뿐인단계로축소하지않습니다.
+
+해제전123샘플:처음4개AC미연결뒤119개연결·AC구간62→80%,마지막20개는80%/NotCharging(1413~1654초,첫끝샘플간241초). 해제는Elevated/Claimed/Ready·pre1/post0·read2/receipt·실제종료뒤SDK3/set1·Complete이며두3역할블록일치입니다. 해제후35개모두Connected/Charging·80→85%,새세션68초첫81%·마지막438초85%(샘플간430초). 두관찰모두Observed/오류0/gap0/간격10~20초입니다. 두세션상대시간을연결하거나샘플간상태를보간하지않습니다.
+
+다음은새단발도구보다 **일반GUI수동제어베타**가우선입니다. 동기IChargeLimitController getter에WMI를넣지않고새async operationservice·마지막조회snapshot·일반GUI/고정관리자helper·동일작업로컬IPC·처리중재클릭차단·실제join/Unknown/Pending경계를구현할구체범위를잡습니다. 제안예산은명시적상태확인read3/켜기최대7(set1≤1)/해제최대3(set0≤1)이며사전/사후조회포함·이미목표모드면쓰기0·retry/자동토글/원복0입니다. 이는반복실사용의새제안범위이지기존소모시험의승인이나marker재사용이아닙니다. 구체승인전실제추가code/호출0이며과거proof탐색·같은단발시험을반복하지않습니다.
+
+저장폴더버튼을관찰카드옆에두기·명확한저장완료/파일명·같은내용중복저장방지를동일버전의작은수정에포함합니다. 지금의Unsupported문구는GUI연결미구현을뜻하며하드웨어경로부재로설명하지않습니다. 실제제어버튼은이번분석으로자동활성화하지않았습니다. 다른모델·100%완충·75하한재개·재부팅/절전지속·전류/충전기레지스터독립측정은미검증으로분리합니다.
+
+**새1→0시험도종료·소모됐으므로모든기존단발도구재실행/예약조회·삭제·변경·재사용0입니다.** 추가시험·기존자료재제출은지금필요없습니다. 이번변경은분석/그래프/계획뿐이며src213·tests91·ZIP68개동일,빌드/회귀재실행0·973/두Release0/0은이전검증입니다. 아래는이전기록입니다.
+
 ## 최신 — 승인된 보호 해제1→0 전용 도구 구현·배포 / 2026-11-09 한국 시간
 
 기준 `f5f00d8` 뒤 사용자가 [구체안](PROTECTION_1TO0_IMPLEMENTATION_PROPOSAL.md)의 구현·검증·공유와1회 시험 범위를 명시 승인했습니다. [구현·사용자 순서](PROTECTION_1TO0_IMPLEMENTATION.md), [사용 안내 전문](PROTECTION_1TO0_USER_STEPS.txt), [정제 검증](reports/protection-1to0-implementation-validation.json)을 먼저 읽습니다. 새 ZIP은 [ATIVBatteryGuard-PROTECTION-1TO0.zip](../downloads/ATIVBatteryGuard-PROTECTION-1TO0.zip) 하나이며 관찰 앱과 폴더를 합치지 않습니다.

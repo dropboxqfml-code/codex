@@ -1,4 +1,10 @@
-# ATIV Battery Guard — 보호 해제1회 시험과 충전 경과 비교
+# ATIV Battery Guard — 충전 제한·해제 실기 확인
+
+2026-11-09 한국 시간. [전후실기결과와다음GUI개발계획](../ATIVBatteryGuard/PROTECTION_CONTROL_FUNCTIONAL_RESULT_AND_GUI_PLAN.md)
+
+기존노트북시험에서AC연결중80%충전억제·모드1→0해제·이후85%충전재개를기능적으로확인했습니다. 다음은일반GUI수동제어를연결하는단계입니다. **아래모든단발시험은종료·소모됐으므로다시실행하거나예약을변경하지않습니다.** 이번갱신은결과분석·계획이며새프로그램ZIP은없습니다. 기존ZIP은각배포시점byte로보존했습니다. 현재같은시험·자료재제출은필요없습니다.
+
+## 이전 — 보호 해제1회 시험과 충전 경과 비교
 
 2026-11-09 한국 시간. [새 보호 해제 ZIP](ATIVBatteryGuard-PROTECTION-1TO0.zip) · [실행·검증 안내](../ATIVBatteryGuard/PROTECTION_1TO0_IMPLEMENTATION.md) · [사용자 작업 순서 전문](../ATIVBatteryGuard/PROTECTION_1TO0_USER_STEPS.txt)
 

@@ -1,5 +1,7 @@
 # 승인된 보호 해제1→0 단발 도구
 
+**결과 수신·시험 종료 / 2026-11-09 한국 시간:** 사전모드1→사후모드0·SDK3/set1·관련정리Complete와,해제전80%충전정지/해제후85%까지충전재개를보고받았습니다. [기능검증결과·다음개발](PROTECTION_CONTROL_FUNCTIONAL_RESULT_AND_GUI_PLAN.md)을참조합니다. **이시험은종료·소모됐으며아래실행절차를다시수행하지않습니다.** 원래EXE/ZIP은당시byte로보존합니다. 아래는배포당시기록입니다.
+
 2026-11-09 한국 시간. 기준 `f5f00d8` 뒤 사용자가 [구체 구현안](PROTECTION_1TO0_IMPLEMENTATION_PROPOSAL.md)에 **“알겠어 승인할게. 제어 검증할때 어떤 작업을 원하는지 사용자한테 말해줘야해. 작업 진행해.”**라고 명시 승인했습니다. 승인된 구현·오프라인 검증·다운로드 제공과 사용자 직접START 후 준비1회/SDK최대3회/read2/set0최대1의 범위입니다. 클라우드에서는 실제 노트북·Windows SDK·OEM·시험 예약을 호출하지 않았습니다.
 
 [새 해제 도구 ZIP](../downloads/ATIVBatteryGuard-PROTECTION-1TO0.zip) · [사용자 작업 순서 전문](PROTECTION_1TO0_USER_STEPS.txt) · [새 검증·해시](reports/protection-1to0-implementation-validation.json)

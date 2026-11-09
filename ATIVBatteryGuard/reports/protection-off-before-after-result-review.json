@@ -1,0 +1,231 @@
+{
+  "schema": 1,
+  "date_korea": "2026-11-09",
+  "baseline_commit": "e0666d6187ec0331eeba6157c3146556e0220205",
+  "before": {
+    "samples": 123,
+    "first_elapsed_seconds": 2,
+    "last_elapsed_seconds": 1654,
+    "sample_span_seconds_not_continuous_coverage": 1652,
+    "first_percent": 63,
+    "last_percent": 80,
+    "minimum_percent": 62,
+    "maximum_percent": 80,
+    "ac_connected_samples": 119,
+    "ac_disconnected_samples": 4,
+    "charging_samples": 99,
+    "not_charging_samples": 20,
+    "discharging_samples": 4,
+    "read_errors_reported": 0,
+    "gaps_over_30_seconds": 0,
+    "all_quality_observed": true,
+    "sample_intervals_seconds": [
+      10,
+      20
+    ],
+    "ac_interval": {
+      "first_elapsed_seconds": 72,
+      "first_percent": 62,
+      "last_elapsed_seconds": 1654,
+      "last_percent": 80
+    },
+    "upper_plateau": {
+      "percent": 80,
+      "state": "NotCharging",
+      "samples": 20,
+      "first_elapsed_seconds": 1413,
+      "last_elapsed_seconds": 1654,
+      "sample_span_seconds_not_continuous_coverage": 241
+    }
+  },
+  "disable_trial": {
+    "purpose": "Protection1To0-v1",
+    "token_reported": "Elevated",
+    "reservation_reported": "Claimed",
+    "preflight_reported": "Ready",
+    "before_mode_candidate": 1,
+    "after_mode_candidate": 0,
+    "read_candidates": 2,
+    "setter_reply": "ReceiptOnly",
+    "sdk_entries_after_actual_close_reported": 3,
+    "setter_entries_after_actual_close_reported": 1,
+    "both_ordered_three_role_diagnostic_blocks_match": true,
+    "required_success_lines_checked_once": 24,
+    "cleanup_reported": "Complete",
+    "trial_consumed_and_closed": true
+  },
+  "after": {
+    "samples": 35,
+    "first_elapsed_seconds": 8,
+    "last_elapsed_seconds": 438,
+    "sample_span_seconds_not_continuous_coverage": 430,
+    "first_percent": 80,
+    "last_percent": 85,
+    "minimum_percent": 80,
+    "maximum_percent": 85,
+    "ac_connected_samples": 35,
+    "ac_disconnected_samples": 0,
+    "charging_samples": 35,
+    "not_charging_samples": 0,
+    "discharging_samples": 0,
+    "read_errors_reported": 0,
+    "gaps_over_30_seconds": 0,
+    "all_quality_observed": true,
+    "sample_intervals_seconds": [
+      10,
+      20
+    ],
+    "first_above_80_percent": {
+      "session_elapsed_seconds": 68,
+      "percent": 81
+    },
+    "samples_above_80_percent": 30
+  },
+  "assessment": {
+    "intended_stored_mode_transition_reported": true,
+    "single_notebook_before_after_functional_control_demonstrated": true,
+    "evidence_basis": "Charging to80 then20 connected NotCharging samples; reported stored1to0 and cleanup;35 connected Charging samples rising80to85",
+    "raw_firmware_frames_or_electrical_current_revalidated": false,
+    "full_100_percent_lower75_restart_reboot_sleep_other_devices_validated": false,
+    "device_identity_absolute_times_and_physical_charger_continuity_authenticated": false,
+    "session_relative_times_joined_into_continuous_timeline": false,
+    "present_mode_guaranteed_from_historical_report": false,
+    "additional_experiment_or_original_material_resubmission_needed_now": false
+  },
+  "validation": {
+    "existing_source_files_byte_identical": 213,
+    "existing_test_files_byte_identical": 91,
+    "existing_zip_files_byte_identical": 68,
+    "input_csv_metadata_counts_categories_and_intervals_match": true,
+    "source_modified_or_new_executable_produced": false,
+    "csharp_build_or_regression_rerun": false,
+    "previous_build_only": {
+      "commit": "e0666d6187ec0331eeba6157c3146556e0220205",
+      "passed": 973,
+      "failed": 0,
+      "skipped": 0,
+      "portable_and_full_net48_reference_warnings_errors": [
+        0,
+        0
+      ]
+    },
+    "real_cloud_oem_windows_sdk_or_notebook_marker_access": false
+  },
+  "figure": {
+    "file": "protection-before-after-charging.png",
+    "sha256": "ce9131fe9231b3d03028e278eeaa2018cbaf5b6cfa18cca3aa25bd19177c4757",
+    "separate_relative_time_panels": true,
+    "samples_only_no_interpolation": true,
+    "personal_paths_names_ids_absolute_times_or_raw_uploads_included": false
+  },
+  "analysis_script_sha256": "6d2e1853c500c5fdf3dac1b29f608a032bdc6415c80c9a3ffc5b9d18cab2edb9",
+  "independent_review": {
+    "schema": 1,
+    "review": "Independent read-only CSV and fixed disable-result comparison; source files were data only",
+    "before": {
+      "samples": 123,
+      "first_elapsed_seconds": 2,
+      "last_elapsed_seconds": 1654,
+      "first_percent": 63,
+      "first_ac_connected_elapsed_seconds": 72,
+      "first_ac_connected_percent": 62,
+      "last_percent": 80,
+      "disconnected_samples": 4,
+      "connected_samples": 119,
+      "discharging_samples": 4,
+      "charging_samples": 99,
+      "not_charging_samples": 20,
+      "plateau80_first_elapsed_seconds": 1413,
+      "plateau80_last_elapsed_seconds": 1654,
+      "plateau80_sample_count": 20,
+      "plateau80_sample_span_seconds_not_continuous_coverage": 241
+    },
+    "off": {
+      "required_success_lines_present_once": 23,
+      "both_ordered_three_role_blocks_match": true,
+      "token": "Elevated",
+      "reservation": "Claimed",
+      "preflight": "Ready",
+      "pre_mode_candidate": 1,
+      "post_mode_candidate": 0,
+      "accepted_read_candidates": 2,
+      "setter_reply": "ReceiptOnly",
+      "sdk_entries_after_actual_close_reported": 3,
+      "setter_entries_after_actual_close_reported": 1,
+      "related_cleanup_reported": "Complete"
+    },
+    "after": {
+      "samples": 35,
+      "first_elapsed_seconds": 8,
+      "last_elapsed_seconds": 438,
+      "sample_span_seconds_not_continuous_coverage": 430,
+      "first_percent": 80,
+      "last_percent": 85,
+      "connected_charging_samples": 35,
+      "first_percent_over80": 81,
+      "first_percent_over80_elapsed_seconds": 68,
+      "samples_over80": 30
+    },
+    "both_observations": {
+      "all_quality_observed": true,
+      "reported_read_errors": 0,
+      "reported_or_recomputed_gaps_over30_seconds": 0,
+      "sample_interval_min_seconds": 10,
+      "sample_interval_max_seconds": 20,
+      "summary_counts_and_last_elapsed_match_rows": true
+    },
+    "conclusion": "The supplied single-notebook before/after test demonstrates intended Windows-observed 80-percent charging inhibition followed by charging beyond80 after the reported stored-mode1-to0 transition; this is stronger than an isolated NotCharging sample.",
+    "limits": [
+      "Raw response frames and report authenticity were not independently authenticated",
+      "Samples are discrete and sessions have separate relative time bases",
+      "Between-file interval and physical adapter continuity are not recorded",
+      "Electrical current and charger registers were not measured",
+      "Lower75 restart, reboot or sleep persistence, full100 charging, and other-device support were not tested"
+    ],
+    "repository_files_modified": false,
+    "notebook_or_oem_calls": 0,
+    "new_firmware_control_code": false
+  },
+  "next_development_plan": {
+    "target": "Manual protection controls integrated into the ordinary GUI for the validated profile",
+    "current_gui_control_implemented_or_automatically_enabled": false,
+    "new_experiment_or_repeat_upload_needed_to_assess_this_result": false,
+    "priority_order": [
+      "Async operation service with immutable cached last-read state, separate from desired mode and Windows percent",
+      "Ordinary GUI plus explicit-click same-account elevated fixed helper and bounded local request/result contract",
+      "Busy/Unknown/Pending guards and actual invocation-output-input cleanup without timeout kill or automatic retry",
+      "Visible save confirmation, nearby folder button, and same-content duplicate-save suppression",
+      "Existing973 and new async/helper/IPC/stale-result/cancellation/cleanup regressions and model-limited package validation"
+    ],
+    "proposed_operation_sdk_limits_including_its_pre_post_reads": {
+      "explicit_mode_upper_lower_read": 3,
+      "enable80": 7,
+      "disable_protection": 3
+    },
+    "maximum_setter_per_explicit_enable_or_disable_operation": 1,
+    "already_requested_mode_performs_no_setting": true,
+    "mode_one_alone_does_not_prove_thresholds80_and75": true,
+    "disable_zero_not_labelled_full100_charge_success": true,
+    "oem_calls_from_property_getters_or_regular_battery_poll": 0,
+    "arbitrary_command_address_frame_threshold_or_executable_path_input": false,
+    "old_readonly_worker_timeout_kill_pattern_reused_for_control": false,
+    "automatic_retry_reverse_repair_restore_startup_service_or_boot_apply": false,
+    "existing_consumed_trial_purposes_or_markers_reset_or_reused": false,
+    "implementation_or_runtime_hardware_scope_approved_by_current_analysis_request": false,
+    "future_scope_to_define": "App-specific manual operation authorization, request/result attribution, persistence of in-progress operations, per-action bounds and explicit implementation agreement",
+    "limited_profile": "Windows10x64 / 940X3G/930X3G / existing P05ACJ profile",
+    "lower75_reboot_sleep_and_other_models_deferred_until_manual_beta": true
+  },
+  "plan_and_source_sha256": {
+    "PROTECTION_CONTROL_FUNCTIONAL_RESULT_AND_GUI_PLAN.md": "56c27266cc0ce7e1d55f6d23d737078c0c38a5a57a1f61a220c0289afe60cca5",
+    "src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs": "7d26f343e3733ccae5d7f86551d9b43966caf146dc712bbc2b26d0b6194903b8",
+    "src/ATIVBatteryGuard.App/Diagnostics/WindowsSamsungFileInspectionProvider.cs": "b54b936c3df83cbcf2a050be387b20b34f30ede6895a522552330e54547f2637",
+    "src/ATIVBatteryGuard.Core/Hardware/IChargeLimitController.cs": "7bf239f390e4d7a4b50954c8c2d84842c7f9cfe4f2e679f99074116b75dc137b",
+    "src/ATIVBatteryGuard.Core/Hardware/UnsupportedChargeLimitController.cs": "29da935d82448fc674657b7759c7da3b7eb92ffde50dd7e0afc4b296889b1cd3",
+    "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionTransitionAttempt.cs": "6c202c9f91a150b603dddee66ad1ca1d66a7e414b2e5236b0dd09f86adfa7059",
+    "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionDisableAttempt.cs": "98b4877a777b5741d9998f95698620b4f27cbef959484fda20d7066fe7c914c3",
+    "src/ATIVBatteryGuard.ProtectionDisableTrial/Program.cs": "323db077cea51c81372c773625a30516daf1db4593d9f815d6fbb215972e62f8",
+    "PROTECTION_1TO0_IMPLEMENTATION_PROPOSAL.md": "86b938b01daebb4c231f2a986f7c94c1951d89b3b0548cd3af51cea9c9f0ae55"
+  },
+  "private_independent_evidence_sha256": "d9c70d52eb04e69d33cc48798236d086a7426d44376e5b933a99b7a5106d0eca"
+}

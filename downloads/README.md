@@ -1,4 +1,16 @@
-# ATIV Battery Guard — Access1 조회 기록 검토판
+# ATIV Battery Guard — 보호 전환 기록·Windows 배터리 관찰판
+
+2026-11-09 한국 시간. [일반 권한 GUI ZIP](ATIVBatteryGuard-BATTERY-OBSERVATION.zip) · [결과·사용 안내](../ATIVBatteryGuard/STORED_TRANSITION_RESULT_AND_OBSERVATION.md) · [최신 검증·해시](../ATIVBatteryGuard/reports/stored-transition-observation-validation.json)
+
+사용자 시험에서 저장 후보가 **`0 / 0 / 0` → `1 / 80 / 75`**로 전환됐고 SDK7/set1·관련 정리 `Complete`가 보고됐습니다. 최초 설정 시험은 종료·소모됐으며 기존 시험 EXE를 다시 실행하지 않습니다. 충전기의 실제 전기적 제한·현재 보호 상태·지속성은 아직 확인하지 않았습니다.
+
+이 ZIP 하나를 새 폴더에 전부 풀고 **ATIVBatteryGuard.exe를 일반 권한으로 실행**합니다. 이미 보관한 Protection0To1-v1 TXT를 선택적으로 붙여넣어 과거 기록을 검토하거나, **새 관찰 시작 → 관찰 중단 → 관찰 TXT 저장**으로 평소 사용 중 Windows 배터리 상태를 기록할 수 있습니다. 새 기록은 설정 폴더의 `battery-observation-*.txt`이며 명시 저장 전에는 파일을 만들지 않습니다. 기존 TXT·삼성 DLL·EXE를 다시 제출할 필요가 없습니다.
+
+관찰은 기존 약10초 주기의 배터리 조회 결과만 재사용하며 최대2시간·721개, 결측/Unknown 표시와 Mock 제외를 적용합니다. 새 OEM 조회·설정·관리자 권한·예약 접근·네트워크 통신은 없고 80%·NotCharging을 제한 성공으로 판정하지 않습니다. 실제 보호 조회·제어는 Unsupported입니다. 삼성 원본·WmiInterop·실험 EXE·펌웨어·사용자 원문은 ZIP에 포함하지 않습니다. Windows10 x64/.NET Framework4.8용 미서명 개발판이며 새 GUI의 Windows 실기는 미확인입니다.
+
+아래는 이전 배포 이력입니다. 과거 단발 도구의 실행 절차는 반복하지 않습니다.
+
+## 이전 — Access1 조회 기록 검토판
 
 2026-11-08. [일반권한 메인앱 ZIP](ATIVBatteryGuard-ACCESS1-RECORD-REVIEW.zip) · [결과·실행안내](../ATIVBatteryGuard/ACCESS1_STORED_ZERO_RESULT_AND_NEXT.md) · [다음 전환검토](../ATIVBatteryGuard/PROTECTION_TRANSITION_REVIEW.md)
 

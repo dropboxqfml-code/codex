@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — 보호 저장값0/0/0→1/80/75 보고 수신·시험 종료 / 2026-11-09 한국 시간
+
+기준 `039492e` 뒤 사용자가 최초 설정 시험 결과를 전달했습니다. [결과·관찰 안내](STORED_TRANSITION_RESULT_AND_OBSERVATION.md)와 [새 검증 기록](reports/stored-transition-observation-validation.json)을 먼저 읽습니다. 사전 모드/상한/하한 `0 / 0 / 0`에서 사후 `1 / 80 / 75`로 저장 후보 전환이 보고됐고, 읽기 후보6개·설정 `ReceiptOnly`·실제 종료 뒤 SDK7/set1·관련 정리 `Complete`입니다. 이는 설정 저장 경로의 유의미한 성공 보고이며 충전기·전기적 제한·지금의 actualMode·지속성의 증거로 확대하지 않습니다. 기존 도구의 `설정 효과: Unknown`은 설정 역할 입장 시의 고정 주의 문구로 독립 사후 후보 일치를 취소하지 않습니다.
+
+새 일반 GUI는 과거 Protection0To1-v1 TXT의 엄격한 오프라인 검토와 기존 Windows 배터리 스냅샷의 수동 관찰·로컬 내보내기를 추가합니다. [관찰판 ZIP](../downloads/ATIVBatteryGuard-BATTERY-OBSERVATION.zip) 하나를 새 폴더에 풀어 일반 권한으로 실행합니다. 시작은 추가 조회 없이 다음 기존 약10초 갱신부터 기록하고, 최대2시간/721개·결측/Unknown·Mock 제외를 적용합니다. 저장 버튼을 누를 때만 설정 폴더에 새 `battery-observation-*.txt`를 만듭니다. 80%·NotCharging을 성공으로 자동 판정하지 않습니다. 새 OEM·WMI·펌웨어 호출·타이머·marker 접근·actualMode 변경·제어 활성화는 없습니다.
+
+**Protection0To1-v1 및 과거 Query65/A/Access1은 모두 종료·소모됐습니다.** 기존 시험 EXE와 ZIP은 당시 바이트로 보존하되 실행 절차를 반복하거나 예약을 조회·변경·삭제·재사용하지 않습니다. 추가 조회/쓰기·OFF·역방향·복원·재시도는 승인되지 않았으며 일반 앱의 실제 보호 조회·제어는 `Unsupported`입니다. 다음은 재설정 없이 일상 사용 중 Windows 상태의 경과를 검토하는 일입니다. 기존 TXT·진단·삼성 DLL·EXE 재제출은 필요 없습니다. 아래는 이전 기록입니다.
+
 ## 최신 — 승인된 Protection0To1-v1 최초 설정 단발 도구 구현·배포 / 2026-11-09 한국 시간
 
 기준 `462a7f2` 뒤 사용자가 [구체안](PROTECTION_0TO1_IMPLEMENTATION_PROPOSAL.md)에 **“그래 진행해.”**로 명시 승인했습니다. [구현·실행 안내](PROTECTION_0TO1_IMPLEMENTATION.md)와 [정제 검증](reports/protection-0to1-implementation-validation.json)을 먼저 읽습니다. 새 ZIP은 [ATIVBatteryGuard-PROTECTION-0TO1.zip](../downloads/ATIVBatteryGuard-PROTECTION-0TO1.zip) 하나이며 같은계정수동관리자·새EXE·Protection0To1-v1/Elevated확인·직접START뒤에만 새준비1회/max7SDK(read6/set1)/sample6입니다. 모드1·80/75 덮어쓰기와 OFF/복원/재부팅원복보장없음을승인범위·도구·ZIP안내에명시했습니다.

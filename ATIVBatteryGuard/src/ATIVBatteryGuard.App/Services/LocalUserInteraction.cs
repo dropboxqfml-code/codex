@@ -92,6 +92,12 @@ namespace ATIVBatteryGuard.Services
 			return "삼성 파일 정보를 새 samsung-files TXT에 저장했습니다.";
 		}
 
+		public string SaveBatteryObservation(string text)
+		{
+			SaveLocalText("battery-observation-", text);
+			return "관찰 기록을 설정 폴더의 새 battery-observation TXT에 저장했습니다. 업로드하지 않았습니다.";
+		}
+
 		private void SaveLocalText(string prefix, string text)
 		{
 			EnsureLocalDirectory();

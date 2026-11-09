@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using ATIVBatteryGuard.Core.Hardware;
@@ -39,6 +40,14 @@ namespace ATIVBatteryGuard.ViewModels
 		private string fixedReadReviewInput = string.Empty;
 
 		private WsabiWmiFixedReadAccess1Review fixedReadReview = WsabiWmiFixedReadAccess1Review.Empty;
+
+		private string protectionReviewInput = string.Empty;
+
+		private WsabiWmiProtection0To1Review protectionReview = WsabiWmiProtection0To1Review.Empty;
+
+		private readonly BatteryObservationSession observation = new BatteryObservationSession();
+
+		private readonly Stopwatch observationClock = new Stopwatch();
 
 		private readonly ISamsungAnalysisBundleService samsungAnalysis;
 
@@ -174,6 +183,54 @@ namespace ATIVBatteryGuard.ViewModels
 		public bool FixedReadReviewHasReportedStoredModeCandidate => fixedReadReview.HasReportedStoredModeCandidate;
 
 		public int? FixedReadReviewStoredModeCandidate => fixedReadReview.StoredModeCandidate;
+
+		public RelayCommand ReviewProtectionResultCommand { get; }
+
+		public RelayCommand ClearProtectionReviewCommand { get; }
+
+		public string ProtectionReviewInput
+		{
+			get { return protectionReviewInput; }
+			set
+			{
+				if (disposed) return;
+				string input = value ?? string.Empty;
+				if (input == protectionReviewInput) return;
+				if (input.Length > WsabiWmiProtection0To1ReviewParser.MaximumCharacters)
+				{
+					protectionReviewInput = string.Empty;
+					protectionReview = WsabiWmiProtection0To1ReviewParser.Parse(input);
+				}
+				else
+				{
+					protectionReviewInput = input;
+					protectionReview = WsabiWmiProtection0To1Review.Empty;
+				}
+				NotifyProtectionReview();
+			}
+		}
+
+		public string ProtectionReviewText => protectionReview.ToDisplayText();
+
+		public WsabiWmiProtection0To1ReviewStatus ProtectionReviewStatus => protectionReview.Status;
+
+		public bool ProtectionReviewHasReportedStoredTransition => protectionReview.HasReportedStoredTransition;
+
+		public RelayCommand StartBatteryObservationCommand { get; }
+
+		public RelayCommand StopBatteryObservationCommand { get; }
+
+		public RelayCommand ClearBatteryObservationCommand { get; }
+
+		public RelayCommand SaveBatteryObservationCommand { get; }
+
+		public string ObservationText => observation.ToDisplayText();
+
+		public bool ObservationActive => observation.IsRecording;
+
+		public int ObservationSampleCount => observation.SampleCount;
+
+		public int ObservationGapCount => observation.GapCount;
 
 		public bool SamsungFileInspectionBusy => samsungFileInspectionBusy;
 
@@ -432,6 +489,7 @@ namespace ATIVBatteryGuard.ViewModels
 				if (!disposed && mockMode != value)
 				{
 					mockMode = value;
+					if (value) StopBatteryObservation();
 					settings.MockModeEnabled = value;
 					mock = new MockChargeLimitController();
 					log.Write(value ? "MOCK_ENABLED" : "MOCK_DISABLED");
@@ -441,6 +499,7 @@ namespace ATIVBatteryGuard.ViewModels
 					Changed("MockActualModeText");
 					Changed("CanApply");
 					ApplyCommand.Refresh();
+					StartBatteryObservationCommand.Refresh();
 				}
 			}
 		}
@@ -602,6 +661,18 @@ namespace ATIVBatteryGuard.ViewModels
 				() => !mainViewModel.disposed && !string.IsNullOrWhiteSpace(mainViewModel.fixedReadReviewInput));
 			ClearFixedReadReviewCommand = new RelayCommand(ClearFixedReadReview,
 				() => !mainViewModel.disposed);
+			ReviewProtectionResultCommand = new RelayCommand(ReviewProtectionResult,
+				() => !mainViewModel.disposed && !string.IsNullOrWhiteSpace(mainViewModel.protectionReviewInput));
+			ClearProtectionReviewCommand = new RelayCommand(ClearProtectionReview,
+				() => !mainViewModel.disposed);
+			StartBatteryObservationCommand = new RelayCommand(StartBatteryObservation,
+				() => !mainViewModel.disposed && !mainViewModel.IsMockMode && !mainViewModel.observation.IsRecording);
+			StopBatteryObservationCommand = new RelayCommand(StopBatteryObservation,
+				() => !mainViewModel.disposed && mainViewModel.observation.IsRecording);
+			ClearBatteryObservationCommand = new RelayCommand(ClearBatteryObservation,
+				() => !mainViewModel.disposed);
+			SaveBatteryObservationCommand = new RelayCommand(SaveBatteryObservation,
+				() => !mainViewModel.disposed && mainViewModel.observation.CanExport);
 			log.Write("APP_STARTED");
 			log.Write(string.IsNullOrEmpty(settingsLoadResult.Warning) ? "SETTINGS_LOADED" : "SETTINGS_RECOVERED");
 			RefreshBattery();
@@ -664,6 +735,77 @@ namespace ATIVBatteryGuard.ViewModels
 			ClearFixedReadReviewCommand?.Refresh();
 		}
 
+		public void ReviewProtectionResult()
+		{
+			if (disposed) return;
+			// This is a historical text review, never a live read or a replay.
+			protectionReview = WsabiWmiProtection0To1ReviewParser.Parse(protectionReviewInput);
+			protectionReviewInput = string.Empty;
+			NotifyProtectionReview();
+		}
+
+		private void ClearProtectionReview()
+		{
+			if (disposed) return;
+			protectionReviewInput = string.Empty;
+			protectionReview = WsabiWmiProtection0To1Review.Empty;
+			NotifyProtectionReview();
+		}
+
+		private void NotifyProtectionReview()
+		{
+			Changed("ProtectionReviewInput");
+			Changed("ProtectionReviewText");
+			Changed("ProtectionReviewStatus");
+			Changed("ProtectionReviewHasReportedStoredTransition");
+			ReviewProtectionResultCommand?.Refresh();
+			ClearProtectionReviewCommand?.Refresh();
+		}
+
+		private void StartBatteryObservation()
+		{
+			if (disposed || IsMockMode || observation.IsRecording) return;
+			observation.Start();
+			observationClock.Restart();
+			// The next existing refresh supplies the first sample. Starting a
+			// session must not perform an extra battery or firmware read.
+			NotifyBatteryObservation();
+		}
+
+		private void StopBatteryObservation()
+		{
+			if (disposed) return;
+			observationClock.Stop();
+			if (observation.IsRecording) observation.Stop();
+			NotifyBatteryObservation();
+		}
+
+		private void ClearBatteryObservation()
+		{
+			if (disposed) return;
+			observationClock.Reset();
+			observation.Clear();
+			NotifyBatteryObservation();
+		}
+
+		private void SaveBatteryObservation()
+		{
+			if (disposed || !observation.CanExport) return;
+			SafeAction(() => StatusMessage = interaction.SaveBatteryObservation(observation.ExportText()));
+		}
+
+		private void NotifyBatteryObservation()
+		{
+			Changed("ObservationText");
+			Changed("ObservationActive");
+			Changed("ObservationSampleCount");
+			Changed("ObservationGapCount");
+			StartBatteryObservationCommand?.Refresh();
+			StopBatteryObservationCommand?.Refresh();
+			ClearBatteryObservationCommand?.Refresh();
+			SaveBatteryObservationCommand?.Refresh();
+		}
+
 		private void SelectMode(ChargeMode mode)
 		{
 			if (!disposed && settings.DesiredMode != mode)
@@ -709,6 +851,12 @@ namespace ATIVBatteryGuard.ViewModels
 				if (!string.IsNullOrEmpty(snapshot.Error))
 				{
 					log.Write("BATTERY_READ_FAILED");
+				}
+				if (observation.IsRecording && !IsMockMode)
+				{
+					observation.Record(observationClock.Elapsed, snapshot);
+					if (!observation.IsRecording) observationClock.Stop();
+					NotifyBatteryObservation();
 				}
 				Changed("BatteryPercentText");
 				Changed("ExternalPowerText");
@@ -985,8 +1133,13 @@ namespace ATIVBatteryGuard.ViewModels
 					Save();
 				}
 				disposed = true;
+				observationClock.Stop();
+				if (observation.IsRecording) observation.Stop();
 				experimentReviewInput = string.Empty;
 				fixedReadReviewInput = string.Empty;
+				protectionReviewInput = string.Empty;
+				NotifyProtectionReview();
+				NotifyBatteryObservation();
 				ApplyCommand.Refresh();
 				SaveCommand.Refresh();
 				RefreshCommand.Refresh();

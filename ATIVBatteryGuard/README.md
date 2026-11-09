@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 보호 저장값 전환 확인·일반 권한 관찰판 / 2026-11-09 한국 시간:** 사용자 결과에서 사전 `0 / 0 / 0` → 사후 **`1 / 80 / 75`** 저장 후보 일치, SDK 7회·설정 1회·관련 정리 `Complete`가 보고됐습니다. [결과와 다음 개발](STORED_TRANSITION_RESULT_AND_OBSERVATION.md), [새 일반 GUI ZIP](../downloads/ATIVBatteryGuard-BATTERY-OBSERVATION.zip), [최신 검증](reports/stored-transition-observation-validation.json)을 제공합니다. 새 앱은 과거 TXT 검토와 기존 약 10초 주기 Windows 배터리 상태의 수동 관찰·로컬 저장을 추가합니다. 일반 권한으로 실행하며 새 OEM 조회·설정 호출은 없습니다. 실제 전기적 충전 제한과 현재 보호 상태는 미검증이므로 제어 `Unsupported`를 유지합니다. **아래 최초 설정 시험은 종료·소모됐으며 실행 절차를 반복하지 않습니다.** 기존 자료 재제출은 필요 없습니다. 아래는 이전 기록입니다.
+
 **최신 — 승인된 최초 설정 단발 도구 / 2026-11-09 한국 시간:** [새 ZIP](../downloads/ATIVBatteryGuard-PROTECTION-0TO1.zip)과 [실행·검증 안내](PROTECTION_0TO1_IMPLEMENTATION.md)를 제공합니다. 같은계정에서 새EXE만 수동관리자 실행해 Protection0To1-v1/Elevated를 확인한 뒤 START를 직접 입력합니다. 사전0일때만설정최대1회·전체최대7회이며 기존임계값이80/75로변경될수있고끄기/원복기능은없습니다. 새50개포함854테스트통과·두Release빌드0경고·0오류·ZIP독립검증을완료했습니다. 삼성원본DLL없음,새Windows/노트북실기는미검증·일반앱제어Unsupported입니다. 새TXT만전달하고실패해도재실행·예약변경하지않습니다. 아래는 이전 기록입니다.
 
 **최신 — 최초 설정 시험 구현안 / 2026-11-09 한국 시간:** [0→1 단발 도구 승인 검토안](PROTECTION_0TO1_IMPLEMENTATION_PROPOSAL.md)을 구체화했습니다. 사전 모드0일 때만 설정최대1회, 전후 읽기 포함최대7회이며 정상receipt·실제close 뒤 독립1/80/75를 비교합니다. 기존 임계값을 덮어쓸 수 있고 끄기·자동복원은 포함하지 않습니다. 실제설정용 코드·새도구는 별도명시승인 전이며 Unsupported입니다. 이번에는 문서만 바꿨고804회귀·두빌드0/0은 직전 검증입니다. 아래는 이전 기록입니다.

@@ -1,0 +1,242 @@
+{
+  "schema": 1,
+  "date_korea": "2026-11-09",
+  "baseline_commit": "039492e90921154be8240af28e3623e0906bb3d1",
+  "scope": "Analyze the consumed approved trial; offline historical review and passive existing Windows snapshot observation only",
+  "user_reported_trial_result": {
+    "purpose": "Protection0To1-v1",
+    "current_token_reported": "Elevated",
+    "reservation_reported": "Claimed",
+    "preflight_reported": "Ready",
+    "display_and_transition_reported": "StoredReadbackMatchedCandidate",
+    "before_mode_upper_lower_candidates": [
+      0,
+      0,
+      0
+    ],
+    "after_mode_upper_lower_candidates": [
+      1,
+      80,
+      75
+    ],
+    "accepted_correlated_stored_byte_read_candidates": 6,
+    "setter_reply": "ReceiptOnly",
+    "independent_setter_success_ack": false,
+    "sdk_entries_after_actual_close_reported": 7,
+    "setter_sdk_entries_after_actual_close_reported": 1,
+    "related_cleanup_reported": "Complete",
+    "intended_stored_candidate_transition_reported": true,
+    "creation_issue_None_means_no_preparation_issue": true,
+    "generic_setting_effect_Unknown_is_unconditional_role_entry_note": true,
+    "generic_note_invalidates_post_readback_match": false,
+    "text_is_historical_tool_report_not_authenticated_raw_response": true,
+    "raw_frame_and_comparison_revalidated": false,
+    "current_mode_or_persistence_verified": false,
+    "electrical_charge_limit_or_charger_registers_verified": false,
+    "trial_consumed_and_closed": true
+  },
+  "implementation": {
+    "historical_parser": {
+      "full_success_grammar_required": true,
+      "both_seven_role_blocks_required": true,
+      "ready_7_sdk_1_setter_6_reads_and_complete_required": true,
+      "accepts_any_byte_pre_thresholds_but_pre_mode_zero": true,
+      "post_candidates_fixed_1_80_75": true,
+      "max_characters": 16384,
+      "max_lines": 128,
+      "max_line_characters": 512,
+      "unknown_duplicate_reordered_missing_or_pending_is_not_success": true,
+      "input_cleared_after_review_oversize_and_dispose": true,
+      "original_text_not_stored_in_review_or_export": true,
+      "does_not_change_actual_desired_mode_mock_or_charge_support": true
+    },
+    "passive_observation": {
+      "explicit_manual_start_and_save": true,
+      "provider": "Existing GetSystemPowerStatus snapshot only",
+      "existing_poll_seconds": 10,
+      "new_timers_or_extra_provider_reads": 0,
+      "first_sample_waits_for_existing_refresh": true,
+      "minimum_sample_interval_seconds": 10,
+      "maximum_elapsed_seconds": 7200,
+      "maximum_samples": 721,
+      "gap_threshold_seconds": 30,
+      "backward_time_stops": true,
+      "boundary_duration_throttle_regression_covered": true,
+      "unknown_no_battery_and_error_presence_preserved": true,
+      "mock_activation_stops_and_does_not_automatically_resume": true,
+      "samples_between_updates_interpolated": false,
+      "elapsed_time_claimed_as_continuous_observation": false,
+      "raw_error_absolute_time_paths_accounts_and_device_identifiers_recorded": false,
+      "file_prefix": "battery-observation-",
+      "file_created_on_explicit_save_only": true,
+      "empty_session_save_disabled": true,
+      "local_create_new_utf8_and_reparse_policy_reused": true,
+      "save_failure_preserves_samples_and_hides_exception_details": true,
+      "automatic_80_percent_or_NotCharging_success_inference": false
+    }
+  },
+  "source_sha256": {
+    "src/ATIVBatteryGuard.Core/Models/WsabiWmiProtection0To1Review.cs": "dceef931e2f2e5c524176295582e51b9ec5a96d62a0801124c992146df2bcd4e",
+    "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtection0To1ReviewParser.cs": "5a4bbe2360bea447ed27c8980cd2e9384cb73acb0e84634289aef0b459be8dab",
+    "src/ATIVBatteryGuard.Core/Services/BatteryObservationSession.cs": "4700380c498941e7938908c634f616fafd9ce7b56dd6366c1b299884cda99090",
+    "src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs": "7d26f343e3733ccae5d7f86551d9b43966caf146dc712bbc2b26d0b6194903b8",
+    "src/ATIVBatteryGuard.App/Views/MainWindow.xaml": "2bd22c52f05c20c9a61331cef869188c3906f10d179059c36708e33279aa45d7",
+    "src/ATIVBatteryGuard.App/Services/IUserInteraction.cs": "831e266414fea9301dc8b33b1eb61f7911b27ad04ee52c09c4ed08401cdb4ece",
+    "src/ATIVBatteryGuard.App/Services/LocalUserInteraction.cs": "55ac744b4735240f027b3a759c6774e6993e361eccb9ea93b3a42e64770d4055",
+    "src/ATIVBatteryGuard.App/Diagnostics/WindowsSmokeTest.cs": "c02b4f2fa1125027e15767b1f910091d5c71a9b0395bab5cefdd23b996afbdb3",
+    "tests/WsabiWmiProtection0To1ReviewTests.cs": "77d2678124c7d6f322378cf07e9bf022568da3d7b789cf2ded336d8bcf323919",
+    "tests/BatteryObservationSessionTests.cs": "bc2c423a6fcf62ed1b13e8e256d91a01156853a3e22f6d82df36302fddaa104f",
+    "tests/ProtectionReviewObservationViewModelTests.cs": "1d231d0a8cc54f9b21def6345af7311bb7f2a3c861e591a00c98c13a03478813",
+    "tests/Program.cs": "f0ebd6bb72c88e862a55f1a4ea0d1a180b5f48ed9f415781660ed8fd04e7dcf4",
+    "tests/ATIVBatteryGuard.PortableTests.csproj": "075648f935b8e29a5d0b6bcd99315e619d4dd5eac1b9e515f04c445aa51376fa",
+    "scripts/package_battery_observation.py": "cc3d7f9fc1488868af37b10026dff8fadef8f3a43c97495dff714b3784aaa255"
+  },
+  "validation": {
+    "portable_suite": {
+      "passed": 887,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 887,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "new_test_groups": {
+      "historical_parser": 12,
+      "bounded_observation": 10,
+      "view_model_and_save_failure": 11
+    },
+    "parameter_iterations_are_not_additional_tests": true,
+    "portable_release": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "full_net48_reference_release": {
+      "warnings": 0,
+      "errors": 0,
+      "actual_wpf_xaml_compiled": true
+    },
+    "uploaded_record_offline_probe": {
+      "status": "ReportedStoredTransitionMatched",
+      "before": [
+        0,
+        0,
+        0
+      ],
+      "after": [
+        1,
+        80,
+        75
+      ],
+      "sdkEntries": 7,
+      "setterEntries": 1,
+      "acceptedReadCandidates": 6,
+      "actualModeChangedByParser": false,
+      "canInvokeMethods": false,
+      "isChargeLimitConfirmed": false
+    },
+    "root_package_and_preservation_audit": {
+      "baselineCommit": "039492e90921154be8240af28e3623e0906bb3d1",
+      "protectedExistingSourceFilesUnchanged": 189,
+      "existingZipFilesByteIdentical": 66,
+      "crcValid": true,
+      "internalChecksumsValid": 5,
+      "programFilesMatchBuild": true,
+      "sourceFileCount": 151,
+      "sourceFingerprintMatches": true,
+      "entries": 6,
+      "sha256": "dd7acffacb099fb5b08639c24909b2a45b8ef2d8981e610cead003611004dc97",
+      "bytes": 190478,
+      "trialSourcesAndArchivesPreserved": true
+    },
+    "independent_package_audit": {
+      "schemaVersion": 1,
+      "archive": "ATIVBatteryGuard-BATTERY-OBSERVATION.zip",
+      "bytes": 190478,
+      "sha256": "dd7acffacb099fb5b08639c24909b2a45b8ef2d8981e610cead003611004dc97",
+      "entries": [
+        "ATIVBatteryGuard.Core.dll",
+        "ATIVBatteryGuard.exe",
+        "ATIVBatteryGuard.exe.config",
+        "BUILD-INFO.json",
+        "SHA256SUMS.txt",
+        "먼저 읽어주세요.txt"
+      ],
+      "crcValid": true,
+      "internalChecksumsValidated": 5,
+      "programBuildBytesMatched": true,
+      "sourceFilesValidated": 151,
+      "productSourceFingerprintSha256": "99e09ff40166b8e5a281d92d9dff7e6a3771e0ae3a1081ef57e696549bd7370f",
+      "sourceFingerprintValidated": true,
+      "assemblies": [
+        {
+          "file": "ATIVBatteryGuard.exe",
+          "sha256": "bec3a9daad78e902a09cf53d9bf095764d22e5b20566c41f4b2c9144577ea800",
+          "machine": "0x8664",
+          "managed": true,
+          "net48": true,
+          "certificateTableBytes": 0,
+          "wmiInteropAssemblyReference": false,
+          "portableSdkTestHelpers": false
+        },
+        {
+          "file": "ATIVBatteryGuard.Core.dll",
+          "sha256": "aac98a9b67b61abae1ccc0589fb09b72c78e85cc5f9c593aaf508f215d49cef9",
+          "machine": "0x8664",
+          "managed": true,
+          "net48": true,
+          "certificateTableBytes": 0,
+          "wmiInteropAssemblyReference": false,
+          "portableSdkTestHelpers": false
+        }
+      ],
+      "executionLevel": "asInvoker",
+      "uiAccess": false,
+      "appLiveTrialTypeAndMethodReferences": false,
+      "appSdkInvokeMethodReference": false,
+      "priorArchivesByteIdentical": 66,
+      "hardwareFacingFilesUnchanged": [
+        "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Application/App.cs",
+        "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Services/WindowsBatteryStatusProvider.cs",
+        "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Hardware/UnsupportedChargeLimitController.cs"
+      ],
+      "programOrOemModulesExecuted": false,
+      "blockers": []
+    },
+    "independent_source_reviews": "No remaining blocker reported",
+    "private_evidence_sha256": {
+      "portable-build.log": "e466a85b31d0db3c8a326b4f4f3d203b14e760161948b4c17df236f3a9f03532",
+      "net48-build.log": "fca2d5ff10ed87bf3be3e79c114be4f1d5932e08edec7c975b9efa8ee553b962",
+      "suite.json": "31a00247af25c4b256ccf7c2d06a0576f0110e2dd26ea9be478ec58f8b374c35",
+      "suite.log": "b46db92a0f6e44a4d7c923d2943a76200def287f44b6a8b2409bc696c523fc76",
+      "uploaded-record-probe.json": "fb9b15c09d2c4716f32138be9e943ad97592cb554e8f0fed553578d0561fbead",
+      "package.log": "d9a7754addaa42a9807646c71192cddd5ed2b0bb1d405b70f350fe250546c815",
+      "root-package-audit.json": "4be9137386fb5d5d0189aec17033e5ead470cfadacd680786b7ad3aa0957caf6",
+      "independent-package-audit.json": "83e9bbab062e00602aa8e6926bf565fbcc7c8656eacc6a6b4143c5098d3899e5",
+      "audit.py": "ffa7ab25269dc66fa0969f0cd10a74d86585bb9b221fa14b555c947971074618"
+    }
+  },
+  "archive": {
+    "file": "ATIVBatteryGuard-BATTERY-OBSERVATION.zip",
+    "bytes": 190478,
+    "sha256": "dd7acffacb099fb5b08639c24909b2a45b8ef2d8981e610cead003611004dc97",
+    "entries": 6,
+    "productSourceFingerprintSha256": "99e09ff40166b8e5a281d92d9dff7e6a3771e0ae3a1081ef57e696549bd7370f",
+    "sourceFileCount": 151
+  },
+  "boundaries": {
+    "actual_cloud_windows_gui_or_sdk_execution": false,
+    "actual_cloud_notebook_oem_firmware_read_or_write": false,
+    "new_oem_command_initialization_handshake_or_reverse_transition": false,
+    "notebook_trial_markers_read_reset_deleted_or_reused": false,
+    "new_trial_budget_authorized_or_created": false,
+    "old_trial_sources_and_zip_changed": false,
+    "main_app_actual_protection_read_and_charge_control": "Unsupported",
+    "generic_sdk_read_trial_entry": "ReadSpecificationUnavailable",
+    "new_gui_windows_runtime_tested": false,
+    "digitally_signed": false,
+    "ordinary_user_as_invoker": true,
+    "oem_originals_wmi_interop_experimental_exe_firmware_pdb_or_user_raw_text_in_zip": false,
+    "runtime_network_or_automatic_upload": false,
+    "drivers_services_or_security_changed": false,
+    "old_txt_dll_exe_or_diagnostics_resubmission_required": false
+  }
+}

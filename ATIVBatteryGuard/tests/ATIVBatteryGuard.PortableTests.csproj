@@ -13,6 +13,9 @@
     <Compile Include="../src/ATIVBatteryGuard.App/ViewModels/*.cs" />
     <Compile Include="../src/ATIVBatteryGuard.App/Services/IUserInteraction.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="WsabiWmiProtection0To1ReviewTests.cs" />
+    <Compile Include="BatteryObservationSessionTests.cs" />
+    <Compile Include="ProtectionReviewObservationViewModelTests.cs" />
     <Compile Include="OfflineReadTrialRehearsal.cs" />
     <Compile Include="WmiSchemaTests.cs" />
     <Compile Include="SettingsPolicyTests.cs" />

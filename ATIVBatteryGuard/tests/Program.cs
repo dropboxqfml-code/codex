@@ -437,6 +437,9 @@ internal static partial class Program
         RegisterWsabiWmiFixedReadAccess1ReservationTests();
         RegisterWsabiWmiFixedReadAccess1ReviewTests();
         RegisterWsabiWmiProtectionTransitionReviewTests();
+        RegisterWsabiWmiProtection0To1ReviewTests();
+        RegisterBatteryObservationSessionTests();
+        RegisterProtectionReviewObservationViewModelTests();
         RegisterWsabiWmiSevenStageCoordinatorTests();
         RegisterWsabiWmiProtectionReadReplyReviewTests();
         RegisterWsabiWmiProtectionSetterReplyReviewTests();
@@ -505,12 +508,16 @@ internal static partial class Program
         public int FileInspectionSaves;
         public Func<string, string> FileInspectionSaver;
         public string LastFileInspection;
+        public int ObservationSaves;
+        public Func<string, string> ObservationSaver;
+        public string LastObservation;
         public DeviceDiagnosticsResult ReadDiagnostics() { return Reader(); }
         public void OpenSettingsFolder() { }
         public void ShowLog() { }
         public void CopyDiagnostics(string text) { Copies++; LastCopiedText = text; }
         public string SaveDiagnostics(string text) { Saves++; return Saver == null ? "saved" : Saver(text); }
         public string SaveSamsungFileInspection(string text) { FileInspectionSaves++; LastFileInspection = text; return FileInspectionSaver == null ? "saved" : FileInspectionSaver(text); }
+        public string SaveBatteryObservation(string text) { ObservationSaves++; LastObservation = text; return ObservationSaver == null ? "saved" : ObservationSaver(text); }
     }
     private sealed class FakeHardware : IHardwareDiagnosticsProvider
     {

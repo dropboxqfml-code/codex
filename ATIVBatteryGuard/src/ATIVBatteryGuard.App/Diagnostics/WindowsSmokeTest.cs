@@ -71,6 +71,11 @@ namespace ATIVBatteryGuard.Diagnostics
 				throw new SmokeFailure("UNEXPECTED_FILE_INSPECTION");
 			}
 
+			public string SaveBatteryObservation(string text)
+			{
+				return "관찰 기록 저장 모의 처리";
+			}
+
 			public void ShowLog()
 			{
 				throw new SmokeFailure("UNEXPECTED_LOG_ACTION");

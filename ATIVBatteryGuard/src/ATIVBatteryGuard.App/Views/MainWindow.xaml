@@ -60,6 +60,48 @@
 
             <Border Style="{StaticResource Card}">
                 <StackPanel>
+                    <TextBlock Text="보호 설정 전환 기록 · 과거 결과 검토" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="이미 만든 protection-0to1 TXT가 있을 때 붙여넣어 저장값 전환 기록을 확인합니다. 붙여넣은 내용은 검토 후 비우며 자동 저장하지 않습니다."
+                               Style="{StaticResource Detail}" />
+                    <TextBlock Text="과거 기록의 일치는 현재 보호 설정이나 실제 충전 제한 효과를 확인한 것이 아닙니다. 이 화면에서 설정을 변경하거나 시험을 다시 실행하지 않습니다."
+                               Style="{StaticResource Detail}" />
+                    <TextBox x:Name="ProtectionResultInput" Text="{Binding ProtectionReviewInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True" IsUndoEnabled="False" TextWrapping="Wrap" MinHeight="80" MaxHeight="150"
+                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,10"
+                             AutomationProperties.Name="과거 보호 설정 전환 결과 붙여넣기" />
+                    <WrapPanel>
+                        <Button x:Name="ReviewProtectionResultButton" Content="전환 기록 확인" Command="{Binding ReviewProtectionResultCommand}" />
+                        <Button Content="전환 기록 지우기" Command="{Binding ClearProtectionReviewCommand}" />
+                    </WrapPanel>
+                    <TextBox x:Name="ProtectionResultReview" Text="{Binding ProtectionReviewText, Mode=OneWay}"
+                             IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
+                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
+                             AutomationProperties.Name="과거 보호 설정 전환 기록 검토" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Windows 배터리 상태 관찰" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="시작을 누른 뒤 기존 약 10초 주기의 배터리 표시 정보를 기록합니다. 최대 2시간 관찰하며, 저장을 눌러야 로컬 TXT가 만들어집니다. 시뮬레이션에서는 기록하지 않습니다."
+                               Style="{StaticResource Detail}" />
+                    <TextBlock Text="일상적으로 사용하는 동안의 잔량·전원·충전 표시를 관찰하는 기능입니다. 80% 유지나 ‘충전 중 아님’만으로 충전 제한 성공을 판정하지 않습니다."
+                               Style="{StaticResource Detail}" />
+                    <WrapPanel>
+                        <Button x:Name="StartBatteryObservationButton" Content="새 관찰 시작" Command="{Binding StartBatteryObservationCommand}" />
+                        <Button Content="관찰 중단" Command="{Binding StopBatteryObservationCommand}" />
+                        <Button Content="관찰 지우기" Command="{Binding ClearBatteryObservationCommand}" />
+                        <Button x:Name="SaveBatteryObservationButton" Content="관찰 TXT 저장" Command="{Binding SaveBatteryObservationCommand}" />
+                    </WrapPanel>
+                    <TextBox x:Name="BatteryObservationText" Text="{Binding ObservationText, Mode=OneWay}"
+                             IsReadOnly="True" TextWrapping="Wrap" MaxHeight="280"
+                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
+                             AutomationProperties.Name="Windows 배터리 상태 관찰 기록" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
                     <TextBlock Text="실제 하드웨어 상태" Style="{StaticResource SectionTitle}" />
                     <TextBlock x:Name="ActualHardwareState" Text="{Binding ActualModeText}"
                                FontSize="25" FontWeight="SemiBold" Margin="0,0,0,14" />

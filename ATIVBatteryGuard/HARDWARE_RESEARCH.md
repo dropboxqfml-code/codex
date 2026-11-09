@@ -1,5 +1,11 @@
 # 하드웨어 조사
 
+## 최신 — 최초 보호 설정의 저장값 전환 보고 / 2026-11-09 한국 시간
+
+[사용자 결과](STORED_TRANSITION_RESULT_AND_OBSERVATION.md)에서 사전 `0 / 0 / 0` → 사후 **`1 / 80 / 75`** 후보 일치, 여섯 읽기 후보 수용, 설정 `ReceiptOnly`, 실제 종료 뒤 SDK7/set1 및 관련 정리 `Complete`가 보고됐습니다. 보호 설정의 저장 경로에 접근한 유의미한 결과입니다. 이번 수신 TXT의 도구 판정을 보존하며 원시 프레임의 독립 재검증·텍스트 인증·현재 보호 상태·충전기 내부 설정·전기적 제한·재부팅 지속성을 관측했다고 주장하지 않습니다. 기존 고정 `설정 효과: Unknown` 문구는 독립 사후 후보 일치를 무효화하는 실패 코드가 아닙니다.
+
+최초 설정과 과거 단발 시험은 모두 종료·소모됐습니다. 새 일반 GUI는 과거 결과 검토와 기존 `GetSystemPowerStatus` 스냅샷의 수동 관찰만 추가하고, 새 OEM 조회·펌웨어 쓰기·초기화·marker 접근·Mock 관측·실제 제어 활성화는 없습니다. Windows의 80% 유지나 NotCharging을 전기적 제한 성공으로 판정하지 않습니다. 실제 보호 조회·제어는 계속 `Unsupported`이며 다음은 재설정 없는 일상 사용 상태 관찰입니다. 검증 수치와 패키지 해시는 [새 정제 기록](reports/stored-transition-observation-validation.json)을 참조합니다. 아래는 이전 기록입니다.
+
 ## 최신 — 명시 승인된 최초0→1 설정 시험 도구 / 2026-11-09 한국 시간
 
 사용자가구체안에명시승인한뒤 [고정단발도구](PROTECTION_0TO1_IMPLEMENTATION.md)를구현했습니다. 저장proof의3개읽기대상과semanticsetter1을고정하고새purpose예약·같은전체owner·lazySDKleaf·세종료join·strict응답·정제계측을연결했습니다. Mode0일때만설정최대1/전체최대7이며80/75를덮어쓸수있고OFF/복원은없습니다. 기존A/Access1/Query65소모상태와일반앱Unsupported는유지합니다.

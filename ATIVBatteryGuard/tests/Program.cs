@@ -447,6 +447,8 @@ internal static partial class Program
         RegisterManualProtectionUsabilityTests();
         RegisterWindowPlacementPolicyTests();
         RegisterLocalActionGuidanceTests();
+        RegisterBatteryObservationGraphTests();
+        RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();
         RegisterWsabiWmiProtectionDisableReviewTests();

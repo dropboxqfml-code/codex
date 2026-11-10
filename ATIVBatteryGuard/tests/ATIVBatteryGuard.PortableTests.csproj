@@ -23,6 +23,8 @@
     <Compile Include="ManualProtectionUsabilityTests.cs" />
     <Compile Include="WindowPlacementPolicyTests.cs" />
     <Compile Include="LocalActionGuidanceTests.cs" />
+    <Compile Include="BatteryObservationGraphTests.cs" />
+    <Compile Include="ProtectionPresentationAndGraphViewModelTests.cs" />
     <Compile Include="ManualProtectionClientSessionTests.cs" />
     <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsManualProtection.cs" Link="WmiInterop/WsabiWmiWindowsManualProtection.cs" />
     <Compile Include="../src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperAdmission.cs" Link="ManualHelper/ManualHelperAdmission.cs" />

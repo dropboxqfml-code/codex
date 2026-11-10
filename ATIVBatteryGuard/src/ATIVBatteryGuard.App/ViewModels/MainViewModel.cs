@@ -49,6 +49,8 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private readonly BatteryObservationSession observation = new BatteryObservationSession();
 
+		private BatteryObservationGraph observationGraph = BatteryObservationGraph.Empty;
+
 		private readonly Stopwatch observationClock = new Stopwatch();
 
 		private long observationSession;
@@ -292,6 +294,12 @@ namespace ATIVBatteryGuard.ViewModels
 
 		public string ObservationText => observation.ToDisplayText();
 
+		// Rendering consumes this detached snapshot. Reading a binding never
+		// samples the battery, advances elapsed time or changes the session.
+		public BatteryObservationGraph ObservationGraph => observationGraph;
+
+		public bool ObservationGraphVisible => !IsMockMode && observationGraph.Status != BatteryObservationSessionStatus.NotStarted;
+
 		public bool ObservationActive => observation.IsRecording;
 
 		public int ObservationSampleCount => observation.SampleCount;
@@ -342,8 +350,7 @@ namespace ATIVBatteryGuard.ViewModels
 				if (ManualProtectionBusy) return manualProtectionPending ? "장치 작업의 실제 종료 미확인 · 추가 동작 차단" : "조회·설정·실제 정리 중";
 				if (manualProtectionResult == null || !manualProtectionResult.HasKnownMode)
 					return "마지막 보호 조회: 미조회 또는 알 수 없음";
-				return manualProtectionResult.ModeCandidate == 1
-					? "마지막 조회 후보: 보호 모드1" : "마지막 조회 후보: 보호 모드0 · 일반 충전";
+				return "마지막 조회: " + ManualProtectionPresentation.GetStateLabel(manualProtectionResult);
 			}
 		}
 
@@ -576,7 +583,7 @@ namespace ATIVBatteryGuard.ViewModels
 		}
 
 		public string SupportReason => ManualProtectionAvailable
-			? "수동 제어 베타 · 해당 요청에서 Windows10 x64·940X3G/930X3G·P05ACJ profile과 고정 WMI 계약을 확인합니다. 지원 범위가 확인되기 전에는 설정하지 않습니다."
+			? "수동 제어 · 해당 요청에서 Windows10 x64·940X3G/930X3G·P05ACJ profile과 고정 WMI 계약을 확인합니다. 지원 범위가 확인되기 전에는 설정하지 않습니다."
 			: physical.GetCapabilities().Reason;
 
 		public string DesiredModeText => "사용자 희망값: " + ModeText(settings.DesiredMode) + " · 실제 적용과 별개";
@@ -648,6 +655,7 @@ namespace ATIVBatteryGuard.ViewModels
 					Changed("IsMockMode");
 					Changed("MockModeText");
 					Changed("MockActualModeText");
+					Changed("ObservationGraphVisible");
 					Changed("CanApply");
 					ApplyCommand.Refresh();
 					StartBatteryObservationCommand.Refresh();
@@ -1234,6 +1242,9 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private void NotifyBatteryObservation()
 		{
+			observationGraph = BatteryObservationGraph.FromSamples(observation.Samples, observation.Status);
+			Changed("ObservationGraph");
+			Changed("ObservationGraphVisible");
 			Changed("ObservationText");
 			Changed("ObservationActive");
 			Changed("ObservationSampleCount");

@@ -19,7 +19,7 @@ internal static partial class Program
                 var battery = new OfflineReviewCountingBattery();
                 using (var vm = ManualUsabilityVm(f, service, clock, battery))
                 {
-                    Equal("0.2.0-beta.3", ApplicationRelease.Version);
+                    Equal("0.2.0", ApplicationRelease.Version);
                     Equal(ApplicationRelease.DisplayText, vm.ApplicationVersionText);
                     int batteryReads = battery.Calls;
                     for (int i = 0; i < 25; i++)

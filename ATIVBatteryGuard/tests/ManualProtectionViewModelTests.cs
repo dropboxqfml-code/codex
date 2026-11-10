@@ -71,7 +71,7 @@ internal static partial class Program
                     Equal(2, service.Operations.Count); Equal(ManualProtectionOperation.Enable80, service.Operations[1]);
                     Equal(1, vm.ManualProtectionLastResult.ModeCandidate); Equal(80, vm.ManualProtectionLastResult.UpperCandidate);
                     Equal(75, vm.ManualProtectionLastResult.LowerCandidate); Equal(7, vm.ManualProtectionLastResult.SdkEntries);
-                    Check(vm.ActualModeText.Contains("모드1") && vm.ManualProtectionText.Contains("Complete"), "completed enable not displayed");
+                    Check(vm.ActualModeText.Contains("80% 충전 제한") && vm.ManualProtectionText.Contains("Complete"), "completed enable not displayed");
                     Equal(reads, battery.Calls); Equal(desired, vm.DesiredModeText); Check(!vm.CanApply, "real helper enabled legacy mock apply");
                 }
             }

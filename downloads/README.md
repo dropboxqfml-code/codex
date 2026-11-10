@@ -1,4 +1,14 @@
-# ATIV Battery Guard — 수동 충전 보호 제어 베타3
+# ATIV Battery Guard 0.2.0
+
+2026-11-10 한국 시간. [최신 프로그램 ZIP](ATIVBatteryGuard-0.2.0-WIN10-X64.zip) · [사용·변경 안내](../ATIVBatteryGuard/RELEASE_020.md) · [검증·해시](../ATIVBatteryGuard/reports/release-020-validation.json)
+
+현재 프로그램의 베타 표기를 제거했습니다. 보호 결과는 **80% 충전 제한**, **충전 제한 해제 · 일반 충전**, 또는 **충전 제한 켜짐 · 상한 미확인**으로 표시합니다. 관찰 시작 때 그래프가 나타나 기존 약10초 갱신 자료의 상대 시간·잔량을 표시하고 공백을 끊습니다. 중단하면 보존하고 지우면 초기화합니다. 작은 창·글자·접힌 기능·안전한 제어 규칙은 유지합니다.
+
+ZIP 하나를 새 폴더에 모두 풀어 **ATIVBatteryGuard.exe를 일반 권한으로 실행**합니다. 그래프는 **Windows 배터리 상태 관찰 → 새 관찰 시작**에서 확인합니다.1140테스트·두 Release0경고/0오류이며 새 그래프의 실제 Windows 화면 확인은 아직입니다. 기존 충전·재시작 시험/자료 재제출은 필요 없습니다. 삼성 원본 DLL·firmware·PDB·과거 단발 EXE는 포함하지 않습니다.
+
+ZIP291954바이트, SHA256 `082eb5202c49109f9c2ec06bff8588312b5de8448622a05cec0e4da4adc78699`입니다. 기존 ZIP71개는 동일 바이트로 보존합니다.
+
+## 이전 — 수동 충전 보호 제어 베타3
 
 2026-11-10 한국 시간. [최신 0.2.0-beta.3 ZIP](ATIVBatteryGuard-MANUAL-CONTROL-BETA3.zip) · [사용·변경 안내](../ATIVBatteryGuard/MANUAL_CONTROL_BETA3.md) · [검증·해시](../ATIVBatteryGuard/reports/manual-control-beta3-validation.json)
 

@@ -1,5 +1,7 @@
 # 수동 제어 베타3 — 작은 창과 높은 배율에서의 배치 보정
 
+**후속 배포:** 베타 표기를 제거하고 쉬운 상태 문구와 관찰 그래프를 추가한 [0.2.0](RELEASE_020.md)을 제공합니다. 아래는 이전 배포 기록이며 ZIP 바이트는 보존합니다.
+
 2026-11-10 한국 시간. 버전은 **0.2.0-beta.3**입니다. 사용자가 보고한 3200×1800·250% 환경의 큰 창과 화면 밖 제목 표시줄 문제를 수정했습니다. 글자 크기와 접힌 기능은 사용자가 적절하다고 확인한 상태로 유지합니다.
 
 [새 프로그램 ZIP](../downloads/ATIVBatteryGuard-MANUAL-CONTROL-BETA3.zip) · [사용 순서](MANUAL_CONTROL_BETA3_USER_STEPS.txt) · [검증 기록](reports/manual-control-beta3-validation.json)

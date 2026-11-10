@@ -4,8 +4,8 @@ namespace ATIVBatteryGuard.Core.Models
     // capability, firmware revision, or runtime binary authentication token.
     public static class ApplicationRelease
     {
-        public const string Version = "0.2.0-beta.3";
-        public const string FileVersion = "0.2.0.3";
+        public const string Version = "0.2.0";
+        public const string FileVersion = "0.2.0.0";
         public const string DisplayText = "ATIV Battery Guard " + Version;
     }
 }

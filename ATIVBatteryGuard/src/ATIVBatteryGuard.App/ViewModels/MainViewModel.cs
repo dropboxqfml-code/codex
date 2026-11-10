@@ -61,6 +61,10 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private bool observationSaveFailed;
 
+		private string settingsFolderStatusText = string.Empty;
+
+		private bool settingsFolderOpenFailed;
+
 		private readonly IManualProtectionOperationService manualProtectionService;
 
 		private readonly SynchronizationContext manualSynchronizationContext;
@@ -294,9 +298,9 @@ namespace ATIVBatteryGuard.ViewModels
 
 		public int ObservationGapCount => observation.GapCount;
 
-		public string ObservationSaveStatusText => observationSaveStatusText;
+		public string ObservationSaveStatusText => WithFolderFeedback(observationSaveStatusText);
 
-		public bool ObservationSaveFailed => observationSaveFailed;
+		public bool ObservationSaveFailed => observationSaveFailed || settingsFolderOpenFailed;
 
 		public RelayCommand ManualReadProtectionCommand { get; }
 
@@ -306,9 +310,9 @@ namespace ATIVBatteryGuard.ViewModels
 
 		public RelayCommand ManualSaveResultCommand { get; }
 
-		public string ManualSaveStatusText => manualSaveStatusText;
+		public string ManualSaveStatusText => WithFolderFeedback(manualSaveStatusText);
 
-		public bool ManualSaveFailed => manualSaveFailed;
+		public bool ManualSaveFailed => manualSaveFailed || settingsFolderOpenFailed;
 
 		public bool ManualProtectionAvailable => manualProtectionService != null;
 
@@ -764,7 +768,7 @@ namespace ATIVBatteryGuard.ViewModels
 			}, () => !mainViewModel.diagnosticsBusy && !mainViewModel.disposed);
 			OpenSettingsFolderCommand = new RelayCommand(delegate
 			{
-				mainViewModel.SafeAction(interaction.OpenSettingsFolder);
+				mainViewModel.OpenSettingsFolder();
 			}, () => !mainViewModel.disposed);
 			OpenLogCommand = new RelayCommand(delegate
 			{
@@ -1160,7 +1164,7 @@ namespace ATIVBatteryGuard.ViewModels
 			if (result.Status == ManualProtectionStatus.StateRead) return "이번 요청의 보호 저장 후보를 읽었습니다. 켜기·해제는 각각 직접 선택할 때만 요청합니다.";
 			if (result.Status == ManualProtectionStatus.ChangedCandidate) return "저장 후보 전환과 관련 정리를 확인했습니다. 실제 충전 효과는 Windows 배터리 경과와 구분해 확인하세요.";
 			if (result.Status == ManualProtectionStatus.AlreadyDesiredCandidate) return "이미 요청한 모드 후보이므로 설정하지 않았습니다. 임계값 확인이 필요하면 보호 상태 확인을 직접 누르세요.";
-			if (result.Status == ManualProtectionStatus.Cancelled) return "관리자 시작 확인을 취소했습니다. 상태가 필요하면 보호 상태 확인을 직접 눌러 새 결과를 받으세요.";
+			if (result.Status == ManualProtectionStatus.Cancelled) return "관리자 권한 요청(UAC) 또는 helper 실행 확인을 취소했습니다. 상태가 필요하면 보호 상태 확인을 직접 눌러 새 결과를 받으세요.";
 			if (result.Status == ManualProtectionStatus.Unsupported) return "지원 대상 확인이 맞지 않아 제어를 차단했습니다. 결과 TXT와 프로그램의 지원 범위를 확인하세요.";
 			if (result.Status == ManualProtectionStatus.PreflightFailed) return "실행 전 확인에 실패해 제어를 차단했습니다. 결과 TXT와 배포 파일이 모두 있는지 확인하세요.";
 			if (result.Status == ManualProtectionStatus.Rejected) return "요청·응답 조건이 맞지 않아 결과를 수용하지 않았습니다. 결과 TXT를 저장하고 필요하면 보호 상태 확인을 직접 요청하세요.";
@@ -1328,7 +1332,7 @@ namespace ATIVBatteryGuard.ViewModels
 			{
 				if (!disposed)
 				{
-					device = new DeviceDiagnosticsResult(null, null, null, null, null, null, new string[1] { "장치 정보를 조회할 수 없습니다. 하드웨어 제어는 차단되어 있습니다." });
+					device = new DeviceDiagnosticsResult(null, null, null, null, null, null, new string[1] { "장치 정보를 조회할 수 없습니다. 이 진단의 장치 정보는 미확인입니다." });
 					hasDiagnostics = true;
 					DiagnosticsText = device.ToDisplayText();
 					StatusMessage = "장치 진단에 실패했습니다. 오류 결과를 로컬에 저장할 수 있습니다.";
@@ -1399,7 +1403,7 @@ namespace ATIVBatteryGuard.ViewModels
 					if (!collected) StandardBatteryRequestText = new WindowsBatteryCapabilitiesReport(BatteryProbeStatus.Unavailable).AssessmentText;
 					HardwareReportStatus = collected
 						? "읽기 전용 조회는 완료했지만 진단 파일을 저장하지 못했습니다. 조회 결과는 화면에서 확인할 수 있습니다."
-						: "진단 정보를 조회하지 못했습니다. 이전 결과를 사용하지 않으며 실제 제어는 차단되어 있습니다.";
+						: "진단 정보를 조회하지 못했습니다. 이번 진단 정보는 미확인이며 이전 진단 결과를 사용하지 않습니다.";
 					StatusMessage = HardwareReportStatus;
 					log.Write("HARDWARE_PROBE_FAILED");
 				}
@@ -1455,7 +1459,7 @@ namespace ATIVBatteryGuard.ViewModels
 					}
 					SamsungFileInspectionStatus = collected
 						? "조회 결과는 화면에 있지만 TXT를 저장하지 못했습니다. 저장 위치와 권한을 확인하세요."
-						: "삼성 파일 정보를 확인하지 못했습니다. 실제 충전 제어는 차단되어 있습니다.";
+						: "삼성 파일 정보를 확인하지 못했습니다. 이번 삼성 파일 진단 정보는 미확인입니다.";
 					StatusMessage = SamsungFileInspectionStatus;
 					log.Write("SAMSUNG_FILE_INSPECTION_FAILED");
 				}
@@ -1533,6 +1537,33 @@ namespace ATIVBatteryGuard.ViewModels
 					CreateSamsungBundleCommand.Refresh();
 				}
 			}
+		}
+
+		private string WithFolderFeedback(string saveStatus)
+			=> string.IsNullOrEmpty(settingsFolderStatusText) ? saveStatus : saveStatus + "\n" + settingsFolderStatusText;
+
+		private void OpenSettingsFolder()
+		{
+			if (disposed) return;
+			try
+			{
+				interaction.OpenSettingsFolder();
+				settingsFolderOpenFailed = false;
+				settingsFolderStatusText = "저장 폴더를 열었습니다. TXT 저장은 각 저장 버튼을 직접 누를 때만 합니다.";
+			}
+			catch
+			{
+				settingsFolderOpenFailed = true;
+				settingsFolderStatusText = "저장 폴더를 열지 못했습니다. 저장 위치와 Windows의 폴더 열기 권한을 확인하세요.";
+				log.Write("UI_ACTION_FAILED");
+			}
+			// Folder feedback is display metadata. Keep each save result and its
+			// duplicate-save marker intact, including a saved filename or failed save.
+			StatusMessage = settingsFolderStatusText;
+			Changed("ManualSaveStatusText");
+			Changed("ManualSaveFailed");
+			Changed("ObservationSaveStatusText");
+			Changed("ObservationSaveFailed");
 		}
 
 		private void SafeAction(Action action)

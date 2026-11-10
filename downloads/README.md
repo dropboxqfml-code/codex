@@ -1,4 +1,14 @@
-# ATIV Battery Guard — 수동 충전 보호 제어 베타2
+# ATIV Battery Guard — 수동 충전 보호 제어 베타3
+
+2026-11-10 한국 시간. [최신 0.2.0-beta.3 ZIP](ATIVBatteryGuard-MANUAL-CONTROL-BETA3.zip) · [사용·변경 안내](../ATIVBatteryGuard/MANUAL_CONTROL_BETA3.md) · [검증·해시](../ATIVBatteryGuard/reports/manual-control-beta3-validation.json)
+
+기본 창을750×565로 약2/3 줄이고 글자 크기는 유지했습니다. 높은 배율·작업 표시줄·모니터 변경에도 제목 표시줄과 창 버튼이 작업 영역 안에 오도록 보정합니다. 이전 최대화 기억값과 관계없이 작은 일반 창으로 시작하며 직접 최대화할 수 있습니다. 폴더 열기 성공·실패, UAC/helper 취소와 진단 실패 안내도 개선했습니다.
+
+새 ZIP 하나를 새 폴더에 모두 풀어 **ATIVBatteryGuard.exe를 일반 권한으로 실행**합니다. 사용자에게서 Windows10 다시 시작 후 충전 제한 유지와 베타2의 글자·접힌 기능 정상 결과를 받았습니다. 이번 확인은 창 크기·제목 표시줄 버튼의 접근성이며 같은 충전 시험이나 자료 재제출은 필요하지 않습니다. 새26개 포함1119테스트·두 Release 각0경고/0오류이며 새 창 배치의 실제 Windows 화면 확인은 아직입니다. 삼성 원본 DLL·firmware·PDB·이전 단발 EXE는 포함하지 않았고 기존 ZIP70개를 보존합니다.
+
+ZIP 크기는286235바이트, SHA256은 `661f2d57d5bc2c1a6c77fb094bd83646b1af71ad2f6b2f3eba3e84993b2c23d2`입니다.
+
+## 이전 — 수동 제어 베타2
 
 2026-11-10 한국 시간. [최신 0.2.0-beta.2 ZIP](ATIVBatteryGuard-MANUAL-CONTROL-BETA2.zip) · [변경·사용 안내](../ATIVBatteryGuard/MANUAL_CONTROL_BETA2.md) · [검증·해시](../ATIVBatteryGuard/reports/manual-control-beta2-validation.json)
 

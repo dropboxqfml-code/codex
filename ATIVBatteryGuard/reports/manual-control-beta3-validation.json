@@ -1,0 +1,1367 @@
+{
+  "schemaVersion": 1,
+  "dateKorea": "2026-11-10",
+  "baselineCommit": "0e643895dc8a818bcdf655b9219f4bd1994f5cf1",
+  "releaseVersion": "0.2.0-beta.3",
+  "request": "Shrink the outer window to about two thirds, keep the suitable font sizes, fix offscreen native caption buttons at 250 percent DPI, and finish local action guidance/release docs.",
+  "userEvidence": {
+    "source": "Current user message; no new attachment or native trace was requested.",
+    "windows10RestartRetainedChargeRestriction": true,
+    "fontsReportedAppropriate": true,
+    "foldedFeaturesReportedWorking": true,
+    "displayPixels": {
+      "width": 3200,
+      "height": 1800
+    },
+    "scalePercent": 250,
+    "oldWindowReportedTooLargeAndCaptionButtonsOffscreen": true,
+    "rawRestartOrFirmwareStateTraceIndependentlyCollected": false,
+    "underlyingPersistenceMechanismInferred": false,
+    "repeatChargingRestartOrPreviousMaterialSubmissionRequired": false,
+    "prior80SuppressionOffThen85ChargingAndFirstGuiDisableEvidenceRetained": true
+  },
+  "window": {
+    "previousOuterSizeDip": {
+      "width": 1120,
+      "height": 850
+    },
+    "newDefaultOuterSizeDip": {
+      "width": 750,
+      "height": 565
+    },
+    "nominalMinimumSizeDip": {
+      "width": 480,
+      "height": 320
+    },
+    "minimumFurtherReducedWhenWorkAreaIsSmaller": true,
+    "fontSizesFontFamilyDpiManifestAndAllFoldedContentUnchanged": true,
+    "wholeUiScaleTransformAdded": false,
+    "alwaysStartsNormalDespiteOldMaximizedPreference": true,
+    "nativeMaximizeMinimizeAndCaptionPreserved": true,
+    "startupCursorMonitorWithHwndFallback": true,
+    "laterFitUsesCurrentHwndMonitor": true,
+    "workAreaExcludesTaskbar": true,
+    "nativeCoordinatesRemainPhysicalAndPreserveNegativeOrigins": true,
+    "dpiAppliesOnlyToDesiredSizes": true,
+    "actualGetDpiForWindowWithWpfTransformFallback": true,
+    "refitTriggers": [
+      "DPI change",
+      "display change",
+      "work area setting change",
+      "normal restore",
+      "monitor transition including equal-DPI monitors"
+    ],
+    "fitQueuedAfterWpfAndDeferredDuringUserMoveResize": true,
+    "ordinarySameMonitorUserResizePreserved": true,
+    "artificialMaxWidthOrMaxHeightAdded": false,
+    "nativeApiAllowlist": [
+      "GetCursorPos",
+      "MonitorFromPoint",
+      "MonitorFromWindow",
+      "GetMonitorInfo",
+      "GetDpiForWindow",
+      "GetWindowRect",
+      "SetWindowPos",
+      "IsIconic",
+      "IsZoomed"
+    ],
+    "pureExampleNotMeasuredNotebookWorkArea": {
+      "workAreaPixels": [
+        0,
+        0,
+        3200,
+        1720
+      ],
+      "scale": 2.5,
+      "computedOuterPixels": {
+        "left": 662,
+        "top": 153,
+        "width": 1875,
+        "height": 1413
+      },
+      "realNotebookTaskbarSizeMeasured": false
+    }
+  },
+  "guidance": {
+    "folderOpenSuccessFailureShownBesideBothSaves": true,
+    "folderFailureHasErrorStylingWithoutChangingSaveOutcome": true,
+    "successfulFilenameHistoryReportAndDuplicateSaveMarkersPreserved": true,
+    "folderSuccessDoesNotClaimNewTxtSaved": true,
+    "folderActionsDoNotReadClockReplayHardwareOrChangePendingState": true,
+    "cancelNoticeCoversUacAndHelperConfirmation": true,
+    "deviceHardwareReportAndSamsungFileDiagnosticFailuresScopedIndividually": true,
+    "incompleteCleanupGuidanceStillHasHighestPriority": true,
+    "pathsAccountsIdsExceptionTextOrRawFramesAddedToReports": false
+  },
+  "hardwareBoundary": {
+    "newHardwareCommandsOrAutomaticApply": false,
+    "existingHardwareCoreWmiInteropHelperIpcGuiServiceAndConfigsByteIdentical": true,
+    "newCoreFileIsPureWindowPlacementArithmetic": true,
+    "versionConstantOnlyCoreModelChange": true,
+    "sdkEntryLimits": {
+      "ReadState": 3,
+      "Enable80": 7,
+      "DisableProtection": 3
+    },
+    "maximumSetterEntries": 1,
+    "actualJoinOwnerMutexQuarantineAndLeaseContractUnchanged": true,
+    "localProtocolResultAckReleasedContractUnchanged": true,
+    "retryReverseRestoreBootApplyDriverServiceSecurityPolicyFlashOrRuntimeInternetAdded": false
+  },
+  "validation": {
+    "suite": {
+      "passed": 1119,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 1119,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "previousRegisteredGroupsRerun": 1093,
+    "newRegisteredGroups": 26,
+    "newGroups": {
+      "placement": 16,
+      "localGuidance": 10
+    },
+    "testDefinition": "Registered groups; internal cases and parameter iterations not counted separately.",
+    "sdkVersion": "8.0.427",
+    "builds": [
+      {
+        "target": "tests/ATIVBatteryGuard.PortableTests.csproj",
+        "framework": "net8.0",
+        "configuration": "Release",
+        "warnings": 0,
+        "errors": 0
+      },
+      {
+        "target": "ATIVBatteryGuard.sln",
+        "framework": "net48",
+        "configuration": "Release",
+        "warnings": 0,
+        "errors": 0,
+        "actualWpfXamlAndSeparateAssembliesCompiled": true
+      }
+    ],
+    "buildMethod": "Existing SDK/package cache; --no-restore builds with no dependency installation.",
+    "resolvedReviewFindings": [
+      "Fit after a same-DPI monitor move to a smaller work area, without overriding ordinary same-monitor manual sizing.",
+      "Scope Samsung file diagnostic failure to that diagnostic instead of falsely claiming independent manual control is blocked."
+    ],
+    "sourceAndTestHashes": [
+      {
+        "file": "ATIVBatteryGuard/MANUAL_CONTROL_BETA3_USER_STEPS.txt",
+        "sha256": "10d01950ac0e1c5ddd782441c23317e4a7b96f37b55e4230ca4f2e443cf5ee82"
+      },
+      {
+        "file": "ATIVBatteryGuard/scripts/package_manual_control_beta3.py",
+        "sha256": "116edfa433e10838fca9eb2293a20ca00cb3ae4ba5e8ba61ef01525b9b98a17d"
+      },
+      {
+        "file": "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Application/App.cs",
+        "sha256": "3086763a16271a606657de255a86731da395bc0e522c6c2b65de80625bc879d1"
+      },
+      {
+        "file": "ATIVBatteryGuard/src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs",
+        "sha256": "fa8ae66d3a71a7746a52504cf4096e5425a3ffe7a866c2bc016a08069cbc6ea7"
+      },
+      {
+        "file": "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Views/MainWindow.cs",
+        "sha256": "4fa771a6f8a71e3bdce3577d8ad1e55935b32b1c04952190da67d1a605c2fd8a"
+      },
+      {
+        "file": "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Views/MainWindow.xaml",
+        "sha256": "7db88d5c7e98fe5d92e338b4450978fcb556cab7263aab07a523038322caa590"
+      },
+      {
+        "file": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Models/ApplicationRelease.cs",
+        "sha256": "b55925351343d3e26aea2ffc9dd5468b9209c5ce7f6c04b88c1c047a3e91277b"
+      },
+      {
+        "file": "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WindowPlacementPolicy.cs",
+        "sha256": "3249996a695c9fa43d6621b06614916b361acbdc0b25f9a1efa961d6a0d9a209"
+      },
+      {
+        "file": "ATIVBatteryGuard/tests/ATIVBatteryGuard.PortableTests.csproj",
+        "sha256": "04fadf468f69f539712e6ef45ff15519931e7f35f165a4d6b04c92ac9ec5cc9e"
+      },
+      {
+        "file": "ATIVBatteryGuard/tests/LocalActionGuidanceTests.cs",
+        "sha256": "601399b11a2fd4d3e4d4c5713105e996cd66e8540b48dab000a1c9ceea333db4"
+      },
+      {
+        "file": "ATIVBatteryGuard/tests/ManualProtectionUsabilityTests.cs",
+        "sha256": "cb6f8e934838f504891583510317787e59fb59079a0645070157b12bddda45b8"
+      },
+      {
+        "file": "ATIVBatteryGuard/tests/Program.cs",
+        "sha256": "c0f131614d681f0251d54a2261517641737044a98721e2cce688789cf1cfae05"
+      },
+      {
+        "file": "ATIVBatteryGuard/tests/WindowPlacementPolicyTests.cs",
+        "sha256": "58aad7bd1e33d06a56255dbcb6a133aab779019fc05f73aea8b785d1f09e0de2"
+      }
+    ],
+    "evidenceFiles": [
+      {
+        "file": "portable-build.log",
+        "bytes": 227,
+        "sha256": "e96d54009e69c61746dd4c4369afc7c0ea3395ac9ff2b774b453ec62f71d24a2"
+      },
+      {
+        "file": "net48-build.log",
+        "bytes": 2286,
+        "sha256": "af6ed67b72e4e589760019df689b46392c4f39443514ce607f0eed18d47cee01"
+      },
+      {
+        "file": "suite.json",
+        "bytes": 108,
+        "sha256": "689e2bceaa5ebcd40193b5a917091ad7adbd97c8a9f97f693601aca58e7afa62"
+      },
+      {
+        "file": "suite.log",
+        "bytes": 101578,
+        "sha256": "e63feaa9c959ecaa0b80f07c952776dff47a7fba961e9e4b7dae056ae489cb9c"
+      },
+      {
+        "file": "root-package-audit.json",
+        "bytes": 1470,
+        "sha256": "12cdecc9993c9a37cca8a19aec14765a2442db8de4cc49b9f0afb485e4010cad"
+      },
+      {
+        "file": "independent-source-audit.json",
+        "bytes": 6432,
+        "sha256": "e0f6b9218625268696d27aefea13eb8e5213fc76940ea1af69d496242a3e6dc5"
+      },
+      {
+        "file": "independent-package-audit.json",
+        "bytes": 3585,
+        "sha256": "4b4b081ae6d5a0a8f878c5ad4ee0a70baf65c6c23271cd92974ca8616504fee8"
+      }
+    ],
+    "allowedOldTestChanges": [
+      "tests/Program.cs registry and folder fake callback",
+      "tests/ATIVBatteryGuard.PortableTests.csproj new includes",
+      "tests/ManualProtectionUsabilityTests.cs current release expectation"
+    ]
+  },
+  "package": {
+    "file": "downloads/ATIVBatteryGuard-MANUAL-CONTROL-BETA3.zip",
+    "bytes": 286235,
+    "sha256": "661f2d57d5bc2c1a6c77fb094bd83646b1af71ad2f6b2f3eba3e84993b2c23d2",
+    "entries": [
+      {
+        "file": "ATIVBatteryGuard.Core.dll",
+        "bytes": 407040,
+        "sha256": "3ede86f77dbe070ac7b0f7a60df594a7ad1b7c8961daf84b9f4aaa87bcbfa808"
+      },
+      {
+        "file": "ATIVBatteryGuard.ManualProtectionHelper.exe",
+        "bytes": 45056,
+        "sha256": "626e030d0817f58ebe6d18a562864df5db20186bd6c06f5c4bc460a028526925"
+      },
+      {
+        "file": "ATIVBatteryGuard.ManualProtectionHelper.exe.config",
+        "bytes": 169,
+        "sha256": "d3ac458f80301bf7e6b9428a5a479317a613e0145a23d98315a3a3906ba9436a"
+      },
+      {
+        "file": "ATIVBatteryGuard.WmiInterop.dll",
+        "bytes": 61440,
+        "sha256": "1eca2ebc2f69de38facb1dee14de6acdaa3b631262f4d7cba26e41ae1ef25380"
+      },
+      {
+        "file": "ATIVBatteryGuard.exe",
+        "bytes": 146944,
+        "sha256": "face696c14e86d0d26a3343ce12cb28492f31a2ac20656041dd21bc65133de88"
+      },
+      {
+        "file": "ATIVBatteryGuard.exe.config",
+        "bytes": 288,
+        "sha256": "e93cd9ad206868a0b95473a44b3b45580e3ecf4a85b355d7432a4b1f81dce0a0"
+      },
+      {
+        "file": "BUILD-INFO.json",
+        "bytes": 39916,
+        "sha256": "e7e59c59edd473609c8e8e3c132a2c5d652feb9cb067993e3357ceb1a8675c69"
+      },
+      {
+        "file": "SHA256SUMS.txt",
+        "bytes": 773,
+        "sha256": "0087f41ed059420e7a45986a0c2086ac57b47210e51a661f3d2fa3ed6f6d92a3"
+      },
+      {
+        "file": "먼저 읽어주세요.txt",
+        "bytes": 3608,
+        "sha256": "6ebd5948f2ceb075b106b63bd2dca51ca48f053682b57d34b11fe520f2d18bd7"
+      }
+    ],
+    "internalChecksumEntriesValidated": 8,
+    "crcValid": true,
+    "releaseVersion": "0.2.0-beta.3",
+    "guiVersionResource": {
+      "fileVersion": "0.2.0.3",
+      "productVersion": "0.2.0-beta.3"
+    },
+    "productSourceFingerprintSha256": "744fe0a610b5d74dd1fcc805c9ab882e2b1de86980910805df639dfc522e0109",
+    "sourceFileCount": 197,
+    "sourceFiles": [
+      {
+        "file": "src/ATIVBatteryGuard.App/ATIVBatteryGuard.App.csproj",
+        "sha256": "593060b7b6fc57f9d24bf682e343b2d0af9400d1c1e2b11671a142ff02929150"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/App.xaml",
+        "sha256": "474ec6044163fdf99e53bd0e9e8ae7d4dff1f9529ae64aca157c82785e4956ed"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Application/App.cs",
+        "sha256": "3086763a16271a606657de255a86731da395bc0e522c6c2b65de80625bc879d1"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/BatteryCapabilitiesWorker.cs",
+        "sha256": "4074bda8fb0912e119dda48c9a6e8dbc19dee96e560d305fb80ed864790bba89"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/DeviceDiagnostics.cs",
+        "sha256": "291644d5ad607aeeca77ed158aa36db8e7632f0451d3796a7ca671777d941d36"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/HardwareDiagnosticsCollector.cs",
+        "sha256": "53c082bb4e794e9073847d7e2b97a389b49d930dedd3f13942b20c1ab762c43d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/NativeBatteryCapabilitiesReader.cs",
+        "sha256": "073d3656c1ae906f2b186eaa346af392eda06f0b98a7f14c9ceddfdc5f2e7ee0"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/OfflineAuthenticodeVerifier.cs",
+        "sha256": "7d9d8501647edd826b55fc25dd957425c91329b44874e91e9ea8f81ff71add33"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/ProcessElevationProbe.cs",
+        "sha256": "79db8a1ee2cb1cba1f49e4b4f1fd370c0a3314180aa310c3d634c8ff4feb3b6c"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/SabiDriverLinkProbe.cs",
+        "sha256": "abfba95fa9e17646780528d5ccbc1f4ebebeffaa760639e376f596912b1bfe1e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/SamsungAnalysisBundleService.cs",
+        "sha256": "b9937798f4d954a4ad8841e2e21169fef3558fa4d026b2a298283c226c276300"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/SamsungFileInspectionWorker.cs",
+        "sha256": "33c3b4155b1d2a922ec706236bf2db02438af809844d038a5c09bb054d3afc47"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/SamsungFileInspector.cs",
+        "sha256": "389e54ecfa7308bf5d6d06bf5e7a9cee2ba6dee8015109b0c0322f679196882f"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/SamsungKernelDriverProbe.cs",
+        "sha256": "55f31a0fb0a430079c177cb17b78eed78ad3c7e6864383778efbda268a712fa4"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/SamsungSettingsLocator.cs",
+        "sha256": "81f7eaf7cbd764790b2d97d7944e1e63b9da5f5ab553b6703224bf5aff954d9d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/SamsungWmiInstanceProbe.cs",
+        "sha256": "f2f813d7ac369b9f6833b1ee40792ae0dbdab1cc57684b7a0ec93e2e772b69d3"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/WindowsBatteryCapabilitiesProvider.cs",
+        "sha256": "b327374026b56d43062c2ca7265ff4e970a74de018351ac297b2a7180648f674"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/WindowsBootEnvironmentProbe.cs",
+        "sha256": "a66f6acbe60723961aa09419e9aa41a9788fe1f9e67361b3d928d4a3bcc56066"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/WindowsSamsungFileInspectionProvider.cs",
+        "sha256": "b54b936c3df83cbcf2a050be387b20b34f30ede6895a522552330e54547f2637"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/WindowsSmokeTest.cs",
+        "sha256": "47772423708e5cdbfeae2953dc668239b3236f74f6f38f26e960c03c9a712296"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/WindowsWmiSchemaSource.cs",
+        "sha256": "653df6d46fe0ba85ce9bb177a3ce7e3c1bf2fee4f6b38ca64b853fdd2e3298e9"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Diagnostics/WsabiWmiContractMetadataProbe.cs",
+        "sha256": "3c61defe981ce4e3dd5ed5c7a046d05002654aae71f3209c41ad7e6325bff44e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Properties/AssemblyInfo.cs",
+        "sha256": "5428d03022a7b31244c7b5cacbf08948818e410c6c1b433b2678825a4dcadf94"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Services/IUserInteraction.cs",
+        "sha256": "3788a63ea964ebc89bdee90d4496cd4bc7113e2e423dc4fbcba2b597bcf404c2"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Services/LocalUserInteraction.cs",
+        "sha256": "89447ed5c721ecc5d1354e02d2f5e64e4d371a045c60a4c5c7085458999bcd87"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Services/WindowsBatteryStatusProvider.cs",
+        "sha256": "9ce238e002e9c197fda463dad0d1b8e15f0782ca19c19de98ac576330d1f736f"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Services/WindowsManualProtectionOperationService.cs",
+        "sha256": "614bec633961aecb30aba3db0fb47d434e53b2db107dbdb20f3d43050c486a15"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs",
+        "sha256": "fa8ae66d3a71a7746a52504cf4096e5425a3ffe7a866c2bc016a08069cbc6ea7"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/ViewModels/RelayCommand.cs",
+        "sha256": "3d9a9dc09a647372206fcc590392d955119f74f0ad4862c04eb9d427ac6b094e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Views/MainWindow.cs",
+        "sha256": "4fa771a6f8a71e3bdce3577d8ad1e55935b32b1c04952190da67d1a605c2fd8a"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/Views/MainWindow.xaml",
+        "sha256": "7db88d5c7e98fe5d92e338b4450978fcb556cab7263aab07a523038322caa590"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/app.config",
+        "sha256": "e93cd9ad206868a0b95473a44b3b45580e3ecf4a85b355d7432a4b1f81dce0a0"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.App/app.manifest",
+        "sha256": "aca2617519165b04a83b3216da3bc1c60fef66fe4ad88a372a59f5e8113b8578"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/ATIVBatteryGuard.Core.csproj",
+        "sha256": "8f68a533179a60561c717fed429f876c576fbede3b1817633405133126534d1e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Hardware/ChargeCapabilities.cs",
+        "sha256": "2095f345c07a1c929600f9548ead1b1fca28fcca01b71b8b7cf493bee2d36911"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Hardware/IChargeLimitController.cs",
+        "sha256": "7bf239f390e4d7a4b50954c8c2d84842c7f9cfe4f2e679f99074116b75dc137b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Hardware/MockChargeLimitController.cs",
+        "sha256": "d145c26f86a34765c4ab324d97f957afe55ee089cf22fb418fcb3ab72b2849f1"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Hardware/UnsupportedChargeLimitController.cs",
+        "sha256": "29da935d82448fc674657b7759c7da3b7eb92ffde50dd7e0afc4b296889b1cd3"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/AcpiFieldChannelReport.cs",
+        "sha256": "82e39519fec06d791785c3e38665a21e507a2ab0293fcf7eeda254242fe1413d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/AcpiMethodFlowReport.cs",
+        "sha256": "0308b043bb8b8d4327d68f60f7e445526ddacfa8ba32229f49b833bb8e732c73"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/AcpiObjectReferenceReport.cs",
+        "sha256": "369d25b369d34bd2f386f8173f82dbb4ab17dc465436b14099d1f2a7911b2568"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/AcpiStoreRoleReport.cs",
+        "sha256": "377cb5dd9b5d2565550059f5788cb43098694301f4f37df007f6379277e40f47"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/AcpiWmiRoutingReport.cs",
+        "sha256": "22face0bca7b8b6b0dfc6efe287601d86576d49872bdda877694fea0ec671f1d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/AppSettings.cs",
+        "sha256": "607f51ee07c697562bf1f09769278599173db9709369401630336f1f50f4fe0f"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/ApplicationRelease.cs",
+        "sha256": "b55925351343d3e26aea2ffc9dd5468b9209c5ce7f6c04b88c1c047a3e91277b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/BatteryChargeState.cs",
+        "sha256": "7fe0bff52d1db1040ad8cd0b980c27ea23479eacbe05301ce6a2a25fac2debdc"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/BatterySnapshot.cs",
+        "sha256": "0fc05aa6e7dc0674eaa7d75e97160b5fa21a813a51515156e52bb655d88d428f"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/ChargeMode.cs",
+        "sha256": "d0841153deb9656226630fa283ec2ed5270124caf15dda0d16afb45ff33fbd3e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/DeviceDiagnosticsResult.cs",
+        "sha256": "6234d8f9a4f15a30f4ebf45016a878bfe149217caa80ef1dcbd3e8f45ac39cde"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/ExternalPowerStatus.cs",
+        "sha256": "e8dedb928c7c02cee6b57b375724fbf09a07bbccf8c23c53d1eddca13b942b0a"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/HardwareProbeReport.cs",
+        "sha256": "0478b62fae637baaafa1a4ba71dacabf42e0475baad0606c9b817d6483d9cc0a"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/ManualProtectionResult.cs",
+        "sha256": "cab6513e8d1d3496d56dead6a5fa4c1b6939941756ef69ff0f06f9b88e70002c"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/ManualProtectionWireMessage.cs",
+        "sha256": "490b5f72193d1efbc794bf390364d54051d16fc6c6c118d16661de45f999718a"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/NativePowerReading.cs",
+        "sha256": "645450fbdd95dcc398eb6eed574e49b63a2587a74680d509a5ff263b9a114c8d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/OperationResult.cs",
+        "sha256": "0bc819dfb3deca9a08d1085f49a932b1c88bbe091cb44705b1d76886c4c867d8"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/PeImportedFunction.cs",
+        "sha256": "aa89cd07166262dbe7f50659f7dc46e479d528994f2e6681f1fad5baf90021d4"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/PeModuleInfo.cs",
+        "sha256": "d1616223e2c8916c6d8741d0b748d1aa6dfef39832f866e80a55c4f5756fd566"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/ReferencedModuleDecision.cs",
+        "sha256": "2bfa9e0cb3c304f579b677e43f7ca2b098a500d1c669c92e702145987c68a85a"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/Sabi3ReplyInterpretation.cs",
+        "sha256": "f9d5dcf91dca6fa5db4c33864a259aa1c9743445220c3ed13f317758da31ba56"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/SamsungBundleResult.cs",
+        "sha256": "ec0bc5c9b0a52bc4b82768d3ed6b54b4299e2f364170cf12356eaaf3610f2779"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/SamsungFileInspectionReport.cs",
+        "sha256": "417ec3a9b8270e6d86532137d7d5203cabacd95728087a1eedcb00d8cbe70bd4"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/SamsungKernelDriverReport.cs",
+        "sha256": "8d5b9ea3ea10325667a68c4dbc813ead18c3abfb2b2078b513ffb51d4cd083e1"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/SamsungServiceLocation.cs",
+        "sha256": "b0ee1ceb31041f7c56d870c9e5129f31bcd34f5cba1569016d5f5199440c02a6"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/SamsungSettingsPathResult.cs",
+        "sha256": "188422eae477587013368a2d5ec3416182706fdf4bf2f6a483b217984ecb0a71"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/SamsungWmiAccessProbeResult.cs",
+        "sha256": "0d2f3fab990e0601627c60fbe0fefb847bd913cbc95f4e6d71d4f2293d9a0727"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/SamsungWmiInstanceReport.cs",
+        "sha256": "6c02daab58436c6c8b7d98a89a1ad2d00c0a8b69be3b0561c3a64f6a9c14ba5e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WindowsBatteryCapabilitiesReport.cs",
+        "sha256": "47e0e673c314cb1935c43b4b97e9522bb3c57e74da66b2a561670aec7d9d9fec"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WindowsBootEnvironmentReport.cs",
+        "sha256": "3ce03e8b670a4daed8564a6c0f8750a359cef35f2bbba0e0fd903fa83c717ae6"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WmiBatteryReading.cs",
+        "sha256": "817143515fe848e799e1fb9048657e87cfb153893c622e0bc512a8b3ab5530ad"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WmiClassSchema.cs",
+        "sha256": "895d8440fafe91306c261eec1dceb87fd78102aaa2b3297c0db52f3473120442"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WmiSchemaInspectionReport.cs",
+        "sha256": "c4ddcab3544ac774162023e04511a4fbcb1bd17540b4f38dc53419a90dca6864"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiContractMetadataReport.cs",
+        "sha256": "bc730adec597cb5b66f75970cde38b5ef6195de5b77df8968cb977c648cc0eb8"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiExperimentReview.cs",
+        "sha256": "e1de1e6532f9408facdb58bf0fdf5882a092889a4f01c94f3bd9d0db94fecadc"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiFixedReadAccess1Review.cs",
+        "sha256": "925028c8f50fd3e26db438070a92c916bbc955b90fc97f5712e702bd700d7031"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiFrameExchangeResult.cs",
+        "sha256": "1335b31dc4d903102a205c4fab1a315f7028a4260de9f1b0fb9887b3fea45572"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiMethodReplyResult.cs",
+        "sha256": "d618971a925e9d9292ed4552e9e10d2231f9449ad75fa32c00b156d00aa9d5c2"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiMethodRequest.cs",
+        "sha256": "ebf35e638def0a7ba9c85677bc96ccf8be602cabc0d5a18825ac21f99092ee65"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiMethodSnapshot.cs",
+        "sha256": "2bedea51b572066226cad38133ba6caa700a057221422f9db63f6d3c2d461a24"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiOneShotPreflight.cs",
+        "sha256": "e79bdb5992820f4f977ba7407c3a8af25243504af3ee895140cb49eade9aba9d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiOneShotPreflightStage.cs",
+        "sha256": "723770fc5080772b2ce11594143bf3eeb1af60075d12eb51854b96127baa0dad"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiOneShotReport.cs",
+        "sha256": "fcd3a4c59a0be5b4206287f6eec66b0c91c6cab8588f3cbceacfcb1dd86d23b0"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiParameterMetadata.cs",
+        "sha256": "35d8fa7b97e6c65d42f54acc4e1b513df5ea9c81c5cdcacdb828f141e1afc7e4"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiPreflightInspectionReport.cs",
+        "sha256": "a20ccd729b5636e06ba2ada976c06af2fe19f77125e294f9eb4e13b173fa8fdf"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiProtection0To1Review.cs",
+        "sha256": "dceef931e2f2e5c524176295582e51b9ec5a96d62a0801124c992146df2bcd4e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Models/WsabiWmiReplyResult.cs",
+        "sha256": "71cd70060446c428ddb241f21385a1034dfb1a26cfb8570a0491e904611b5aa5"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Properties/AssemblyInfo.cs",
+        "sha256": "69a9111743d114f4ef4e1fc577a734a6991367062f9de6cf5a8115e2116524f4"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/AcpiWmiRoutingInspector.cs",
+        "sha256": "1b586a1dc7562f13eede2c642490d9b6a0814914b7cc0f8f4bcc9927e14cc6ab"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/BatteryCapabilitiesProtocol.cs",
+        "sha256": "0009ae5486379b03aa60c312e3bd824f78e1f0e77ae82d69e282c9cec576b2da"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/BatteryCrossCheck.cs",
+        "sha256": "1122db49b9e787605fee7df98a37b52bb5b485f55ec5c86b2c8ba1c326418c39"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/BatteryObservationSession.cs",
+        "sha256": "4700380c498941e7938908c634f616fafd9ce7b56dd6366c1b299884cda99090"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/DeviceSupportAssessment.cs",
+        "sha256": "6af6636d5035c36de4f039536fe3d19a6dc7bf0ab48acb67eda4f73c6e0b5368"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/IBatteryStatusProvider.cs",
+        "sha256": "3e50796164a811de5537d06289b62f42cb225ec1a7278e478b3478e10420a922"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/IHardwareDiagnosticsProvider.cs",
+        "sha256": "82c136500c8823dcc6e7ca84872c516bfc578c9e7c3b95915c26e5ab56f85422"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/IManualProtectionOperationService.cs",
+        "sha256": "4f0681b87b3f0a8d7672409d7dc4331688f469e23dede291ebfc6559346d9d12"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ISamsungAnalysisBundleService.cs",
+        "sha256": "627022dc1ca0649cb1b8483c538d75c2085a54068901b5c2e4d871bf3b22945b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ISamsungFileInspectionProvider.cs",
+        "sha256": "90ed74cbb77a09a479eac1238faef59426fd07ecd96b44ccec4dfafda760323c"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/IWsabiWmiExchangeGate.cs",
+        "sha256": "f5f54ca1bad312cdf4ae3157a1c0a54772543a0f69dc4820acc35a687a4ce694"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/IWsabiWmiFrameChannel.cs",
+        "sha256": "3495d3a4087effbeb22c1c95f2dbd316124fc882f6eff4f763d44ac9e4ffe432"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/IWsabiWmiInvocationSource.cs",
+        "sha256": "aa7fab769f59d2358100b5c4e87a6da99e75c38f08945ea63fc54c44228baf79"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/IWsabiWmiMethodSnapshotTransport.cs",
+        "sha256": "cf304c82181844ce8fc20e491a201736a4d81874ea1aaf6f26fb0eea63bb937b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/IWsabiWmiOneShotBackend.cs",
+        "sha256": "3e8f18d125679f66500421124f17f65f671968f063a45bebc434855c2fa69bed"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/IWsabiWmiOneShotReservation.cs",
+        "sha256": "47c2cbe78ee50603af84f50aa8944b9b5fbea21e81eade232aed9d571d85e6b1"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ManualProtectionAttempt.cs",
+        "sha256": "ee497928abf10fac5088be34744e088aa641e3cd38d6ab4c93a0a7cf421a0796"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ManualProtectionClientSession.cs",
+        "sha256": "6ea8b63f7c20dd94eb4da82e25ebbc6297d7bc9f8a456347376b6ae644764894"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ManualProtectionCoordinator.cs",
+        "sha256": "2049c3296412de38b8fcfc81133fec87b36ffd20e597362b91ae7301eac98a2d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ManualProtectionLeafContract.cs",
+        "sha256": "8cd998552d398196d0b697cd9169e76c6d3fd91f9166675468c206ad2b3524c8"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ManualProtectionReview.cs",
+        "sha256": "6da517de1f2c4d379edcf226db9cace184986422984dfa87fbaa28775e833ee7"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ManualProtectionSession.cs",
+        "sha256": "38c7b9932f2982031b34ccc0033696f44d527f5d90e3c87f0b60165dd7b0f77b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ManualProtectionStageBinding.cs",
+        "sha256": "cda2f26aeedaa4bd9cbe45275f9a9a5cc60b03b97e8c946522f46b2f05c6366d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ManualProtectionWireProtocol.cs",
+        "sha256": "b0732e5001820e5a20897616f327768af2d28747b857aa6fe963878ed7769f11"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/PeModuleReader.cs",
+        "sha256": "8e0cab844b6bc9393cd7bc1eaac03b2cfdcabb100e8f5638c1aa870d9a42ae25"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/PowerStatusDecoder.cs",
+        "sha256": "2a24561a5392fd3acacf5e2748b77819dff089958059efe3de69610b63dd7a6d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/ReadOnlyBatteryQueryPolicy.cs",
+        "sha256": "07f018c39ca187e74873e846037444a2054c695fa0467ac95579498db9d4944e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/Sabi3PreparationAssessment.cs",
+        "sha256": "9b219b674657817a872af07e9ecd8d3bef9e16966762fe12d913161c1755598d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/Sabi3ReplyDecoder.cs",
+        "sha256": "94a9c3df6a8f3fc348f9dbcb169af52d5634f9120e94a6b6712de3296ff7b075"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/Sabi3X64Abi.cs",
+        "sha256": "07c2dde3f00850c8572f0a32c8776b721b3dbdd0a9f744657e0528f09d37138a"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/SamsungFileInspectionProtocol.cs",
+        "sha256": "bfd1c18d7c86a01c7a2709fec02535a79a22aeb9c45a0bc748b7edfd295804fa"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/SamsungKernelDriverPolicy.cs",
+        "sha256": "ad82bb1a1f650249db2fdf0cc588d2b9b73938447559156f40496fea63976b2a"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/SamsungReferencedModulePolicy.cs",
+        "sha256": "134ff73d9370a77c909a9e5cebe431a49d9ef9e0d10e1bbde94273b4a4ae3f81"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/SamsungServicePathResolver.cs",
+        "sha256": "cfb61f8e376d0c9c90a2d9b80691ea4b5f24ccbdf44decf62ab4a6d198475049"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/SamsungSettingsPathPolicy.cs",
+        "sha256": "03e65504acd1fc3712fc60a49290b817227b06be26bb4a92e80ec64717685c03"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/SamsungTransportAssessment.cs",
+        "sha256": "fe87e34ac844268fa4df0a238d90a212534c05ee2587df1cbc0783b3e94da5bf"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/SamsungWmiInstancePolicy.cs",
+        "sha256": "f505565bbc27c8b71c0149e93fe913bf48dcfe52eaa205e7201dfa8cfc1579d1"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/SupportInquiryFormatter.cs",
+        "sha256": "d3e559fe6d9fb6758ad136c6a7c6928b8ee398204b9dd25c1c56e2e386d1f8c5"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WindowPlacementPolicy.cs",
+        "sha256": "3249996a695c9fa43d6621b06614916b361acbdc0b25f9a1efa961d6a0d9a209"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WmiSchemaInspector.cs",
+        "sha256": "2cf0afc128e27a145a2f7bf69aeb235f10a14588454cc77034f463c396940f51"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WmiSchemaPolicy.cs",
+        "sha256": "057858809e10e197a81494b1f68f66e52e0370858f8d9400ac558d4e6412daaa"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiBoundFrameChannel.cs",
+        "sha256": "477197ccbf78202b2a308edf74c2a70b129ad26063bb0b1744e765cd49ef9af8"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiCallbackInvocationSource.cs",
+        "sha256": "8552634c42d9dd32f67db45754b1fda402a85f2407dce99115e9ee8323e24285"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiContractMetadataPolicy.cs",
+        "sha256": "2af9d66de2c70a854a8cbdd14852a360d387bbf02bc4c5a392ce2a9d3608780a"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiCooperativeFrameChannel.cs",
+        "sha256": "4c8e68094ba96ea92092f64492027e66b12a2fe5f24eae2828ffefbf373ed747"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiExchangeCoordination.cs",
+        "sha256": "7dc0c41fb7e7f7e45c379a7d4d13170bf85807179f0f0406dbe75abb06458216"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiExperimentReviewParser.cs",
+        "sha256": "6ca43d3821b921c44c051a5a762446e4f4766cf5de7b89d0f7b9cf061357ba2f"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFixedModeReadAttempt.cs",
+        "sha256": "04d7f79d759d8c97b822e5d35355442a3a9c0fe2046b6372532311e365de2aab"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFixedReadAccess1ReviewParser.cs",
+        "sha256": "807ce22dac56c9b4fa4ee2c658e0927e1c7e31b19da8bb13c8dc7b785c80ee9f"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFixedReadAdmissionPolicy.cs",
+        "sha256": "a2549c77064646819c657901c694b35e16138bf6c4253a35aaf40d09d95a3c85"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiFrameExchange.cs",
+        "sha256": "96b795772fbd5275f00a491112148f9dd3b9f607e8965a1ec0edccc65e5d0796"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiInvocationSession.cs",
+        "sha256": "605390fff4663dfe802ca3d652545c1432fe758bc1a99efc260fd7470c184acd"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiInvocationSnapshotTransport.cs",
+        "sha256": "5c0b5777654a0b97931f5357c5682fbb6ec976910bc5833400d3d0c5c0d87431"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiMethodBinder.cs",
+        "sha256": "168f71b7fda73eb5123c1ec85927ebabd21409d786656de4f558a40adf8be848"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiOneShotExperiment.cs",
+        "sha256": "66bdf53ca79c0e1c564ee03cb40f26e2ad031860064205abac9b987d4be0caf6"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiOneShotPolicy.cs",
+        "sha256": "4b66af5f6f70e2f83ed6f0df761735005b900c969592772bede1c92ab06a1f1e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiPreflightIssuePolicy.cs",
+        "sha256": "20883b4fd08458ca34e22bb7864bb0fc7ff86f1154e63e0f32f9ee1b0e59e462"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtection0To1ReviewParser.cs",
+        "sha256": "5a4bbe2360bea447ed27c8980cd2e9384cb73acb0e84634289aef0b459be8dab"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionDisableAttempt.cs",
+        "sha256": "98b4877a777b5741d9998f95698620b4f27cbef959484fda20d7066fe7c914c3"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionDisableLeafContract.cs",
+        "sha256": "36de9df8c735d2461cf9a31be8c17f614f4189f6e0949949b022179ec052e954"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionDisableReview.cs",
+        "sha256": "54dd9e4b9247537a0449a12e264f2aa503afcc44cc2ee945244379080a1d94a4"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionDisableSession.cs",
+        "sha256": "8cd15d3e39c4b2ab6cd95505bc28e9ec6c7c6575e0e37768c5e78611ada93e0e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionDisableSetterReplyReview.cs",
+        "sha256": "806159f91ebb4bc44181d1560c7555751665697de8af50e4effec0b37d935738"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionDisableStageBinding.cs",
+        "sha256": "269d6368ee525a6d8bd801650b4c649bf53e95b0b0e169e7b0ea7dbd15ce79d5"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionLeafContract.cs",
+        "sha256": "20856b4fb583897922d59a9a7b75d93eac4ee069c645abc3aebef149bc0658b0"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionReadReplyReview.cs",
+        "sha256": "faf6e35368f35fdffe22a070c12ed3471e4c4b515e7f83ee2e0a46667e59d66b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionSetterReplyReview.cs",
+        "sha256": "d82b182be2bb28027effa1904a72d7dbd125f7f2615bf2dbfe334bc9374f47d2"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionStageBinding.cs",
+        "sha256": "3e9716dd42eece8204d66ece955d924f0cfb9f4495485e92d6c7551ecf332e4e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionTransitionAttempt.cs",
+        "sha256": "6c202c9f91a150b603dddee66ad1ca1d66a7e414b2e5236b0dd09f86adfa7059"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionTransitionReview.cs",
+        "sha256": "3d5dbc02529cacf9f163e817151cc4633d042c79da38e21d8b24798e7e00f666"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiProtectionTransitionSession.cs",
+        "sha256": "d415d500af3229917f98c0f44aa04513459e801672964d86e89efc3f69a676da"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiReplyDecoder.cs",
+        "sha256": "700d876c9e0f3e78fd4354dfa146dbb6b0264716a9ee1d6521aef02bb91e1044"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiReplyValidator.cs",
+        "sha256": "e20577135e9fd6e89de7a5d80583490202d8e80d8267e486e991aa0a6fa81d50"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiRequestEncoder.cs",
+        "sha256": "55a26de001c731ac2e44cf37223a2c6f1f47fe9f4430f8b13c93809ecd6cf9d7"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiSevenStageCoordinator.cs",
+        "sha256": "2d1b40d961557202aaded95b8ef14a8df9a6ef323f8e01accb722ac019d28389"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiSingleReadPlan.cs",
+        "sha256": "5b52f5385acf546b1fe65aad2384f46782fe8cb482c85ed1c9a55e57bab0f940"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiThreeStageCoordinator.cs",
+        "sha256": "6b9ae62e1905a4fd3e166efd904e4b0b43629861a0a18e0859339a8e5c1ea4de"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Services/WsabiWmiWindowsMutexGate.cs",
+        "sha256": "12b2fae4d0bed506d8da03313ca150ed66da720107796994b7a3ecfde0e8295b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/LocalLog.cs",
+        "sha256": "b340a3bb7d9222d5ad8bfef8b3512c921083909d2a3a32c03d83635399fb5b4b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/LocalPathPolicy.cs",
+        "sha256": "80ac0bd667069f91cc6d6ee01c79f6baa1bcd4d0c5aa6609330f994257ee4d1d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/ManualProtectionOperationLease.cs",
+        "sha256": "44abedeca84c7c843cd78574977ed57525a458f20cb5c20e3b13d93b808e1aed"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/SettingsLoadResult.cs",
+        "sha256": "8ff9634d914d1169a450742610d05d473e11139cc64404b8f9b7ef1ca6ef7b0b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/SettingsStore.cs",
+        "sha256": "d6c11c7cefeb7f158c78cbffc960a6b7c416965861539dfa219ff49845947e3e"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/WsabiWmiFixedModeReadAFileReservation.cs",
+        "sha256": "7e52eb617c8ad43c662d2184b93cd51108d15089a78379eaa026ec54cbbf5063"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/WsabiWmiFixedReadAccess1FileReservation.cs",
+        "sha256": "550c40dc70117daf8f51f4a8f65d076dc846eec55434a724927edb2726c6c049"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/WsabiWmiOneShotFileReservation.cs",
+        "sha256": "135ef5d7f499ef5245d97eb2ea42111df01d3de2517376105bb35b06872a95a1"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/WsabiWmiProtection0To1FileReservation.cs",
+        "sha256": "c97fda72101a4f52da7ea8a73ab6de5d14225bc467168d81979630bee55b053d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.Core/Storage/WsabiWmiProtection1To0FileReservation.cs",
+        "sha256": "46ce59ab67369db13ad668b23412af3bf3eb286f005162279ff71f7536130ec9"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.FixedReadTrial/FixedReadPreflightTrace.cs",
+        "sha256": "8aad8af3e63690a1a387f6203471afb8c241e774113fb0f194ab919a79dbe1bb"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.ManualProtectionHelper/ATIVBatteryGuard.ManualProtectionHelper.csproj",
+        "sha256": "879ff9baa160e245518ae11b3144217d21937041142fb863b03960fbc02ca1b1"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.ManualProtectionHelper/App.config",
+        "sha256": "f7d392e55d67293ca77b32c6e7750f253dc893b8db04ecfada88d34274ef76d5"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperAdmission.cs",
+        "sha256": "24588ef8cbf3c0bbc39c9d6be9d920a307c6c4caf7ea5fe6acdc0bfc43ca3b83"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperLifetime.cs",
+        "sha256": "7d36e00b1604cb5429397179e8046a8ad04db40b19a1d17c7cb21e0b79ca474c"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperPipe.cs",
+        "sha256": "45f711309f2b7b2e4ca4d4e24cbd1bbc617b54326f38a572018eeb06b6249095"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperResultFactory.cs",
+        "sha256": "5f9e83fc3955cfa26da38e12b01d3b60619c488bcad5f19d9505f4523d811c7d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.ManualProtectionHelper/Program.cs",
+        "sha256": "1c36ac8127c00d36c8a00ae4b684db8722436e8ecaabc12899f2e91dd2cc31fe"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.ManualProtectionHelper/app.manifest",
+        "sha256": "a43cfd1920f5316c885a5035f40fbb4b9b7c303016ae7728cb7d54968b41812d"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.ProtectionTransitionTrial/WindowsProtectionPreflight.cs",
+        "sha256": "7a160d4efe756f20b387e380dcc88751436e066e76bbc2943d89b9c858ffd32a"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/ATIVBatteryGuard.WmiInterop.csproj",
+        "sha256": "ffb519a5ba8f57adee73d3a809817cf37dc343807461fa3d6d28fb7c54052a19"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/OwnedWmiResult.cs",
+        "sha256": "773915ed40cde2fd1231cb44ec63ae96c3b225b81e9df9fa71fb2450aa6cf9c2"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsCallbackSource.cs",
+        "sha256": "0ec2ea7023794851f2820fb8179c02b9d38601e74146695f52c198a115a69001"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsFixedReadPreparation.cs",
+        "sha256": "fbfefd2ce01b3931c89aecbebcc89105a573789f4eddf414ab55f11ccf6bb3af"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsInputPreparation.cs",
+        "sha256": "00a5b9bf754017c75541c4b92f83280fe79b35b7141f51f738cba948ff17d1e8"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsManualProtection.cs",
+        "sha256": "2c135a86451c171e71afb4a85e51a737410f5dee27a18ad24524589b8503cf7c"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsOutputReader.cs",
+        "sha256": "4783c442ca2954b9eb7c1159d0aca8310597af7d682832a6f3a3cb40732c895b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsOwnedInputPair.cs",
+        "sha256": "6b95a1b150597babdb3d98ede62b3c1f8b42100fbcd7af62990608174a99d95c"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsPreparation.cs",
+        "sha256": "b7368f77644f788a1eaba7a46c9596d51cdd3b4d80eadc6f7eb569d09bec58e5"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsProtectionDisableTrial.cs",
+        "sha256": "80ea8c581c90b9b8f6e6f2207b4e590a20dc27ebc7d8ab9545b2192b8722ef79"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsProtectionTrial.cs",
+        "sha256": "e98e79b31d2e811afe09993c4dced5a1097ef80df65bf2a80a72f14e3649c5fd"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSdkBinding.cs",
+        "sha256": "cc197a2737b4912a1be7507f125e544f340c8c480d419798099cb377c8d33f5b"
+      },
+      {
+        "file": "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsSingleReadPreparation.cs",
+        "sha256": "cf84e9f68c72fe8fde14af6dee44716703d0917ead1eaec16d2016a1b13f229d"
+      }
+    ],
+    "userGuideSourceSha256": "10d01950ac0e1c5ddd782441c23317e4a7b96f37b55e4230ca4f2e443cf5ee82",
+    "programFilesMatchReleaseOutput": 6,
+    "unsignedManagedWindowsX64Net48BothExecutablesAsInvoker": true,
+    "oemOriginalModulesFirmwarePdbOrOldTrialExecutablesIncluded": false
+  },
+  "preservationAndRootAudit": {
+    "baselineCommit": "0e643895dc8a818bcdf655b9219f4bd1994f5cf1",
+    "oldProductSourcesUnchanged": 231,
+    "oldTestsByteIdentical": 97,
+    "oldZipFilesUnchanged": 70,
+    "allowedModifiedExistingSourceFiles": [
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Application/App.cs",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Views/MainWindow.cs",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Views/MainWindow.xaml",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Models/ApplicationRelease.cs"
+    ],
+    "layout": {
+      "bindings": {
+        "baseline": 79,
+        "current": 79,
+        "allOriginalPreserved": true
+      },
+      "names": {
+        "baseline": 31,
+        "current": 31,
+        "allOriginalPreserved": true
+      },
+      "commands": {
+        "baseline": 28,
+        "current": 28,
+        "allOriginalPreserved": true
+      }
+    },
+    "collapsedExpanders": 8,
+    "entries": 9,
+    "internalSha256Validated": 8,
+    "crcValid": true,
+    "programFilesMatchReleaseOutput": 6,
+    "sourceFilesMatch": 197,
+    "sourceFingerprintMatches": true,
+    "guideMatches": true,
+    "suite": {
+      "passed": 1119,
+      "failed": 0,
+      "skipped": 0,
+      "registered": 1119,
+      "suite": "reconstructed-portable-safety-regressions"
+    },
+    "bytes": 286235,
+    "sha256": "661f2d57d5bc2c1a6c77fb094bd83646b1af71ad2f6b2f3eba3e84993b2c23d2",
+    "sourceFingerprintSha256": "744fe0a610b5d74dd1fcc805c9ab882e2b1de86980910805df639dfc522e0109"
+  },
+  "independentSourceAudit": {
+    "schema_version": 1,
+    "audit_kind": "independent static source review",
+    "auditor_agent": "/root/compact_review",
+    "created_utc": "2026-11-10T06:44:20.427116+00:00",
+    "repository": "[repository]",
+    "baseline_commit": "0e643895dc8a818bcdf655b9219f4bd1994f5cf1",
+    "expected_release": {
+      "version": "0.2.0-beta.3",
+      "file_version": "0.2.0.3"
+    },
+    "result": "pass_no_source_blockers",
+    "source_hashes_sha256": {
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Application/App.cs": "3086763a16271a606657de255a86731da395bc0e522c6c2b65de80625bc879d1",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs": "fa8ae66d3a71a7746a52504cf4096e5425a3ffe7a866c2bc016a08069cbc6ea7",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Views/MainWindow.cs": "4fa771a6f8a71e3bdce3577d8ad1e55935b32b1c04952190da67d1a605c2fd8a",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Views/MainWindow.xaml": "7db88d5c7e98fe5d92e338b4450978fcb556cab7263aab07a523038322caa590",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Models/ApplicationRelease.cs": "b55925351343d3e26aea2ffc9dd5468b9209c5ce7f6c04b88c1c047a3e91277b",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WindowPlacementPolicy.cs": "3249996a695c9fa43d6621b06614916b361acbdc0b25f9a1efa961d6a0d9a209",
+      "ATIVBatteryGuard/tests/WindowPlacementPolicyTests.cs": "58aad7bd1e33d06a56255dbcb6a133aab779019fc05f73aea8b785d1f09e0de2",
+      "ATIVBatteryGuard/tests/LocalActionGuidanceTests.cs": "601399b11a2fd4d3e4d4c5713105e996cd66e8540b48dab000a1c9ceea333db4",
+      "ATIVBatteryGuard/tests/Program.cs": "c0f131614d681f0251d54a2261517641737044a98721e2cce688789cf1cfae05",
+      "ATIVBatteryGuard/tests/ATIVBatteryGuard.PortableTests.csproj": "04fadf468f69f539712e6ef45ff15519931e7f35f165a4d6b04c92ac9ec5cc9e",
+      "ATIVBatteryGuard/tests/ManualProtectionUsabilityTests.cs": "cb6f8e934838f504891583510317787e59fb59079a0645070157b12bddda45b8"
+    },
+    "existing_product_files_changed": [
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Application/App.cs",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Views/MainWindow.cs",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.App/Views/MainWindow.xaml",
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Models/ApplicationRelease.cs"
+    ],
+    "new_product_files": [
+      "ATIVBatteryGuard/src/ATIVBatteryGuard.Core/Services/WindowPlacementPolicy.cs"
+    ],
+    "protected_existing_source_files_compared_byte_for_byte_to_baseline": 231,
+    "protected_existing_source_files_changed": [],
+    "xaml_only_changes": [
+      "outer Width 1120 to 750 DIP",
+      "outer Height 850 to 565 DIP",
+      "MinWidth 760 to 480 DIP",
+      "MinHeight 600 to 320 DIP",
+      "WindowStartupLocation CenterScreen to Manual"
+    ],
+    "all_other_xaml_bytes_unchanged": true,
+    "native_api_allowlist_verified": [
+      "GetCursorPos",
+      "MonitorFromPoint",
+      "MonitorFromWindow",
+      "GetMonitorInfo",
+      "GetDpiForWindow",
+      "GetWindowRect",
+      "SetWindowPos",
+      "IsIconic",
+      "IsZoomed"
+    ],
+    "native_scope": "Read display/window geometry and DPI; reposition this application window with SetWindowPos. No hardware, OEM, SDK, IPC, service, firmware, network, registry, or permission operation added.",
+    "placement_review": [
+      "Startup explicitly ignores prior saved Maximized state and opens normal; native maximize remains unrestricted.",
+      "First monitor comes from cursor position with HWND fallback; later fits use the current HWND monitor.",
+      "GetMonitorInfo WorkArea excludes taskbar and preserves signed desktop origins; native placement stays in physical pixels.",
+      "Only desired DIP sizes are scaled. GetDpiForWindow is used when available, with WPF TransformToDevice fallback for early Windows 10.",
+      "Compact default is 750 by 565 DIP, about two thirds of 1120 by 850 DIP, with unchanged font sizes and scrollable content.",
+      "At 250 percent scale in a 3200 by 1720 physical-pixel work area, pure placement yields 1875 by 1413 physical pixels at (662,153).",
+      "Minimum size is reduced to available work area in DIP; no MaxWidth or MaxHeight prevents maximizing.",
+      "DPI, display and settings changes queue fitting at ContextIdle after WPF; active move/resize defers correction.",
+      "Same-DPI monitor transitions are detected by comparing HWND monitor at enter/exit move-size.",
+      "Fits skip minimized and maximized states; normal restore queues a fit; valid user position and dimensions are preserved.",
+      "Closing removes native hook and queued callbacks check closed/shutdown state.",
+      "Pure arithmetic validates finite positive scales, nonempty rectangles and representable signed edges."
+    ],
+    "guidance_review": [
+      "Folder feedback is separate display metadata and preserves save filenames, save errors and duplicate-save markers.",
+      "Folder command keeps the existing interaction service and does not invoke hardware/manual operations.",
+      "Cancellation and diagnostic wording changes do not change manual-state or cleanup gates.",
+      "Version changes are confined to ApplicationRelease display/file constants, with no protocol change.",
+      "The Samsung file diagnostic failure caption is also scoped to that diagnostic; the added fake-provider regression preserves manual result identity, gates, receipt and operation counts without a save or exception leak."
+    ],
+    "test_registration_review": {
+      "ATIVBatteryGuard/tests/WindowPlacementPolicyTests.cs": 16,
+      "ATIVBatteryGuard/tests/LocalActionGuidanceTests.cs": 10
+    },
+    "tests_executed_by_this_auditor": false,
+    "product_or_native_windows_code_executed_by_this_auditor": false,
+    "findings": [],
+    "validation_limits": [
+      "Static source review and pure placement expectations do not verify actual Windows nonclient rendering, native message timing or mixed-monitor behavior.",
+      "Windows 10 high-DPI/device checks remain unexecuted by this auditor."
+    ],
+    "restart_evidence_policy": "Accept the user report that Windows 10 Restart preserves charge restriction as user-reported evidence. Do not claim device-verified proof or demand another restart.",
+    "resolved_review_findings": [
+      "Added monitor-transition detection so moving to a same-DPI monitor with a smaller work area also refits.",
+      "Scoped the remaining Samsung file diagnostic failure caption to avoid claiming unrelated manual control was blocked."
+    ]
+  },
+  "independentPackageAudit": {
+    "schemaVersion": 1,
+    "createdUtc": "2026-11-10T06:46:42.865750+00:00",
+    "result": "pass-independent-package-audit",
+    "baselineCommit": "0e643895dc8a818bcdf655b9219f4bd1994f5cf1",
+    "blockers": [],
+    "scope": "Static data inspection only; no reviewer builds, test runs, product/helper/native Windows execution, device/OEM calls or network calls.",
+    "archive": {
+      "file": "ATIVBatteryGuard-MANUAL-CONTROL-BETA3.zip",
+      "bytes": 286235,
+      "sha256": "661f2d57d5bc2c1a6c77fb094bd83646b1af71ad2f6b2f3eba3e84993b2c23d2",
+      "entries": 9,
+      "crcPassed": true,
+      "internalSha256EntriesVerified": 8,
+      "programBuildByteMatches": 6,
+      "sharedHelperFolderByteMatches": 4,
+      "downloadsCopyByteMatch": true
+    },
+    "sourceClosure": {
+      "independentlyReconstructed": true,
+      "files": 197,
+      "fingerprintSha256": "744fe0a610b5d74dd1fcc805c9ab882e2b1de86980910805df639dfc522e0109",
+      "sourceAuditHashesMatchCurrent": true,
+      "testsAbsent": true
+    },
+    "guide": {
+      "sourceSha256": "10d01950ac0e1c5ddd782441c23317e4a7b96f37b55e4230ca4f2e443cf5ee82",
+      "normalizationMatched": true,
+      "restartEvidenceScopedToUserReport": true,
+      "noRepeatedChargeTestOrRawFileRequest": true
+    },
+    "assemblyAudit": {
+      "ATIVBatteryGuard.Core.dll": {
+        "managedX64Net48": true,
+        "unsigned": true,
+        "portableTestSeamsAbsent": true,
+        "assemblyReferencesUnchanged": true,
+        "asInvoker": null
+      },
+      "ATIVBatteryGuard.ManualProtectionHelper.exe": {
+        "managedX64Net48": true,
+        "unsigned": true,
+        "portableTestSeamsAbsent": true,
+        "assemblyReferencesUnchanged": true,
+        "asInvoker": true
+      },
+      "ATIVBatteryGuard.WmiInterop.dll": {
+        "managedX64Net48": true,
+        "unsigned": true,
+        "portableTestSeamsAbsent": true,
+        "assemblyReferencesUnchanged": true,
+        "asInvoker": null
+      },
+      "ATIVBatteryGuard.exe": {
+        "managedX64Net48": true,
+        "unsigned": true,
+        "portableTestSeamsAbsent": true,
+        "assemblyReferencesUnchanged": true,
+        "asInvoker": true
+      }
+    },
+    "guiVersion": {
+      "fileVersion": "0.2.0.3",
+      "productVersion": "0.2.0-beta.3"
+    },
+    "addedNativeImports": {
+      "ATIVBatteryGuard.Core.dll": [],
+      "ATIVBatteryGuard.ManualProtectionHelper.exe": [],
+      "ATIVBatteryGuard.WmiInterop.dll": [],
+      "ATIVBatteryGuard.exe": [
+        "GetCursorPos",
+        "GetDpiForWindow",
+        "GetMonitorInfo",
+        "GetWindowRect",
+        "IsIconic",
+        "IsZoomed",
+        "MonitorFromPoint",
+        "MonitorFromWindow",
+        "SetWindowPos"
+      ]
+    },
+    "compiledXaml": {
+      "embeddedBamlMatchesCurrentObj": true,
+      "rootGeometryDip": {
+        "width": 750,
+        "height": 565,
+        "minWidth": 480,
+        "minHeight": 320
+      },
+      "fontFamily": "Malgun Gothic, Segoe UI",
+      "rootFontSize": 15,
+      "allOtherXamlBytesUnchanged": true,
+      "bindingPathsPresent": 72,
+      "namedControlsPresent": 31,
+      "collapsedExpanders": 8
+    },
+    "protectedBaselineByteIdentical": {
+      "existingProductFiles": 231,
+      "existingTests": 97,
+      "oldDownloadZips": 70
+    },
+    "buildAndTestEvidence": {
+      "reviewerReranBuildOrSuite": false,
+      "buildsZeroWarningsAndErrors": 2,
+      "suite": {
+        "passed": 1119,
+        "failed": 0,
+        "skipped": 0,
+        "registered": 1119,
+        "suite": "reconstructed-portable-safety-regressions"
+      }
+    },
+    "limitations": [
+      "Actual Windows 10 DPI transitions, native caption rendering and mixed-monitor timing remain unexecuted.",
+      "User-reported Restart retention is retained as user evidence; this audit adds no device proof."
+    ]
+  },
+  "runtimeBoundary": {
+    "newBeta3ActuallyRunOnWindowsNotebook": false,
+    "actualNativeCaptionDpiMessagesAndMultiMonitorRuntimeTested": false,
+    "cloudActualWindowsNativeOrOemSdkOrNotebookReservationAccess": 0,
+    "nextUserCheck": "Open this ZIP normally in a new folder and confirm compact size plus accessible caption/minimize/maximize/close. Fonts and folded features stay unchanged. No repeat charging or restart test needed."
+  }
+}

@@ -445,6 +445,8 @@ internal static partial class Program
         RegisterManualHelperHostTests();
         RegisterManualProtectionViewModelTests();
         RegisterManualProtectionUsabilityTests();
+        RegisterWindowPlacementPolicyTests();
+        RegisterLocalActionGuidanceTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();
         RegisterWsabiWmiProtectionDisableReviewTests();
@@ -527,13 +529,14 @@ internal static partial class Program
         public string LastFileInspection;
         public int ObservationSaves;
         public int FoldersOpened;
+        public Action FolderOpener;
         public Func<string, string> ObservationSaver;
         public string LastObservation;
         public int ManualResultSaves;
         public Func<string, string> ManualResultSaver;
         public string LastManualResult;
         public DeviceDiagnosticsResult ReadDiagnostics() { return Reader(); }
-        public void OpenSettingsFolder() { FoldersOpened++; }
+        public void OpenSettingsFolder() { FoldersOpened++; FolderOpener?.Invoke(); }
         public void ShowLog() { }
         public void CopyDiagnostics(string text) { Copies++; LastCopiedText = text; }
         public string SaveDiagnostics(string text) { Saves++; return Saver == null ? "saved" : Saver(text); }

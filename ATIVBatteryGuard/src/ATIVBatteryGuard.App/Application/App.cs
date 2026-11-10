@@ -58,8 +58,9 @@ namespace ATIVBatteryGuard
                     manualProtectionService: manualProtection);
                 var window = new MainWindow { DataContext = viewModel };
                 MainWindow = window;
-                if (viewModel.InitialWindowState == "Maximized")
-                    window.WindowState = WindowState.Maximized;
+                // Start in the compact normal window even when an older
+                // release remembered a maximized window. The user may still
+                // maximize it explicitly after it is safely placed.
                 window.Closing += (sender, closing) =>
                 {
                     if (closing.Cancel) return;

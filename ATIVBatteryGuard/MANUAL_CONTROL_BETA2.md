@@ -1,5 +1,7 @@
 # 수동 제어 베타 2 — 자주 쓰는 기능과 결과 정보 정리
 
+**후속:** 사용자에게서 다시 시작 후 충전 제한 유지·글자·접힌 기능 정상 결과를 받았고, 높은 배율의 창 크기·위치를 수정한 [베타3](MANUAL_CONTROL_BETA3.md)를 제공합니다. 아래는 베타2 배포 당시 기록입니다.
+
 2026-11-10 한국 시간. 버전은 **0.2.0-beta.2**입니다. 사용자가 마지막 조회 시각·버전·오류 안내 개선과 함께 사용 빈도가 높은 기능을 위에 배치하도록 요청한 범위로 구현했습니다.
 
 [새 프로그램 ZIP](../downloads/ATIVBatteryGuard-MANUAL-CONTROL-BETA2.zip) · [사용 순서](MANUAL_CONTROL_BETA2_USER_STEPS.txt) · [검증 기록](reports/manual-control-beta2-validation.json)

@@ -1,10 +1,10 @@
 <Window x:Class="ATIVBatteryGuard.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ATIV Battery Guard" Width="1120" Height="850"
-        MinWidth="760" MinHeight="600" Background="#F1F3F5"
+        Title="ATIV Battery Guard" Width="750" Height="565"
+        MinWidth="480" MinHeight="320" Background="#F1F3F5"
         FontFamily="Malgun Gothic, Segoe UI" FontSize="15"
-        Foreground="#17212B" WindowStartupLocation="CenterScreen"
+        Foreground="#17212B" WindowStartupLocation="Manual"
         Language="ko-KR" UseLayoutRounding="True">
     <Window.Resources>
         <Style x:Key="SectionExpander" TargetType="Expander">

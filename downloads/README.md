@@ -1,5 +1,7 @@
 # ATIV Battery Guard — 수동 충전 보호 제어 베타
 
+**실기 후속 / 2026-11-10:** [새 사용자 결과](../ATIVBatteryGuard/MANUAL_CONTROL_BETA_RESULT.md)에서 이 GUI의 보호 해제가 사전1 → 사후0, SDK3·설정1·읽기2, 정리 `Complete`로 정상 완료됐습니다. 아래 미검증 표시는 배포 당시 기록입니다. 새 ZIP으로 교체하지 않았으며 기존 충전 성공 자료 재제출은 필요 없습니다.
+
 2026-11-10 한국 시간. [새 프로그램 ZIP](ATIVBatteryGuard-MANUAL-CONTROL-BETA.zip) · [사용 안내](../ATIVBatteryGuard/MANUAL_CONTROL_BETA.md) · [검증·해시](../ATIVBatteryGuard/reports/manual-control-beta-validation.json)
 
 ZIP 하나를 새 로컬 폴더에 모두 풀고 **ATIVBatteryGuard.exe를 일반 권한으로 실행**합니다. 시뮬레이션을 끈 뒤 **보호 상태 확인**을 누르고, 원하는 **80% 보호 켜기** 또는 **보호 해제 · 일반 충전**을 선택합니다. 해당 동작에 필요한 같은 계정의 관리자 helper만 실행합니다. 초기 상태·불명 상태·다른 기기에서는 쓰기를 허용하지 않습니다. 이전 ZIP 파일을 합치거나 별도 시험 EXE를 수동 실행하지 않습니다.

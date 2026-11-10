@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "dateKorea": "2026-11-10",
+  "baselineCommit": "973f651f7e3273e862b549b73f299f9b2f75e4ff",
+  "subject": "User-submitted manual GUI protection disable result",
+  "input": {
+    "bytes": 693,
+    "normalizedLines": 11,
+    "allExpectedLinesMatchExactly": true,
+    "rawUploadOrItsPersonalFilenamePublished": false,
+    "attachedTextTreatedAsInstructions": false
+  },
+  "reported": {
+    "operation": "DisableProtection",
+    "status": "ChangedCandidate",
+    "cleanup": "Complete",
+    "sdkEntries": 3,
+    "setterEntries": 1,
+    "readCandidates": 2,
+    "preModeCandidate": 1,
+    "lastModeCandidate": 0,
+    "upperCandidate": null,
+    "lowerCandidate": null,
+    "thresholdObservation": "Intentionally unqueried in fixed disable schedule"
+  },
+  "assessment": {
+    "intendedDisableTransitionAndPerActionBudgetMatch": true,
+    "alreadyDesiredNoWriteResult": false,
+    "thresholdNotQueriedIsAnError": false,
+    "currentReviewedSourceSuccessRequiresProfileValidationAndActualCleanup": true,
+    "clientSuccessRequiresResultAckAndMatchingReleased": true,
+    "helperReleasedRequiresActualCloseAndOwnLeaseRelease": true,
+    "guiDisablePathCompletedConsistentWithReviewedSource": true,
+    "independentRawHandshakeOrBinaryProvenanceAuthentication": false,
+    "standaloneReadStateOrEnable80ReportSubmitted": false,
+    "guiTokenOrModeOneOriginDirectlyReported": false,
+    "lastReadZeroGuaranteesPresentMode": false,
+    "thresholdRestoreOrFull100ChargingConfirmedByThisReport": false,
+    "newChargingOrElectricalMeasurementsProvided": false,
+    "previous80SuppressionAndOffThen85ChargingEvidenceRetained": true,
+    "repeatChargingTestOrOldDiagnosticsDllExecutableSubmissionRequired": false,
+    "newHardwareActionAuthorizedByThisResultAnalysis": false
+  },
+  "independentReview": {
+    "method": "Separate read-only comparison of the attachment, result constructor, review, GUI client, helper delivery and export source.",
+    "conclusion": "Exact completed DisableProtection / ChangedCandidate shape; no counter, mode or cleanup mismatch. Threshold absence is intentional.",
+    "sourceBasedHandshakeInferenceSeparatedFromDirectTxtObservation": true,
+    "newWindowsOemNetworkOrBuildCallsByReviewer": false
+  },
+  "nextDevelopment": {
+    "stage": "Usability and release refinement of model-limited manual GUI beta",
+    "priorities": [
+      "Clarify last-read mode and observation time separately from Windows battery status.",
+      "Include release version and observation time in future control reports without personal paths, accounts or device identifiers.",
+      "Refine cancellation, uncertainty and save-failure guidance and validate concrete changes before sharing a new package."
+    ],
+    "existing3_7_3SdkBudgetsAndActualCleanupContractPreserved": true,
+    "repeatChargingEvidenceIsPrerequisite": false,
+    "newAutoApplyRetryArbitraryThresholdOrGenericDeviceSupportIncluded": false
+  },
+  "validation": {
+    "inputLineShapeAndCodeContractCompared": true,
+    "byteIdenticalToBaseline": {
+      "sourceFiles": 235,
+      "testFiles": 99,
+      "zipFiles": 69
+    },
+    "sourceTestOrZipChanged": false,
+    "csharpBuildAndRegressionsRerunThisAnalysis": false,
+    "previousValidation": {
+      "commit": "973f651f7e3273e862b549b73f299f9b2f75e4ff",
+      "passed": 1081,
+      "failed": 0,
+      "skipped": 0,
+      "portableAndFullNet48Warnings": 0,
+      "portableAndFullNet48Errors": 0
+    },
+    "cloudActualOemSdkOrNotebookMarkerAccess": false,
+    "newExecutableOrZipProduced": false,
+    "referencedEvidenceSha256": {
+      "src/ATIVBatteryGuard.Core/Models/ManualProtectionResult.cs": "cab6513e8d1d3496d56dead6a5fa4c1b6939941756ef69ff0f06f9b88e70002c",
+      "src/ATIVBatteryGuard.Core/Services/ManualProtectionReview.cs": "6da517de1f2c4d379edcf226db9cace184986422984dfa87fbaa28775e833ee7",
+      "src/ATIVBatteryGuard.Core/Services/ManualProtectionClientSession.cs": "6ea8b63f7c20dd94eb4da82e25ebbc6297d7bc9f8a456347376b6ae644764894",
+      "src/ATIVBatteryGuard.ManualProtectionHelper/Program.cs": "1c36ac8127c00d36c8a00ae4b684db8722436e8ecaabc12899f2e91dd2cc31fe",
+      "src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs": "251e955e64f0bb3753a11e92311f8db46bf0603a6f9bf8d9e767f76d5ea3ba91",
+      "reports/protection-off-before-after-result-review.json": "1e4a3e07a06a6aaddc2338baf6894157af0efad206cb51de4a07bff45cb8bce2",
+      "reports/manual-control-beta-validation.json": "e0d4dad96b3fd400bcef7e203dd13afba80049c049edca3fac5cb3979fd91490"
+    }
+  }
+}

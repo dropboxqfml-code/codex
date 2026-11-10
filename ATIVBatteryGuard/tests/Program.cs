@@ -444,6 +444,7 @@ internal static partial class Program
         RegisterManualProtectionLeaseTests();
         RegisterManualHelperHostTests();
         RegisterManualProtectionViewModelTests();
+        RegisterManualProtectionUsabilityTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();
         RegisterWsabiWmiProtectionDisableReviewTests();

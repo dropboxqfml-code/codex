@@ -1,4 +1,12 @@
-# ATIV Battery Guard — 수동 충전 보호 제어 베타
+# ATIV Battery Guard — 수동 충전 보호 제어 베타2
+
+2026-11-10 한국 시간. [최신 0.2.0-beta.2 ZIP](ATIVBatteryGuard-MANUAL-CONTROL-BETA2.zip) · [변경·사용 안내](../ATIVBatteryGuard/MANUAL_CONTROL_BETA2.md) · [검증·해시](../ATIVBatteryGuard/reports/manual-control-beta2-validation.json)
+
+화면은 **현재 배터리 → 수동 보호 제어 → 관찰** 순서입니다. 장치 정보·진단·사용자 선택값/시뮬레이션·과거 기록은 아래에서 펼칩니다. 버전과 마지막 조회 결과 수신 시각을 표시하고 제어 TXT에도 버전·GUI 요청/결과 기록 UTC 시각을 넣었습니다. 새 ZIP 하나를 새 폴더에 모두 풀어 ATIVBatteryGuard.exe를 일반 권한으로 실행합니다. 시각은 개별 firmware 읽기의 정확한 시각이나 계속 현재 설정이라는 뜻이 아닙니다.
+
+1093개 테스트·두 Release 빌드(각0경고/0오류)·ZIP/실제 PE 버전 검산을 통과했습니다. 새 베타2 화면의 Windows 실기는 아직 확인 전이며 기존 충전·첫GUI 해제 실기 성공은 유지합니다. 같은 충전 자료 재제출은 불필요합니다. 삼성 원본 DLL·firmware·이전 단발 EXE는 포함하지 않았습니다. ZIP282248바이트, SHA256 `1de5e010c3aae5f13bb8df9d9f6b02b9ea5f4d14c893ded1e62c0e4806819835`입니다. 기존 ZIP69개를 보존했습니다.
+
+## 이전 — 첫 수동 제어 베타
 
 **실기 후속 / 2026-11-10:** [새 사용자 결과](../ATIVBatteryGuard/MANUAL_CONTROL_BETA_RESULT.md)에서 이 GUI의 보호 해제가 사전1 → 사후0, SDK3·설정1·읽기2, 정리 `Complete`로 정상 완료됐습니다. 아래 미검증 표시는 배포 당시 기록입니다. 새 ZIP으로 교체하지 않았으며 기존 충전 성공 자료 재제출은 필요 없습니다.
 

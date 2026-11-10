@@ -65,11 +65,35 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private readonly SynchronizationContext manualSynchronizationContext;
 
+		private readonly Func<DateTimeOffset> utcNow;
+
 		private ManualProtectionResult manualProtectionResult;
 
-		private ManualProtectionResult manualReportResult;
+		private ManualProtectionReport manualReport;
 
-		private ManualProtectionResult savedManualReportResult;
+		private ManualProtectionReport savedManualReport;
+
+		private const string ManualReadTimeUnobserved = "마지막 보호 조회 결과 수신: 미관측";
+
+		private const string ManualPendingGuidance = "추가 조회·설정은 차단됩니다. 앱·helper를 강제로 닫거나 다시 실행하지 말고 실제 정리 완료를 기다리세요. 결과 TXT 저장만 할 수 있으며 자동 재시도하지 않습니다.";
+
+		private string manualProtectionReadTimeText = ManualReadTimeUnobserved;
+
+		// Detached GUI metadata belongs to one accepted request. It remains
+		// historical after the live state is invalidated and never authorizes a write.
+		private sealed class ManualProtectionReport
+		{
+			public ManualProtectionResult Result { get; }
+			public DateTimeOffset? RequestStartedUtc { get; }
+			public DateTimeOffset? ResultRecordedUtc { get; }
+
+			public ManualProtectionReport(ManualProtectionResult result, DateTimeOffset? requestStartedUtc, DateTimeOffset? resultRecordedUtc)
+			{
+				Result = result;
+				RequestStartedUtc = requestStartedUtc;
+				ResultRecordedUtc = resultRecordedUtc;
+			}
+		}
 
 		private string manualSaveStatusText = "마지막 제어 요청의 결과가 도착하면 TXT로 한 번 저장할 수 있습니다. 자동 저장·업로드하지 않습니다.";
 
@@ -301,6 +325,10 @@ namespace ATIVBatteryGuard.ViewModels
 		public string ManualProtectionPhaseText => PhaseText(manualProtectionPhase);
 
 		public string ManualProtectionNotice => manualProtectionNotice;
+
+		public string ApplicationVersionText => ApplicationRelease.DisplayText;
+
+		public string ManualProtectionReadTimeText => manualProtectionReadTimeText;
 
 		public string ManualProtectionStateText
 		{
@@ -596,7 +624,8 @@ namespace ATIVBatteryGuard.ViewModels
 			{
 				if (!disposed && mockMode != value && ManualProtectionBusy)
 				{
-					manualProtectionNotice = "장치 작업과 실제 정리를 기다리는 동안 시뮬레이션을 변경할 수 없습니다.";
+					manualProtectionNotice = "장치 작업과 실제 정리를 기다리는 동안 시뮬레이션을 변경할 수 없습니다." +
+						(manualProtectionPending ? " " + ManualPendingGuidance : string.Empty);
 					Changed("IsMockMode");
 					NotifyManualProtection();
 					return;
@@ -697,7 +726,7 @@ namespace ATIVBatteryGuard.ViewModels
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public MainViewModel(IBatteryStatusProvider battery, SettingsStore store, LocalLog log, IUserInteraction interaction, IHardwareDiagnosticsProvider hardwareDiagnostics = null, ISamsungAnalysisBundleService samsungAnalysis = null, Func<bool> confirmSamsungAnalysis = null, ISamsungFileInspectionProvider samsungFiles = null, IManualProtectionOperationService manualProtectionService = null)
+		public MainViewModel(IBatteryStatusProvider battery, SettingsStore store, LocalLog log, IUserInteraction interaction, IHardwareDiagnosticsProvider hardwareDiagnostics = null, ISamsungAnalysisBundleService samsungAnalysis = null, Func<bool> confirmSamsungAnalysis = null, ISamsungFileInspectionProvider samsungFiles = null, IManualProtectionOperationService manualProtectionService = null, Func<DateTimeOffset> utcNow = null)
 		{
 			MainViewModel mainViewModel = this;
 			this.battery = battery;
@@ -709,6 +738,7 @@ namespace ATIVBatteryGuard.ViewModels
 			this.samsungAnalysis = samsungAnalysis;
 			this.confirmSamsungAnalysis = confirmSamsungAnalysis;
 			this.manualProtectionService = manualProtectionService;
+			this.utcNow = utcNow ?? (() => DateTimeOffset.UtcNow);
 			manualSynchronizationContext = SynchronizationContext.Current;
 			if (samsungAnalysis == null || confirmSamsungAnalysis == null)
 				samsungBundleStatus = "삼성 프로그램 파일 수집은 공식 지원·사용권 확인 전까지 보류되어 있습니다.";
@@ -802,7 +832,7 @@ namespace ATIVBatteryGuard.ViewModels
 			ManualDisableProtectionCommand = new RelayCommand(async () => await RunManualProtectionAsync(ManualProtectionOperation.DisableProtection),
 				() => CanWriteManualProtection());
 			ManualSaveResultCommand = new RelayCommand(SaveManualProtectionResult,
-				() => !disposed && !manualProtectionBusy && manualReportResult != null && !ReferenceEquals(manualReportResult, savedManualReportResult));
+				() => !disposed && !manualProtectionBusy && manualReport != null && !ReferenceEquals(manualReport, savedManualReport));
 			log.Write("APP_STARTED");
 			log.Write(string.IsNullOrEmpty(settingsLoadResult.Warning) ? "SETTINGS_LOADED" : "SETTINGS_RECOVERED");
 			RefreshBattery();
@@ -914,10 +944,14 @@ namespace ATIVBatteryGuard.ViewModels
 			if (operation == ManualProtectionOperation.ReadState ? !CanReadManualProtection() : !CanWriteManualProtection()) return;
 			long sequence = ++manualOperationSequence;
 			long version = manualStateVersion;
+			DateTimeOffset? requestStartedUtc = CaptureManualTimeUtc();
+			DateTimeOffset? resultRecordedUtc = null;
+			bool resultTimeRecorded = false;
 			manualProtectionBusy = true;
 			manualProtectionPending = false;
 			manualProtectionResult = null;
-			manualReportResult = null;
+			manualProtectionReadTimeText = ManualReadTimeUnobserved;
+			manualReport = null;
 			manualSaveFailed = false;
 			manualSaveStatusText = "이번 요청의 결과를 기다립니다. 저장은 제어 결과가 도착한 뒤 직접 누를 때만 합니다.";
 			manualProtectionPhase = ManualProtectionPhase.WaitingAdministrator;
@@ -929,9 +963,11 @@ namespace ATIVBatteryGuard.ViewModels
 				ManualProtectionResult result = await manualProtectionService.RunAsync(operation,
 					phase => ReportManualProgress(sequence, phase));
 				if (disposed) return;
+				resultRecordedUtc = CaptureManualTimeUtc();
+				resultTimeRecorded = true;
 				if (result == null || result.Operation != operation)
 					result = ManualProtectionResult.Failure(operation, ManualProtectionStatus.Unknown);
-				manualReportResult = result;
+				manualReport = new ManualProtectionReport(result, requestStartedUtc, resultRecordedUtc);
 				manualSaveStatusText = "이번 요청의 결과를 받았습니다. ‘제어 결과 TXT 저장’으로 보고서를 저장할 수 있습니다.";
 				manualProtectionPending = !result.CleanupComplete;
 				manualProtectionPhase = result.IsSuccess ? ManualProtectionPhase.Completed
@@ -940,14 +976,18 @@ namespace ATIVBatteryGuard.ViewModels
 				if (version == manualStateVersion && !IsMockMode)
 				{
 					manualProtectionResult = result;
+					if (result.HasKnownMode && resultRecordedUtc.HasValue)
+						manualProtectionReadTimeText = "마지막 보호 조회 결과 수신: " +
+							resultRecordedUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.InvariantCulture) + " (GUI 수신 시각)";
 					manualProtectionNotice = ResultNotice(result);
 				}
 				else
 				{
 					manualProtectionResult = null;
+					manualProtectionReadTimeText = ManualReadTimeUnobserved;
 					manualProtectionNotice = result.CleanupComplete
 						? "작업은 정리됐지만 절전 복귀·상태 초기화와 겹친 조회값은 현재값으로 표시하지 않습니다. 보호 상태 확인을 다시 누르세요."
-						: "복귀 중 작업의 실제 종료가 확인되지 않았습니다. 추가 조회·설정 없이 기다립니다.";
+						: "복귀 중 작업의 실제 종료가 확인되지 않았습니다. " + ManualPendingGuidance;
 				}
 				log.Write(result.IsSuccess ? "MANUAL_PROTECTION_COMPLETED" : "MANUAL_PROTECTION_NOT_CONFIRMED");
 			}
@@ -955,12 +995,14 @@ namespace ATIVBatteryGuard.ViewModels
 			{
 				if (!disposed)
 				{
+					if (!resultTimeRecorded) resultRecordedUtc = CaptureManualTimeUtc();
 					manualProtectionResult = ManualProtectionResult.Failure(operation, ManualProtectionStatus.Unknown);
-					manualReportResult = manualProtectionResult;
+					manualProtectionReadTimeText = ManualReadTimeUnobserved;
+					manualReport = new ManualProtectionReport(manualProtectionResult, requestStartedUtc, resultRecordedUtc);
 					manualSaveStatusText = "결과·실제 정리가 불명확합니다. 제어 결과 TXT에는 미관측·미확인으로 표시하며 저장할 수 있습니다.";
 					manualProtectionPending = true;
 					manualProtectionPhase = ManualProtectionPhase.Uncertain;
-					manualProtectionNotice = "요청 결과와 실제 정리를 확인할 수 없습니다. 추가 동작·자동 재시도 없이 기다립니다.";
+					manualProtectionNotice = ResultNotice(manualProtectionResult);
 					log.Write("MANUAL_PROTECTION_UNCERTAIN");
 				}
 			}
@@ -994,9 +1036,10 @@ namespace ATIVBatteryGuard.ViewModels
 			if (disposed) return;
 			manualStateVersion++;
 			manualProtectionResult = null;
+			manualProtectionReadTimeText = ManualReadTimeUnobserved;
 			if (!manualProtectionBusy) manualProtectionPhase = manualProtectionPending ? ManualProtectionPhase.Uncertain : ManualProtectionPhase.Idle;
 			manualProtectionNotice = manualProtectionPending
-				? "장치 작업의 실제 종료가 확인되지 않았습니다. 상태를 초기화해도 추가 동작 차단은 유지합니다."
+				? "장치 작업의 실제 종료가 확인되지 않았습니다. 상태를 초기화해도 차단은 유지합니다. " + ManualPendingGuidance
 				: "보호 조회 후보를 비웠습니다. 실제 제어 전에 보호 상태 확인을 직접 눌러 다시 읽으세요.";
 			NotifyManualProtection();
 		}
@@ -1004,16 +1047,22 @@ namespace ATIVBatteryGuard.ViewModels
 		public void NotifyManualCloseBlocked()
 		{
 			if (disposed || !ManualProtectionBusy) return;
-			manualProtectionNotice = "장치 작업·실제 정리를 기다리는 동안 창을 닫지 않습니다. Pending이면 강제 종료하거나 다시 실행하지 마세요.";
+			manualProtectionNotice = "장치 작업·실제 정리를 기다리는 동안 창을 닫지 않습니다. " +
+				(manualProtectionPending ? ManualPendingGuidance : "앱·helper를 강제로 닫거나 다시 실행하지 마세요.");
 			NotifyManualProtection();
 		}
 
 		private void SaveManualProtectionResult()
 		{
-			if (disposed || manualProtectionBusy || manualReportResult == null || ReferenceEquals(manualReportResult, savedManualReportResult)) return;
-			ManualProtectionResult report = manualReportResult;
+			if (disposed || manualProtectionBusy || manualReport == null || ReferenceEquals(manualReport, savedManualReport)) return;
+			ManualProtectionReport metadata = manualReport;
+			ManualProtectionResult report = metadata.Result;
 			string text = "ATIV Battery Guard — 수동 보호 제어 결과\n" +
-				"해당 요청의 저장 후보·정리 보고입니다. 현재 설정이나 전기적 충전 효과를 보장하지 않습니다.\n";
+				"해당 요청의 저장 후보·정리 보고입니다. 현재 설정이나 전기적 충전 효과를 보장하지 않습니다.\n" +
+				"배포 버전: " + ApplicationRelease.Version + "\n" +
+				"GUI 요청 시작 시각 (UTC): " + ManualTimestamp(metadata.RequestStartedUtc) + "\n" +
+				"GUI 결과 기록 시각 (UTC): " + ManualTimestamp(metadata.ResultRecordedUtc) + "\n" +
+				"시각 의미: GUI의 요청 시작·결과 기록 시각이며, 정상 결과의 기록 시각은 GUI 수신 시각입니다. 정확한 펌웨어 읽기 시각이나 TXT 저장 시각이 아닙니다.\n";
 			if (report.CleanupComplete) text += report.ToDisplayText();
 			else
 				text += "수동 보호 작업: " + ManualProtectionResult.OperationText(report.Operation) + "\n" +
@@ -1025,7 +1074,7 @@ namespace ATIVBatteryGuard.ViewModels
 			{
 				string message = interaction.SaveManualProtectionResult(text);
 				if (string.IsNullOrWhiteSpace(message)) throw new InvalidOperationException();
-				savedManualReportResult = report;
+				savedManualReport = metadata;
 				manualSaveFailed = false;
 				manualSaveStatusText = message + " 같은 요청 결과는 중복 저장하지 않습니다.";
 			}
@@ -1048,6 +1097,7 @@ namespace ATIVBatteryGuard.ViewModels
 			Changed("ManualProtectionCurrentPhase");
 			Changed("ManualProtectionPhaseText");
 			Changed("ManualProtectionNotice");
+			Changed("ManualProtectionReadTimeText");
 			Changed("ManualProtectionStateText");
 			Changed("ManualProtectionText");
 			Changed("ManualSaveStatusText");
@@ -1061,6 +1111,15 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private static string ManualNumber(int? value)
 			=> value.HasValue ? value.Value.ToString(CultureInfo.InvariantCulture) : "미조회";
+
+		private DateTimeOffset? CaptureManualTimeUtc()
+		{
+			try { return utcNow().ToUniversalTime(); }
+			catch { return null; } // Metadata failure cannot change actual cleanup or control state.
+		}
+
+		private static string ManualTimestamp(DateTimeOffset? value)
+			=> value.HasValue ? value.Value.ToString("O", CultureInfo.InvariantCulture) : "미관측";
 
 		private static string PhaseText(ManualProtectionPhase phase)
 		{
@@ -1095,12 +1154,19 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private static string ResultNotice(ManualProtectionResult result)
 		{
-			if (!result.CleanupComplete) return "실제 정리가 확인되지 않아 추가 조회·설정을 차단합니다. 창을 강제로 닫거나 다시 실행하지 말고 기다리세요.";
+			if (!result.CleanupComplete)
+				return (result.Status == ManualProtectionStatus.TimedOut ? "표시 시간이 초과됐으며 실제 정리는 미확인입니다. " : "요청 결과와 실제 정리를 확인할 수 없습니다. ") +
+					ManualPendingGuidance;
 			if (result.Status == ManualProtectionStatus.StateRead) return "이번 요청의 보호 저장 후보를 읽었습니다. 켜기·해제는 각각 직접 선택할 때만 요청합니다.";
 			if (result.Status == ManualProtectionStatus.ChangedCandidate) return "저장 후보 전환과 관련 정리를 확인했습니다. 실제 충전 효과는 Windows 배터리 경과와 구분해 확인하세요.";
 			if (result.Status == ManualProtectionStatus.AlreadyDesiredCandidate) return "이미 요청한 모드 후보이므로 설정하지 않았습니다. 임계값 확인이 필요하면 보호 상태 확인을 직접 누르세요.";
-			if (result.Status == ManualProtectionStatus.Cancelled) return "시작 확인을 취소했습니다. 상태가 필요한 경우 보호 상태 확인을 직접 누르세요.";
-			return "저장 상태를 확인하지 못했습니다. 자동 재시도하지 않으며, 정리가 끝난 경우에만 보호 상태 확인을 직접 요청할 수 있습니다.";
+			if (result.Status == ManualProtectionStatus.Cancelled) return "관리자 시작 확인을 취소했습니다. 상태가 필요하면 보호 상태 확인을 직접 눌러 새 결과를 받으세요.";
+			if (result.Status == ManualProtectionStatus.Unsupported) return "지원 대상 확인이 맞지 않아 제어를 차단했습니다. 결과 TXT와 프로그램의 지원 범위를 확인하세요.";
+			if (result.Status == ManualProtectionStatus.PreflightFailed) return "실행 전 확인에 실패해 제어를 차단했습니다. 결과 TXT와 배포 파일이 모두 있는지 확인하세요.";
+			if (result.Status == ManualProtectionStatus.Rejected) return "요청·응답 조건이 맞지 않아 결과를 수용하지 않았습니다. 결과 TXT를 저장하고 필요하면 보호 상태 확인을 직접 요청하세요.";
+			if (result.Status == ManualProtectionStatus.Busy) return "다른 작업이 진행 중이거나 시작이 차단됐습니다. 진행 중인 창에서 완료 상태를 확인하고 추가 요청 없이 기다리세요.";
+			if (result.Status == ManualProtectionStatus.TimedOut) return "표시 시간은 초과됐지만 관련 정리는 끝났습니다. 현재 상태는 미확인입니다. 필요하면 보호 상태 확인을 직접 누르세요.";
+			return "관련 정리는 끝났지만 보호 상태를 확인하지 못했습니다. 결과 TXT를 저장하고 보호 상태 확인을 직접 눌러 다시 읽으세요. 자동 재시도하지 않습니다.";
 		}
 
 		private void StartBatteryObservation()
@@ -1506,7 +1572,8 @@ namespace ATIVBatteryGuard.ViewModels
 				manualStateVersion++;
 				manualOperationSequence++;
 				manualProtectionResult = null;
-				manualReportResult = null;
+				manualProtectionReadTimeText = ManualReadTimeUnobserved;
+				manualReport = null;
 				observationClock.Stop();
 				if (observation.IsRecording) observation.Stop();
 				experimentReviewInput = string.Empty;

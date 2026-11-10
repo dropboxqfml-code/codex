@@ -6,17 +6,31 @@
         FontFamily="Malgun Gothic, Segoe UI" FontSize="15"
         Foreground="#17212B" WindowStartupLocation="CenterScreen"
         Language="ko-KR" UseLayoutRounding="True">
+    <Window.Resources>
+        <Style x:Key="SectionExpander" TargetType="Expander">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontSize="18" FontWeight="SemiBold"
+                                   TextWrapping="Wrap" Margin="4,2,0,2" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                  Padding="26" KeyboardNavigation.TabNavigation="Continue">
+                  Padding="24" KeyboardNavigation.TabNavigation="Continue">
         <StackPanel>
-            <Grid Margin="0,4,0,24">
+            <Grid Margin="0,0,0,18">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Margin="0,0,18,0">
-                    <TextBlock Text="ATIV Battery Guard" FontSize="30" FontWeight="SemiBold" />
-                    <TextBlock Text="배터리 상태와 로컬 사용자 설정" Margin="0,8,0,0" />
+                    <TextBlock Text="ATIV Battery Guard" FontSize="28" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ApplicationVersionText}" Foreground="#475569" Margin="0,4,0,0"
+                               AutomationProperties.Name="프로그램 버전" />
                 </StackPanel>
                 <Border Grid.Column="1" Background="#006DC2" CornerRadius="6"
                         Padding="14,12" VerticalAlignment="Center">
@@ -24,14 +38,14 @@
                 </Border>
             </Grid>
 
-            <Border Style="{StaticResource Card}">
+            <Border Style="{StaticResource Card}" Padding="20">
                 <StackPanel>
                     <DockPanel LastChildFill="True">
                         <Button DockPanel.Dock="Right" Content="상태 새로 고침(_R)"
                                 Command="{Binding RefreshCommand}" Margin="10,0,0,16" />
                         <TextBlock Text="현재 배터리" Style="{StaticResource SectionTitle}" />
                     </DockPanel>
-                    <Grid Margin="0,4,0,20">
+                    <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
@@ -39,7 +53,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,14,0">
                             <TextBlock Text="Windows 측정 잔량" />
-                            <TextBlock Text="{Binding BatteryPercentText}" FontSize="40" FontWeight="SemiBold" Margin="0,10,0,0"
+                            <TextBlock Text="{Binding BatteryPercentText}" FontSize="36" FontWeight="SemiBold" Margin="0,10,0,0"
                                        AutomationProperties.Name="Windows 측정 배터리 잔량" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,14,0">
@@ -54,29 +68,59 @@
                     </Grid>
                     <TextBlock Text="약 10초마다 조회합니다. 잔량 80% 또는 ‘충전 중 아님’은 충전 제한이 적용되었다는 증거가 아닙니다."
                                Style="{StaticResource Detail}" />
-                    <TextBlock Text="{Binding BatteryErrorText}" Foreground="#9C2F18" />
+                    <TextBlock Text="{Binding BatteryErrorText}" Foreground="#9C2F18" AutomationProperties.LiveSetting="Polite" />
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" BorderBrush="#006DC2">
+            <Border Style="{StaticResource Card}" BorderBrush="#006DC2" Padding="20">
                 <StackPanel>
                     <TextBlock Text="수동 보호 제어" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="먼저 보호 상태 확인을 누르세요. Windows10 x64 · 940X3G/930X3G · P05ACJ 범위를 확인한 뒤에만 켜기·해제를 요청할 수 있습니다."
+                    <Border BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#F3F6FA" />
+                                <Setter Property="BorderBrush" Value="#D3DCE6" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMockMode}" Value="True">
+                                        <Setter Property="Background" Value="#FFF3D8" />
+                                        <Setter Property="BorderBrush" Value="#CFA44F" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock Text="{Binding MockModeText}" FontWeight="SemiBold"
+                                       AutomationProperties.LiveSetting="Polite" />
+                            <TextBlock Text="시뮬레이션 — 실제 충전 제어 없음. 아래 ‘사용자 선택값 · 시뮬레이션’에서 끌 수 있습니다."
+                                       TextWrapping="Wrap" Margin="0,4,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMockMode}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="먼저 ‘보호 상태 확인’을 누른 뒤 켜기·해제를 요청하세요."
                                Style="{StaticResource Detail}" />
-                    <TextBlock Text="앱은 일반 권한으로 실행합니다. 각 버튼을 직접 누를 때만 별도 관리자 확인을 받으며, 시작·10초 배터리 갱신·재부팅 때 자동 제어하지 않습니다."
+                    <TextBlock Text="{Binding SupportReason}"
                                Style="{StaticResource Detail}" />
                     <WrapPanel>
-                        <Button x:Name="ManualReadProtectionButton" Content="보호 상태 확인" Command="{Binding ManualReadProtectionCommand}" />
-                        <Button x:Name="ManualEnableProtectionButton" Content="80% 보호 켜기" Command="{Binding ManualEnableProtectionCommand}" />
-                        <Button x:Name="ManualDisableProtectionButton" Content="보호 해제 · 일반 충전" Command="{Binding ManualDisableProtectionCommand}" />
+                        <Button x:Name="ManualReadProtectionButton" Content="보호 상태 확인(_I)" Command="{Binding ManualReadProtectionCommand}" />
+                        <Button x:Name="ManualEnableProtectionButton" Content="80% 보호 켜기(_E)" Command="{Binding ManualEnableProtectionCommand}" />
+                        <Button x:Name="ManualDisableProtectionButton" Content="보호 해제 · 일반 충전(_U)" Command="{Binding ManualDisableProtectionCommand}" />
                     </WrapPanel>
                     <TextBlock Text="{Binding ManualProtectionPhaseText}" Foreground="#006DC2" FontWeight="SemiBold" Margin="0,4,0,6" />
-                    <TextBlock x:Name="ManualProtectionStateLabel" Text="{Binding ManualProtectionStateText}" FontSize="23" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <TextBlock x:Name="ManualProtectionStateLabel" Text="{Binding ManualProtectionStateText}" FontSize="23" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <TextBlock Text="{Binding ManualProtectionReadTimeText}" Foreground="#475569" Margin="0,0,0,8"
+                               AutomationProperties.Name="마지막 유효 보호 조회 시각" AutomationProperties.LiveSetting="Polite" />
                     <TextBlock x:Name="ManualProtectionNoticeLabel" Text="{Binding ManualProtectionNotice}" Style="{StaticResource Detail}"
                                AutomationProperties.LiveSetting="Polite" />
-                    <TextBox Text="{Binding ManualProtectionText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
-                             MaxHeight="210" VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
-                             AutomationProperties.Name="이번 수동 보호 요청 결과와 마지막 조회 후보" />
                     <WrapPanel Margin="0,8,0,0">
                         <Button x:Name="ManualSaveResultButton" Content="제어 결과 TXT 저장" Command="{Binding ManualSaveResultCommand}" />
                         <Button Content="결과 저장 폴더 열기" Command="{Binding OpenSettingsFolderCommand}" />
@@ -94,38 +138,42 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
+                    <TextBlock Text="앱은 일반 권한으로 실행하며 버튼을 누를 때만 관리자 확인을 받습니다. 시작·배터리 갱신·재부팅 시 자동 제어하지 않습니다."
+                               Style="{StaticResource Detail}" Margin="0,10,0,8" />
+                    <Expander Header="요청 상세" IsExpanded="False" Margin="0,2,0,0"
+                              AutomationProperties.Name="이번 수동 보호 요청 상세">
+                        <TextBox Text="{Binding ManualProtectionText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                 MaxHeight="210" VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,8,0,0"
+                                 AutomationProperties.Name="이번 수동 보호 요청 결과와 마지막 조회 후보" />
+                    </Expander>
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="보호 설정 전환 기록 · 과거 결과 검토" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="이미 만든 protection-0to1 TXT가 있을 때 붙여넣어 저장값 전환 기록을 확인합니다. 붙여넣은 내용은 검토 후 비우며 자동 저장하지 않습니다."
-                               Style="{StaticResource Detail}" />
-                    <TextBlock Text="과거 기록의 일치는 현재 보호 설정이나 실제 충전 제한 효과를 확인한 것이 아닙니다. 이 화면에서 설정을 변경하거나 시험을 다시 실행하지 않습니다."
-                               Style="{StaticResource Detail}" />
-                    <TextBox x:Name="ProtectionResultInput" Text="{Binding ProtectionReviewInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             AcceptsReturn="True" IsUndoEnabled="False" TextWrapping="Wrap" MinHeight="80" MaxHeight="150"
-                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,10"
-                             AutomationProperties.Name="과거 보호 설정 전환 결과 붙여넣기" />
-                    <WrapPanel>
-                        <Button x:Name="ReviewProtectionResultButton" Content="전환 기록 확인" Command="{Binding ReviewProtectionResultCommand}" />
-                        <Button Content="전환 기록 지우기" Command="{Binding ClearProtectionReviewCommand}" />
-                    </WrapPanel>
-                    <TextBox x:Name="ProtectionResultReview" Text="{Binding ProtectionReviewText, Mode=OneWay}"
-                             IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
-                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
-                             AutomationProperties.Name="과거 보호 설정 전환 기록 검토" />
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource Card}">
+            <Border Style="{StaticResource Card}" Padding="20">
                 <StackPanel>
                     <TextBlock Text="Windows 배터리 상태 관찰" Style="{StaticResource SectionTitle}" />
                     <TextBlock Text="시작을 누른 뒤 기존 약 10초 주기의 배터리 표시 정보를 기록합니다. 최대 2시간 관찰하며, 저장을 눌러야 로컬 TXT가 만들어집니다. 시뮬레이션에서는 기록하지 않습니다."
                                Style="{StaticResource Detail}" />
-                    <TextBlock Text="일상적으로 사용하는 동안의 잔량·전원·충전 표시를 관찰하는 기능입니다. 80% 유지나 ‘충전 중 아님’만으로 충전 제한 성공을 판정하지 않습니다."
+                    <TextBlock Text="80% 유지나 ‘충전 중 아님’만으로 충전 제한 성공을 판정하지 않습니다."
                                Style="{StaticResource Detail}" />
+                    <WrapPanel Margin="0,0,0,10">
+                        <TextBlock FontWeight="SemiBold" Margin="0,0,16,0" TextWrapping="Wrap">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="관찰 대기 · 중단" />
+                                    <Setter Property="Foreground" Value="#475569" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ObservationActive}" Value="True">
+                                            <Setter Property="Text" Value="관찰 중" />
+                                            <Setter Property="Foreground" Value="#00603A" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding ObservationSampleCount, StringFormat='기록 {0}건'}" Margin="0,0,16,0" />
+                        <TextBlock Text="{Binding ObservationGapCount, StringFormat='기록 공백 {0}건'}" />
+                    </WrapPanel>
                     <WrapPanel>
                         <Button x:Name="StartBatteryObservationButton" Content="새 관찰 시작" Command="{Binding StartBatteryObservationCommand}" />
                         <Button Content="관찰 중단" Command="{Binding StopBatteryObservationCommand}" />
@@ -146,169 +194,196 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <TextBox x:Name="BatteryObservationText" Text="{Binding ObservationText, Mode=OneWay}"
-                             IsReadOnly="True" TextWrapping="Wrap" MaxHeight="280"
-                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
-                             AutomationProperties.Name="Windows 배터리 상태 관찰 기록" />
+                    <Expander Header="관찰 기록 보기" IsExpanded="False"
+                              AutomationProperties.Name="Windows 배터리 상태 관찰 기록 펼치기">
+                        <TextBox x:Name="BatteryObservationText" Text="{Binding ObservationText, Mode=OneWay}"
+                                 IsReadOnly="True" TextWrapping="Wrap" MaxHeight="280"
+                                 VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,8,0,0"
+                                 AutomationProperties.Name="Windows 배터리 상태 관찰 기록" />
+                    </Expander>
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}">
+            <Border Style="{StaticResource Card}" Background="#F8FAFC" Padding="16,12">
                 <StackPanel>
-                    <TextBlock Text="장치 정보 · 마지막 보호 조회" Style="{StaticResource SectionTitle}" />
-                    <TextBlock x:Name="ActualHardwareState" Text="{Binding ActualModeText}"
-                               FontSize="25" FontWeight="SemiBold" Margin="0,0,0,14" />
-                    <TextBlock Text="{Binding SupportReason}" Style="{StaticResource Detail}" />
-                    <WrapPanel Margin="0,4,0,8">
-                        <TextBlock Text="모델: " FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding DeviceModelText}" Margin="0,0,20,0" />
-                        <TextBlock Text="BIOS: " FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding DeviceBiosText}" />
-                    </WrapPanel>
-                    <TextBlock Text="{Binding DeviceAssessmentText}" Style="{StaticResource Detail}" />
-                    <TextBlock Text="표준 Windows 요청 지원 · 이번 실행의 최근 상세 진단"
-                               FontWeight="SemiBold" Margin="0,8,0,6" />
-                    <TextBlock x:Name="StandardBatteryRequestSummary" Text="{Binding StandardBatteryRequestText}"
-                               Style="{StaticResource Detail}" AutomationProperties.LiveSetting="Polite" />
-                    <TextBlock Text="저장된 사용자 선택값과 시뮬레이션 상태를 실제 장치 설정으로 표시하지 않습니다." />
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="고정 보호 저장값 조회 기록 · Access1" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="이미 만든 Access1 TXT를 붙여넣어 과거 도구의 판정 기록을 확인합니다. 현재 상태를 새로 조회하거나 실험을 다시 실행하지 않습니다."
-                               Style="{StaticResource Detail}" />
-                    <TextBox x:Name="FixedReadResultInput" Text="{Binding FixedReadReviewInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             AcceptsReturn="True" IsUndoEnabled="False" TextWrapping="Wrap" MinHeight="80" MaxHeight="150"
-                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,10"
-                             AutomationProperties.Name="과거 Access1 조회 결과 붙여넣기" />
-                    <WrapPanel>
-                        <Button x:Name="ReviewFixedReadResultButton" Content="Access1 기록 확인"
-                                Command="{Binding ReviewFixedReadResultCommand}" />
-                        <Button Content="Access1 기록 지우기" Command="{Binding ClearFixedReadReviewCommand}" />
-                    </WrapPanel>
-                    <TextBox x:Name="FixedReadResultReview" Text="{Binding FixedReadReviewText, Mode=OneWay}"
-                             IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
-                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
-                             AutomationProperties.Name="과거 Access1 도구 판정 기록" />
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="과거 WMI 실험 결과 검토 · Query65" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="현재 분석 내용을 확인하고, 필요하면 이미 받은 과거 콘솔 출력도 검토할 수 있습니다. 실험을 다시 실행할 필요는 없습니다."
-                               Style="{StaticResource Detail}" />
-                    <TextBlock Text="추가 장치 조회·OEM 호출·예약 파일 접근 없이 텍스트만 검토하며, 현재 배터리 보호 상태를 확인하는 기능은 아닙니다."
-                               Style="{StaticResource Detail}" />
-                    <TextBox x:Name="ExperimentResultInput" Text="{Binding ExperimentReviewInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             AcceptsReturn="True" IsUndoEnabled="False" TextWrapping="Wrap" MinHeight="80" MaxHeight="150"
-                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,10"
-                             AutomationProperties.Name="과거 WMI 실험 콘솔 출력 붙여넣기" />
-                    <WrapPanel>
-                        <Button x:Name="ReviewExperimentResultButton" Content="붙여넣은 결과 검토"
-                                Command="{Binding ReviewExperimentResultCommand}" />
-                        <Button Content="검토 내용 지우기" Command="{Binding ClearExperimentReviewCommand}" />
-                    </WrapPanel>
-                    <TextBox x:Name="ExperimentResultReview" Text="{Binding ExperimentReviewText, Mode=OneWay}"
-                             IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
-                             VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
-                             AutomationProperties.Name="과거 WMI 실험 결과의 오프라인 검토" />
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="사용자 선택값" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="실제 충전 설정을 바꾸지 않고, 사용할 희망 모드만 로컬에 기억합니다."
-                               Style="{StaticResource Detail}" />
-                    <WrapPanel>
-                        <RadioButton x:Name="ProtectionChoice" Content="배터리 보호 ON · 80%(_P)" GroupName="DesiredMode"
-                                     IsChecked="{Binding IsProtectionSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <RadioButton x:Name="NormalChoice" Content="일반 모드 · 100%(_N)" GroupName="DesiredMode"
-                                     IsChecked="{Binding IsNormalSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </WrapPanel>
-                    <TextBlock Text="{Binding DesiredModeText}" Margin="0,0,0,12" FontWeight="SemiBold" />
-                    <CheckBox Content="재부팅 후 복원 희망값 기억(_B)"
-                              IsChecked="{Binding RestoreOnBoot, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="현재는 자동 실행이나 부팅 시 충전 제어를 수행하지 않습니다." Style="{StaticResource Detail}" />
-                    <Button x:Name="SavePreferencesButton" Content="사용자 선택값 저장(_S)" Command="{Binding SaveCommand}"
-                            HorizontalAlignment="Left" />
-                    <TextBlock Text="{Binding SettingsWarning}" Foreground="#9C2F18" />
+                    <TextBlock Text="최근 작업 안내" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <TextBlock Text="{Binding SettingsWarning}" Foreground="#9C2F18"
+                               AutomationProperties.LiveSetting="Polite" />
                     <TextBlock Text="{Binding StatusMessage}" AutomationProperties.LiveSetting="Polite" />
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Background="#FFF9EC" BorderBrush="#CFA44F">
-                <StackPanel>
-                    <TextBlock Text="시뮬레이션 — 실제 충전 제어 없음" Style="{StaticResource SectionTitle}" />
-                    <CheckBox x:Name="MockSwitch" Content="개발용 시뮬레이션 켜기(_M)"
-                              IsEnabled="{Binding CanChangeMockMode}"
-                              IsChecked="{Binding IsMockMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="{Binding MockModeText}" Style="{StaticResource Detail}" />
-                    <TextBlock Text="{Binding MockActualModeText}" Margin="0,0,0,12" FontWeight="SemiBold" />
-                    <Button x:Name="MockApplyButton" Content="선택값을 모의 상태에 적용(_A)"
-                            Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}" HorizontalAlignment="Left" />
-                    <TextBlock Text="실제 장치는 조작하지 않습니다. 프로그램을 다시 시작하면 시뮬레이션은 꺼집니다." />
-                </StackPanel>
+            <Border Style="{StaticResource Card}">
+                <Expander Header="장치 정보 · 마지막 보호 조회" Style="{StaticResource SectionExpander}" IsExpanded="False">
+                    <StackPanel Margin="0,14,0,0">
+                        <TextBlock x:Name="ActualHardwareState" Text="{Binding ActualModeText}"
+                                   FontSize="25" FontWeight="SemiBold" Margin="0,0,0,14" />
+                        <WrapPanel Margin="0,4,0,8">
+                            <TextBlock Text="모델: " FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding DeviceModelText}" Margin="0,0,20,0" />
+                            <TextBlock Text="BIOS: " FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding DeviceBiosText}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding DeviceAssessmentText}" Style="{StaticResource Detail}" />
+                        <TextBlock Text="표준 Windows 요청 지원 · 이번 실행의 최근 상세 진단"
+                                   FontWeight="SemiBold" Margin="0,8,0,6" />
+                        <TextBlock x:Name="StandardBatteryRequestSummary" Text="{Binding StandardBatteryRequestText}"
+                                   Style="{StaticResource Detail}" AutomationProperties.LiveSetting="Polite" />
+                        <TextBlock Text="저장된 사용자 선택값과 시뮬레이션 상태를 실제 장치 설정으로 표시하지 않습니다." />
+                    </StackPanel>
+                </Expander>
             </Border>
 
             <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="읽기 전용 진단" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="모델·BIOS·Windows 정보, 배터리 드라이버의 요청 지원 여부와 삼성 인터페이스 정의를 읽기 전용으로 조회합니다. 결과는 로컬에만 저장합니다."
-                               Style="{StaticResource Detail}" />
-                    <WrapPanel>
-                        <Button Content="진단 정보 보기(_D)" Command="{Binding ShowDiagnosticsCommand}" />
-                        <Button Content="진단 정보 복사(_C)" Command="{Binding CopyDiagnosticsCommand}" />
-                        <Button Content="진단 정보 저장(_V)" Command="{Binding SaveDiagnosticsCommand}" />
-                    </WrapPanel>
-                    <TextBox Text="{Binding DiagnosticsText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
-                             MaxHeight="250" VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,18"
-                             AutomationProperties.Name="장치 진단 정보" />
-                    <WrapPanel>
-                        <Button x:Name="CreateHardwareReportButton" Content="진단 파일 만들기(_H)"
-                                Command="{Binding CreateHardwareReportCommand}" />
-                        <Button Content="진단 파일 위치 열기(_J)" Command="{Binding OpenSettingsFolderCommand}" />
-                        <Button Content="로컬 로그 보기(_L)" Command="{Binding OpenLogCommand}" />
-                    </WrapPanel>
-                    <TextBlock Text="{Binding HardwareReportStatus}" AutomationProperties.LiveSetting="Polite" />
-                </StackPanel>
+                <Expander Header="진단 · 로컬 지원" Style="{StaticResource SectionExpander}" IsExpanded="False">
+                    <StackPanel Margin="0,14,0,0">
+                        <TextBlock Text="읽기 전용 진단" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="모델·BIOS·Windows 정보, 배터리 드라이버의 요청 지원 여부와 삼성 인터페이스 정의를 읽기 전용으로 조회합니다. 결과는 로컬에만 저장합니다."
+                                   Style="{StaticResource Detail}" />
+                        <WrapPanel>
+                            <Button Content="진단 정보 보기(_D)" Command="{Binding ShowDiagnosticsCommand}" />
+                            <Button Content="진단 정보 복사(_C)" Command="{Binding CopyDiagnosticsCommand}" />
+                            <Button Content="진단 정보 저장(_V)" Command="{Binding SaveDiagnosticsCommand}" />
+                        </WrapPanel>
+                        <TextBox Text="{Binding DiagnosticsText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                 MaxHeight="250" VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,18"
+                                 AutomationProperties.Name="장치 진단 정보" />
+                        <WrapPanel>
+                            <Button x:Name="CreateHardwareReportButton" Content="진단 파일 만들기(_H)"
+                                    Command="{Binding CreateHardwareReportCommand}" />
+                            <Button Content="진단 파일 위치 열기(_J)" Command="{Binding OpenSettingsFolderCommand}" />
+                            <Button Content="로컬 로그 보기(_L)" Command="{Binding OpenLogCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding HardwareReportStatus}" AutomationProperties.LiveSetting="Polite" />
+                        <Separator Margin="0,12,0,18" />
+                        <TextBlock Text="공식 지원 확인" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="장치 정보와 확인 질문을 담은 문의 초안을 검토하고 복사할 수 있습니다. 문의는 자동 전송하지 않습니다."
+                                   Style="{StaticResource Detail}" />
+                        <Button Content="공식 문의문 복사(_Q)" Command="{Binding CopySupportInquiryCommand}" HorizontalAlignment="Left" />
+                        <TextBox Text="{Binding SupportInquiryText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                 MaxHeight="280" VerticalScrollBarVisibility="Auto" Padding="10"
+                                 AutomationProperties.Name="공식 지원 문의 초안" />
+                        <Separator Margin="0,12,0,18" />
+                        <TextBlock Text="삼성 파일 정보 확인" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="삼성 파일 정보, SABI 연결, 드라이버 후보 상태와 WMI 인스턴스의 버전·활성 속성을 읽기 전용으로 확인합니다. 이 진단은 충전 설정을 변경하지 않습니다."
+                                   Style="{StaticResource Detail}" />
+                        <TextBlock Text="확인 위치: Program Files (x86)의 Samsung\Setting 또는 Samsung\Settings와 제한된 하위 폴더. 결과는 로컬 TXT로 저장합니다."
+                                   Style="{StaticResource Detail}" />
+                        <TextBlock Text="후보 미관측은 미설치 판정이 아닙니다. 드라이버 실행 중이나 WMI Active는 충전 보호 상태가 아닙니다. 서비스 변경·삼성 DLL 실행·장치 열기·OEM 메서드 실행은 하지 않습니다."
+                                   Style="{StaticResource Detail}" />
+                        <WrapPanel>
+                            <Button x:Name="InspectSamsungFilesButton" Content="삼성 파일 정보 만들기(_F)" Command="{Binding InspectSamsungFilesCommand}" />
+                            <Button Content="정보 파일 위치 열기(_O)" Command="{Binding OpenSettingsFolderCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding SamsungFileInspectionStatus}" AutomationProperties.LiveSetting="Polite" />
+                        <TextBlock Text="{Binding SamsungTransportSummary}" TextWrapping="Wrap"
+                                   AutomationProperties.LiveSetting="Polite" Margin="0,6,0,0" />
+                        <TextBox Text="{Binding SamsungFileInspectionText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                 MaxHeight="320" VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,8,0,0"
+                                 AutomationProperties.Name="삼성 파일 정보 결과" />
+                    </StackPanel>
+                </Expander>
             </Border>
 
             <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="공식 지원 확인" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="장치 정보와 확인 질문을 담은 문의 초안을 검토하고 복사할 수 있습니다. 문의는 자동 전송하지 않습니다."
-                               Style="{StaticResource Detail}" />
-                    <Button Content="공식 문의문 복사(_Q)" Command="{Binding CopySupportInquiryCommand}" HorizontalAlignment="Left" />
-                    <TextBox Text="{Binding SupportInquiryText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
-                             MaxHeight="280" VerticalScrollBarVisibility="Auto" Padding="10"
-                             AutomationProperties.Name="공식 지원 문의 초안" />
-                </StackPanel>
+                <Expander Header="사용자 선택값 · 시뮬레이션" Style="{StaticResource SectionExpander}" IsExpanded="False">
+                    <StackPanel Margin="0,14,0,0">
+                        <TextBlock Text="사용자 선택값" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="실제 충전 설정을 바꾸지 않고, 사용할 희망 모드만 로컬에 기억합니다."
+                                   Style="{StaticResource Detail}" />
+                        <WrapPanel>
+                            <RadioButton x:Name="ProtectionChoice" Content="배터리 보호 ON · 80%(_P)" GroupName="DesiredMode"
+                                         IsChecked="{Binding IsProtectionSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <RadioButton x:Name="NormalChoice" Content="일반 모드 · 100%(_N)" GroupName="DesiredMode"
+                                         IsChecked="{Binding IsNormalSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding DesiredModeText}" Margin="0,0,0,12" FontWeight="SemiBold" />
+                        <CheckBox Content="재부팅 후 복원 희망값 기억(_B)"
+                                  IsChecked="{Binding RestoreOnBoot, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="현재는 자동 실행이나 부팅 시 충전 제어를 수행하지 않습니다." Style="{StaticResource Detail}" />
+                        <Button x:Name="SavePreferencesButton" Content="사용자 선택값 저장(_S)" Command="{Binding SaveCommand}"
+                                HorizontalAlignment="Left" />
+                        <Separator Margin="0,12,0,18" />
+                        <TextBlock Text="시뮬레이션 — 실제 충전 제어 없음" Style="{StaticResource SectionTitle}" />
+                        <CheckBox x:Name="MockSwitch" Content="개발용 시뮬레이션 켜기(_M)"
+                                  IsEnabled="{Binding CanChangeMockMode}"
+                                  IsChecked="{Binding IsMockMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="{Binding MockModeText}" Style="{StaticResource Detail}" />
+                        <TextBlock Text="{Binding MockActualModeText}" Margin="0,0,0,12" FontWeight="SemiBold" />
+                        <Button x:Name="MockApplyButton" Content="선택값을 모의 상태에 적용(_A)"
+                                Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}" HorizontalAlignment="Left" />
+                        <TextBlock Text="실제 장치는 조작하지 않습니다. 프로그램을 다시 시작하면 시뮬레이션은 꺼집니다." />
+                    </StackPanel>
+                </Expander>
             </Border>
 
             <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="삼성 파일 정보 확인" Style="{StaticResource SectionTitle}" />
-                    <TextBlock Text="삼성 파일 정보, SABI 연결, 드라이버 후보 상태와 WMI 인스턴스의 버전·활성 속성을 읽기 전용으로 확인합니다. 실제 충전 제어는 미지원입니다."
-                               Style="{StaticResource Detail}" />
-                    <TextBlock Text="확인 위치: Program Files (x86)의 Samsung\Setting 또는 Samsung\Settings와 제한된 하위 폴더. 결과는 로컬 TXT로 저장합니다."
-                               Style="{StaticResource Detail}" />
-                    <TextBlock Text="후보 미관측은 미설치 판정이 아닙니다. 드라이버 실행 중이나 WMI Active는 충전 보호 상태가 아닙니다. 서비스 변경·삼성 DLL 실행·장치 열기·OEM 메서드 실행은 하지 않습니다."
-                               Style="{StaticResource Detail}" />
-                    <WrapPanel>
-                        <Button x:Name="InspectSamsungFilesButton" Content="삼성 파일 정보 만들기(_F)" Command="{Binding InspectSamsungFilesCommand}" />
-                        <Button Content="정보 파일 위치 열기(_O)" Command="{Binding OpenSettingsFolderCommand}" />
-                    </WrapPanel>
-                    <TextBlock Text="{Binding SamsungFileInspectionStatus}" AutomationProperties.LiveSetting="Polite" />
-                    <TextBlock Text="{Binding SamsungTransportSummary}" TextWrapping="Wrap"
-                               AutomationProperties.LiveSetting="Polite" Margin="0,6,0,0" />
-                    <TextBox Text="{Binding SamsungFileInspectionText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
-                             MaxHeight="320" VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,8,0,0"
-                             AutomationProperties.Name="삼성 파일 정보 결과" />
-                </StackPanel>
+                <Expander Header="과거 결과 검토 · 보호 설정 전환" Style="{StaticResource SectionExpander}" IsExpanded="False">
+                    <StackPanel Margin="0,14,0,0">
+                        <TextBlock Text="이미 만든 protection-0to1 TXT가 있을 때 붙여넣어 저장값 전환 기록을 확인합니다. 붙여넣은 내용은 검토 후 비우며 자동 저장하지 않습니다."
+                                   Style="{StaticResource Detail}" />
+                        <TextBlock Text="과거 기록의 일치는 현재 보호 설정이나 실제 충전 제한 효과를 확인한 것이 아닙니다. 이 화면에서 설정을 변경하거나 시험을 다시 실행하지 않습니다."
+                                   Style="{StaticResource Detail}" />
+                        <TextBox x:Name="ProtectionResultInput" Text="{Binding ProtectionReviewInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True" IsUndoEnabled="False" TextWrapping="Wrap" MinHeight="80" MaxHeight="150"
+                                 VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,10"
+                                 AutomationProperties.Name="과거 보호 설정 전환 결과 붙여넣기" />
+                        <WrapPanel>
+                            <Button x:Name="ReviewProtectionResultButton" Content="전환 기록 확인" Command="{Binding ReviewProtectionResultCommand}" />
+                            <Button Content="전환 기록 지우기" Command="{Binding ClearProtectionReviewCommand}" />
+                        </WrapPanel>
+                        <TextBox x:Name="ProtectionResultReview" Text="{Binding ProtectionReviewText, Mode=OneWay}"
+                                 IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
+                                 VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
+                                 AutomationProperties.Name="과거 보호 설정 전환 기록 검토" />
+                    </StackPanel>
+                </Expander>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <Expander Header="과거 결과 검토 · Access1" Style="{StaticResource SectionExpander}" IsExpanded="False">
+                    <StackPanel Margin="0,14,0,0">
+                        <TextBlock Text="이미 만든 Access1 TXT를 붙여넣어 과거 도구의 판정 기록을 확인합니다. 현재 상태를 새로 조회하거나 실험을 다시 실행하지 않습니다."
+                                   Style="{StaticResource Detail}" />
+                        <TextBox x:Name="FixedReadResultInput" Text="{Binding FixedReadReviewInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True" IsUndoEnabled="False" TextWrapping="Wrap" MinHeight="80" MaxHeight="150"
+                                 VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,10"
+                                 AutomationProperties.Name="과거 Access1 조회 결과 붙여넣기" />
+                        <WrapPanel>
+                            <Button x:Name="ReviewFixedReadResultButton" Content="Access1 기록 확인"
+                                    Command="{Binding ReviewFixedReadResultCommand}" />
+                            <Button Content="Access1 기록 지우기" Command="{Binding ClearFixedReadReviewCommand}" />
+                        </WrapPanel>
+                        <TextBox x:Name="FixedReadResultReview" Text="{Binding FixedReadReviewText, Mode=OneWay}"
+                                 IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
+                                 VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
+                                 AutomationProperties.Name="과거 Access1 도구 판정 기록" />
+                    </StackPanel>
+                </Expander>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <Expander Header="과거 결과 검토 · Query65" Style="{StaticResource SectionExpander}" IsExpanded="False">
+                    <StackPanel Margin="0,14,0,0">
+                        <TextBlock Text="현재 분석 내용을 확인하고, 필요하면 이미 받은 과거 콘솔 출력도 검토할 수 있습니다. 실험을 다시 실행할 필요는 없습니다."
+                                   Style="{StaticResource Detail}" />
+                        <TextBlock Text="추가 장치 조회·OEM 호출·예약 파일 접근 없이 텍스트만 검토하며, 현재 배터리 보호 상태를 확인하는 기능은 아닙니다."
+                                   Style="{StaticResource Detail}" />
+                        <TextBox x:Name="ExperimentResultInput" Text="{Binding ExperimentReviewInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True" IsUndoEnabled="False" TextWrapping="Wrap" MinHeight="80" MaxHeight="150"
+                                 VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,10"
+                                 AutomationProperties.Name="과거 WMI 실험 콘솔 출력 붙여넣기" />
+                        <WrapPanel>
+                            <Button x:Name="ReviewExperimentResultButton" Content="붙여넣은 결과 검토"
+                                    Command="{Binding ReviewExperimentResultCommand}" />
+                            <Button Content="검토 내용 지우기" Command="{Binding ClearExperimentReviewCommand}" />
+                        </WrapPanel>
+                        <TextBox x:Name="ExperimentResultReview" Text="{Binding ExperimentReviewText, Mode=OneWay}"
+                                 IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
+                                 VerticalScrollBarVisibility="Auto" Padding="10" Margin="0,2,0,0"
+                                 AutomationProperties.Name="과거 WMI 실험 결과의 오프라인 검토" />
+                    </StackPanel>
+                </Expander>
             </Border>
         </StackPanel>
     </ScrollViewer>

@@ -20,6 +20,7 @@
     <Compile Include="ManualProtectionLeaseTests.cs" />
     <Compile Include="ManualHelperHostTests.cs" />
     <Compile Include="ManualProtectionViewModelTests.cs" />
+    <Compile Include="ManualProtectionUsabilityTests.cs" />
     <Compile Include="ManualProtectionClientSessionTests.cs" />
     <Compile Include="../src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsManualProtection.cs" Link="WmiInterop/WsabiWmiWindowsManualProtection.cs" />
     <Compile Include="../src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperAdmission.cs" Link="ManualHelper/ManualHelperAdmission.cs" />

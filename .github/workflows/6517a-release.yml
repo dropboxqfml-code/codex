@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - '6517a-v*'
+    branches:
+      - '6517a-debug-*'
 
 permissions:
   contents: read
@@ -40,6 +42,7 @@ jobs:
         id: version
         env:
           RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
         run: |
           @'
           import os
@@ -48,16 +51,24 @@ jobs:
           import tomllib
           from pathlib import Path
           version = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version']
-          if not re.fullmatch(r'\d+\.\d+\.\d+', version):
-              raise SystemExit('Release version must be a plain numeric semantic version')
-          if os.environ['RELEASE_TAG'] != f'6517a-v{version}':
-              raise SystemExit('Release tag does not match the package version')
+          ref_type = os.environ['RELEASE_REF_TYPE']
+          ref_name = os.environ['RELEASE_TAG']
+          if ref_type == 'tag':
+              if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+                  raise SystemExit('Release version must be a plain numeric semantic version')
+              if ref_name != f'6517a-v{version}':
+                  raise SystemExit('Release tag does not match the package version')
+          elif ref_type != 'branch' or not ref_name.startswith('6517a-debug-'):
+              raise SystemExit('Only release tags or explicit debug branches are supported')
+          if not isinstance(version, str) or not version or '\n' in version or '\r' in version:
+              raise SystemExit('Invalid version output')
           commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
               output.write(f'version={version}\nsource_commit={commit}\n')
           '@ | uv run --locked python -
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run Windows software checks
+        id: software_checks
         run: |
           uv run --locked pytest -q --junitxml=reports/windows-tests.xml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -65,7 +76,53 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           uv run --locked ruff format --check .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Show failing Windows test cases in annotations
+        if: failure() && steps.software_checks.outcome == 'failure'
+        run: |
+          @'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          def emit(message):
+              original = str(message).encode('utf-8')
+              limit = 5000
+              prefix = '::error title=Windows software check failure::'
+              while True:
+                  if len(original) <= limit:
+                      body = original.decode('utf-8', errors='ignore')
+                  else:
+                      head = original[:limit * 3 // 4].decode('utf-8', errors='ignore')
+                      tail = original[-limit // 4:].decode('utf-8', errors='ignore')
+                      body = head + '\n...[traceback truncated]...\n' + tail
+                  escaped = body.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                  line = prefix + escaped
+                  if len(line.encode('utf-8')) <= 6000:
+                      print(line)
+                      return
+                  limit = max(100, limit * 4 // 5)
+          report = Path('reports/windows-tests.xml')
+          if not report.is_file():
+              emit('Windows checks failed before a JUnit report was written: ' + str(report))
+          else:
+              try:
+                  root = ET.parse(report).getroot()
+              except (OSError, ET.ParseError) as exc:
+                  emit('Cannot read the failing Windows JUnit report: ' + str(exc))
+              else:
+                  count = 0
+                  for case in root.iter('testcase'):
+                      for result in case:
+                          if result.tag not in ('failure', 'error'):
+                              continue
+                          name = case.get('classname', '') + '.' + case.get('name', '')
+                          detail = result.get('message', '') + '\n' + ''.join(result.itertext())
+                          emit(name + ' [' + result.tag + ']\n' + detail)
+                          count += 1
+                  if not count:
+                      emit('Windows software checks failed, but JUnit has no failing/error test case. Check Ruff or later check output.')
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and test the bundled Windows interpreter, synthetic CLI and GUI
+        if: github.ref_type == 'tag'
         run: |
           uv run --locked python scripts/build_trial_bundle.py --output dist --native-smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -78,6 +135,7 @@ jobs:
           path: 6517a/reports/windows-tests.xml
           if-no-files-found: warn
       - name: Transfer tested release files
+        if: github.ref_type == 'tag'
         uses: actions/upload-artifact@v6
         with:
           name: 6517A-release-files-${{ github.run_id }}
@@ -87,6 +145,7 @@ jobs:
 
   publish:
     needs: windows-package
+    if: github.ref_type == 'tag' && needs.windows-package.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

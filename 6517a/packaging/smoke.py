@@ -28,7 +28,8 @@ def optional_installer_smoke(root: Path, installer=None):
         or name.startswith("pyvisa_py.")
     }
     with tempfile.TemporaryDirectory(prefix="6517a-ni-extension-smoke-") as temporary:
-        trial = Path(temporary)
+        # Windows TEMP may use an 8.3 alias; the installer returns canonical paths.
+        trial = Path(temporary).resolve()
         if trial.resolve().is_relative_to(root.resolve()):
             raise RuntimeError("Optional installation smoke must stay outside the bundle")
         (trial / "app").mkdir()

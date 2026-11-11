@@ -4,18 +4,20 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
-## v0.4.3 연결 안내와 NI-488.2-only 선택 경로
+## v0.4.4 연결 안내와 NI-488.2-only 선택 경로
 
 사용자는 안내된 CMD 실행 뒤 v0.3.0 시뮬레이션 화면이 열렸으며 NI MAX에서 6517A가 보인다고 확인했습니다. 이는 사용자 관찰 기록입니다. 실제 프로그램의 IDN/출력 OFF/전류 판독 결과 파일은 아직 전달되지 않았으므로 측정 성공으로 표시하지 않습니다.
 
 이번 변경은 정상 기본 SIMULATION 화면에서 실제 NI 연결 시험으로 넘어가는 단계 안내와, NI-VISA를 생략하기 위한 명시적 `@py` 대안을 추가합니다. 기본 native VISA를 유지하며 backend 오류 뒤 자동 재접속·명령 재전송은 하지 않습니다. PyVISA-py 0.8.1/gpib-ctypes 0.3.0의 선택 설치와 NI-488.2 driver/DLL의 준비 상태를 구분합니다. 기본 ZIP에는 이 두 대체 패키지를 사전 설치하지 않습니다.
 
-기본 환경에서 선택 extra를 제거한 뒤 다음 검증을 실행했습니다. 308개 통과·6.94 s는 CI 환경 수정 전의 동일 기능 소스에 대한 Linux 로컬 검증 기록입니다. 이어 소스 버전을 v0.4.1로 수정한 뒤 전체 검증을 다시 실행하고 설치 metadata의 잠금 동기화도 확인했습니다. 아래 v0.4.1 결과는 로컬 재검증의 역사 기록으로 보존합니다. 이번 v0.4.3 배포는 Windows 전체 자동 테스트와 번들 Windows CLI/GUI·선택 확장 설치 smoke를 직접 게이트로 사용합니다. Linux CI의 시스템 패키지 설치가 Windows 검증을 막지 않도록 분리했으며, 로컬 Linux 전체 검증 기록은 보존합니다. 실제 Windows 결과는 해당 CI 로그와 `build-report.json`에서 확인합니다.
+기본 환경에서 선택 extra를 제거한 뒤 다음 검증을 실행했습니다. 308개 통과·6.94 s는 CI 환경 수정 전의 동일 기능 소스에 대한 Linux 로컬 검증 기록입니다. 이어 소스 버전을 v0.4.1로 수정한 뒤 전체 검증을 다시 실행하고 설치 metadata의 잠금 동기화도 확인했습니다. 아래 v0.4.1 결과는 로컬 재검증의 역사 기록으로 보존합니다. 이번 v0.4.4 배포는 Windows 전체 자동 테스트와 번들 Windows CLI/GUI·선택 확장 설치 smoke를 직접 게이트로 사용합니다. Linux CI의 시스템 패키지 설치가 Windows 검증을 막지 않도록 분리했으며, 로컬 Linux 전체 검증 기록은 보존합니다. 실제 Windows 결과는 해당 CI 로그와 `build-report.json`에서 확인합니다.
 
 이전 v0.4.2의 CI Qt bootstrap은 실제 offscreen `PlotWidget` 렌더 프로브를 먼저 실행하고, 그 프로브가 실패할 때만 APT fallback을 수행합니다. 별도의 `libOpenGL` CDLL 로드 성공을 실제 GUI 실행의 필수 사전조건으로 사용하지 않습니다. 이는 CI 준비 단계의 판정 수정이며 실제 장비 시험의 성공을 뜻하지 않습니다.
 
-| 항목 | v0.4.3 및 동일 기능 소스의 로컬 검증 기록 |
+| 항목 | v0.4.4 및 동일 기능 소스의 로컬 검증 기록 |
 |---|---|
+| v0.4.4 실제 전체 검증 | Linux offscreen에서 309개 통과, 실패·건너뜀 없음, 6.65 s; 별칭 경로 회귀 포함 |
+| v0.4.4 metadata·형식 검사 | locked offline sync로 metadata v0.4.4 적용; Ruff check/format 54개 파일 통과 |
 | v0.4.3 배포 코드·설치 metadata | 배포 코드 32개 통과, 0.16 s; locked offline sync로 metadata v0.4.3 적용; Ruff check/format 54개 파일 통과 |
 | v0.4.2 배포 코드 재검증 | 32개 통과, 0.21 s; 전체 308개는 아래 v0.4.1 기록과 새 CI 결과로 구분 |
 | v0.4.2 준비 절차 | locked offline sync로 설치 metadata v0.4.2 적용, Ruff check/format 54개 파일 통과, Bash/YAML 검사 통과 |
@@ -27,7 +29,7 @@
 | Linux Qt bootstrap 로컬 점검 | 필수 library 누락 목록 `[]`; offscreen QWidget startup 통과 |
 | Release workflow 정적 점검 | Bash `bash -n` 및 YAML 구조 검사 통과; 원격 CI 성공을 뜻하지 않음 |
 | v0.4.1 Windows CI | 이 로컬 기록 시점에는 실행 전·대기 중 |
-| 주요 경계 시험 | NI backend 29개, 연결 안내 16개, 새 실장비 준비 통합 10개, 배포 코드 32개; 기존 시험과 함께 전체 실행 |
+| 주요 경계 시험 | NI backend 29개, 연결 안내 16개, 새 실장비 준비 통합 10개, 배포 코드 33개; 기존 시험과 함께 전체 실행 |
 | 기본 환경과 선택 확장 분리 | `uv sync --locked` 기본 환경에서 전체 시험 통과; PyVISA-py/gpib-ctypes가 사전 설치돼 있어야 통과하는 구성으로 시험하지 않음 |
 | simulation CLI | v0.4.0 동일 기능 소스에서 실제 실행: reading 52개·summary 5개, completed / OFF / residual UNVERIFIED |
 | offscreen GUI | v0.4.0 동일 기능 소스/FakeClock로 52개 판독 완료, OUTPUT_OFF_CONFIRMED / OFF / residual UNVERIFIED; 미연결 REAL 준비 0 V·trip 미설정과 새 연결 안내 화면 시각 확인 |
@@ -45,6 +47,10 @@ SIM→REAL 준비는 가상 전압·trip·승인을 재사용하지 않고 0 V·
 ## v0.4.1 CI 진행 기록
 
 [CI 실행 43041312629](https://github.com/dropboxqfml-code/codex/actions/runs/43041312629)은 이 변경을 결정한 시점에 Qt APT 설치 단계가 지연 중이었습니다. 완료 결과를 확인하지 않았으므로 실패로 단정하지 않습니다. v0.4.2에서는 실제 PlotWidget 렌더 프로브를 우선하는 수정으로 별도 CI를 진행하며, 이 기록 시점의 Windows v0.4.2 시험은 아직 실행 전입니다.
+
+## Windows 경로 별칭 수정
+
+[Windows v0.4.3 CI](https://github.com/dropboxqfml-code/codex/actions/runs/43044513737)와 [진단 실행](https://github.com/dropboxqfml-code/codex/actions/runs/43045737403)에서 선택 확장 설치 smoke의 경로 비교가 실패했습니다. 설치가 반환한 정규 경로와 Windows TEMP의 짧은 별칭 경로가 같은 폴더여도 문자열 비교에서 달라질 수 있었습니다. 임시 루트를 먼저 정규화해 manifest·파일 해시 검증을 유지하고, 별칭 경로 회귀 시험을 추가했습니다. 이 실패 실행에서는 native 번들 검사와 게시가 수행되지 않았습니다. v0.4.4의 실제 Windows 결과는 새 CI와 Release 보고서에서 확인합니다.
 
 ## v0.4.0 CI 중단 기록
 

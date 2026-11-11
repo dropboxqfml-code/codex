@@ -418,8 +418,27 @@ def test_unconfirmed_installer_start_does_not_download_or_access_hardware(monkey
 native_smoke = load("trial_native_smoke", PROJECT / "packaging/smoke.py")
 
 
-def test_native_optional_installer_smoke_uses_external_temporary_payload_and_removes_it(tmp_path):
+@pytest.mark.parametrize("temporary_alias", [False, True])
+def test_native_optional_installer_smoke_uses_external_temporary_payload_and_removes_it(
+    tmp_path, monkeypatch, temporary_alias
+):
+    from contextlib import contextmanager
     from types import SimpleNamespace
+
+    if temporary_alias:
+        original_temporary = native_smoke.tempfile.TemporaryDirectory
+
+        @contextmanager
+        def aliased_temporary(*args, **kwargs):
+            with original_temporary(*args, **kwargs) as directory:
+                if kwargs.get("prefix") == "6517a-ni-extension-smoke-":
+                    alias = Path(directory) / "alias"
+                    alias.mkdir()
+                    yield str(alias / "..")
+                else:
+                    yield directory
+
+        monkeypatch.setattr(native_smoke.tempfile, "TemporaryDirectory", aliased_temporary)
 
     root = optional_root(tmp_path)
     observed = []

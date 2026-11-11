@@ -39,7 +39,7 @@ uv run --locked python -m keithley6517a.cli identify "GPIB0::27::INSTR" --backen
 
 ## NI-VISA를 생략하는 선택 경로
 
-v0.4.3 기본 ZIP에는 다음 대체 Python 패키지를 사전 설치하지 않습니다. 사용자가 NI-VISA를 생략하는 대안을 선택한 경우에만 선택 확장으로 설치합니다. 정확한 버전과 해시는 `uv.lock` 및 선택 확장 요구사항에 기록합니다.
+v0.4.4 기본 ZIP에는 다음 대체 Python 패키지를 사전 설치하지 않습니다. 사용자가 NI-VISA를 생략하는 대안을 선택한 경우에만 선택 확장으로 설치합니다. 정확한 버전과 해시는 `uv.lock` 및 선택 확장 요구사항에 기록합니다.
 
 - PyVISA-py 0.8.1: `@py` backend.
 - gpib-ctypes 0.3.0: 기존 NI/Linux GPIB C API의 Python binding.

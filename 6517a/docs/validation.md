@@ -10,12 +10,17 @@
 
 이번 변경은 정상 기본 SIMULATION 화면에서 실제 NI 연결 시험으로 넘어가는 단계 안내와, NI-VISA를 생략하기 위한 명시적 `@py` 대안을 추가합니다. 기본 native VISA를 유지하며 backend 오류 뒤 자동 재접속·명령 재전송은 하지 않습니다. PyVISA-py 0.8.1/gpib-ctypes 0.3.0의 선택 설치와 NI-488.2 driver/DLL의 준비 상태를 구분합니다. 기본 ZIP에는 이 두 대체 패키지를 사전 설치하지 않습니다.
 
-기본 환경에서 선택 extra를 제거한 뒤 다음 검증을 실행했습니다. 308개 통과·6.94 s는 CI 환경 수정 전의 동일 기능 소스에 대한 Linux 로컬 검증 기록입니다. 수정판 v0.4.1 Release의 Windows CI 실행 여부는 해당 CI 로그와 `build-report.json`을 함께 확인합니다.
+기본 환경에서 선택 extra를 제거한 뒤 다음 검증을 실행했습니다. 308개 통과·6.94 s는 CI 환경 수정 전의 동일 기능 소스에 대한 Linux 로컬 검증 기록입니다. 이어 소스 버전을 v0.4.1로 수정한 뒤 전체 검증을 다시 실행하고 설치 metadata의 잠금 동기화도 확인했습니다. 이 기록 시점의 v0.4.1 Windows CI는 아직 대기 중이며, 이후 결과는 해당 CI 로그와 `build-report.json`을 함께 확인합니다.
 
-| 항목 | v0.4.1과 동일한 기능 소스의 로컬 검증 기록 |
+| 항목 | v0.4.1 및 동일 기능 소스의 로컬 검증 기록 |
 |---|---|
-| 전체 자동 테스트 | Linux offscreen에서 **308개 통과**, 실패·건너뜀 없음, 6.94 s |
-| Ruff check / format | 프로젝트 전체 통과; Python 파일 54개 format 검사 통과 |
+| v0.4.1 실제 전체 재검증 | Linux offscreen에서 **308개 통과**, 실패·건너뜀 없음, 7.81 s |
+| 동일 기능 소스의 이전 전체 검증 | Linux offscreen에서 **308개 통과**, 실패·건너뜀 없음, 6.94 s |
+| v0.4.1 Ruff check / format | 실제 재실행 통과; Python 파일 54개 format 검사 통과 |
+| v0.4.1 설치 metadata 적용 | 캐시된 개발 환경에서 `uv sync --locked --offline` 성공; 설치 metadata v0.4.1 적용 |
+| Linux Qt bootstrap 로컬 점검 | 필수 library 누락 목록 `[]`; offscreen QWidget startup 통과 |
+| Release workflow 정적 점검 | Bash `bash -n` 및 YAML 구조 검사 통과; 원격 CI 성공을 뜻하지 않음 |
+| v0.4.1 Windows CI | 이 로컬 기록 시점에는 실행 전·대기 중 |
 | 주요 경계 시험 | NI backend 29개, 연결 안내 16개, 새 실장비 준비 통합 10개, 배포 코드 32개; 기존 시험과 함께 전체 실행 |
 | 기본 환경과 선택 확장 분리 | `uv sync --locked` 기본 환경에서 전체 시험 통과; PyVISA-py/gpib-ctypes가 사전 설치돼 있어야 통과하는 구성으로 시험하지 않음 |
 | simulation CLI | v0.4.0 동일 기능 소스에서 실제 실행: reading 52개·summary 5개, completed / OFF / residual UNVERIFIED |

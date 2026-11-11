@@ -1,0 +1,17 @@
+Keithley 6517A · USB-GPIB 시험용 프로그램
+
+1. 6517A-USB-GPIB-Trial-0.3.0-Windows-x64.zip을 로컬의 쓰기 가능한 폴더에 모두 풉니다. runtime/app 등 포함 파일을 분리하지 않습니다.
+2. Start-GUI.cmd를 실행하면 기본 SIMULATION 화면이 열립니다.
+3. 먼저 Test-Simulation.cmd 또는 GUI의 가상 예제로 실행·그래프·데이터 저장을 확인합니다.
+4. 선택한 NI GPIB-USB 계열에는 실제 모델·Windows에 맞는 NI-488.2와 NI-VISA 64-bit가 별도로 필요합니다. NI MAX에서 board/address를 확인한 뒤 test panel을 닫습니다.
+5. Check-Connection.cmd는 resource 목록/IDN-only 점검입니다. Check-Output-Off.cmd는 명시적인 resource에서 보호 OFF를 요청하는 별도 동작입니다.
+6. 사용자 시험 순서는 app/docs/user_hardware_trial.md를 읽으세요.
+   IDN-only 진단 -> 명시적 보호 OFF 점검 -> 실제 정격·trip·승인 설정 -> 현재 연결 인터록 0/1 -> ARM -> 별도 START 순서입니다.
+7. 시료/fixture/케이블의 확인된 정격과 software current trip을 추측하거나 가상 예제에서 복사하지 않습니다.
+8. OUTPUT OFF는 시료 방전 완료가 아닙니다. 잔류 전압은 UNVERIFIED입니다.
+9. Software STOP은 하드웨어 비상정지가 아닙니다. 독립적인 인터록·차단·방전 수단이 필요합니다.
+10. 진단과 run 파일은 로컬에 저장합니다. 자동 업로드하지 않으며 전달 전 serial/local 경로 등 내용을 검토합니다.
+
+포함된 Python/Windows 의존성과 배포 파일 검사는 실제 Windows 실행·6517A·USB-GPIB 시험과 별개입니다.
+현재 수행한 검증과 미수행 항목은 app/docs/validation.md에 기록합니다.
+실장비 native resistance 출력은 검증된 측정 전류 보호가 없어 차단됩니다.

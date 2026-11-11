@@ -1,0 +1,8 @@
+{
+  "status": "completed",
+  "reason": "Schedule completed",
+  "final_output_state": "OFF",
+  "residual_voltage_state": "UNVERIFIED",
+  "software_state": "OUTPUT_OFF_CONFIRMED",
+  "wall_time_iso8601": "2026-11-11T00:00:10.033333+00:00"
+}

@@ -1,0 +1,657 @@
+Keithley 6517A 고저항 측정 프로그램 — Codex 개발 지시문
+작성일: 2026-11-11
+문서 성격: 구현 요구사항 및 검증 계획. 완성된 프로그램 또는 실장비 검증 완료 선언이 아니다.
+
+아래 요구사항에 따라 실제로 실행 가능한 Python 프로젝트를 구현하라. 설계 설명만 작성하지 말고 소스 코드, 모의 장비, 자동 테스트, 설치·사용 문서까지 생성하라. 기존 저장소가 있으면 구조와 변경 사항을 먼저 확인하고, 관계없는 파일을 덮어쓰지 마라.
+
+미정인 사항은 설정 항목과 명시적인 가정으로 남겨라. 개발을 중단하고 질문만 나열하지 마라. 단, 장비 명령·하드웨어 안전 기능을 추측하여 구현하지 말고, 검증되지 않은 실장비 기능은 비활성화하고 이유를 표시하라. 실장비가 없으면 시뮬레이터로 구현·시험하되 실장비 시험을 통과했다고 주장하지 마라.
+
+======================================================================
+1. 목표와 범위
+======================================================================
+
+사용 장비는 Keithley 6517A Electrometer/High Resistance Meter이다. 6517B, 6514, 6487 또는 일반 SMU로 대체하여 명령을 작성하지 마라.
+
+PC와 장비는 USB-GPIB 어댑터로 연결한다. 장비 자체의 USBTMC 연결이 아니다. 내장 V-Source로 시료에 사용자가 지정한 전압을 인가하고, 전류 또는 장비의 저항 판독값을 취득하여 저항의 시간 변화와 전압 의존성을 저장한다.
+
+운영체제는 미확정이므로 Windows 64-bit 데스크톱을 1차 배포 대상으로 가정하되, 통신·측정·분석 계층은 운영체제와 GUI에서 분리한다.
+
+1차 구현 필수:
+- 시뮬레이터 및 VISA 방식 USB-GPIB 통신.
+- 지정 전압 유지 측정: I(t), R(t), 상태 기록.
+- 전압 리스트 또는 선형 staircase sweep: 각 전압의 dwell과 평균 구간 지정.
+- 전류 측정 기반 R=V/I 계산 모드와 장비 자체 저항 판독 모드.
+- 안전 상태 관리, 사용자 중지, 오류 처리, 데이터 자동 저장, GUI, CLI 테스트.
+
+2차 선택 확장:
+- 양·음 전압 비교, host-controlled polarity reversal.
+- 체적 비저항 계산, 안정화 자동 판정, 온습도 입력/센서 확장.
+- Prologix serial-controller backend, 장비 내부 trace buffer/test sequence.
+
+1차 필수 기능과 안전 테스트를 먼저 완성하라. 선택 기능 때문에 기본 측정과 안전 종료가 불완전해져서는 안 된다. 제공되지 않은 외부 방전장치, 전압계, 인터록 감시장치가 존재한다고 가정하지 마라.
+
+======================================================================
+2. 원문 확인과 6517A 고유 주의사항
+======================================================================
+
+주된 근거는 문서 끝 [M1]의 Keithley 6517A User's Manual이다. URL 파일명은 6517A_900_01C.pdf이지만 문서 내부는 6517A-900-01 Rev. D, May 2003으로 표기되어 있다. 페이지 번호는 PDF 뷰어 번호가 아니라 인쇄된 2-xx, 3-xx 번호를 사용한다.
+
+SCPI 구현 전에 docs/scpi_reference.md를 만들고, 사용하는 명령마다 매뉴얼 절/쪽, 쓰기·조회 구분, 예상 응답, 상태 변경 여부, 실장비 확인 여부를 기록하라. 원문 접근이 실패하면 확인하지 못한 내용을 확인했다고 쓰지 마라. 확인되지 않은 명령은 실장비 출력 경로에서 차단한다.
+
+장비 고유 사항 [M1]:
+(a) V-Source는 ±100 V와 ±1000 V 범위를 지원한다. 사용자의 기본 작업 범위는 0~+1000 V로 하고 음전압은 별도 활성화한다. 출력 분해능은 범위별 5 mV, 50 mV이다. 입력값 양자화 여부를 보여주고 요청값과 실제 설정 조회값을 모두 남겨라. [2-46, 2-49]
+(b) Auto V-Source 저항 모드는 장비가 40 V 또는 400 V를 선택한다. 지정 전압 측정에는 Manual V-Source를 사용하라. 전류 autorange와 Auto V-Source는 서로 다른 기능이다. [2-32~2-41, 3-102]
+(c) FVMI 결선은 V-Source HI -> DUT -> INPUT triax 중심 HI -> ammeter -> meter LO -> V-Source LO이다. LO 연결은 승인된 결선에서 METER CONNECT로 설정한다. [2-11, Fig. 2-9; 2-34, Fig. 2-31]
+(d) 전류/저항 모드의 triax inner shield는 input LO이다. 전압 모드의 driven GUARD 설정과 혼동하지 마라. GUARD ON을 고저항 측정의 보편적 필수 명령으로 보내지 마라. outer shield/chassis와 보호접지, signal LO의 역할을 구분하라. [2-9~2-13]
+(e) SYST:INT?의 1은 인터록 케이블 미연결에서도 반환될 수 있다. 1을 '인터록 설치·정상 동작 확인'과 동치로 취급하지 마라. [3-137]
+(f) 출력 standby는 출력 릴레이를 연다. OUTPUT OFF나 V 설정 조회 0은 시료 방전 완료의 증거가 아니다. 유전흡수에 따른 전압 회복도 고려하라. [2-50]
+(g) SOUR:VOLT?는 설정 전압 조회다. 시료 양단 전압의 독립 측정이 아니다. FORMAT의 VSO 요소도 독립적인 DUT 전압 측정으로 간주하지 마라. [3-78, 3-106]
+(h) 매뉴얼 본문은 100 V 범위 10 mA, 1000 V 범위 1 mA의 소스 전류 제한을 설명한다. 임의의 nA/µA compliance 설정 기능이 있는 SMU처럼 구현하지 마라. [2-46, 2-49]
+(i) 원문 내부에 resistive current limit 저항값 불일치가 있다. 2-49는 20 MΩ, 3-108은 1 MΩ을 기재한다. 실제 장비 리비전·제조사 확인 없이 어느 한 값을 보정 상수나 안전 보증치로 하드코딩하지 마라. [2-49, 3-108]
+(j) 정격 정확도 조건에는 최소 1시간 warm-up이 포함된다. 프로그램 접속 시간과 장비 실제 전원 투입 시간을 혼동하지 마라. [2-4]
+
+======================================================================
+3. 물리적 결선과 실험 전 확인
+======================================================================
+
+이 소프트웨어는 사용자가 승인한 저측 전류 측정 FVMI 결선만 1차 지원한다. floating/high-side 측정은 별도 검토 전까지 지원하지 않는다.
+
+실험 문서에 다음을 기록하고 시작 전 체크리스트로 제시하라.
+- 시료 ID, 재료, 두께, 유효 전극 면적, 전극 재료/형성법, 전극 구조.
+- 예상 저항/전류, 허용 전압·전계·전력, 가능한 시료 capacitance.
+- 케이블·커넥터·fixture의 실제 전압 정격과 절연 상태.
+- triax 중심/inner shield/outer shield의 확인된 결선. 선 색상만으로 역할을 판정하지 않음.
+- 시료가 V-Source HI와 ammeter INPUT HI 사이에 직렬로 놓였는지 확인.
+- V-Source와 INPUT을 단락 연결하지 않았는지 확인. INPUT을 1000 V 전압계로 사용하지 않음.
+- 금속 보호 enclosure의 보호접지, 접근 차단, 하드웨어 lid interlock.
+- 시료 파괴·단락·충전 전류에 대비한 검토된 하드웨어 보호.
+- 외부 방전 경로와 방전 확인 절차. 외부 장치 미제공 시 소프트웨어는 방전을 확인할 수 없음.
+- 빛, 온도, 습도, 기계적 진동 및 케이블 움직임 조건.
+
+저항·전류 측정 중 DUT 양쪽을 triax 중심과 inner shield에 단순 연결하면서 V-Source를 추가 병렬 연결하는 식의 결선은 안내하지 마라. 배선은 전원 차단/출력 OFF 및 실제 방전 확인 후 변경한다.
+
+guard electrode는 원하는 체적 전류와 불필요한 표면/fixture 누설을 분리하는 실제 전극 설계다. 케이블이 triax라는 이유만으로 표면 누설이 제거되었다고 표시하지 마라. 체적 저항과 표면 저항은 측정 경로가 다르다. guarded fixture가 없으면 결과를 '해당 전극/결선에서의 겉보기 저항'으로 취급한다.
+
+저잡음 케이블을 짧게 고정하고, 절연체를 오염시키지 않으며, 충분히 건조시킨다. 배선 누설 검증은 DUT 없는 동일 fixture의 blank 측정 및 전압 정격이 확인된 기준저항 측정으로 수행한다. blank 측정값을 무조건 모든 시료 데이터에서 빼지 마라. [H1, A1]
+
+======================================================================
+4. 안전 정책: 소프트웨어 정지와 하드웨어 보호 분리
+======================================================================
+
+4.1 기본 정책
+- 프로그램 최초 실행은 SIMULATION MODE이다. 실장비 모드는 사용자가 명시적으로 선택한다.
+- 연결, 재연결, 설정 불러오기, 자동 테스트, 프로그램 시작만으로 출력 ON 금지.
+- 첫 실장비 설정은 목표 전압 0 V, 자동 출력 OFF이다.
+- 초기 소프트웨어 전압 상한을 10 V로 제안하되, 이는 안전 전압의 보증이 아니라 보수적인 개발 제한이다. 상한 변경에는 시료/fixture 정격과 실험 승인 정보가 필요하다.
+- 절대 상한은 min(1000 V, 사용자 설정 상한, 시료 상한, fixture 상한, 케이블 상한)이다. 미확정 정격은 실장비 출력 승인을 막는다.
+- ARM과 START를 구분한다. ARM은 설정·결선·안전 상태를 검증할 뿐 전압을 인가하지 않는다.
+- 안전 검증 후 확정된 실행 설정은 immutable snapshot으로 보관한다.
+- START 이후 스케줄·상한·모드 변경 금지. 변경하려면 먼저 중지한다.
+- software current trip, hardware source current limit, external hardware protection을 UI에서 구분한다.
+- 전류 trip은 사용자 입력 필수로 하고, 이를 장비의 programmable compliance라고 부르지 마라.
+- 출력 상태 미확인에는 OFF가 아니라 UNKNOWN을 표시한다.
+
+4.2 인터록
+- 인터록 조회 0, 조회 실패, 인증되지 않은 fixture 구성은 출력 승인을 차단한다.
+- 조회 1만으로 승인하지 않는다. 설치 확인 및 출력 OFF 상태에서 lid open=0 / closed=1 전이 확인을 commissioning checklist에 포함한다.
+- 이 절차는 하드웨어 안전 기능의 전체 인증을 대체하지 않는다. 정격·배선·실제 차단 동작은 자격 있는 담당자가 검증해야 한다.
+- lid 동작 확인을 위해 고전압을 자동 인가하는 테스트를 만들지 마라.
+- 연결·fixture 변경 시 인증을 무효화한다. 인터록 우회 기능이나 '미연결을 정상으로 간주'하는 옵션 금지.
+- 인터록 개방 후 다시 닫혀도 자동 출력 복귀 금지. 오류 latch와 사용자 재승인이 필요하다.
+
+4.3 중지·고장
+- GUI의 '즉시 출력 중지'는 software stop이다. 하드웨어 emergency stop이라고 표시하지 마라.
+- current trip, source current limit, 비정상 overload, 인터록 이상, 통신 실패, 저장 실패, 내부 예외 발생 시 추가 전압 증가를 금지하고 abort한다.
+- 통신이 살아 있으면 높은 우선순위로 OUTP1 OFF를 best-effort 시도한다. 기존 요청 취소와 trigger/test-sequence 중단을 수행하고, 재출력되지 않도록 출력 OFF를 다시 확인한다.
+- 에러 처리의 다른 단계가 실패해도 OFF 시도 자체가 생략되지 않도록 각 단계의 예외를 분리한다.
+- 반대로 출력 OFF가 확인되지 않았는데 예외를 삼키고 '정상 종료'라고 표시하지 마라.
+- 통신 두절 시 장비가 출력 상태를 유지할 수 있다고 경고한다. 재접속/PC 종료/USB 분리가 자동 차단을 보장한다고 가정하지 마라.
+- 프로그램 종료/정전/프로세스 강제 종료에는 finally/atexit만으로 안전을 보장할 수 없음을 문서화한다.
+- 물리적인 인터록 및 독립적인 차단·방전 수단이 우선이다. 존재하지 않는 watchdog 기능을 발명하지 마라.
+- 자동 재연결 후 측정을 자동 재개하거나 이전 출력 ON을 replay하지 마라.
+- 장비 local lockout은 기본 사용하지 않는다. 사용자의 현장 중지 수단을 방해하지 마라.
+
+4.4 정상 종료와 방전
+- 정상 종료는 승인된 ramp-down/zero-bias hold 정책을 적용할 수 있으나, 그 자체로 방전 완료를 판정하지 않는다.
+- 위험/고장에는 긴 ramp나 dwell을 기다리느라 OFF를 지연하지 않는다.
+- 출력 OFF 확인과 잔류 전압 확인은 별개 상태로 저장한다.
+- 외부 전압 모니터가 없다면 residual_voltage_state=UNVERIFIED로 남긴다.
+- 몇 초가 지났거나 전류가 작아졌다는 이유만으로 '접촉 가능' 또는 '방전 완료'를 표시하지 마라.
+- source off 이후 열린 회로에서 전류가 0이어도 시료 전압이 0인 것은 아니다.
+- 방전 릴레이/저항을 구현하려면 실제 제공된 하드웨어의 정격과 동작을 별도로 검증한다. 측정 중 낮은 값의 방전저항을 DUT에 병렬로 계속 두면 고저항 측정을 망칠 수 있다.
+- CHARGE:ADISCHARGE 같은 charge-function 명령을 DUT 안전 방전 명령으로 오인하지 마라. [M1, 3-102]
+
+======================================================================
+5. 통신 계층
+======================================================================
+
+인터페이스:
+Transport.open(), close(), write(command), query(command), read(), cancel_or_abort_io_if_supported().
+실장비 driver와 별도로 Transport 및 Clock을 주입 가능하게 만들어라.
+
+5.1 VISA USB-GPIB
+- NI/Keysight 계열 등 실제 어댑터에 맞는 제조사 드라이버와 VISA를 사용한다.
+- Python은 PyVISA를 사용한다. pip install pyvisa만으로 모든 어댑터가 작동한다고 안내하지 마라.
+- resource manager backend와 library path를 설정 가능하게 한다.
+- GPIB0::27::INSTR은 입력 예시일 뿐이다. GPIB 주소와 보드 번호를 하드코딩하지 마라.
+- USB-GPIB이므로 resource가 USB::...가 아니라 GPIB... 형태로 나타날 수 있다.
+- 장비의 GPIB 주소와 SCPI 통신 언어를 전면 메뉴에서 확인하도록 안내한다. legacy DDC mode와 혼용하지 마라.
+- resource 목록 조회와 사용자가 선택한 주소의 IDN 조회는 출력 변경 없이 수행한다.
+- *IDN?를 파싱하여 모델이 6517A인지 검증한다. 6517B 등을 묵시적으로 허용하지 마라. firmware/serial을 기록한다.
+- EOI, terminator, timeout은 매뉴얼 및 어댑터에 맞춰 설정·기록한다. LF는 초기 후보이며 실제 응답으로 검증한다.
+- 한 query의 응답을 끝까지 읽기 전에 다른 query를 보내지 마라.
+- VISA session 하나의 I/O 소유자는 단일 worker이다. GUI/안전 timer/수집 thread가 같은 session에 동시 접근해서는 안 된다.
+- 다른 프로그램(NI MAX, Connection Expert, 별도 스크립트)의 동시 제어를 금지하고 resource lock 지원 시 활용한다.
+
+5.2 Prologix 또는 serial-type USB-GPIB
+- 가상 COM으로 보이는 컨트롤러는 일반 VISA GPIB backend와 동일하지 않다.
+- Prologix는 별도 backend로 구분한다. 미구현 시 명확히 unsupported로 표시한다.
+- 구현한다면 공식 매뉴얼로 firmware·++ 명령을 확인하고, ++auto 0 및 명시적인 읽기 등 프로토콜을 적용한다.
+- ++ 명령을 6517A의 SCPI로 보내지 마라. 임의의 USB-GPIB 제품을 Prologix 호환으로 간주하지 마라.
+- 무작위 serial port에 제어 명령을 뿌리는 자동 탐색 금지.
+
+5.3 timeout 및 재시도
+- 유한 timeout과 cooperative cancellation을 사용한다.
+- 통신 복구를 위한 read retry도 이전 응답과 새 응답을 혼합하지 않도록 설계한다.
+- 전압 변경/출력 ON은 timeout 후 자동 재전송하지 않는다. 장비에서 이미 실행되었을 수 있다.
+- 프로토콜 desynchronization이면 해당 데이터는 invalid로 기록하고 출력 중지 절차로 전환한다.
+- bus clear/device clear를 출력 OFF 또는 방전과 동치로 취급하지 마라.
+- 식별된 장비를 제어권 인수할 때 먼저 출력 OFF를 요청하고 확인한다. 기존 출력 상태를 안전하게 확인할 수 없으면 사용자가 현장에서 차단하도록 경고한다.
+- *RST는 매 읽기마다 실행하지 않는다. 필요 시 출력 OFF 확인 후 명시적 초기화 단계에서만 사용하고, 이후 모든 안전 설정을 재검증한다.
+- 오류 queue를 무조건 CLS로 지우지 말고 먼저 원문 오류를 로그에 보존한다. queue drain은 유한 반복으로 제한한다.
+
+근거: [P1], [P2], [P3].
+
+======================================================================
+6. 측정 모드와 데이터의 의미
+======================================================================
+
+6.1 FVMI_CURRENT — 연구용 권장 기본 모드
+- 측정 기능은 current로 유지한다.
+- source 전압을 지정하고 원시 전류 I(t)를 읽는다.
+- 프로그램이 R_apparent(t)=V_programmed/I_measured(t)를 계산한다.
+- UI에는 '계산 저항 V/I'를 표시한다. 장비 전면에는 전류가 표시될 수 있음을 명시한다.
+- native_r_ohm은 null이며, 실제 장비에서 저항값을 읽은 것처럼 채우지 않는다.
+- current_raw_A는 해당 NPLC 및 장비 filter를 통과한 판독값이다. 무처리 ADC raw data라고 부르지 마라.
+
+6.2 NATIVE_RESISTANCE — 장비 자체 저항 판독
+- resistance 기능, Manual V-Source, normal resistance 측정을 사용한다.
+- READ? 응답의 저항을 native_r_ohm에 저장한다.
+- R 판독값은 6517A의 전압 인가/전류 측정에 기반한 값이다. 독립적인 추가 물리량이 아니다.
+- 매 점마다 current/resistance 기능을 왕복 전환하지 마라.
+- 추가 raw current를 동시에 얻는 6517A 명령을 원문으로 검증하지 못했다면 current_raw_A=null로 둔다.
+- V/R로 전류를 역산하면 current_inferred_A에 별도로 기록하고 MEASURED CURRENT로 표시하지 않는다.
+- 소프트웨어 current trip이 이 모드에서 신뢰할 수 있게 구현 가능한지 검증한다. 역산 전류만으로 보호를 보장하지 않는다. 필요한 보호를 충족하지 못하면 실장비 모드는 비활성화한다.
+- 파생 R과 native R의 비교는 승인된 별도 반복 run에서 수행한다. 동일 순간의 독립 동시 측정이라고 주장하지 않는다.
+
+6.3 공통 계산 규칙
+- 부호를 보존한다. 음의 current나 R을 abs()로 바꿔 정상 데이터처럼 숨기지 않는다.
+- V=0에서 R은 undefined/null이다. 0 Ω으로 저장하지 마라.
+- |I_corrected|가 검증된 검출한계 이하이면 NOT_RESOLVED로 표시한다.
+- 감도 하한 I_threshold=max(사용자 설정 floor, 검증된 background 불확도 배수 등)로 정의하고 산정 방법을 저장한다.
+- 검증된 전류 상한만 있을 때 R>|V|/I_limit 같은 lower bound를 별도 결과로 제시할 수 있다. 이를 정확한 저항값 또는 통계적으로 검증된 신뢰한계로 오인하지 마라.
+- instrument overflow/underflow/zero-check/reference/out-of-limit status를 숫자만 보고 정상값으로 처리하지 마라.
+- source compliance/current-limit이면 V_programmed가 실제 DUT 전압이라는 전제가 깨지므로 그 점의 V/I를 유효 저항으로 보고하지 않는다.
+- source queried voltage 및 VSO element는 measured DUT voltage가 아니다. 필드 이름에 measured_voltage를 사용하지 않는다.
+
+직렬 보호저항이 확인된 경우:
+V_DUT_est = V_source_programmed - I_path * R_series - V_burden_est
+R_DUT_est = V_DUT_est / I_sample
+
+이 식은 직렬 저항에 흐르는 전류와 측정 전류의 관계가 확인되고, 추가 누설과 source limit가 무시 가능한 경우에만 쓴다. R_series 미확인 또는 internal resistive-limit 값 불명확이면 자동 보정하지 말고 SERIES_DROP_UNVERIFIED를 표시한다. 원래 V/I와 보정 결과를 둘 다 보존한다.
+
+======================================================================
+7. 고저항 측정 프로토콜
+======================================================================
+
+측정 전류를 다음처럼 해석한다.
+I_meas(t) = I_conduction(V,t) + C_eff*dV/dt + I_absorption(t)
+            + I_polarization(t) + I_fixture_leakage(V,t)
+            + I_offset(t) + noise(t)
+
+이 식은 데이터 해석 모델이며 소프트웨어가 각 성분을 자동 분리할 수 있다는 뜻은 아니다. 특히 전압 직후의 전류를 즉시 DC leakage로 이름 붙이지 마라. [H1, A1]
+
+7.1 준비
+- warm-up/교정 이력, 케이블 고정, 차폐, 환경 조건 확인.
+- 승인된 방식으로 이전 잔류 전하를 제거하고, 이전 전압·온도·poling 이력을 기록.
+- 출력 OFF 및 정해진 안전 상태에서 Zero Check/Zero Correct 수행.
+- Zero Check가 ON이면 정상 시료 전류가 측정된 것으로 처리하지 않는다.
+- Zero Correct는 장비의 내부 영점 보정이다. 시료 leakage/배선 leakage를 제거하는 기능과 구분한다.
+- zero-bias baseline은 선택 기능이다. V=0이어도 depolarization/trapped-charge current가 있을 수 있으므로 자동으로 전부 offset으로 간주하지 않는다.
+
+7.2 전압 인가와 시간
+- step 또는 staircase ramp를 사용하고, 각 명령의 전송/완료 확인 시각을 기록한다.
+- 실제 source transition의 정확한 시각을 독립 측정하지 않았다면 timestamp를 전기적 상승 에지의 정확한 시각으로 표시하지 않는다.
+- ramp 중 데이터, settling 중 데이터, 평균 구간 데이터를 구분한다.
+- 기다리는 동안에도 수집 가능한 I(t)와 safety status를 기록한다. 긴 sleep 하나로 수십 초 동안 모니터링을 멈추지 않는다.
+- 최소 dwell, 최대 dwell, 제외 구간, 통계 구간을 독립 설정한다.
+- 전류 range 변경 시 range-change event와 새로운 settling 제외 구간을 기록한다.
+- range 전환 시점이 정확히 알려지지 않으면 불확실성을 표시하고 이전 query 이후 관련 구간을 보수적으로 invalidation한다.
+
+7.3 세 가지 실행 형태
+(A) Constant bias: 한 전압에서 duration 동안 연속 기록.
+(B) Staircase/list sweep: 전압별 dwell 후 summary 산출. 상승/하강 sweep와 cycle 식별자를 보존.
+(C) Fixed-time resistance: 각 step 후 예를 들어 60초 주변의 지정 window에서 비교. 이 60초는 임의의 실험 프로토콜이지 일반적인 안정화 보증이나 표준 준수 선언이 아니다.
+
+V-list는 [0, 1, 2, 5, 10] V를 저전압 commissioning 예시로 제공한다. 시료가 이 전압을 허용한다는 뜻은 아니며 실행 전 사용자가 승인해야 한다. 1000 V sweep 예제를 자동 실행하지 마라.
+
+7.4 안정화 판정
+- 고정 대기와 자동 안정화 모드를 구분한다. 최소 dwell 전에 stable 판정 금지.
+- 시간 창 W 안의 valid current로 drift slope b와 scatter s를 계산한다.
+- 예시 기준: |b|W/max(|median(I)|, I_floor) < drift_fraction;
+              s/max(|median(I)|, I_floor) < noise_fraction.
+- 절대 drift/noise 기준도 함께 제공한다. zero 부근 상대값 폭주를 방지한다.
+- 최소 sample 수와 연속 통과 횟수를 둔다. 동일 range 내 자료를 사용한다.
+- smoothing된 그래프 데이터만으로 stable 판정하지 마라.
+- max dwell 초과 시 NOT_STABLE 상태로 종료/다음 step/전체 중단 중 정책을 적용한다.
+- NOT_RESOLVED와 STABLE은 독립적인 판정이다. 잡음 바닥에서 평평하다는 이유로 저항을 정밀하게 결정했다고 표시하지 마라.
+- stable은 선택한 기준을 통과했다는 뜻이지 intrinsic DC conduction이나 열역학적 평형의 증명이 아니다.
+- 모든 시료에 tau=R_DUT*C_DUT, t=5tau를 그대로 적용하지 않는다. FVMI의 effective impedance, source response, 피드백, dielectric absorption에 따라 달라지므로 실제 I(t)로 확인한다.
+
+7.5 집계
+- 일정 V의 valid window에서는 대표값을 R_from_mean_current=V/mean(I_corrected)로 계산한다.
+- mean(V/I_i)는 별도의 통계량이다. noise가 큰 구간에서 두 값을 동일시하지 않는다.
+- I mean, median, standard deviation, min/max, N, slope, actual window 시간을 함께 저장한다.
+- 시간상관이 있는 신호의 standard error를 무조건 s/sqrt(N)로 보장하지 않는다.
+- 출처·range·NPLC·온도 조건을 확인한 정확도 모델이 없으면 '총 불확도'를 자동 생성하지 않는다. 반복 산포와 기기 정확도를 구분한다.
+- filter 이후 표준편차가 작아졌다는 이유만으로 systematic error가 줄었다고 해석하지 않는다.
+
+======================================================================
+8. 측정 설정과 기본값
+======================================================================
+
+구성 파일은 JSON 또는 TOML로 저장하고 schema validation을 수행한다. 단위는 내부 SI로 통일한다.
+
+필수 항목:
+- mode, transport type, resource/backend, GPIB address, timeout.
+- sample ID, output directory, run note.
+- requested voltages, voltage ceiling, positive-only/bipolar authorization.
+- source range, ramp step/rate 정책, max total run duration.
+- current trip, 시료 power limit(사용 시), current range 또는 autorange.
+- NPLC, actual line frequency/설정 정보, instrument filter 상태.
+- sample interval, minimum/maximum dwell, excluded initial interval, summary window.
+- stop policy, residual-charge warning acknowledgment, commissioning status.
+- optional background correction, temperature/RH, geometry.
+
+제안 초기값(장비 또는 물질의 보편 사양이 아님):
+- simulation=true, target_voltage=0 V, voltage_ceiling=10 V.
+- NPLC=10, requested sample interval=1 s.
+- instrument averaging/median filter는 가능하면 OFF로 시작하고 명시적으로 조회·기록.
+- current autorange로 초기 탐색 후 고정 range 선택 기능 제공.
+- 정전압 기록 duration=300 s, 요약 window는 마지막 30 s를 초기 UI 예시로 제공.
+- fixed-time sweep의 실제 dwell은 사용자가 정한다. 1초가 충분하다고 하드코딩하지 않는다.
+- temperature/RH 센서가 없으면 null/수동 입력으로 처리. 장비가 항상 측정할 수 있다고 가정하지 않음.
+- current_trip_A, 시료·fixture 정격은 미설정 상태에서 실장비 START 금지.
+
+NPLC integration time = NPLC/f_line. 예를 들어 60 Hz에서 NPLC=10은 약 0.167 s 적분이다. 이것은 전체 sample interval이 아니며 autorange, filtering, autozero, 통신 시간이 추가된다. sample interval을 실현할 수 없으면 경고하고 실제 시각을 기록한다. [M1, 3-87~3-89]
+
+숫자 입력은 NaN/Inf/음수 시간/0 이하 두께·면적/범위 초과를 차단한다. 전압 또는 시간 단위 파싱 실패를 0으로 조용히 대체하지 마라. sweep step은 방향·종료점·point 수를 검증하고 floating-point 누적 때문에 상한을 넘지 않도록 생성한다.
+
+======================================================================
+9. SCPI 명령 매핑과 안전한 실행 순서
+======================================================================
+
+아래는 [M1]에서 확인할 명령 집합이다. 매핑은 매뉴얼 수준에서 확인된 것이며 실제 보유 장비의 firmware에서 시험된 것은 아니다. 읽기/쓰기 query를 혼동하지 말고, 각 설정 후 에러 queue와 설정 readback을 검사하라.
+
+공통:
+*IDN?
+:SYSTem:ERRor?
+:OUTPut1 OFF
+:OUTPut1?
+:INITiate:CONTinuous OFF
+:ABORt
+
+전압 소스 [3-106~3-108]:
+:SOURce:VOLTage 0
+:SOURce:VOLTage <V>
+:SOURce:VOLTage?
+:SOURce:VOLTage:RANGe 100
+:SOURce:VOLTage:RANGe 1000
+:SOURce:VOLTage:RANGe?
+:SOURce:VOLTage:LIMit <absolute_limit_V>
+:SOURce:VOLTage:LIMit?
+:SOURce:VOLTage:LIMit:STATe ON
+:SOURce:VOLTage:LIMit:STATe?
+:SOURce:VOLTage:MCONnect ON
+:SOURce:VOLTage:MCONnect?
+:SOURce:CURRent:RLIMit:STATe <ON|OFF>
+:SOURce:CURRent:RLIMit:STATe?
+:SOURce:CURRent:LIMit:STATe?
+:SYSTem:INTerlock?
+
+주의: SOUR:CURR:LIM:STAT?는 제한 상태 조회다. SOUR:CURR:LIM <임의 current> 형태의 programmable compliance 명령을 발명하지 마라.
+
+전류 측정 설정 [3-85~3-101]:
+:SENSe:FUNCtion 'CURRent'
+:SENSe:CURRent:RANGe:AUTO ON
+:SENSe:CURRent:RANGe:AUTO OFF
+:SENSe:CURRent:RANGe <A>
+:SENSe:CURRent:RANGe?
+:SENSe:CURRent:NPLCycles <n>
+:SENSe:CURRent:NPLCycles?
+
+저항 측정 설정 [3-92~3-95, 3-102~3-103]:
+:SENSe:RESistance:VSControl MANual
+:SENSe:RESistance:VSControl?
+:SENSe:RESistance:MSELect NORMal
+:SENSe:RESistance:MSELect?
+:SENSe:FUNCtion 'RESistance'
+:SENSe:RESistance:MANual:CRANge:AUTO ON
+:SENSe:RESistance:MANual:CRANge:AUTO OFF
+:SENSe:RESistance:MANual:CRANge <current_range_A>
+:SENSe:RESistance:MANual:CRANge?
+:SENSe:RESistance:NPLCycles <n>
+
+Manual V-Source 모드의 CRANge는 current range다. Auto V-Source의 ohm range 명령과 혼용하지 마라. 일부 본문 설명에 단위 오기가 있으므로 명령 요약표와 앞면 동작 설명을 교차 확인하라.
+
+영점 [3-133~3-134]:
+:SYSTem:ZCHeck ON
+:SYSTem:ZCHeck?
+:SYSTem:ZCORrect:ACQuire
+:SYSTem:ZCHeck OFF
+:SYSTem:ZCORrect ON
+:SYSTem:ZCORrect?
+
+영점 보정은 출력 OFF, 승인된 결선/상태에서 수행한다. ACQUIRE는 Zero Check ON에서만 한다. 단계별 settling과 완료 확인을 두고, 보정 range·시각·온도를 기록한다. range/기능 변경 시 유효성은 매뉴얼로 확인한다. 모든 range에서 동일한 보정이 자동 보장된다고 가정하지 마라.
+
+데이터 형식 [3-75~3-78]:
+:FORMat:DATA ASCii
+:FORMat:ELEMents READing,STATus,UNITs,RNUMber,VSOurce
+:FORMat:ELEMents?
+
+형식은 위 집합을 초기 후보로 하되 실제 응답 검증 fixture를 작성한다. 요소는 명령에 적은 순서가 아니라 매뉴얼 Figure 3-19의 고정 순서로 반환된다. status와 unit이 numeric token에 붙을 수 있으므로 단순한 float(response) 또는 각 요소가 별도 CSV 열이라고 가정한 parser 금지.
+
+trigger 전략 [3-38~3-40, 3-142~3-145]:
+- 1차는 host-controlled one-shot을 사용한다.
+- INIT:CONT OFF, 필요한 ABORT 및 arm layer 1/2와 trigger layer를 IMMEDIATE/count=1/관련 delay=0으로 명시 설정한다.
+- 세 layer의 정확한 경로와 적용 delay를 원문에서 확인하여 driver에 넣는다.
+- 정상 수집에는 :READ?를 사용한다. READ?는 현재 설정된 one-shot trigger 상태에서 새로운 conversion을 수행하도록 구성해야 한다.
+- FETCh? 단독 반복은 old reading 재반환 가능성이 있어 사용하지 않는다. continuous 전략을 별도로 구현할 경우 DATA:FRESh? 등의 의미를 원문으로 검증하고 freshness를 보장한다.
+- MEAS:RES? 또는 CONF:RES를 매 점마다 보내지 않는다. MEAS/CONF는 기능 관련 설정을 default로 되돌릴 수 있다.
+- CONF가 필요하면 출력 OFF의 초기화 단계에서만 사용하고, 그 뒤 Manual V-Source, range, NPLC, filter, REL, source limit 등 모든 설정을 재적용한다.
+- 기본 REL/reference/math는 OFF로 명시 설정·검증한다. 정확한 명령 경로는 원문 확인 후 사용하며 기존 세션 상태에 의존하지 않는다.
+
+실행 순서:
+1) 선택한 resource 연결, ID 확인. 지원 모델 불일치면 출력 관련 명령을 보내지 않고 차단.
+2) 제어권 인수 후 출력 OFF 요청 및 readback 확인; autonomous sequence/trigger 상태를 정리하고 OFF 재확인.
+3) 필요 시 명시적 초기화. 에러 로그 보존.
+4) Zero Check ON. Manual V-Source를 먼저 확정한다.
+5) source amplitude=0, 전체 계획에 필요한 range 선정, voltage limit 설정 및 enable 확인.
+6) 승인된 FVMI 결선에 한해 MCONnect ON. resistive-limit 상태는 승인된 profile에서 명시 적용/조회한다.
+7) 선택 측정 기능, range, NPLC, filter, REL/math, 데이터 형식, single-shot trigger 설정.
+8) Zero Correct 수행 및 Zero Check OFF 확인. 출력은 계속 OFF.
+9) 모든 설정 readback, error queue, 인터록/commissioning, 저장 파일 준비 확인.
+10) 사용자가 START하면 전압 0 상태에서 출력 ON을 수행하고 확인한다. 이후 승인된 ramp/step으로 목표값까지 이동하며 실제 설정과 상태를 기록한다.
+11) transient/settling/valid window를 구분하여 측정. 매 측정에서 safety 상태를 적절한 주기로 확인.
+12) 종료 정책 및 출력 OFF 확인. 잔류 전압 상태는 별도 미확인/외부 확인으로 기록.
+
+OUTP1 ON은 검증된 상태 전이를 통해서만 호출할 수 있게 한다. GUI의 임의 SCPI 콘솔에서 이 보호를 우회할 수 없게 하고, 1차 배포에는 write-capable console을 넣지 마라.
+
+======================================================================
+10. 응답 parser와 데이터 품질
+======================================================================
+
+- numeric value, unit, status, reading number, optional timestamp, V-source field를 분리하여 dataclass로 반환한다.
+- 원문 response는 손실 없이 보존한다.
+- 예상하지 못한 token, unit 불일치, malformed response, timeout을 빈 값/0/정상으로 대체하지 않는다.
+- current mode의 OHM 응답이나 resistance mode의 ADC 응답은 모드 불일치 오류다.
+- 6517A status N/Z/O/U/R/L을 원문대로 구분한다. status R은 REL/reference 상태이지 저항 단위가 아니다.
+- 매뉴얼의 +9.9E37(overflow/out-of-limit), +9.91E37(zero check) 등을 실제 측정값으로 저장하거나 평균하지 않는다. sentinel과 status를 함께 검증한다. [M1, 3-77]
+- RNUMber로 중복/오래된 읽기를 탐지한다. 불연속을 데이터 손실로 단정하지 말고 장비 내부 conversion과 reset 가능성을 구분한다.
+- reported setpoint가 요청 전압과 분해능 허용치 이내인지 확인한다. voltage-limit clamp가 발생했는데 요청 전압으로 R을 계산하지 마라.
+- source current-limit 조회의 실패를 limit=false로 대체하지 마라.
+- compliance/interlock 상태는 판독과 완전히 동시인 원자적 snapshot이 아님을 기록한다. status query 시각과 마지막 확인 시각을 남긴다.
+- 통신 정상이고 출력 OFF라고 하더라도 residual voltage 상태는 별도다.
+- JSON에서는 NaN/Infinity 대신 null + quality flag를 쓴다. CSV에는 빈 numeric field와 명확한 flag를 사용한다.
+
+======================================================================
+11. 선택 분석: background와 polarity
+======================================================================
+
+기본은 보정하지 않은 자료를 보존한다. 보정을 적용한 경우 방법, reference run, 적용 시간, 범위를 기록한다.
+
+11.1 blank/background subtraction
+I_corrected = I_measured - I_background
+
+동일 배선·전압·시간·환경에서 재현성이 검증된 background에만 적용한다. V=0에서 측정한 값을 finite-V fixture leakage로 자동 대체하지 마라. background 불확도는 보정 후 불확도에 포함한다.
+
+11.2 polarity reversal (기본 OFF)
+선형·시간 불변·대칭 전도 및 일정 offset을 가정하면:
+I_plus = +V/R + I0
+I_minus = -V/R + I0
+R_pair = 2V/(I_plus-I_minus)
+I0_pair = (I_plus+I_minus)/2
+
+각 극성에서 같은 ramp/dwell/history를 적용하고 전류의 부호를 보존한다. 이 2-point 식을 장비 내장 alternating-polarity test의 multi-reading drift cancellation 알고리즘과 동일하다고 주장하지 마라. 내장 sequence는 2차 확장이며 별도 검증한다.
+
+강유전체, 이온성 전도체, trapping, 접촉 비대칭, rectification, memory effect가 있는 시료에서는 극성 반전으로 상태가 바뀔 수 있다. 따라서 V/I, R_pair, differential resistance를 서로 다른 observable로 표시한다. raw I-V loop와 시간 이력을 우선 보존하고 polarity reversal을 모든 고저항 시료에 자동 적용하지 마라. [H1, A1; 적용 가정과 해석 제한은 본 프로젝트의 분석 정책]
+
+11.3 비저항
+균일한 through-thickness 전류와 유효 면적 A, 두께 d가 정해진 경우:
+rho_volume = R * A/d
+
+SI는 ohm*m, A는 m^2, d는 m이다. ohm*cm 변환은 별도 표기한다. 단순 두 전극 측정에서 표면 누설/접촉 효과가 분리되지 않았다면 intrinsic bulk resistivity라고 단정하지 않는다. surface resistivity는 별도 geometry factor가 있어야 한다.
+
+======================================================================
+12. 소프트웨어 구조
+======================================================================
+
+권장: Python 3.11 이상 중 실제 테스트 가능한 버전, PySide6 GUI, pyqtgraph 실시간 그래프, PyVISA, numpy, pytest. 의존성 버전은 구현 시 호환성을 시험하고 lock/constraints로 남긴다. 무조건 최신 버전이라고 쓰지 마라.
+
+예시 구조:
+pyproject.toml
+README.md
+src/keithley6517a/
+  config.py
+  models.py
+  transport/base.py
+  transport/visa.py
+  transport/simulator.py
+  driver/commands.py
+  driver/instrument.py
+  driver/parser.py
+  measurement/state_machine.py
+  measurement/runner.py
+  measurement/protocols.py
+  measurement/analysis.py
+  safety/policy.py
+  storage/run_writer.py
+  ui/main_window.py
+  cli.py
+tests/
+docs/scpi_reference.md
+docs/wiring_and_safety.md
+docs/commissioning_checklist.md
+docs/measurement_protocol.md
+docs/known_limitations.md
+examples/simulation_config.json
+examples/low_voltage_template.json
+
+상태 예:
+DISCONNECTED -> CONNECTED_UNVERIFIED -> OUTPUT_OFF_CONFIRMED
+-> CONFIGURING -> ARMED -> RAMPING -> SETTLING -> ACQUIRING
+-> STOPPING -> OUTPUT_OFF_CONFIRMED
+
+FAULT와 HV_STATE_UNKNOWN은 어느 상태에서나 진입 가능해야 하며, 정상 완료로 자동 전환하지 않는다.
+
+state와 별도 flags:
+output_state = ON / OFF / UNKNOWN
+residual_voltage_state = UNVERIFIED / EXTERNALLY_VERIFIED
+interlock_query = 0 / 1 / UNKNOWN
+fixture_commissioned = true / false
+
+OUTPUT_OFF_CONFIRMED라는 이름은 출력 명령 상태를 뜻할 뿐 '전기적으로 접촉해도 안전'하다는 뜻이 아니다. SAFE라는 단일 bool로 여러 상태를 뭉개지 마라.
+
+GUI와 수집은 분리한다. 한 worker가 통신을 소유하고, 중지 event를 장시간 대기 중에도 검사한다. 이벤트 루프를 긴 blocking read/sleep으로 멈추지 마라. I/O timeout 때문에 software stop이 늦어질 수 있음을 표시하고 실제 최대 지연을 시험·문서화한다.
+
+stop 우선순위 큐를 도입해도 이미 진행 중인 모든 VISA call을 즉시 끊을 수 있다고 가정하지 마라. 임의 thread에서 두 번째 VISA session을 열어 강제로 동시에 쓰는 방식은 기본 해결책으로 사용하지 않는다.
+
+실행 시간은 monotonic clock으로 계산한다. 절대 시각은 timezone 포함 ISO 8601로 저장한다. 시뮬레이터와 테스트에서는 fake clock을 주입하여 실제 몇 분을 기다리지 않고 시간 제어 로직을 시험한다.
+
+======================================================================
+13. GUI와 실험자가 볼 정보
+======================================================================
+
+상단:
+- SIMULATION/REAL, model/serial/firmware, resource, connection 상태.
+- source programmed/readback voltage, OUTPUT ON/OFF/UNKNOWN.
+- interlock query와 fixture commissioning을 별도 표시.
+- residual voltage unverified 경고를 출력 OFF와 별도로 지속 표시.
+
+설정:
+- 측정 모드, V-list, time protocol, NPLC, range, trip, source voltage ceiling.
+- sample metadata, 환경 입력, 저장 위치.
+- review/ARM, START, 정상 STOP, software 즉시 출력 중지.
+
+측정:
+- current, calculated/native resistance, time since voltage step, range, quality flag.
+- I(t), R(t), I-V, R-V 그래프. 각 그래프의 linear/log 선택.
+- 음전류·음저항을 log plotting 때문에 조용히 삭제하지 마라. signed-linear/symlog 또는 부호와 |value| 표시를 사용한다.
+- raw/보정/표시용 smoothing을 구분한다. smoothing은 저장 raw data를 덮어쓰지 않는다.
+- 실제 sampling interval과 진행 상태, error log.
+
+클릭 가능한 출력 ON은 상태 검증을 통과할 때만 활성화한다. 통신이 끊기면 마지막 숫자를 새 측정처럼 갱신하지 말고 stale 및 timestamp를 표시한다.
+
+======================================================================
+14. 데이터 파일과 재현성
+======================================================================
+
+run마다 고유 폴더를 생성하고 덮어쓰기하지 않는다.
+- config.json: 실행 승인된 설정 snapshot, schema version, software version/commit.
+- metadata.json: 시료·배선·fixture·기기 식별·환경·교정·warm-up·승인 정보.
+- readings.csv: 모든 측정/과도/오류 구간. SI 단위 column.
+- summary.csv: voltage step/cycle별 유효 window와 대표값.
+- events.jsonl: 명령·상태 전이·range change·trip·에러·중지 기록.
+- raw_io.jsonl: 송수신 시각과 원문 command/response; simulation 여부.
+- run_status.json: running/completed/aborted/interrupted, 종료 이유, 최종 출력 상태, 잔류전압 확인 상태.
+
+readings.csv 필드 예:
+run_id, sample_id, mode, step_index, cycle_index, phase,
+wall_time_iso8601, elapsed_s, time_since_voltage_command_s,
+read_start_monotonic_s, read_end_monotonic_s,
+voltage_requested_V, voltage_programmed_readback_V, voltage_reported_by_instrument_V,
+voltage_dut_estimated_V, voltage_basis,
+current_raw_A, current_background_A, current_corrected_A, current_inferred_A,
+resistance_apparent_ohm, resistance_corrected_ohm, native_r_ohm,
+resistance_lower_bound_ohm, resistivity_ohm_m,
+current_range_A, source_range_V, nplc,
+source_output_state, source_current_limit_state, interlock_query,
+zero_check_state, zero_correct_state, status_code, reading_number,
+temperature_C, relative_humidity_percent,
+valid_for_summary, quality_flags, raw_response
+
+읽지 않은 값은 null/빈 칸이다. 추정값을 raw 또는 measured column에 넣지 않는다. 문자열 필드를 안전하게 CSV 인코딩하고, raw response의 comma/개행 때문에 열이 망가지지 않도록 한다.
+
+매 sample 또는 설정된 짧은 interval로 flush하고, 중요 이벤트는 즉시 저장한다. 종료 시에만 저장하는 설계 금지. metadata/status 변경은 가능한 atomic write를 사용한다. disk full/permission error가 나면 측정을 중단하고 출력 OFF를 시도한다.
+
+데이터 저장 실패가 safety worker를 영구 block하지 않게 한다. 출력 중지 실패도 이벤트로 최대한 보존한다. 재시작 시 incomplete run을 interrupted로 복구하지만 전압 인가를 자동 재개하지 않는다.
+
+======================================================================
+15. 시뮬레이터
+======================================================================
+
+simulator는 실제 driver/parser와 동일한 transport interface를 사용한다. UI만 가짜 숫자를 넣는 형태가 아니라 명령·상태·응답을 검증하도록 구현한다.
+
+기본 전류 모델:
+I(t) = V/R + sum(A_k*exp(-t/tau_k)) + I_offset + drift*t + noise
+
+옵션으로 C*dV/dt에 해당하는 ramp transient, range 변화, finite source settling, nonlinear I-V를 추가할 수 있다. 모델이 실제 시료 physics를 검증한다는 뜻은 아니다.
+
+주입 가능한 fault:
+- timeout, USB disconnected, 지연 응답/분할 응답/깨진 token.
+- 다른 장비의 IDN, unsupported command, 설정 readback 불일치.
+- voltage-limit clamp, source current-limit, meter overflow.
+- zero-check가 남아 있는 상태, reference가 남아 있는 상태.
+- interlock=0, cable absent인데 interlock=1인 상태.
+- stale/duplicate reading, sign reversal, zero current, noise floor.
+- disk failure, GUI close, worker exception, 중지 도중 추가 명령 실패.
+
+선택된 자료형 및 fault에 대해 재현 가능한 random seed를 지원한다. simulator가 사용한 알려진 R 및 I_offset은 metadata에 simulation truth로 기록하되 측정 결과와 구분한다.
+
+======================================================================
+16. 필수 acceptance tests
+======================================================================
+
+자동 테스트는 최소 다음을 포함한다.
+1) 프로그램 시작/연결/재연결/설정 load만으로 출력 ON이 한 번도 발생하지 않는다.
+2) 다른 모델은 차단되고 실장비 제어 명령을 보내지 않는다.
+3) ARM 이전, voltage ceiling 초과, NaN/Inf, 잘못된 geometry/time 입력은 차단한다.
+4) 모든 실행 경로에서 Auto V-Source가 지정 전압을 임의 변경하지 않도록 설정 검증한다.
+5) 전류 autorange와 Auto V-Source의 설정이 독립적이다.
+6) interlock=1이지만 cable absent/commissioning 미확인 상태는 시작 금지다.
+7) interlock open, readback 불일치, source limit, software trip에 대해 추가 전압 상승이 없다.
+8) 사용자 STOP/timeout/exception/disk error/GUI close에서 OFF를 best-effort 시도한다.
+9) OFF 실패나 통신 단절에는 HV_STATE_UNKNOWN이 유지된다. OFF 성공에도 residual voltage를 자동 VERIFIED로 바꾸지 않는다.
+10) retry/reconnect가 ON 또는 이전 setpoint 명령을 자동 replay하지 않는다.
+11) 실제 매뉴얼 형식을 반영한 ASCII token/단위/status/sentinel/parser 테스트가 통과한다.
+12) 0 V, 0 current, 음전류, noise floor, overflow, underflow, REL 상태가 올바르게 분류된다.
+13) READ? 전략은 fresh conversion을 전제로 하며 stale data를 새 sample로 처리하지 않는다.
+14) sample interval은 NPLC와 통신 시간보다 짧다고 보장하지 않으며 실제 시간이 저장된다.
+15) range change 이후 exclude/settle window가 적용된다.
+16) stable/NOT_STABLE/NOT_RESOLVED는 구분된다. averaging은 invalid sample을 제외하지만 raw sample은 삭제하지 않는다.
+17) constant V에서 mean(I) 기반 R, native R, inferred current가 다른 field에 저장된다.
+18) series resistance 미확인일 때 자동 보정하지 않는다.
+19) CSV round-trip, JSON strict parsing, incremental write, incomplete run recovery를 검증한다.
+20) fake clock 기반 긴 dwell 도중에도 stop 요청을 처리한다.
+21) safety stop 중 logging/abort/zero-check 단계의 예외가 OFF 요청을 막지 않는다.
+22) GUI 버튼 enable 조건이 driver/state-machine 검증을 대체하지 않는다. CLI 직접 호출도 동일 정책을 따른다.
+23) bipolar mode는 기본 OFF이며 0~positive-only profile에서 음전압을 차단한다.
+24) simulated raw transcript와 실제 수집 transcript를 명확히 구분한다. real test 미수행을 숨기지 않는다.
+
+단계별 실장비 commissioning 체크리스트도 생성하라.
+A. 모든 시험은 적절한 enclosure 및 승인된 하드웨어 보호 하에서 수행한다.
+B. 출력 OFF 상태에서 ID/설정/readback/error queue/인터록 전이 확인.
+C. 정격 확인한 기준저항을 사용하여 허용된 낮은 전압부터 시험.
+D. 장비 전면값과 PC값, 단위·부호·시간·모드를 비교.
+E. 정상 중지·소프트웨어 오류·통신 단절 상황에서 실제 출력과 물리적 차단 동작을 확인. 고전압 상태의 USB 분리를 초보자용 시험으로 안내하지 않는다.
+F. fixture blank 및 기준저항의 전압 의존성/누설 평가.
+G. capacitor 성격 시료에는 충전/방전 프로토콜을 따로 검증.
+H. 검증 기록 후 단계적으로 연구 전압 범위를 확대한다. 모든 기기의 1000 V 지원을 가정하지 않는다.
+
+======================================================================
+17. 최종 납품물과 완료 보고
+======================================================================
+
+- 위 구조에 해당하는 runnable project와 실제 구현 파일.
+- simulation GUI 및 CLI 실행 방법.
+- Windows VISA/어댑터 연결 점검, Python 환경 및 dependencies 설치 안내.
+- 명령표, 안전/배선 문서, 실장비 commissioning 체크리스트.
+- 자동 테스트와 실행 결과. 테스트가 실행되지 않았으면 이유와 범위를 명시.
+- sample simulation data, raw transcript, 그래프 화면 예시.
+- 실제 하드웨어 없이 검증하지 못한 기능 및 firmware-dependent 부분 목록.
+- optional backend/고급 기능의 implemented/disabled/not implemented 상태표.
+
+완료 보고는 '구현된 기능 / 실행한 테스트 / 실장비에서 남은 확인 / 알려진 제한'을 분리하라. 소프트웨어 검증만으로 1000 V 사용 안전성이 인증되었다고 주장하지 마라.
+
+======================================================================
+18. 근거 자료
+======================================================================
+
+[M1] Keithley, Model 6517A Electrometer User's Manual.
+문서 내부 표기: 6517A-900-01 Rev. D (May 2003).
+https://download.tek.com/manual/6517A_900_01C.pdf
+핵심 절: 2.4, 2.6, 2.7, 2.9, 2.13, 2.14, 3.12, 3.16, 3.17, 3.19,
+3.20.2, 3.22.12, 3.22.16, 3.24.
+원문에는 resistive-limit 값·일부 설명/단위의 불일치가 있어 상충 부분을 별도로 기록했다.
+
+[H1] Keithley Low Level Measurements Handbook (Tektronix 공식 웹판).
+https://www.tek.com/en/documents/product-article/keithley-low-level-measurements-handbook---7th-edition
+고저항/저전류, shielding/guarding, leakage, settling, background current 관련 일반 측정 원리.
+다른 모델의 명령/사양을 6517A에 그대로 적용하지 않는다.
+
+[A1] Tektronix, Technical Info: Low Current / High Resistance Measurements.
+https://www.tek.com/en/documents/technical-article/technical-info-low-current-high-resistance-measurements
+정전압-전류 측정 방식, 누설과 guarding, 온습도, background와 polarity 관련 원리.
+
+[P1] PyVISA 공식 문서, Communicating with your instrument.
+https://pyvisa.readthedocs.io/en/latest/introduction/communication.html
+
+[P2] PyVISA-py 공식 저장소, installation documentation.
+https://github.com/pyvisa/pyvisa-py/blob/main/docs/source/installation.rst
+GPIB 사용에는 적절한 GPIB driver가 필요하다. pyvisa-py 설치만으로 모든 USB-GPIB 하드웨어를 지원하는 것은 아니다.
+
+[P3] Prologix 공식 GPIB-USB Controller FAQ.
+https://prologix.biz/resources/frequently-asked-questions/gpib-usb-controller-faq/
+해당 controller를 실제 사용할 때만 적용한다.
+
+이 문서의 소프트웨어 구조, 초기 UI 설정, 상태 머신, 검사 기준 및 개발 순서는 본 프로젝트를 위한 설계 제안이다. 제조사가 인증한 제어 소프트웨어나 안전 규격 준수 선언이 아니다.

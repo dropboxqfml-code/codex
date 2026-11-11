@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "keithley6517a-lab"
+version = "0.3.0"
+description = "Simulator-first Keithley 6517A high resistance measurement workstation"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "PySide6-Essentials>=6.8,<7",
+  "pyqtgraph>=0.13,<0.15",
+  "PyVISA>=1.14,<2",
+  "numpy>=2,<3",
+]
+
+[project.scripts]
+keithley6517a = "keithley6517a.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3,<10", "pytest-qt>=4.4,<5", "ruff>=0.11,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/keithley6517a"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyside6"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

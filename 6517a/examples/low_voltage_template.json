@@ -1,0 +1,38 @@
+{
+  "simulation": false,
+  "transport": "visa",
+  "resource": "",
+  "visa_backend": null,
+  "timeout_ms": 2000,
+  "mode": "FVMI_CURRENT",
+  "protocol": "constant",
+  "sample_id": "UNAPPROVED-DO-NOT-START",
+  "output_directory": "runs",
+  "note": "미승인 0 V 템플릿. resource·trip·정격·실험 승인과 현재 연결의 출력 OFF 인터록 open=0/closed=1 확인 전에는 START할 수 없음.",
+  "voltages": [
+    0
+  ],
+  "dwell_s": 300,
+  "summary_window_s": 30,
+  "sample_interval_s": 1,
+  "nplc": 10,
+  "line_frequency_hz": 60,
+  "current_trip_A": null,
+  "source_range_V": 100,
+  "voltage_ceiling_V": 10,
+  "sample_limit_V": null,
+  "fixture_limit_V": null,
+  "cable_limit_V": null,
+  "bipolar_authorized": false,
+  "rating_approval": "",
+  "residual_warning_ack": false,
+  "commissioning": {
+    "installation_confirmed": false,
+    "hardware_protection_reviewed": false,
+    "lid_open_zero": false,
+    "lid_closed_one": false,
+    "fixture_id": "",
+    "approved_by": ""
+  },
+  "resistive_limit_enabled": null
+}

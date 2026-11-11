@@ -1,0 +1,46 @@
+name: 6517A Windows portable trial
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-simulation:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: 6517a
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.13.5'
+      - name: Install locked development tools
+        run: uv sync --locked --python 3.12.14
+      - name: Run software acceptance tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          uv run --locked pytest -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          uv run --locked ruff check .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          uv run --locked ruff format --check .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build portable package and test its Windows interpreter, synthetic CLI and GUI
+        run: uv run --locked python scripts/build_trial_bundle.py --output dist --native-smoke
+      - name: Upload trial packages and checksums
+        uses: actions/upload-artifact@v6
+        with:
+          name: 6517A-Windows-x64-trial
+          path: |
+            6517a/dist/*-Windows-x64.zip
+            6517a/dist/*-Windows-x64.zip.sha256
+            6517a/dist/*-Source.zip
+            6517a/dist/*-Source.zip.sha256
+            6517a/dist/*-build-report.json
+          if-no-files-found: error
+          retention-days: 14

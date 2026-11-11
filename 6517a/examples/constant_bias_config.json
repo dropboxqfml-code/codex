@@ -1,0 +1,23 @@
+{
+  "simulation": true,
+  "transport": "simulation",
+  "mode": "FVMI_CURRENT",
+  "protocol": "constant",
+  "sample_id": "SIM-CONSTANT-300S",
+  "output_directory": "runs",
+  "note": "300 s 정전압 및 마지막 30 s 요약의 가상 실험 예제. 실제 시료에는 적용하지 않음.",
+  "voltages": [1],
+  "dwell_s": 300,
+  "min_dwell_s": 30,
+  "exclude_initial_s": 30,
+  "summary_window_s": 30,
+  "sample_interval_s": 1,
+  "range_settle_s": 1,
+  "nplc": 10,
+  "line_frequency_hz": 60,
+  "current_trip_A": 1e-7,
+  "current_floor_A": 1e-14,
+  "source_range_V": 100,
+  "voltage_ceiling_V": 10,
+  "residual_warning_ack": true
+}

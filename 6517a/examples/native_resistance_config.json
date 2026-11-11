@@ -1,0 +1,23 @@
+{
+  "simulation": true,
+  "transport": "simulation",
+  "mode": "NATIVE_RESISTANCE",
+  "protocol": "list",
+  "sample_id": "SIM-NATIVE-R",
+  "output_directory": "runs",
+  "note": "가상 native resistance 판독 예제. current_inferred_A는 역산값이며 측정 전류가 아님. 실장비 native mode는 비활성화.",
+  "voltages": [1, 2, 5],
+  "dwell_s": 2,
+  "min_dwell_s": 0.5,
+  "exclude_initial_s": 0.5,
+  "summary_window_s": 1,
+  "sample_interval_s": 0.2,
+  "range_settle_s": 0.2,
+  "nplc": 1,
+  "line_frequency_hz": 60,
+  "current_trip_A": 1e-7,
+  "current_floor_A": 1e-14,
+  "source_range_V": 100,
+  "voltage_ceiling_V": 10,
+  "residual_warning_ack": true
+}

@@ -1,0 +1,3 @@
+# Generated CSV uses the csv module's CRLF record endings; preserve those bytes.
+*.csv -text whitespace=cr-at-eol
+*.cmd text eol=crlf

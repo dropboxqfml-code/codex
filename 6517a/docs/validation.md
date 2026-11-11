@@ -4,24 +4,24 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
-## v0.4.0 연결 안내와 NI-488.2-only 선택 경로
+## v0.4.1 연결 안내와 NI-488.2-only 선택 경로
 
 사용자는 안내된 CMD 실행 뒤 v0.3.0 시뮬레이션 화면이 열렸으며 NI MAX에서 6517A가 보인다고 확인했습니다. 이는 사용자 관찰 기록입니다. 실제 프로그램의 IDN/출력 OFF/전류 판독 결과 파일은 아직 전달되지 않았으므로 측정 성공으로 표시하지 않습니다.
 
 이번 변경은 정상 기본 SIMULATION 화면에서 실제 NI 연결 시험으로 넘어가는 단계 안내와, NI-VISA를 생략하기 위한 명시적 `@py` 대안을 추가합니다. 기본 native VISA를 유지하며 backend 오류 뒤 자동 재접속·명령 재전송은 하지 않습니다. PyVISA-py 0.8.1/gpib-ctypes 0.3.0의 선택 설치와 NI-488.2 driver/DLL의 준비 상태를 구분합니다. 기본 ZIP에는 이 두 대체 패키지를 사전 설치하지 않습니다.
 
-기본 환경에서 선택 extra를 제거한 뒤 다음 검증을 실행했습니다. 새 Release의 Windows CI 실행 여부는 해당 CI 로그와 `build-report.json`을 함께 확인합니다.
+기본 환경에서 선택 extra를 제거한 뒤 다음 검증을 실행했습니다. 308개 통과·6.94 s는 CI 환경 수정 전의 동일 기능 소스에 대한 Linux 로컬 검증 기록입니다. 수정판 v0.4.1 Release의 Windows CI 실행 여부는 해당 CI 로그와 `build-report.json`을 함께 확인합니다.
 
-| 항목 | v0.4.0 로컬 결과 |
+| 항목 | v0.4.1과 동일한 기능 소스의 로컬 검증 기록 |
 |---|---|
 | 전체 자동 테스트 | Linux offscreen에서 **308개 통과**, 실패·건너뜀 없음, 6.94 s |
 | Ruff check / format | 프로젝트 전체 통과; Python 파일 54개 format 검사 통과 |
 | 주요 경계 시험 | NI backend 29개, 연결 안내 16개, 새 실장비 준비 통합 10개, 배포 코드 32개; 기존 시험과 함께 전체 실행 |
 | 기본 환경과 선택 확장 분리 | `uv sync --locked` 기본 환경에서 전체 시험 통과; PyVISA-py/gpib-ctypes가 사전 설치돼 있어야 통과하는 구성으로 시험하지 않음 |
-| v0.4.0 simulation CLI | 실제 실행: reading 52개·summary 5개, completed / OFF / residual UNVERIFIED |
-| v0.4.0 offscreen GUI | 현재 source/FakeClock로 52개 판독 완료, OUTPUT_OFF_CONFIRMED / OFF / residual UNVERIFIED; 미연결 REAL 준비 0 V·trip 미설정과 새 연결 안내 화면 시각 확인 |
+| simulation CLI | v0.4.0 동일 기능 소스에서 실제 실행: reading 52개·summary 5개, completed / OFF / residual UNVERIFIED |
+| offscreen GUI | v0.4.0 동일 기능 소스/FakeClock로 52개 판독 완료, OUTPUT_OFF_CONFIRMED / OFF / residual UNVERIFIED; 미연결 REAL 준비 0 V·trip 미설정과 새 연결 안내 화면 시각 확인 |
 | 선택 확장 미설치 `@py` 진단 | 실제 기본 환경에서 `NI_BACKEND_DEPENDENCY_MISSING` 기록·보고서 저장; output UNKNOWN, 장비 I/O 없음 |
-| 기본 portable rehearsal | ZIP 116,633,738 bytes; static 파일 6,884개 내부 SHA-256과 ZIP CRC 통과; 선택 확장 Python 파일 미포함, installer·hash-pinned 요구사항 포함 |
+| 기본 portable rehearsal | v0.4.0 동일 기능 소스의 ZIP 116,633,738 bytes; static 파일 6,884개 내부 SHA-256과 ZIP CRC 통과; 선택 확장 Python 파일 미포함, installer·hash-pinned 요구사항 포함 |
 | 실제 NI-488.2-only 통신·사용자 PC의 IDN/측정 | 미수행 |
 | 물리적 차단·방전·잔류 전압 확인 | 미수행; UNVERIFIED |
 
@@ -30,6 +30,10 @@ SIM→REAL 준비는 가상 전압·trip·승인을 재사용하지 않고 0 V·
 새 화면 예시는 [미연결 실장비 준비 안내](../examples/live-connection-guide.png)와 [시뮬레이션 완료 화면](../examples/gui-simulation.png)입니다. 실장비 준비 그림의 주소는 예시이며 실제 NI 응답을 취득한 화면이 아닙니다.
 
 선택 확장 installer는 사용자의 명시적 `INSTALL` 입력 후 두 개의 hash-pinned pure wheel을 인터넷에서 설치합니다. 기본 배포 ZIP에는 이 대체 Python 패키지나 NI driver/DLL을 넣지 않습니다. 완전한 표식·버전·해시가 맞는 기존 설치 재사용, 불완전하거나 변경된 폴더 보존·덮어쓰기 거부도 검사합니다. 이 소프트웨어 시험은 실제 NI DLL/어댑터 동작이나 확장 추가 배포본의 재배포 조건 검토를 대신하지 않습니다.
+
+## v0.4.0 CI 중단 기록
+
+[CI 실행 43039479711](https://github.com/dropboxqfml-code/codex/actions/runs/43039479711)은 Linux OS 패키지 설치 단계에서 exit 100으로 중단됐습니다. 코드 검사나 자동 테스트가 실패한 결과가 아니며, 해당 실행에서는 코드 검사·Windows 시험·배포가 실행되지 않았습니다. 기존 tag는 변경하지 않고 CI 환경을 수정한 v0.4.1로 다시 배포를 시도합니다.
 
 ## v0.3.0 GitHub Release의 추가 Windows 검증
 

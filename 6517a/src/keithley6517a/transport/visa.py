@@ -4,6 +4,7 @@ import math
 import threading
 
 from .base import CommunicationError
+from .ni4882 import normalize_backend, prepare_backend
 
 
 class VisaTransport:
@@ -22,18 +23,26 @@ class VisaTransport:
             raise ValueError("Select an explicit VISA GPIB resource; serial/USBTMC is unsupported")
         if not math.isfinite(timeout_ms) or timeout_ms <= 0:
             raise ValueError("VISA timeout must be finite and positive")
-        self.resource, self.backend, self.timeout_ms = resource, backend, int(timeout_ms)
+        self.resource, self.backend, self.timeout_ms = (
+            resource,
+            normalize_backend(backend),
+            int(timeout_ms),
+        )
         self.read_termination, self.write_termination = read_termination, write_termination
         self.send_end = send_end
         self.session = self.manager = None
         self.owner = None
         self.lock_acquired = False
+        self.runtime_info = None
+        self.effective_timeout_ms = None
 
     @staticmethod
     def list_resources(backend: str = "") -> tuple[str, ...]:
+        selected = normalize_backend(backend)
+        prepare_backend(selected)
         import pyvisa
 
-        manager = pyvisa.ResourceManager(backend or "")
+        manager = pyvisa.ResourceManager(selected)
         try:
             return tuple(r for r in manager.list_resources() if r.upper().startswith("GPIB"))
         finally:
@@ -47,6 +56,8 @@ class VisaTransport:
     def open(self):
         if self.session is not None:
             raise CommunicationError("Close the existing VISA session before reconnecting")
+        self.effective_timeout_ms = None
+        self.runtime_info = prepare_backend(self.backend)
         import pyvisa
 
         self.manager = pyvisa.ResourceManager(self.backend or "")
@@ -54,16 +65,33 @@ class VisaTransport:
             self.session = self.manager.open_resource(self.resource)
             self.owner = threading.get_ident()
             self.session.timeout = self.timeout_ms
+            actual_timeout = self.session.timeout
+            if (
+                type(actual_timeout) not in (int, float)
+                or not math.isfinite(actual_timeout)
+                or actual_timeout <= 0
+                or actual_timeout >= 0xFFFFFFFF
+            ):
+                raise CommunicationError(
+                    "The selected GPIB backend did not establish a finite timeout"
+                )
+            self.effective_timeout_ms = actual_timeout
+            self.runtime_info.update(
+                requested_timeout_ms=self.timeout_ms, effective_timeout_ms=actual_timeout
+            )
             self.session.read_termination = self.read_termination
             self.session.write_termination = self.write_termination
             self.session.send_end = self.send_end
             try:
                 self.session.lock_excl(timeout=self.timeout_ms)
                 self.lock_acquired = True
+                self.runtime_info["exclusive_lock_supported"] = True
             except pyvisa.errors.VisaIOError as exc:
                 # Only explicit unsupported locking is acceptable; busy/timeout is fatal.
                 if exc.error_code != pyvisa.constants.StatusCode.error_nonsupported_operation:
                     raise
+                self.runtime_info["exclusive_lock_supported"] = False
+            self.runtime_info["exclusive_lock_acquired"] = self.lock_acquired
         except Exception:
             self.close()
             raise

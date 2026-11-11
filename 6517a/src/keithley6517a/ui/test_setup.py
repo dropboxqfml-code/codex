@@ -66,6 +66,15 @@ class TestSetupDialog(QDialog):
         self.visa_backend = self._text(config.visa_backend or "")
         self.visa_backend.setPlaceholderText("기본 VISA 사용 시 비움 / @ivi 또는 VISA library 경로")
         connection.addRow("VISA backend / library", self.visa_backend)
+        self.backend_profiles = QComboBox()
+        self.backend_profiles.addItem("NI-VISA · 기본 권장", "@ivi")
+        self.backend_profiles.addItem("NI-488.2 전용 · 선택 확장 설치 필요 · 시험 기능", "@py")
+        self.backend_profiles.addItem("라이브러리 경로 직접 지정", "custom")
+        self._edits.append(self.backend_profiles)
+        connection.addRow("통신 방식", self.backend_profiles)
+        self.backend_profiles.currentIndexChanged.connect(self._select_backend)
+        self.visa_backend.textChanged.connect(self._sync_backend)
+        self._sync_backend()
         self.timeout_ms = QSpinBox()
         self.timeout_ms.setRange(1, 60000)
         self.timeout_ms.setValue(config.timeout_ms)
@@ -80,8 +89,9 @@ class TestSetupDialog(QDialog):
         connection.addRow("읽기 terminator", self.read_termination)
         connection.addRow("쓰기 terminator", self.write_termination)
         driver_note = QLabel(
-            "USB-GPIB 어댑터 제조사의 64비트 driver와 VISA runtime이 필요합니다. "
-            "PyVISA 설치만으로 어댑터가 동작하지 않습니다. 다른 제어 프로그램은 종료하세요."
+            "기본 경로는 NI-VISA입니다. NI-488.2 전용 @py 시험 기능은 선택 확장을 "
+            "따로 설치해야 하며 NI-488.2 드라이버는 여전히 필요합니다. "
+            "NI MAX에서 주소를 확인한 뒤 다른 제어 프로그램의 test panel은 종료하세요."
         )
         driver_note.setWordWrap(True)
         connection.addRow(driver_note)
@@ -229,6 +239,18 @@ class TestSetupDialog(QDialog):
     @staticmethod
     def _optional_text(value):
         return "" if value is None else str(value)
+
+    def _select_backend(self):
+        value = self.backend_profiles.currentData()
+        if value != "custom":
+            self.visa_backend.setText(value)
+
+    def _sync_backend(self):
+        value = self.visa_backend.text().strip()
+        index = 1 if value == "@py" else (0 if value in ("", "@ivi") else 2)
+        self.backend_profiles.blockSignals(True)
+        self.backend_profiles.setCurrentIndex(index)
+        self.backend_profiles.blockSignals(False)
 
     def _termination(self, selected):
         widget = QComboBox()

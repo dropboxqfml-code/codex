@@ -18,7 +18,7 @@ def close_window(qtbot, window):
     qtbot.waitUntil(lambda: window._closed)
 
 
-def test_resource_list_does_not_auto_select_connect_or_arm(qtbot, monkeypatch):
+def test_resource_list_does_not_auto_select_connect_or_arm(qtbot, monkeypatch, tmp_path):
     calls = []
     ui_thread = threading.get_ident()
 
@@ -31,6 +31,7 @@ def test_resource_list_does_not_auto_select_connect_or_arm(qtbot, monkeypatch):
     qtbot.addWidget(window)
     try:
         window.backend.setText("@ivi")
+        window.output_dir.setText(str(tmp_path))
         window.discover_button.click()
         qtbot.waitUntil(lambda: window.resource_choices.count() == 3 and not window._busy)
         assert calls == [("@ivi", calls[0][1])]

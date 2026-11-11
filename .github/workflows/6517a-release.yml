@@ -166,7 +166,9 @@ jobs:
           6517A · NI GPIB-USB 시험용 프로그램입니다. Windows 64비트 ZIP에는 Python과 Python 의존성이 포함되어 있습니다.
 
           압축을 모두 풀고 Verify-Bundle.cmd → Test-Simulation.cmd → Start-GUI.cmd 순서로 실행하세요.
-          NI GPIB-USB에는 해당 모델과 호환되는 NI-488.2 및 NI-VISA 64비트가 별도로 필요합니다.
+          NI MAX에서 보이는 장비와 같은 주소를 선택해 새 'NI 실장비 연결 시험 시작' 안내를 따라 IDN부터 확인하세요.
+          기본 경로에는 해당 모델과 호환되는 NI-488.2 및 NI-VISA 64비트가 필요합니다.
+          NI-VISA를 생략하는 @py 시험 기능은 Enable-NI-Only.cmd로 선택 확장을 별도 설치한 경우에만 사용할 수 있으며, NI-488.2 드라이버는 여전히 필요합니다. 기본 ZIP은 이 확장을 포함하거나 자동 설치하지 않습니다.
 
           이 배포는 Linux 및 Windows 소프트웨어 시험과 번들 Windows 인터프리터의 가상 CLI/GUI smoke를 통과한 뒤 생성했습니다. 권한이 없는 Windows 심볼릭 링크 시험은 test report에 skipped로 구분됩니다.
           실제 6517A · NI GPIB-USB 통신 및 하드웨어 차단·방전 시험은 미수행입니다. 출력 OFF는 방전 완료를 뜻하지 않으며 실장비 native 저항 모드는 차단되어 있습니다.

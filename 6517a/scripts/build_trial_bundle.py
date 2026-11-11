@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -25,6 +26,20 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PYTHON_KEY = "cpython-3.12.14-windows-x86_64-none"
 PYTHON_VERSION = "3.12.14"
+# Required Windows application dependencies. CPython may also provide its own pip.
+# Require identities and lock versions so an unrelated wheel cannot satisfy a count check.
+RUNTIME_DISTRIBUTIONS = frozenset(
+    {
+        "colorama",
+        "numpy",
+        "pyqtgraph",
+        "pyside6-essentials",
+        "pyvisa",
+        "shiboken6",
+        "typing-extensions",
+    }
+)
+VENDOR_DRIVER_FILENAMES = frozenset({"gpib-32.dll", "ni4882.dll", "visa32.dll", "visa64.dll"})
 LAUNCHERS = (
     "Start-GUI.cmd",
     "Test-Simulation.cmd",
@@ -32,6 +47,7 @@ LAUNCHERS = (
     "Check-Output-Off.cmd",
     "Verify-Bundle.cmd",
     "Run-CLI.cmd",
+    "Enable-NI-Only.cmd",
 )
 
 
@@ -139,6 +155,68 @@ def inspect_windows_binaries(runtime: Path):
     }
 
 
+def normalized_distribution_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def inspect_runtime_distributions(site: Path, lock_path: Path):
+    lock = tomllib.loads(lock_path.read_text(encoding="utf-8"))
+    locked = {
+        normalized_distribution_name(package["name"]): package["version"]
+        for package in lock.get("package", [])
+    }
+    missing_lock = RUNTIME_DISTRIBUTIONS - locked.keys()
+    if missing_lock:
+        raise ValueError(f"Runtime dependency missing from uv.lock: {sorted(missing_lock)}")
+    wheels = {}
+    distributions = {}
+    for info in sorted(site.glob("*.dist-info")):
+        metadata = Parser().parsestr((info / "METADATA").read_text(encoding="utf-8"))
+        if not metadata.get("Name") or not metadata.get("Version"):
+            raise ValueError(f"Missing distribution identity/version: {info.name}")
+        name = normalized_distribution_name(metadata["Name"])
+        if name in distributions:
+            raise ValueError(f"Duplicate runtime distribution: {name}")
+        if name not in RUNTIME_DISTRIBUTIONS and name != "pip":
+            raise ValueError(f"Unexpected runtime distribution: {name}")
+        if name != "pip" and metadata["Version"] != locked[name]:
+            raise ValueError(f"Runtime distribution does not match uv.lock: {name}")
+        wheel = (info / "WHEEL").read_text(encoding="utf-8")
+        tags = [
+            line.removeprefix("Tag: ").strip()
+            for line in wheel.splitlines()
+            if line.startswith("Tag: ")
+        ]
+        if not tags or any(
+            not (tag.endswith("-win_amd64") or tag.endswith("-none-any")) for tag in tags
+        ):
+            raise ValueError(f"Incompatible wheel tags: {info.name}: {tags}")
+        wheels[info.name] = tags
+        distributions[name] = metadata["Version"]
+    missing = RUNTIME_DISTRIBUTIONS - distributions.keys()
+    if missing:
+        raise ValueError(f"Missing required runtime distributions: {sorted(missing)}")
+    return {
+        "wheels": wheels,
+        "locked_runtime_distributions": {
+            name: value for name, value in distributions.items() if name != "pip"
+        },
+        "interpreter_bundled_distributions": (
+            {"pip": distributions["pip"]} if "pip" in distributions else {}
+        ),
+    }
+
+
+def verify_no_vendor_drivers(runtime: Path):
+    vendor_files = [
+        str(path.relative_to(runtime))
+        for path in runtime.rglob("*")
+        if path.is_file() and path.name.lower() in VENDOR_DRIVER_FILENAMES
+    ]
+    if vendor_files:
+        raise ValueError(f"Vendor NI/VISA drivers must not be bundled: {vendor_files}")
+
+
 def validate_windows_layout(root):
     runtime = root / "runtime"
     site = runtime / "Lib/site-packages"
@@ -152,6 +230,8 @@ def validate_windows_layout(root):
         site / "PySide6/QtWidgets.pyd",
         site / "PySide6/plugins/platforms/qwindows.dll",
         site / "pyvisa/__init__.py",
+        root / "app/ni-only-requirements.txt",
+        root / "tools/install_ni_only.py",
         site / "numpy/__init__.py",
         site / "pyqtgraph/__init__.py",
         root / "tools/launch.py",
@@ -162,29 +242,41 @@ def validate_windows_layout(root):
     missing = [str(path.relative_to(root)) for path in required if not path.is_file()]
     if missing:
         raise ValueError(f"Missing portable bundle files: {missing}")
+    verify_no_vendor_drivers(runtime)
     binaries = inspect_windows_binaries(runtime)
-    wheels = {}
-    for info in sorted(site.glob("*.dist-info")):
-        wheel = (info / "WHEEL").read_text(encoding="utf-8")
-        tags = [
-            line.removeprefix("Tag: ").strip()
-            for line in wheel.splitlines()
-            if line.startswith("Tag: ")
-        ]
-        if not tags or any(
-            not (tag.endswith("-win_amd64") or tag.endswith("-none-any")) for tag in tags
-        ):
-            raise ValueError(f"Incompatible wheel tags: {info.name}: {tags}")
-        wheels[info.name] = tags
-    if len(wheels) < 7:
-        raise ValueError("Expected all seven runtime dependencies")
+    dependencies = inspect_runtime_distributions(site, root / "app/uv.lock")
     return {
         "status": "passed",
         "scope": "PE architecture, wheel tags, required files",
         **binaries,
-        "wheels": wheels,
+        **dependencies,
+        "vendor_drivers_included": False,
+        "ni4882_only_backend": "optional user-installed @py extension; NI-488.2 required",
+        "ni_only_extension_bundled": False,
         "hardware_verified": False,
     }
+
+
+def write_optional_ni_requirements(lock_path: Path, target: Path):
+    lock = tomllib.loads(lock_path.read_text(encoding="utf-8"))
+    expected = {"gpib-ctypes": "0.3.0", "pyvisa-py": "0.8.1"}
+    lines = ["# Optional user-installed extension only; not bundled with the base program."]
+    for name, version in expected.items():
+        records = [p for p in lock.get("package", []) if p["name"] == name]
+        if len(records) != 1 or records[0]["version"] != version:
+            raise ValueError(f"Missing pinned optional NI-only package: {name}")
+        hashes = sorted(
+            {
+                wheel["hash"]
+                for wheel in records[0].get("wheels", [])
+                if wheel["url"].endswith("-none-any.whl")
+                and re.fullmatch(r"sha256:[0-9a-f]{64}", wheel["hash"])
+            }
+        )
+        if not hashes:
+            raise ValueError(f"No hash-verified pure Python optional wheel: {name}")
+        lines.append(f"{name}=={version} " + " ".join("--hash=" + value for value in hashes))
+    target.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def third_party_notices(root):
@@ -355,6 +447,9 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
         portable = working / f"{stem}-Windows-x64"
         portable.mkdir()
         copy_sources(portable / "app")
+        write_optional_ni_requirements(
+            PROJECT_ROOT / "uv.lock", portable / "app/ni-only-requirements.txt"
+        )
         copy_windows_runtime(runtime, portable / "runtime")
         shutil.copytree(
             site,
@@ -365,7 +460,7 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
         # The cross-platform installer emits POSIX convenience wrappers. The application uses
         # python.exe plus source modules, so those host wrappers are deliberately not shipped.
         (portable / "tools").mkdir()
-        for name in ("launch.py", "verify_bundle.py", "smoke.py"):
+        for name in ("launch.py", "verify_bundle.py", "smoke.py", "install_ni_only.py"):
             shutil.copy2(PROJECT_ROOT / "packaging" / name, portable / "tools" / name)
         for name in LAUNCHERS:
             content = (PROJECT_ROOT / "packaging" / name).read_text(encoding="ascii")
@@ -417,6 +512,9 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
         source = working / f"{stem}-Source"
         source.mkdir()
         copy_sources(source, developer=True)
+        write_optional_ni_requirements(
+            PROJECT_ROOT / "uv.lock", source / "ni-only-requirements.txt"
+        )
         shutil.copy2(requirements, source / "runtime-requirements.txt")
         write_manifest(source, release_version=release_version, native_verified=False)
         archive(source, source_zip)

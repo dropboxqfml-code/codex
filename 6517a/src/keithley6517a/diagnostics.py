@@ -22,6 +22,7 @@ from . import __version__
 from .driver.instrument import Instrument, parse_identity
 from .storage.run_writer import atomic_json
 from .transport.base import UnsupportedOperation
+from .transport.ni4882 import NIBackendError
 from .transport.visa import VisaTransport
 
 
@@ -39,7 +40,14 @@ def _setting(value):
 
 def _environment():
     packages = {}
-    for package in ("PyVISA", "PySide6-Essentials", "pyqtgraph", "numpy"):
+    for package in (
+        "PyVISA",
+        "PyVISA-py",
+        "gpib-ctypes",
+        "PySide6-Essentials",
+        "pyqtgraph",
+        "numpy",
+    ):
         try:
             packages[package] = importlib.metadata.version(package)
         except importlib.metadata.PackageNotFoundError:
@@ -57,7 +65,26 @@ def _environment():
 def _issue(exc, stage):
     message = str(exc)
     lowered = message.lower()
-    if isinstance(exc, UnsupportedOperation):
+    if isinstance(exc, NIBackendError):
+        code = exc.code
+        action = {
+            "NI_BACKEND_DEPENDENCY_MISSING": (
+                "기본 NI-VISA 경로 @ivi를 사용하거나 Enable-NI-Only.cmd로 선택 확장을 "
+                "명시적으로 설치한 뒤 프로그램을 다시 실행하세요. NI-488.2는 여전히 필요합니다."
+            ),
+            "NI_DRIVER_UNAVAILABLE": (
+                "NI MAX에서 인식되는 NI-488.2 드라이버와 64비트 라이브러리를 확인한 뒤 "
+                "프로그램을 다시 실행하세요. 이 @py 경로는 NI-VISA 없이 시험할 수 있지만 "
+                "NI-488.2 드라이버는 필요합니다."
+            ),
+            "NI_BACKEND_ARCHITECTURE_MISMATCH": (
+                "64비트 Python과 호환되는 64비트 NI-488.2 라이브러리를 사용하세요."
+            ),
+        }.get(
+            code,
+            "NI-488.2 C API 호환성과 64비트 구성을 확인하세요. 자동 backend 전환은 하지 않습니다.",
+        )
+    elif isinstance(exc, UnsupportedOperation):
         code = "UNSUPPORTED_MODEL"
         action = (
             "6517A 모델과 전면 SCPI 언어 설정을 확인하세요. "
@@ -207,6 +234,7 @@ def run_diagnostics(
         "resources": [],
         "identity": None,
         "backend_library": None,
+        "transport_runtime": None,
         "output_state": "UNKNOWN",
         "output_OFF_confirmed": False,
         "residual_voltage_state": "UNVERIFIED",
@@ -330,6 +358,8 @@ def run_diagnostics(
                 report["issues"].append(_issue(exc, "close"))
                 report["ok"] = False
         report["finished_at"] = _wall_time()
+        if transport is not None:
+            report["transport_runtime"] = getattr(transport, "runtime_info", None)
 
     try:
         directory = Path(output_directory).expanduser().resolve() / diagnostic_id

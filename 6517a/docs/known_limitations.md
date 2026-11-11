@@ -1,6 +1,6 @@
 # 구현 범위와 알려진 제한
 
-제공된 6517A 매뉴얼 원문을 사용해 명령과 parser를 개발했습니다. 실제 6517A·USB-GPIB adapter·시료·fixture는 제공되지 않았습니다. 매뉴얼 대조와 모의 transport 시험은 실제 출력 차단·방전 또는 1000 V 사용 안전성의 인증이 아닙니다.
+제공된 6517A 매뉴얼 원문을 사용해 명령과 parser를 개발했습니다. 실제 6517A·USB-GPIB adapter·시료·fixture는 개발 환경에 제공되지 않았습니다. 사용자는 v0.3.0 화면 실행과 NI MAX의 6517A 인식을 확인했지만, 이 프로그램의 실제 IDN/측정 성공 기록은 아직 전달되지 않았습니다. 매뉴얼 대조와 모의 transport 시험은 실제 출력 차단·방전 또는 1000 V 사용 안전성의 인증이 아닙니다.
 
 ## 매뉴얼 확인과 실장비 실행 승인의 차이
 
@@ -23,7 +23,8 @@
 | 연속 ramp·자동 중간 전압·점진적 ramp-down | 미구현 | 명시한 voltage-list만 실행; 종료 immediate_off |
 | FVMI_CURRENT | 구현 | 시뮬레이션 및 승인 조건을 갖춘 VISA 경로; 실제 장비 미시험 |
 | NATIVE_RESISTANCE | 시뮬레이션만 | native R/inferred current 분리; 실장비 current trip 문제로 ON 차단 |
-| VISA USB-GPIB | 구현 | adapter driver/VISA runtime 별도 필요; 실제 제품별 동작 미시험 |
+| Native VISA USB-GPIB (`@ivi`/기본값) | 구현 | adapter driver/VISA runtime 필요; 실제 제품별 동작 미시험 |
+| NI-488.2 only (`@py`) | 선택 확장이 필요한 실험적 경로 | 기본 ZIP에 PyVISA-py/gpib-ctypes 미설치; 사용자 선택 설치 후 NI-VISA 생략 가능하나 NI-488.2 driver/64-bit DLL 필요; 실제 NI 조합 미시험 |
 | 원문 기반 SCPI/ASCII parser | 구현·소프트웨어 시험 | manual-derived fixture; 실제 수집 transcript 미제공 |
 | ARM/START·one-use ON 승인·현재 연결 interlock 확인 | 구현 | 원문 확인과 물리적 commissioning은 구분 |
 | STOP·fault latch·자동 저장 | 구현 | 단일 I/O worker·유한 timeout; 강제 종료에는 하드웨어 보호 필요 |
@@ -38,7 +39,7 @@
 | 환경 센서 | 미구현 | 온도/RH는 수동·null; 장비 기본 센서로 간주하지 않음 |
 | Windows x64 portable 시험 ZIP | 구현 | 포함 runtime·locked Windows wheels·CMD launcher; native Windows/실장비 실행은 별도 검증 |
 | 단일 파일 Windows EXE/설치 프로그램 | 미제작 | portable ZIP과 구분; adapter/VISA driver는 별도 설치 |
-| 사용자 연결 진단·설정 폼 | 구현 | IDN-only 기본·명시적 OFF 점검; 진단 성공은 측정 승인 아님 |
+| 사용자 연결 안내·진단·설정 폼 | 구현 | 기본 SIM 정상 상태 안내, 명시적 REAL 선택, IDN-only/OFF 분리; 진단 성공은 측정 승인 아님 |
 
 ## 남은 실제 시험
 
@@ -47,7 +48,8 @@
 - Manual source·모든 readback·zero correction range 유효성·filter/REL·one-shot trigger 설정.
 - current trip 감지와 software stop 지연, source current limit, 독립 차단·실제 방전·전압 회복.
 - 기준저항/blank fixture 결과와 실제 warm-up·교정·환경 조건.
-- Windows 64-bit GUI 및 사용할 adapter/VISA runtime 조합.
+- 해당 사용자 PC의 프로그램 실제 IDN·출력 OFF·측정 기록과 사용할 adapter/driver/firmware 조합.
+- NI-VISA를 생략한 `@py` backend의 Windows x64 DLL 로드·GPIB 동작·실제 timeout과 resource lock 지원.
 
 2-49와 3-108의 resistive-limit 저항값 20 MΩ/1 MΩ 불일치는 원문에서도 확인됐으며 보정 상수나 보호 보증치로 하드코딩하지 않았습니다. Source current limit는 programmable nA/µA compliance가 아닙니다.
 
@@ -59,10 +61,19 @@
 
 ## 시험 배포본의 범위
 
-Windows x64 portable 패키지는 관리형 CPython runtime과 `uv.lock`의 Windows wheel을 포함하는 시험 배포 형태입니다. 사용자 PC에 Python·uv를 별도로 설치할 필요가 없지만 어댑터 제조사 driver와 호환 VISA runtime은 포함하지 않습니다. 배포본 제작 시 TLS·다운로드 해시·wheel tag·파일 manifest를 확인하고, 그 결과를 [검증 기록](validation.md)에 남깁니다. 이 정적 구성 검사는 Native Windows에서 GUI/DLL/VISA library를 실제 로드했다는 증거가 아닙니다.
+Windows x64 portable 패키지는 관리형 CPython runtime과 `uv.lock`의 Windows wheel을 포함하는 시험 배포 형태입니다. 사용자 PC에 Python·uv를 별도로 설치할 필요가 없지만 어댑터 제조사 driver와 NI GPIB DLL은 포함하지 않습니다. 기본 native VISA의 호환 runtime도 포함하지 않습니다. `@py`에 필요한 Python 패키지는 기본 ZIP에 사전 설치하지 않으며 선택 확장으로 사용자 PC에 설치합니다. 그 경로 역시 NI-488.2 driver를 요구합니다. 배포본 제작 시 TLS·다운로드 해시·wheel tag·파일 manifest를 확인하고, 그 결과를 [검증 기록](validation.md)에 남깁니다. 이 정적 구성 검사는 Native Windows에서 GUI/DLL/VISA library를 실제 로드했다는 증거가 아닙니다.
 
 진단은 resource 열거·IDN-only 또는 명시적으로 선택한 OFF 점검으로 구분합니다. OFF 점검에서도 출력 ON이나 전압 설정을 하지 않습니다. `ok`나 IDN 성공은 실제 측정·인터록·독립 차단·방전의 종합 검증을 뜻하지 않습니다. 진단 보고서·raw I/O는 로컬 저장만 하며 사용자 검토 없이 전송하지 않습니다.
 
 시험 설정 대화상자의 정격·승인·trip 필드는 사용자가 확인한 실제 값이 필요합니다. 프로그램이 기본값이나 예제를 근거로 시료 정격을 채우지 않습니다. 저장된 체크 기록은 현재 연결의 interlock 관찰을 대체하지 않으며, 폼 적용은 연결/ARM/START가 아닙니다.
 
 이전 v0.2.0 설정 파일도 실장비 ARM 전에 `commissioning.hardware_protection_reviewed=true`를 독립 하드웨어 보호 검토 후 명시해야 합니다. 설정 load나 버전 변경으로 자동 승인하지 않습니다.
+
+
+## Backend 선택의 한계
+
+NI MAX에서 인식되는 현재 PC에서는 우선 기존 native VISA 경로를 사용합니다. `@py`는 사용자가 NI-VISA를 생략하기 위해 명시적으로 선택하는 실험적 대안입니다. 기본값/빈 backend도 `@ivi`로 고정하므로 선택 확장을 설치했다는 이유로 자동 선택되지 않습니다. 두 backend 사이에서 전압 설정이나 출력 ON을 자동 재시도하지 않습니다. Backend/resource 변경 또는 재연결 후에는 이전 연결의 commissioning과 START 승인을 재사용하지 않습니다.
+
+NI-488.2의 지원 timeout 단계 때문에 요청값과 실제 적용값이 다를 수 있습니다. 실제 적용 timeout이 보고돼도 전체 STOP 지연을 보증하지는 않습니다. 다른 제어 프로그램과 NI MAX test panel을 닫고, 인터록·독립적인 차단·방전 수단을 사용하는 조건은 backend와 무관하게 유지합니다.
+
+선택 확장 installer는 안내와 라이선스 확인 후 사용자가 `INSTALL`을 입력한 경우에만 hash-pinned wheel을 인터넷에서 설치합니다. `extensions/ni4882`의 기존 내용은 덮어쓰지 않으며 불완전한 설치를 성공으로 활성화하지 않습니다. 확장이 추가된 배포본의 재배포 조건은 상위 라이선스를 별도로 검토해야 하며 앱·NI driver의 라이선스를 자동으로 변경하지 않습니다.

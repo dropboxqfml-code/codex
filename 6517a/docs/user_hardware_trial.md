@@ -1,14 +1,14 @@
 # 6517A·USB-GPIB 사용자 시험 순서
 
-이 문서는 Windows 10/11 64-bit에서 **시험용 프로그램을 실제 PC와 장비 조합으로 검증하는 절차**입니다. 현재 개발 환경은 Linux이고 실제 6517A·USB-GPIB·fixture는 제공되지 않았습니다. 매뉴얼 대조·시뮬레이터·모의 VISA·배포 파일 검사를 실제 Windows/장비 시험으로 해석하지 않습니다. 수행한 범위는 [검증 기록](validation.md)에 구분합니다.
+이 문서는 Windows 10/11 64-bit에서 **시험용 프로그램을 실제 PC와 장비 조합으로 검증하는 절차**입니다. 현재 개발 환경은 Linux이고 실제 6517A·USB-GPIB·fixture는 개발 환경에 제공되지 않았습니다. 사용자는 v0.3.0 GUI 화면 실행과 NI MAX에서 6517A 인식을 확인했습니다. 프로그램 자체의 IDN·측정 성공 여부는 아직 사용자 시험 기록으로 전달되지 않았습니다. 매뉴얼 대조·시뮬레이터·모의 VISA·배포 파일 검사를 실제 Windows/장비 시험으로 해석하지 않습니다. 수행한 범위는 [검증 기록](validation.md)에 구분합니다.
 
 고전압을 자동 인가하는 self-test는 없습니다. 시료·fixture·케이블의 확인된 정격, 보호 enclosure·인터록·독립적인 차단/방전 수단과 자격 있는 담당자의 승인 아래 시험합니다. `OUTPUT OFF`는 시료 방전 완료가 아닙니다. 실제 잔류 전압 확인이 제공되지 않았으므로 프로그램은 `UNVERIFIED`를 유지합니다.
 
 ## 1. 압축 해제와 시뮬레이션
 
-1. `6517A-USB-GPIB-Trial-0.3.0-Windows-x64.zip`과 배포 시 제공한 SHA-256을 함께 받습니다. ZIP 파일의 `Get-FileHash -Algorithm SHA256` 결과를 비교합니다. 일치하지 않으면 실행하지 않고 파일을 다시 받습니다.
+1. `6517A-USB-GPIB-Trial-0.4.0-Windows-x64.zip`과 배포 시 제공한 SHA-256을 함께 받습니다. ZIP 파일의 `Get-FileHash -Algorithm SHA256` 결과를 비교합니다. 일치하지 않으면 실행하지 않고 파일을 다시 받습니다.
 2. 로컬의 쓰기 가능한 폴더에 **모든 파일**을 풉니다. ZIP 안에서 직접 실행하지 말고, `Start-GUI.cmd`와 함께 있는 runtime·app 폴더를 분리하거나 삭제하지 않습니다. 실행 전에 출력이 이미 켜진 장비가 있다면 현장 절차로 관리합니다.
-3. `Start-GUI.cmd`로 GUI를 실행해 상단 `SIMULATION`과 초기 0 V, trip 미설정, START 비활성 상태를 확인합니다. 프로그램 시작이나 설정 load만으로 장비에 연결하거나 출력 ON을 하지 않습니다.
+3. `Start-GUI.cmd`로 GUI를 실행해 상단 `SIMULATION`과 초기 0 V, trip 미설정, START 비활성 상태를 확인합니다. 이 화면은 실장비 기능이 없다는 뜻이 아니라 의도한 기본 상태입니다. 프로그램 시작이나 설정 load만으로 장비에 연결하거나 출력 ON을 하지 않습니다.
 4. `Test-Simulation.cmd`를 실행하거나 GUI에서 가상 예제 설정을 불러와 연결 → ARM → START를 시험합니다. 예제 trip과 전압은 가상 시료용이며 실제 시료 승인값이 아닙니다.
 5. 결과 폴더에 `readings.csv`, `summary.csv`, `raw_io.jsonl`, `run_status.json`이 생겼는지 확인합니다. 가상 데이터의 simulation 표시, 종료 `completed`, output `OFF`, residual `UNVERIFIED`를 확인합니다. 이 결과는 Python/Qt/저장 기능 점검이며 GPIB 하드웨어 시험이 아닙니다.
 
@@ -17,18 +17,20 @@ Portable 패키지에는 `runtime/python.exe`, `app/src`·`app/docs`·`app/examp
 ## 2. 어댑터와 VISA 준비
 
 - 사용자가 선택한 장비는 **NI GPIB-USB 계열**입니다. 정확한 HS/HS+ 등의 모델명을 확인하고, 그 모델과 Windows 버전을 지원하는 **NI-488.2 및 NI-VISA 64-bit**를 NI의 설치 안내에 따라 준비합니다. 정확한 모델·driver 버전은 아직 확인되지 않았으므로 특정 조합이 시험 완료라고 표시하지 않습니다. 다른 제조사의 경우 해당 어댑터용 driver와 VISA를 사용합니다.
-- NI MAX에서 adapter board와 장비 주소를 확인합니다. 6517A 전면의 GPIB 주소와 SCPI 언어 설정을 확인합니다. DDC mode를 혼용하지 않습니다.
+- 사용자는 이미 NI MAX에서 6517A가 보인다고 확인했습니다. 그 화면에 표시된 adapter board와 장비 주소를 기록해 프로그램에서도 동일하게 선택합니다. 6517A 전면의 GPIB 주소와 SCPI 언어 설정을 확인합니다. DDC mode를 혼용하지 않습니다.
 - `GPIB0::27::INSTR`는 주소 형식의 예시입니다. 장비가 USB-GPIB 어댑터 뒤에 있으므로 `USB::...` resource가 나온다고 가정하지 않습니다.
 - 제조사 도구로 확인한 뒤 NI MAX·Connection Expert·다른 제어 프로그램을 닫습니다. 프로그램 하나의 worker가 선택한 session을 소유하도록 합니다.
 - `pyvisa`나 `pyvisa-py` 설치만으로 어댑터 driver가 준비되었다고 판단하지 않습니다. 가상 COM/Prologix controller는 이 배포의 VISA GPIB 경로와 다르며 지원하지 않습니다.
+
+기존 NI-VISA 경로를 먼저 사용합니다. NI-VISA를 생략하는 대안이 필요한 경우에만 GUI를 닫고 `Enable-NI-Only.cmd`를 실행합니다. 안내와 라이선스 조건을 확인하고 `INSTALL`을 입력해 선택 확장을 설치한 뒤 GUI를 다시 시작하고 backend를 `@py`로 명시적으로 선택합니다. 이 선택 설치에는 인터넷 연결이 필요합니다. 이 경로는 사용자 PC에 선택 확장으로 설치한 PyVISA-py/gpib-ctypes로 **기존 NI-488.2 driver와 64-bit GPIB DLL**을 호출하는 실험적 대안입니다. 기본 ZIP에 두 Python 패키지를 사전 설치하지 않습니다. 선택 설치 위치는 `extensions/ni4882`이며, 완료 표식과 파일 해시가 맞는 기존 설치는 재사용하며, 불완전하거나 변경된 폴더를 덮어쓰거나 성공으로 처리하지 않습니다. 두 NI 구성요소를 모두 없애는 기능이 아니며 장치 protocol을 USBTMC로 바꾸지 않습니다. Driver/DLL이 없거나 bitness가 맞지 않으면 진단에서 중단하며 다른 backend로 자동 전환하지 않습니다. 실제 장비 시험은 아직 미수행입니다.
 
 상세 설명은 [Windows VISA 안내](windows_visa.md)를 참고하세요.
 
 ## 3. 출력 변경 없는 연결 진단
 
-GUI의 VISA backend/library 선택과 resource 조회를 사용해 실제 주소를 고릅니다. 연결 진단 또는 `Check-Connection.cmd`로 선택한 resource의 IDN을 확인합니다. 이 단계는 resource 열거와 `*IDN?` 조회만 수행하며 전압 설정이나 출력 ON·OFF를 요청하지 않습니다. 따라서 결과의 output 상태는 `UNKNOWN`입니다.
+연결 안내의 ‘NI 실장비 연결 시험 시작 (출력 ON 없음)’ 버튼으로 REAL 모드를 명시적으로 선택합니다. SIM 연결 중이면 먼저 연결을 종료합니다. 이 버튼은 실장비 준비를 0 V·trip 미설정·미승인 상태로 초기화하며 가상 설정을 실장비 승인으로 재사용하지 않습니다. 장비를 조회하거나 출력을 변경하지 않습니다. 기본 VISA/`@ivi`를 확인하고 ‘1. GPIB 목록 조회’ 후 NI MAX와 같은 실제 주소를 고릅니다. 이어 ‘2. 선택 주소 IDN 확인’을 실행합니다. 연결 진단 또는 `Check-Connection.cmd`로 선택한 resource의 IDN을 확인합니다. 이 단계는 resource 열거와 `*IDN?` 조회만 수행하며 전압 설정이나 출력 ON·OFF를 요청하지 않습니다. 따라서 결과의 output 상태는 `UNKNOWN`입니다.
 
-Portable 폴더의 대응 명령은 다음과 같습니다. 주소는 예시입니다.
+Portable 폴더의 대응 명령은 다음과 같습니다. 주소는 예시이며 실제로 NI MAX에 표시된 board/address로 바꿉니다.
 
 ```powershell
 .\Check-Connection.cmd
@@ -42,13 +44,17 @@ uv run --locked python -m keithley6517a.cli diagnose --report-dir diagnostics
 uv run --locked python -m keithley6517a.cli diagnose --resource "실제 GPIB resource" --backend "@ivi" --report-dir diagnostics
 ```
 
+NI-VISA를 생략하는 대안을 시험할 때만 위 명령의 `@ivi`를 `@py`로 바꿉니다. 먼저 `Check-Connection.cmd "실제 GPIB resource" "@py"`의 IDN-only 진단을 사용하고, 보고서의 backend·driver 오류와 실제 적용 timeout을 확인합니다. NI의 GPIB timeout 단계 때문에 요청 2,000 ms가 실제 3,000 ms로 적용될 수 있으며 요청값을 지연 보증으로 사용하지 않습니다.
+
 목록이 비어 있으면 제조사 driver/board/address를 확인합니다. VISA shared library가 없다는 오류면 먼저 호환 VISA runtime과 64-bit 조합을 확인합니다. IDN이 6517B 등 다른 모델이면 그 장비의 제어 명령을 보내지 않고 중단합니다. Timeout 또는 형식 오류에 대해 주소를 무작위로 탐색하거나 출력 ON을 자동 재전송하지 않습니다.
+
+연결 안내에서 진단 성공 여부와 다음 동작을 확인합니다. IDN 성공은 model이 6517A라는 조회 결과이며 OFF/방전/ARM 승인이 아닙니다. 모의 transport나 SIMULATION 결과는 실장비 진단 통과로 표시하지 않습니다. 재연결이나 resource/backend 변경 후에는 과거 성공 표시를 현재 연결의 승인으로 재사용하지 않습니다.
 
 GUI가 열리지 않으면 Test-Simulation.cmd의 console 오류와 diagnostics/launcher-error*.json 생성 여부를 확인합니다. Launcher 보고서가 생기기 전 runtime 자체가 실행되지 못할 수도 있으므로 보고서가 없다고 성공으로 보지 않습니다. 진단 JSON의 실패 단계·원문 오류·권장 확인을 읽습니다. 진단 보고서는 local 파일이며 자동 전송되지 않습니다. 장비 serial·resource·local library 경로가 포함될 수 있으므로 다른 사람에게 전달하기 전 내용을 검토합니다.
 
 ## 4. 명시적인 보호 OFF 점검
 
-이 단계는 IDN-only와 다르게 **정확히 6517A로 식별된 장비에 보호 목적 출력 OFF와 abort를 요청**합니다. 현장 담당자가 출력·시료의 상태를 관리할 수 있는 조건에서 수행합니다. GUI의 출력 OFF 확인 진단 또는 CLI의 명시적인 `--confirm-off`를 선택합니다.
+이 단계는 IDN-only와 다르게 **정확히 6517A로 식별된 장비에 보호 목적 출력 OFF와 abort를 요청**합니다. 현장 담당자가 출력·시료의 상태를 관리할 수 있는 조건에서 수행합니다. GUI의 ‘3. 선택 장비 보호 OFF 시험’ 또는 CLI의 명시적인 `--confirm-off`를 선택합니다.
 
 ```powershell
 uv run --locked python -m keithley6517a.cli diagnose --resource "실제 GPIB resource" --backend "@ivi" --confirm-off --report-dir diagnostics
@@ -62,7 +68,7 @@ Portable에서는 `.\Check-Output-Off.cmd "실제 GPIB resource" "@ivi"`를 사�
 
 먼저 [결선과 안전 정책](wiring_and_safety.md)과 [commissioning 기록지](commissioning_checklist.md)를 확인합니다. 배선 변경은 출력 OFF 및 실제 방전 확인 후 수행합니다. 이 프로그램의 1차 지원 결선은 승인된 저측 FVMI뿐이며 floating/high-side 측정은 지원하지 않습니다.
 
-GUI의 시험 설정 대화상자에서 다음 실제 정보를 입력합니다. 설정 적용 자체는 연결·ARM·START가 아닙니다. 포함된 app/examples 템플릿을 직접 덮어쓰지 말고 사용자 승인 설정을 configs 안의 별도 파일로 저장합니다. 배포 기본 파일은 manifest 무결성 검사 대상입니다.
+연결 안내의 ‘4. 시료·시험 설정 입력’으로 시험 설정 대화상자를 열고 다음 실제 정보를 입력합니다. 설정 적용 자체는 연결·ARM·START가 아닙니다. 포함된 app/examples 템플릿을 직접 덮어쓰지 말고 사용자 승인 설정을 configs 안의 별도 파일로 저장합니다. 배포 기본 파일은 manifest 무결성 검사 대상입니다.
 
 | 입력 | 확인할 내용 |
 |---|---|
@@ -107,7 +113,8 @@ Portable에서는 `.\Run-CLI.cmd measure --config "configs\approved-current.json
 | 프로그램 버전·ZIP SHA-256 | |
 | Windows 버전·64-bit 여부 | |
 | USB-GPIB 제조사·정확한 모델·driver 버전 | |
-| VISA 제조사·runtime 버전·선택 backend/library | |
+| VISA 제조사·runtime 버전·선택 backend/library (`@ivi`/`@py`) | |
+| `@py` 선택 시 NI-488.2·GPIB DLL bitness 및 실제 적용 timeout | |
 | Resource·장비 model/serial/firmware | |
 | IDN-only 진단 폴더·성공/오류 단계 | |
 | 보호 OFF 진단·전면 비교·OFF/UNKNOWN 결과 | |

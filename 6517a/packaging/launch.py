@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import sys
@@ -19,6 +20,24 @@ def configure_qt_environment(root: Path):
     os.environ["QT_PLUGIN_PATH"] = str(plugins)
     os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = str(plugins / "platforms")
     os.environ["PYQTGRAPH_QT_LIB"] = "PySide6"
+
+
+def configure_optional_extension(root: Path):
+    """Activate only a complete local extension. Never install or access a device here."""
+    helper = root / "tools/install_ni_only.py"
+    if not helper.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("_6517a_optional_extension", helper)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        directory = module.installed_extension(root)
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        print(f"NI-only extension inactive: {exc}", file=sys.stderr)
+        return None
+    if directory is not None:
+        sys.path.insert(0, str(directory))
+    return directory
 
 
 def arguments(action: str, supplied: list[str], root: Path) -> list[str]:
@@ -60,6 +79,7 @@ def main(argv=None) -> int:
     root = bundle_root()
     os.chdir(root)
     sys.path.insert(0, str(root / "app/src"))
+    configure_optional_extension(root)
     if argv[0] == "gui":
         if len(argv) != 1:
             raise ValueError("GUI launcher accepts no configuration or run arguments")

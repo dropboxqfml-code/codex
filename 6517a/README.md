@@ -1,6 +1,6 @@
 # Keithley 6517A · USB-GPIB 시험용 프로그램
 
-Windows 10/11 64-bit 사용자가 시뮬레이션, USB-GPIB 연결 진단, 승인된 저전압 current 측정을 단계별로 시험하도록 준비한 v0.3.0 프로그램입니다. 정전압 시간 기록과 전압 리스트·staircase sweep를 실행하고, 계산 저항과 장비 저항 판독을 서로 다른 필드에 저장합니다. 상위 폴더의 이미지 중복 검색 앱과 독립적인 프로젝트입니다.
+Windows 10/11 64-bit 사용자가 시뮬레이션, USB-GPIB 연결 진단, 승인된 저전압 current 측정을 단계별로 시험하도록 준비한 v0.4.0 프로그램입니다. 정전압 시간 기록과 전압 리스트·staircase sweep를 실행하고, 계산 저항과 장비 저항 판독을 서로 다른 필드에 저장합니다. 상위 폴더의 이미지 중복 검색 앱과 독립적인 프로젝트입니다.
 
 사용자가 첨부한 **6517A-900-01 Rev. D, May 2003** 원문을 확인해 명령·trigger·ASCII 응답 형식을 반영했습니다. 기본은 SIMULATION이며, 실장비 `FVMI_CURRENT`는 정격·실험 승인과 현재 연결에서의 출력 OFF/lid-open=0 → lid-closed=1 확인을 통과한 뒤 별도 ARM·START가 필요합니다. 매뉴얼 확인은 실제 6517A·어댑터 시험이나 1000 V 안전성 인증이 아닙니다. 실장비 native 저항 모드는 측정 전류를 이용한 보호가 검증되지 않아 계속 차단합니다.
 
@@ -8,11 +8,21 @@ Windows 10/11 64-bit 사용자가 시뮬레이션, USB-GPIB 연결 진단, 승�
 
 ## Windows 시험 패키지로 시작
 
-`6517A-USB-GPIB-Trial-0.3.0-Windows-x64.zip`을 로컬의 쓰기 가능한 폴더에 완전히 풉니다. 포함된 Python 3.12.14와 잠금 버전의 Windows 의존성을 사용하므로 Python·uv를 별도로 설치할 필요가 없습니다. `Start-GUI.cmd`는 기본 SIMULATION GUI를 열고, `Test-Simulation.cmd`는 실장비에 연결하지 않는 기능 시험을 실행합니다. 사용자가 선택한 NI GPIB-USB 계열에는 **실제 모델·Windows 버전에 맞는 NI-488.2와 NI-VISA 64-bit를 별도로 설치**해야 합니다. HS/HS+ 등 정확한 모델과 driver 지원 조합은 사용자 PC에서 확인합니다.
+배포 파일은 [프로젝트 GitHub Releases](https://github.com/dropboxqfml-code/codex/releases)에서 게시된 버전의 `Windows-x64.zip`과 checksum을 선택합니다.
+
+`6517A-USB-GPIB-Trial-0.4.0-Windows-x64.zip`을 로컬의 쓰기 가능한 폴더에 완전히 풉니다. 포함된 Python 3.12.14와 잠금 버전의 Windows 의존성을 사용하므로 Python·uv를 별도로 설치할 필요가 없습니다. `Start-GUI.cmd`는 기본 SIMULATION GUI를 열고, `Test-Simulation.cmd`는 실장비에 연결하지 않는 기능 시험을 실행합니다. 기본 NI-VISA 경로에는 **실제 모델·Windows 버전에 맞는 NI-488.2와 NI-VISA 64-bit**가 필요합니다. 이 소프트웨어가 이미 설치돼 있으면 호환되는 기존 설치를 사용합니다. v0.4.0은 선택 확장을 설치한 뒤 NI-VISA를 생략하는 `@py` 경로도 명시적으로 선택할 수 있지만, **NI-488.2 driver는 여전히 필요**하며 이 대안의 실제 장비 동작은 미검증입니다. HS/HS+ 등 정확한 모델과 driver 지원 조합은 사용자 PC에서 확인합니다.
 
 먼저 [사용자 시험 순서](docs/user_hardware_trial.md)를 따라 시뮬레이션 → IDN-only 연결 진단 → 명시적 출력 OFF 점검 → 승인된 low-voltage current 시험으로 진행하세요. 이 단계에서 임의의 시료 정격이나 trip 값을 대신 승인하지 않습니다. 원격지에서 장비가 있다고 가정하거나 자동으로 출력 ON을 실행하지 않습니다.
 
-ZIP의 Windows 파일 구성·잠금 wheel·무결성 검사와 실제 Windows 실행·6517A 측정은 서로 다른 검증입니다. 현재 수행한 범위와 패키지 결과는 [검증 기록](docs/validation.md)에 기록합니다. Native Windows 및 실제 장비 시험을 완료했다고 주장하지 않습니다.
+ZIP의 Windows 파일 구성·잠금 wheel·무결성 검사와 실제 Windows 실행·6517A 측정은 서로 다른 검증입니다. 현재 수행한 범위와 패키지 결과는 [검증 기록](docs/validation.md)에 기록합니다. v0.3.0 GitHub Release의 Windows 소프트웨어 시험과 사용자 PC의 화면 실행 확인은 기록됐습니다. 이번 배포의 Windows 검증 여부는 해당 Release의 CI 결과와 `build-report.json`에서 확인하며, 실제 6517A 통신·측정 검증과는 구분합니다.
+
+## 시뮬레이션 화면 다음 단계
+
+`Verify-Bundle.cmd` → `Test-Simulation.cmd` → `Start-GUI.cmd` 후 **SIMULATION 화면이 열리는 것은 정상**입니다. 프로그램 시작으로 실장비에 전압을 인가하지 않도록 설계했습니다. 사용자는 v0.3.0 화면 실행과 NI MAX에서 6517A가 보이는 것을 확인했습니다. 이는 PC 화면·NI 도구에서의 관찰이며 이 프로그램의 IDN/측정 성공 기록은 아닙니다.
+
+NI MAX에서 확인한 **같은 GPIB board·주소**를 프로그램에서 선택하세요. v0.4.0 연결 안내의 ‘NI 실장비 연결 시험 시작 (출력 ON 없음)’ 버튼은 장비를 자동 조회하거나 출력 ON을 하지 않습니다. SIM 연결 중이면 먼저 연결을 종료합니다. 실장비 준비로 전환할 때 가상 설정의 전압·trip·승인을 재사용하지 않고 목표 0 V·trip 미설정·미승인 상태로 초기화합니다. 이어 resource 선택 → IDN-only 진단 → 명시적 OFF 점검 → 승인된 설정·현재 연결 interlock 확인 → ARM → 별도 START로 진행합니다. 진단 보고서의 model·serial·firmware, 실제/가상 여부와 다음 확인 항목을 화면에서 구분합니다. NI MAX의 test panel과 다른 제어 프로그램은 먼저 닫습니다.
+
+이미 NI MAX에서 인식되는 현재 PC에서는 기본 NI-VISA/`@ivi` 경로를 먼저 사용하세요. 선택 확장 설치 후 사용할 수 있는 `@py`는 **NI-488.2 only · experimental** 대안이며 오류 뒤 자동으로 다른 backend에 재연결하거나 명령을 재전송하지 않습니다. 자세한 선택 조건은 [VISA 안내](docs/windows_visa.md)에 있습니다.
 
 ## 소스 개발 환경
 
@@ -24,7 +34,7 @@ uv sync --locked
 uv run --locked python -m keithley6517a
 ```
 
-`6517A-USB-GPIB-Trial-0.3.0-Source.zip`은 검토·개발용 소스 배포본입니다. 소스에서 실행할 때는 Python 3.12 64-bit와 uv가 필요합니다. Windows의 driver/library 선택은 [VISA 안내](docs/windows_visa.md)를 참고하세요.
+`6517A-USB-GPIB-Trial-0.4.0-Source.zip`은 검토·개발용 소스 배포본입니다. 소스에서 실행할 때는 Python 3.12 64-bit와 uv가 필요합니다. Windows의 driver/library 선택은 [VISA 안내](docs/windows_visa.md)를 참고하세요.
 
 ## 시뮬레이션 실행
 
@@ -62,6 +72,8 @@ uv run --locked python -m keithley6517a.cli diagnose --resource "GPIB0::27::INST
 uv run --locked python -m keithley6517a.cli diagnose --resource "GPIB0::27::INSTR" --backend "@ivi" --confirm-off --report-dir diagnostics
 ```
 
+NI-VISA 없이 NI-488.2만 사용하는 대안을 명시적으로 시험할 때는 같은 명령의 `--backend "@ivi"`를 `--backend "@py"`로 바꿉니다. 이 경로는 기본 ZIP에 사전 설치되지 않은 선택 확장이 필요합니다. GUI를 닫고 `Enable-NI-Only.cmd`의 안내·라이선스를 확인한 다음 `INSTALL`을 입력해 잠금 버전의 PyVISA-py/gpib-ctypes를 사용자 PC의 `extensions/ni4882`에 설치하고 프로그램을 다시 시작합니다. 이 설치에는 인터넷 연결이 필요하며 NI GPIB driver/DLL은 설치하지 않습니다. 실제 장비와 Windows x64에서 이 backend를 검증하기 전에는 기본 경로의 검증 결과를 그대로 적용하지 않습니다.
+
 주소는 예시입니다. 기본 IDN-only 결과의 output 상태는 `UNKNOWN`이며, 연결 성공을 OFF나 방전으로 표시하지 않습니다. `--confirm-off`도 실제 잔류 전압을 측정하지 않으므로 `UNVERIFIED`를 유지합니다. 진단·설정 대화상자는 ARM·START를 대신하지 않습니다.
 
 ## 실장비 current 측정 절차
@@ -83,6 +95,8 @@ CLI는 출력 OFF 상태에서 `OPEN`, `CLOSED`를 각각 입력받아 실제 in
 각 실행은 고유 폴더에 `config.json`, `metadata.json`, `readings.csv`, `summary.csv`, `events.jsonl`, `raw_io.jsonl`, `run_status.json`을 저장합니다. 원시 응답과 과도 구간도 보존하며, summary는 유효한 평균 구간만 사용합니다. `raw_io.jsonl`의 simulation 표시는 실제 수집 transcript와 구분하기 위한 것입니다. Portable 배포본에서는 `Test-Simulation.cmd`로 현재 버전의 가상 결과를 `results`에 생성합니다. 소스 저장소의 `examples/manual_verified_simulation`은 v0.2.0 원문 기반 예제, `examples/sample_simulation`은 v0.1.0 역사 자료이며 portable ZIP에는 포함하지 않습니다.
 
 ![시뮬레이션 완료 후 GUI 예시](examples/gui-simulation.png)
+
+![실장비 연결 준비 안내 — 미연결 상태이며 주소는 예시](examples/live-connection-guide.png)
 
 ![VISA·시료·승인 정보를 입력하는 시험 설정 폼](examples/trial-setup.png)
 

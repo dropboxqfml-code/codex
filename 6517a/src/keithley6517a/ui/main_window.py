@@ -40,6 +40,7 @@ from PySide6.QtWidgets import (
 
 from keithley6517a.config import RunConfig
 from keithley6517a.measurement.runner import MeasurementRunner
+from keithley6517a.ui.connection_guide import ConnectionGuide
 
 
 def _text_state(value: Any) -> str:
@@ -114,9 +115,11 @@ class InstrumentWorker(QObject):
                 if self.runner is not None:
                     raise RuntimeError("Disconnect before opening a diagnostic VISA session")
                 if action == "discover":
-                    from ..transport.visa import VisaTransport
+                    from ..diagnostics import run_diagnostics
 
-                    self.resources_found.emit(list(VisaTransport.list_resources(config or None)))
+                    report = run_diagnostics(resource=None, **config)
+                    self.resources_found.emit(report.get("resources", []))
+                    self.diagnostic_ready.emit(report)
                 else:
                     from ..diagnostics import run_diagnostics
 
@@ -230,6 +233,7 @@ class MainWindow(QMainWindow):
         self._commissioning = {}
         self._last_run_directory = None
         self._last_diagnostic_directory = None
+        self._loading_controls = False
         self.rows: list[dict] = []
         self._base_config = RunConfig().to_dict()
         self._build_ui()
@@ -285,6 +289,8 @@ class MainWindow(QMainWindow):
         warning.setWordWrap(True)
         warning.setStyleSheet("background:#fff1d6;color:#774600;padding:8px")
         root.addWidget(warning)
+        self.connection_guide = ConnectionGuide(self)
+        root.addWidget(self.connection_guide)
         splitter = QSplitter()
         root.addWidget(splitter, 1)
         settings_scroll = QScrollArea()
@@ -303,6 +309,11 @@ class MainWindow(QMainWindow):
         self.backend = QLineEdit()
         self.backend.setPlaceholderText("기본 VISA / @ivi / VISA library 경로")
         form.addRow("VISA backend", self.backend)
+        self.backend_profiles = QComboBox()
+        self.backend_profiles.addItem("NI-VISA · 기본 권장", "@ivi")
+        self.backend_profiles.addItem("NI-488.2 전용 · 선택 확장 필요 · 시험 기능", "@py")
+        self.backend_profiles.addItem("VISA 라이브러리 직접 지정", "custom")
+        form.addRow("통신 방식", self.backend_profiles)
         resources_row = QHBoxLayout()
         self.resource_choices = QComboBox()
         self.resource_choices.addItem("GPIB 목록을 조회한 뒤 선택")
@@ -474,8 +485,16 @@ class MainWindow(QMainWindow):
         self.load_button.clicked.connect(self._choose_load)
         self.save_button.clicked.connect(self._choose_save)
         self.advanced_apply.clicked.connect(self._apply_json)
-        self.transport.currentIndexChanged.connect(self._mode_changed)
+        self.transport.currentIndexChanged.connect(self._transport_changed)
         self.mode.currentIndexChanged.connect(self._mode_changed)
+        self.backend_profiles.currentIndexChanged.connect(self._backend_profile_changed)
+        self.backend.textChanged.connect(self._backend_text_changed)
+        self.resource.textChanged.connect(self._refresh_connection_guide)
+        self.connection_guide.request_real_mode.connect(self._enter_real_test)
+        self.connection_guide.request_discover.connect(self._discover)
+        self.connection_guide.request_identify.connect(lambda: self._diagnose(False))
+        self.connection_guide.request_off_check.connect(lambda: self._diagnose(True))
+        self.connection_guide.request_prepare_settings.connect(self._setup_test)
         self.discover_button.clicked.connect(self._discover)
         self.resource_choices.activated.connect(self._select_resource)
         self.diagnose_button.clicked.connect(lambda: self._diagnose(False))
@@ -499,7 +518,64 @@ class MainWindow(QMainWindow):
         )
         self._update_buttons()
 
+    def _transport_changed(self) -> None:
+        if (
+            not self._loading_controls
+            and self.transport.currentData() == "visa"
+            and self._base_config.get("simulation", True)
+        ):
+            self._enter_real_test()
+        else:
+            self._mode_changed()
+
+    def _enter_real_test(self) -> None:
+        if self._connected or self._busy or self._closing:
+            return
+        if self._base_config.get("simulation", True):
+            # A simulation plan is not approval for a real specimen.
+            settings = RunConfig().to_dict()
+            for key in ("timeout_ms", "read_termination", "write_termination", "send_end"):
+                settings[key] = self._base_config.get(key, settings[key])
+            settings.update(
+                simulation=False,
+                transport="visa",
+                resource=self.resource.text().strip(),
+                visa_backend=self.backend.text().strip() or "@ivi",
+                output_directory=self.output_dir.text().strip() or "runs",
+            )
+            self._load_controls(settings)
+            self.log.appendPlainText(
+                "REAL 연결 시험 준비: 시뮬레이션의 전압·trip·승인을 재사용하지 않습니다. "
+                "목표 0 V에서 시작하며 먼저 NI MAX와 같은 주소의 IDN을 조회하세요."
+            )
+        self.resource.setFocus()
+        self._refresh_connection_guide()
+
+    def _backend_profile_changed(self) -> None:
+        choice = self.backend_profiles.currentData()
+        if choice != "custom":
+            self.backend.setText(choice)
+        self._refresh_connection_guide()
+
+    def _backend_text_changed(self) -> None:
+        text = self.backend.text().strip()
+        index = 1 if text == "@py" else (0 if text in ("", "@ivi") else 2)
+        self.backend_profiles.blockSignals(True)
+        self.backend_profiles.setCurrentIndex(index)
+        self.backend_profiles.blockSignals(False)
+        self._refresh_connection_guide()
+
+    def _refresh_connection_guide(self) -> None:
+        self.connection_guide.set_context(
+            simulation=self.transport.currentData() != "visa",
+            resource=self.resource.text().strip(),
+            backend=self.backend.text().strip() or None,
+            busy=self._busy,
+            closing=self._closing,
+        )
+
     def _load_controls(self, data: dict) -> None:
+        self._loading_controls = True
         self._base_config = dict(data)
         self.advanced.setPlainText(json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False))
         self.transport.setCurrentIndex(1 if data.get("transport") == "visa" else 0)
@@ -521,6 +597,7 @@ class MainWindow(QMainWindow):
         self.window.setValue(data.get("summary_window_s", 30))
         self.output_dir.setText(str(data.get("output_directory", "runs")))
         self.ack.setChecked(data.get("residual_warning_ack", False))
+        self._loading_controls = False
         self._mode_changed()
 
     def config_from_controls(self) -> RunConfig:
@@ -598,7 +675,17 @@ class MainWindow(QMainWindow):
         self._busy = True
         self.settings.setEnabled(False)
         self._update_buttons()
-        self.command.emit(("discover", self.backend.text().strip()))
+        self.command.emit(
+            (
+                "discover",
+                dict(
+                    backend=self.backend.text().strip() or None,
+                    output_directory=str(
+                        Path(self.output_dir.text() or "runs") / "connection_checks"
+                    ),
+                ),
+            )
+        )
 
     @Slot(list)
     def _on_resources(self, resources: list) -> None:
@@ -608,6 +695,7 @@ class MainWindow(QMainWindow):
         self.log.appendPlainText(
             f"VISA GPIB 목록 {len(resources)}개 · 선택 장비에만 명령을 보냅니다."
         )
+        self.connection_guide.update_resources(resources)
 
     def _select_resource(self, index: int) -> None:
         if index > 0:
@@ -650,6 +738,7 @@ class MainWindow(QMainWindow):
             f"보고서: {report_path or '저장 실패'}"
         )
         self.log.appendPlainText(json.dumps(report, ensure_ascii=False, default=str))
+        self.connection_guide.update_diagnostic(report)
         self._update_buttons()
 
     @staticmethod
@@ -739,6 +828,7 @@ class MainWindow(QMainWindow):
             self.path_label.setText("Run 폴더: " + status["run_directory"])
             self._last_run_directory = status["run_directory"]
         self.settings.setEnabled(not self._connected and not self._closing)
+        self.connection_guide.update_status(status)
         self._update_buttons()
         self._mark_stale()
 
@@ -818,6 +908,7 @@ class MainWindow(QMainWindow):
         )
         self.commission_open_button.setEnabled(can_commission)
         self.commission_closed_button.setEnabled(can_commission)
+        self._refresh_connection_guide()
 
     def _mark_stale(self) -> None:
         stale = (

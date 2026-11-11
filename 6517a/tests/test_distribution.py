@@ -203,3 +203,265 @@ def test_third_party_notices_preserve_metadata_and_license_paths(tmp_path):
         "runtime/Lib/site-packages/example-1.dist-info/licenses/LICENSE"
     ]
     assert (info / "licenses/LICENSE").read_text() == "verbatim upstream notice"
+
+
+def fake_runtime_distributions(tmp_path):
+    site = tmp_path / "site-packages"
+    site.mkdir()
+    lock = tmp_path / "uv.lock"
+    packages = []
+    for name in sorted(builder.RUNTIME_DISTRIBUTIONS):
+        info = site / (name.replace("-", "_") + "-1.0.dist-info")
+        info.mkdir()
+        (info / "METADATA").write_text(f"Name: {name}\nVersion: 1.0\n", encoding="utf-8")
+        (info / "WHEEL").write_text("Wheel-Version: 1.0\nTag: py3-none-any\n", encoding="utf-8")
+        packages.append(f'[[package]]\nname = "{name}"\nversion = "1.0"\n')
+    lock.write_text("\n".join(packages), encoding="utf-8")
+    return site, lock
+
+
+def test_runtime_audit_requires_base_dependencies_and_exact_lock_versions(tmp_path):
+    site, lock = fake_runtime_distributions(tmp_path)
+    report = builder.inspect_runtime_distributions(site, lock)
+    assert len(report["locked_runtime_distributions"]) == 7
+    assert "gpib-ctypes" not in report["locked_runtime_distributions"]
+    assert "pyvisa-py" not in report["locked_runtime_distributions"]
+    info = site / "pyvisa-1.0.dist-info/METADATA"
+    info.write_text("Name: pyvisa\nVersion: 2.0\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="does not match uv.lock"):
+        builder.inspect_runtime_distributions(site, lock)
+
+
+def test_unrelated_wheel_cannot_replace_a_missing_base_dependency_by_count(tmp_path):
+    site, lock = fake_runtime_distributions(tmp_path)
+    info = site / "pyvisa-1.0.dist-info/METADATA"
+    info.write_text("Name: unrelated-wheel\nVersion: 1.0\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="Unexpected runtime distribution"):
+        builder.inspect_runtime_distributions(site, lock)
+
+
+def test_runtime_audit_rejects_missing_base_wheel_and_incompatible_platform(tmp_path):
+    site, lock = fake_runtime_distributions(tmp_path)
+    (site / "pyvisa-1.0.dist-info").rename(site / "pyvisa-1.0.uninstalled")
+    with pytest.raises(ValueError, match="Missing required runtime distributions.*pyvisa"):
+        builder.inspect_runtime_distributions(site, lock)
+    (site / "pyvisa-1.0.uninstalled").rename(site / "pyvisa-1.0.dist-info")
+    (site / "pyvisa-1.0.dist-info/WHEEL").write_text(
+        "Tag: cp312-cp312-manylinux_2_17_x86_64\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="Incompatible wheel tags"):
+        builder.inspect_runtime_distributions(site, lock)
+
+
+def test_runtime_audit_accepts_official_interpreter_pip_without_counting_it_as_app_dependency(
+    tmp_path,
+):
+    site, lock = fake_runtime_distributions(tmp_path)
+    info = site / "pip-99.dist-info"
+    info.mkdir()
+    (info / "METADATA").write_text("Name: pip\nVersion: 99\n", encoding="utf-8")
+    (info / "WHEEL").write_text("Tag: py3-none-any\n", encoding="utf-8")
+    report = builder.inspect_runtime_distributions(site, lock)
+    assert report["interpreter_bundled_distributions"] == {"pip": "99"}
+    assert set(report["locked_runtime_distributions"]) == set(builder.RUNTIME_DISTRIBUTIONS)
+
+
+@pytest.mark.parametrize("name", ["gpib-32.dll", "NI4882.DLL", "visa32.dll", "visa64.dll"])
+def test_trial_bundle_does_not_redistribute_vendor_driver_dlls(tmp_path, name):
+    driver = tmp_path / "nested" / name
+    driver.parent.mkdir()
+    driver.write_bytes(b"vendor library must remain installed on the user's system")
+    with pytest.raises(ValueError, match="Vendor NI/VISA drivers must not be bundled"):
+        builder.verify_no_vendor_drivers(tmp_path)
+
+
+extension_installer = load("trial_optional_extension", PROJECT / "packaging/install_ni_only.py")
+
+
+def optional_payload(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    for entry in extension_installer.ENTRIES:
+        path = directory / entry
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# Optional package source fixture; never imported by installer\n")
+    for name, version in extension_installer.VERSIONS.items():
+        info = directory / (name.replace("-", "_") + f"-{version}.dist-info")
+        info.mkdir()
+        (info / "METADATA").write_text(f"Name: {name}\nVersion: {version}\n")
+        (info / "LICENSE").write_text("GPLv2" if name == "gpib-ctypes" else "MIT")
+
+
+def optional_root(tmp_path):
+    root = tmp_path / "trial"
+    (root / "app").mkdir(parents=True)
+    builder.write_optional_ni_requirements(
+        PROJECT / "uv.lock", root / "app/ni-only-requirements.txt"
+    )
+    return root
+
+
+def test_optional_requirements_are_only_two_pinned_hash_checked_pure_wheel_packages(tmp_path):
+    target = tmp_path / "optional.txt"
+    builder.write_optional_ni_requirements(PROJECT / "uv.lock", target)
+    lines = [line for line in target.read_text().splitlines() if not line.startswith("#")]
+    assert len(lines) == 2
+    assert lines[0].startswith("gpib-ctypes==0.3.0 --hash=sha256:")
+    assert lines[1].startswith("pyvisa-py==0.8.1 --hash=sha256:")
+    assert "numpy" not in target.read_text()
+    assert "pyside" not in target.read_text()
+    args = extension_installer.pip_arguments("python.exe", target, tmp_path / "extension")
+    assert "--require-hashes" in args
+    assert "--no-deps" in args
+    assert args[args.index("--only-binary") + 1] == ":all:"
+    assert args[args.index("--index-url") + 1] == "https://pypi.org/simple"
+    assert "--trusted-host" not in args and "--no-verify-hashes" not in args
+
+
+def test_optional_install_stays_outside_base_and_only_complete_manifest_activates(tmp_path):
+    root = optional_root(tmp_path)
+    baseline = root / "runtime/Lib/site-packages/base.txt"
+    baseline.parent.mkdir(parents=True)
+    baseline.write_text("unchanged standard NI-VISA baseline")
+    calls = []
+
+    def fake_pip(arguments, *, check):
+        calls.append(arguments)
+        assert check
+        assert not extension_installer.extension_directory(root).exists()
+        optional_payload(Path(arguments[arguments.index("--target") + 1]))
+
+    directory = extension_installer.install(root, runner=fake_pip)
+    assert len(calls) == 1
+    assert directory == root / "extensions/ni4882"
+    assert baseline.read_text() == "unchanged standard NI-VISA baseline"
+    assert extension_installer.installed_extension(root) == directory
+    assert (directory / "gpib_ctypes-0.3.0.dist-info/LICENSE").read_text() == "GPLv2"
+    assert (
+        extension_installer.install(root, runner=lambda *a, **k: pytest.fail("No reinstall"))
+        == directory
+    )
+    (directory / "pyvisa_py/__init__.py").write_text("changed")
+    with pytest.raises(ValueError, match="integrity"):
+        extension_installer.installed_extension(root)
+
+
+def test_failed_optional_install_leaves_no_activatable_extension(tmp_path):
+    root = optional_root(tmp_path)
+
+    def failed_pip(arguments, **kwargs):
+        raise RuntimeError("download failed")
+
+    with pytest.raises(RuntimeError, match="download failed"):
+        extension_installer.install(root, runner=failed_pip)
+    assert extension_installer.installed_extension(root) is None
+    assert not extension_installer.extension_directory(root).exists()
+
+
+def test_existing_incomplete_extension_is_never_overwritten_or_deleted(tmp_path):
+    root = optional_root(tmp_path)
+    directory = extension_installer.extension_directory(root)
+    directory.mkdir(parents=True)
+    user_file = directory / "keep-user-file.txt"
+    user_file.write_text("preserve")
+    with pytest.raises(ValueError, match="incomplete"):
+        extension_installer.install(root, runner=lambda *a, **k: pytest.fail("No implicit repair"))
+    assert user_file.read_text() == "preserve"
+
+
+def test_launcher_never_downloads_extension_and_ignores_incomplete_payload(tmp_path, monkeypatch):
+    root = optional_root(tmp_path)
+    (root / "tools").mkdir()
+    (root / "tools/install_ni_only.py").write_bytes(
+        (PROJECT / "packaging/install_ni_only.py").read_bytes()
+    )
+    before = list(__import__("sys").path)
+    monkeypatch.setattr(
+        "subprocess.run", lambda *a, **k: pytest.fail("Launch cannot install packages")
+    )
+    assert launcher.configure_optional_extension(root) is None
+    directory = extension_installer.extension_directory(root)
+    directory.mkdir(parents=True)
+    optional_payload(directory)
+    assert launcher.configure_optional_extension(root) is None
+    assert __import__("sys").path == before
+
+
+def test_completed_optional_extension_is_added_without_importing_plugin(tmp_path, monkeypatch):
+    root = optional_root(tmp_path)
+    (root / "tools").mkdir()
+    (root / "tools/install_ni_only.py").write_bytes(
+        (PROJECT / "packaging/install_ni_only.py").read_bytes()
+    )
+
+    def fake_pip(arguments, **kwargs):
+        optional_payload(Path(arguments[arguments.index("--target") + 1]))
+
+    directory = extension_installer.install(root, runner=fake_pip)
+    import sys
+
+    original_path = list(sys.path)
+    original_plugins = {name: sys.modules.get(name) for name in ("pyvisa_py", "gpib_ctypes")}
+    try:
+        assert launcher.configure_optional_extension(root) == directory
+        assert sys.path[0] == str(directory)
+        assert {name: sys.modules.get(name) for name in original_plugins} == original_plugins
+    finally:
+        sys.path[:] = original_path
+
+
+def test_unconfirmed_installer_start_does_not_download_or_access_hardware(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda prompt: "CANCEL")
+    monkeypatch.setattr(extension_installer, "install", lambda *a, **k: pytest.fail("No install"))
+    assert extension_installer.main([]) == 2
+
+
+native_smoke = load("trial_native_smoke", PROJECT / "packaging/smoke.py")
+
+
+def test_native_optional_installer_smoke_uses_external_temporary_payload_and_removes_it(tmp_path):
+    from types import SimpleNamespace
+
+    root = optional_root(tmp_path)
+    observed = []
+
+    def install(trial):
+        observed.append(trial)
+        assert not trial.resolve().is_relative_to(root.resolve())
+        assert (trial / "app/ni-only-requirements.txt").read_bytes() == (
+            root / "app/ni-only-requirements.txt"
+        ).read_bytes()
+
+        def fake_pip(arguments, **kwargs):
+            optional_payload(Path(arguments[arguments.index("--target") + 1]))
+
+        return extension_installer.install(trial, runner=fake_pip)
+
+    installer = SimpleNamespace(
+        install=install,
+        installed_extension=extension_installer.installed_extension,
+        inspect_payload=extension_installer.inspect_payload,
+    )
+    report = native_smoke.optional_installer_smoke(root, installer=installer)
+    assert report["optional_install_smoke"] == "passed"
+    assert report["driver_IO"] is False
+    assert report["optional_driver_imported"] is False
+    assert report["temporary_extension_removed"] is True
+    assert not observed[0].exists()
+    assert not (root / "extensions").exists()
+
+
+def test_native_optional_installer_failure_fails_smoke_and_cleans_temporary_files(tmp_path, capsys):
+    from types import SimpleNamespace
+
+    root = optional_root(tmp_path)
+    observed = []
+
+    def failed(trial):
+        observed.append(trial)
+        raise RuntimeError("optional download failed")
+
+    installer = SimpleNamespace(install=failed)
+    with pytest.raises(RuntimeError, match="optional download failed"):
+        native_smoke.optional_installer_smoke(root, installer=installer)
+    assert not observed[0].exists()
+    assert "optional_install_smoke" not in capsys.readouterr().out

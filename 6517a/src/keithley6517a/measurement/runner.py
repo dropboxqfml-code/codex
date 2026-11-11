@@ -313,6 +313,7 @@ class MeasurementRunner:
                 simulation_truth=getattr(self.instrument.transport, "truth", None),
                 settings=self.config.to_dict(),
                 settings_readback=settings_readback,
+                transport_runtime=getattr(self.instrument.transport, "runtime_info", None),
             )
             self.writer = self.writer_factory(self._armed_config, metadata)
             self.run_directory = self.writer.directory

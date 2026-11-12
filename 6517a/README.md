@@ -18,6 +18,8 @@ ZIP의 Windows 파일 구성·잠금 wheel·무결성 검사와 실제 Windows �
 
 ## 시뮬레이션 화면 다음 단계
 
+무결성·IDN·보호 OFF 진단을 통과한 뒤 1 GΩ 기준저항으로 진행할 때는 [1 GΩ 시험 준비](docs/reference_1gohm_trial.md)와 [미승인 0 V 초안](examples/reference_1gohm_draft.json)을 사용합니다. v0.4.6에서 읽을 수 있는 준비 파일이며 실제 전압·정격·trip·fixture 승인은 아직 채우지 않습니다.
+
 v0.4.6은 v0.4.5의 캐시 검사 오류를 수정합니다. 재생성되는 소스 기반 `__pycache__/*.pyc`는 ZIP과 고정 파일 목록에서 제외하고, 소스·DLL·확장 모듈·표준 라이브러리 ZIP·소스 없는 독립 bytecode는 계속 해시 검사합니다. 실행 진입점은 캐시 쓰기를 억제합니다. **이전 폴더에 덮어쓰지 않고 새 폴더에 압축을 풉니다.** Windows 배포 검사는 새 위치에서 CLI/GUI 실행과 캐시 생성 후 재검사, 소스·DLL 변조 검출까지 포함합니다.
 
 v0.4.6의 `Verify-Bundle.cmd`는 시작, 처리 파일 수, 최종 `PASS/FAIL`을 표시하고 `diagnostics/bundle-verification-*.json`에 결과를 저장합니다. 보고서 저장이 실패하면 경고를 표시하며 파일 무결성 결과와 저장 결과를 구분합니다. 이전 검사기는 전체 파일 검사가 끝난 뒤에만 출력하므로 검사 중 화면이 조용할 수 있었습니다.

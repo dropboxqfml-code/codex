@@ -1,0 +1,45 @@
+{
+  "simulation": false,
+  "transport": "visa",
+  "resource": "GPIB0::27::INSTR",
+  "visa_backend": "@ivi",
+  "timeout_ms": 2000,
+  "read_termination": "\n",
+  "write_termination": "\n",
+  "send_end": true,
+  "mode": "FVMI_CURRENT",
+  "protocol": "constant",
+  "sample_id": "REFERENCE-1GOHM-UNAPPROVED",
+  "output_directory": "runs",
+  "note": "1 Gohm 기준저항 시험 준비 초안. 통신 및 보호 OFF 진단만 확인됨. 시험 전압·저항/fixture/케이블 정격·current trip·인터록 및 독립 보호 검토가 미정이므로 0 V를 유지하며 ARM할 수 없음. 1 V에서 예상 1 nA는 명목 저항의 계산값이며 인가 승인이나 실측값이 아님.",
+  "voltages": [
+    0
+  ],
+  "dwell_s": 300,
+  "summary_window_s": 30,
+  "sample_interval_s": 1,
+  "nplc": 10,
+  "line_frequency_hz": 60,
+  "current_trip_A": null,
+  "source_range_V": 100,
+  "voltage_ceiling_V": 10,
+  "sample_limit_V": null,
+  "fixture_limit_V": null,
+  "cable_limit_V": null,
+  "bipolar_authorized": false,
+  "rating_approval": "",
+  "residual_warning_ack": false,
+  "commissioning": {
+    "installation_confirmed": false,
+    "hardware_protection_reviewed": false,
+    "lid_open_zero": false,
+    "lid_closed_one": false,
+    "fixture_id": "",
+    "approved_by": ""
+  },
+  "resistive_limit_enabled": null,
+  "sample_metadata": {
+    "reference_resistance_ohm": 1000000000,
+    "reference_value_kind": "nominal; calibration and tolerance not provided"
+  }
+}

@@ -82,6 +82,90 @@ def test_bundle_manifest_detects_corruption_and_missing_files(tmp_path):
     assert verifier.verify(tmp_path)["errors"] == [{"file": "app.txt", "reason": "missing"}]
 
 
+def test_verification_feedback_starts_before_hashing_and_saves_the_result(
+    tmp_path, monkeypatch, capsys
+):
+    (tmp_path / "app.txt").write_text("original")
+    builder.write_manifest(tmp_path, release_version="test", native_verified=False)
+    original_digest = verifier.hashlib.file_digest
+    before_hashing = []
+
+    def digest(stream, algorithm):
+        before_hashing.append(capsys.readouterr().err)
+        return original_digest(stream, algorithm)
+
+    monkeypatch.setattr(verifier.hashlib, "file_digest", digest)
+    assert verifier.main([str(tmp_path), "--progress", "--save-report"]) == 0
+    captured = capsys.readouterr()
+    assert "[CHECK] 0/1" in before_hashing[0]
+    assert "[CHECK] 1/1" in captured.err
+    report = json.loads(captured.out)
+    assert report["status"] == "passed"
+    assert report["verified_files"] == 1
+    assert report["hardware_verified"] is False
+    assert report["report_saved"] is True
+    saved = Path(report["report_path"])
+    assert saved.parent == tmp_path.resolve() / "diagnostics"
+    assert json.loads(saved.read_text(encoding="utf-8")) == report
+
+
+def test_builder_style_verifier_does_not_add_reports_to_the_release(tmp_path, capsys):
+    (tmp_path / "app.txt").write_text("original")
+    builder.write_manifest(tmp_path, release_version="test", native_verified=False)
+    original_files = set(tmp_path.rglob("*"))
+    assert verifier.main([str(tmp_path)]) == 0
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["status"] == "passed"
+    assert captured.err == ""
+    assert set(tmp_path.rglob("*")) == original_files
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [None, "{", "[]", '{"schema_version": 1, "files": {"../outside.txt": "hash"}}'],
+)
+def test_manifest_failures_produce_failed_results_and_reports(tmp_path, capsys, manifest):
+    if manifest is not None:
+        (tmp_path / "bundle_manifest.json").write_text(manifest)
+    assert verifier.main([str(tmp_path), "--progress", "--save-report"]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["status"] == "failed"
+    assert report["errors"]
+    assert report["hardware_verified"] is False
+    assert json.loads(Path(report["report_path"]).read_text(encoding="utf-8")) == report
+
+
+@pytest.mark.parametrize("changed", [True, False])
+def test_incomplete_or_changed_bundle_never_reports_success(tmp_path, capsys, changed):
+    path = tmp_path / "app.txt"
+    path.write_text("original")
+    builder.write_manifest(tmp_path, release_version="test", native_verified=False)
+    if changed:
+        path.write_text("changed")
+    else:
+        path.unlink()
+    assert verifier.main([str(tmp_path), "--progress", "--save-report"]) == 2
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert "[CHECK] 1/1" in captured.err
+    assert report["status"] == "failed"
+    assert report["verified_files"] == 0
+    assert report["errors"][0]["reason"] == ("hash mismatch" if changed else "missing")
+
+
+def test_report_write_failure_remains_visible_without_changing_integrity_result(tmp_path, capsys):
+    (tmp_path / "app.txt").write_text("original")
+    builder.write_manifest(tmp_path, release_version="test", native_verified=False)
+    (tmp_path / "diagnostics").write_text("A file blocks report directory creation")
+    assert verifier.main([str(tmp_path), "--save-report"]) == 0
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert report["status"] == "passed"
+    assert report["report_saved"] is False
+    assert report["report_error"]
+    assert "[WARN]" in captured.err
+
+
 @pytest.mark.parametrize("relative", ["../outside.txt", "/outside", "C:/outside", "a\\b"])
 def test_untrusted_manifest_cannot_read_outside_bundle(tmp_path, relative):
     (tmp_path / "bundle_manifest.json").write_text(

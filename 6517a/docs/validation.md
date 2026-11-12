@@ -4,6 +4,20 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.4.5 파일 검사 진행·결과 표시
+
+사용자는 `Verify-Bundle.cmd` 실행 후 화면 변화를 보지 못했고, GUI에서는 NI MAX와 동일한 GPIB 주소를 가져왔다고 보고했습니다. IDN 확인은 아직 누르지 않았다고 확인했으므로 장비 식별·통신 성공으로 기록하지 않습니다. 기존 검사기는 전체 파일 해시가 끝난 뒤에만 출력하는 구조였지만, 이것이 사용자 PC에서 나타난 현상의 확정 원인인지는 알 수 없습니다.
+
+CMD에 Python 실행 전 START와 누락 파일 안내, 처리 파일 수, PASS/FAIL·종료 코드 표시를 추가했습니다. `--save-report`로 요청한 경우에만 `diagnostics/bundle-verification-*.json`을 저장합니다. 보고서 저장 실패는 WARN과 `report_saved=false`로 드러내고 파일 무결성 결과와 구분합니다. Builder는 저장 옵션을 사용하지 않으며 native Windows 빌드에서는 번들 Python으로 검사기를 실행합니다.
+
+| 항목 | v0.4.5 로컬 검증 |
+|---|---|
+| 전체 테스트 | Linux offscreen 318개 통과, 실패·건너뜀 없음, 6.67 s |
+| Ruff check / format | 통과; Python 파일 54개 |
+| 파일 검사 회귀 | 배포 코드 전체 42개; 첫 해시 전 진행 표시, 정상·누락·변조·manifest 오류, 보고서 저장 실패, builder 호출 시 보고서 미생성 포함 |
+| Windows 실행 | 이 로컬 기록 시점에는 새 CI 실행 전; 해당 Release의 CI·JUnit·build report로 구분 |
+| 실제 6517A IDN·측정 | 미수행; 사용자의 주소 조회 보고와 구분 |
+
 ## v0.4.4 연결 안내와 NI-488.2-only 선택 경로
 
 사용자는 안내된 CMD 실행 뒤 v0.3.0 시뮬레이션 화면이 열렸으며 NI MAX에서 6517A가 보인다고 확인했습니다. 이는 사용자 관찰 기록입니다. 실제 프로그램의 IDN/출력 OFF/전류 판독 결과 파일은 아직 전달되지 않았으므로 측정 성공으로 표시하지 않습니다.

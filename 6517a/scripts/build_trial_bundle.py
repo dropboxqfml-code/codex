@@ -507,7 +507,8 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
             portable, release_version=release_version, native_verified=native_smoke, layout=layout
         )
         # Verify exactly what will be archived using the same helper shipped to testers.
-        run([sys.executable, portable / "tools/verify_bundle.py", portable])
+        verify_python = portable / "runtime/python.exe" if native_smoke else sys.executable
+        run([verify_python, "-I", portable / "tools/verify_bundle.py", portable, "--progress"])
         archive(portable, portable_zip)
         source = working / f"{stem}-Source"
         source.mkdir()

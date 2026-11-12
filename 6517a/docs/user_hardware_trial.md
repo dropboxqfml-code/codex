@@ -6,13 +6,15 @@
 
 ## 1. 압축 해제와 시뮬레이션
 
-1. `6517A-USB-GPIB-Trial-0.4.4-Windows-x64.zip`과 배포 시 제공한 SHA-256을 함께 받습니다. ZIP 파일의 `Get-FileHash -Algorithm SHA256` 결과를 비교합니다. 일치하지 않으면 실행하지 않고 파일을 다시 받습니다.
+1. `6517A-USB-GPIB-Trial-0.4.5-Windows-x64.zip`과 배포 시 제공한 SHA-256을 함께 받습니다. ZIP 파일의 `Get-FileHash -Algorithm SHA256` 결과를 비교합니다. 일치하지 않으면 실행하지 않고 파일을 다시 받습니다.
 2. 로컬의 쓰기 가능한 폴더에 **모든 파일**을 풉니다. ZIP 안에서 직접 실행하지 말고, `Start-GUI.cmd`와 함께 있는 runtime·app 폴더를 분리하거나 삭제하지 않습니다. 실행 전에 출력이 이미 켜진 장비가 있다면 현장 절차로 관리합니다.
 3. `Start-GUI.cmd`로 GUI를 실행해 상단 `SIMULATION`과 초기 0 V, trip 미설정, START 비활성 상태를 확인합니다. 이 화면은 실장비 기능이 없다는 뜻이 아니라 의도한 기본 상태입니다. 프로그램 시작이나 설정 load만으로 장비에 연결하거나 출력 ON을 하지 않습니다.
 4. `Test-Simulation.cmd`를 실행하거나 GUI에서 가상 예제 설정을 불러와 연결 → ARM → START를 시험합니다. 예제 trip과 전압은 가상 시료용이며 실제 시료 승인값이 아닙니다.
 5. 결과 폴더에 `readings.csv`, `summary.csv`, `raw_io.jsonl`, `run_status.json`이 생겼는지 확인합니다. 가상 데이터의 simulation 표시, 종료 `completed`, output `OFF`, residual `UNVERIFIED`를 확인합니다. 이 결과는 Python/Qt/저장 기능 점검이며 GPIB 하드웨어 시험이 아닙니다.
 
 Portable 패키지에는 `runtime/python.exe`, `app/src`·`app/docs`·`app/examples`, 사용자 설정용 `configs`와 실행용 CMD가 포함됩니다. `Verify-Bundle.cmd`로 내부 파일의 manifest SHA-256을 검사할 수 있습니다. Python과 Python 의존성이 포함되므로 Python·uv 설치가 필요하지 않습니다. 어댑터 driver와 VISA runtime은 다음 단계에서 별도로 설치합니다. Native Windows에서 아직 실행하지 못한 패키지라면 그 사실을 [검증 기록](validation.md)의 결과와 함께 보존합니다.
+
+`Verify-Bundle.cmd`는 먼저 `[START]`를 표시하고 `[CHECK] 처리한 파일 수/전체 파일 수`를 갱신합니다. 마지막 `[PASS]`는 검사한 배포 파일이 manifest와 일치한다는 결과입니다. `[FAIL]`이면 누락·변조·읽기 오류 또는 도구 실행 오류를 확인합니다. 결과 JSON은 `diagnostics/bundle-verification-*.json`에 저장됩니다. 저장 경로를 만들 수 없으면 `[WARN]`과 `report_saved=false`가 표시되므로 콘솔 결과를 보존합니다. 파일 검사 완료는 장비 IDN 확인과 별개입니다.
 
 ## 2. 어댑터와 VISA 준비
 

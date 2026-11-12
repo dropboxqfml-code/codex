@@ -4,6 +4,10 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.7.1 Windows GUI 완료 대기 검사
+
+Windows에서는 가상 시계를 사용해도 CSV·TXT의 디스크 동기화에 실제 시간이 걸립니다. GUI 통합 검사는 출력 OFF와 writer 종료를 함께 확인한 뒤 최종 상태 파일을 읽도록 보완했습니다. 완료 대기는 20초로 제한하고 FAULT·HV_STATE_UNKNOWN은 즉시 실패시키며, 실패 시 상태·판독 수·로그를 남깁니다. 실제 장비의 I/O timeout이나 출력 제어 조건을 변경하지 않습니다. Windows 실행 결과는 [v0.7.1 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.7.1)의 JUnit·build report에서 확인합니다.
+
 ## v0.7.0 분석용 텍스트 저장
 
 기존 결과에 `analysis.txt`를 추가합니다. 첫 행에 네 개 물리량·단위를 기록하고 이후에는 탭으로 구분한 경과 시간·저항·source 설정 readback·원시 전류의 SI 수치만 저장합니다. 모든 판독 행을 보존하며 누락값은 `nan`으로 표시합니다. 이전 CSV 변환은 장비 연결 없이 수행하고 기존 파일을 덮어쓰지 않습니다.

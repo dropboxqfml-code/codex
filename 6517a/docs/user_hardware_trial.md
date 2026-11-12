@@ -1,10 +1,10 @@
 # 6517A · NI GPIB-USB 사용자 시험 순서
 
-v0.7.0은 연결·정격을 사용자가 관리하는 저전압 시험과 기존 검증 fixture 방식을 제공합니다. 사용자 제공 기록에서 파일 무결성·실제 IDN·보호 OFF 조회 `0`은 확인됐습니다. 전압 인가·current 수집·인터록 차단·방전은 그 진단과 별도 시험입니다.
+v0.7.1은 연결·정격을 사용자가 관리하는 저전압 시험과 기존 검증 fixture 방식을 제공합니다. 사용자 제공 기록에서 파일 무결성·실제 IDN·보호 OFF 조회 `0`은 확인됐습니다. 전압 인가·current 수집·인터록 차단·방전은 그 진단과 별도 시험입니다.
 
 ## 1. 패키지 실행
 
-1. GitHub Release에서 `6517A-USB-GPIB-Trial-0.7.0-Windows-x64.zip`과 checksum을 받습니다. 새 쓰기 가능한 폴더에 전체를 풉니다.
+1. GitHub Release에서 `6517A-USB-GPIB-Trial-0.7.1-Windows-x64.zip`과 checksum을 받습니다. 새 쓰기 가능한 폴더에 전체를 풉니다.
 2. `Verify-Bundle.cmd`로 START → CHECK → PASS를 확인합니다. 실패 시 `diagnostics/bundle-verification-*.json`의 파일명·사유를 확인합니다. 보고서를 쓸 수 없으면 WARN과 `report_saved=false`가 표시됩니다.
 3. `Test-Simulation.cmd`로 연결 → ARM → 전압 단계 → 판독 → 요약 → OFF의 중간 진행과 최종 PASS를 확인하고 `Start-GUI.cmd`를 엽니다. GUI의 초기 SIMULATION·0 V·미연결 상태가 정상입니다.
 

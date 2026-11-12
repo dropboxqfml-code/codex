@@ -5,6 +5,7 @@ import threading
 import time
 
 import numpy as np
+import pytest
 
 from keithley6517a.clock import FakeClock
 from keithley6517a.config import RunConfig
@@ -291,7 +292,27 @@ def test_actual_simulator_gui_connect_arm_start_complete_and_close(qtbot, tmp_pa
         window.arm_button.click()
         qtbot.waitUntil(lambda: window.start_button.isEnabled())
         window.start_button.click()
-        qtbot.waitUntil(lambda: len(window.rows) > 0 and window._state == "OUTPUT_OFF_CONFIRMED")
+
+        def complete():
+            if window._state in {"FAULT", "HV_STATE_UNKNOWN"}:
+                pytest.fail(
+                    f"Simulation failed: {window._state}\n{window.log.toPlainText()[-4000:]}"
+                )
+            # FakeClock skips electrical dwell, not durable filesystem writes.
+            # Wait for finalization before opening run_status.json on Windows.
+            return (
+                bool(window.rows)
+                and window._state == "OUTPUT_OFF_CONFIRMED"
+                and window.worker.runner.writer.closed
+            )
+
+        try:
+            qtbot.waitUntil(complete, timeout=20000)
+        except Exception as exc:
+            pytest.fail(
+                f"Simulation completion timed out: state={window._state}, "
+                f"rows={len(window.rows)}; {exc}\n{window.log.toPlainText()[-4000:]}"
+            )
         assert window.output_label.text() == "OUTPUT OFF"
         assert not window.arm_button.isEnabled()
         assert not window.start_button.isEnabled()

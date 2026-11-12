@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import py_compile
+import re
 import struct
 import subprocess
 import sys
@@ -25,6 +26,17 @@ def load(name, path):
 builder = load("trial_builder", PROJECT / "scripts/build_trial_bundle.py")
 launcher = load("trial_launcher", PROJECT / "packaging/launch.py")
 verifier = load("trial_verifier", PROJECT / "packaging/verify_bundle.py")
+
+
+def test_copied_readme_images_exist_inside_portable_app(tmp_path):
+    app = tmp_path / "app"
+    builder.copy_sources(app)
+    readme = (app / "README.md").read_text(encoding="utf-8")
+    images = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", readme)
+    assert images, "The trial README must include the current UI preview"
+    for relative in images:
+        assert (app / relative).is_file(), f"Missing portable README image: {relative}"
+        assert (app / relative).read_bytes() == (PROJECT / relative).read_bytes()
 
 
 def symlink_or_skip_unprivileged_windows(link, target):

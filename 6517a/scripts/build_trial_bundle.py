@@ -86,6 +86,7 @@ def portable_source_files(root=PROJECT_ROOT):
     paths += sorted((root / "src/keithley6517a").rglob("*.py"))
     paths += sorted((root / "docs").glob("*.md"))
     paths += sorted((root / "docs").glob("*.txt"))
+    paths += sorted((root / "docs/images").glob("*.png"))
     paths += sorted((root / "examples").glob("*.json"))
     paths += sorted((root / "examples").glob("*.png"))
     return [path for path in paths if path.is_file() and "__pycache__" not in path.parts]

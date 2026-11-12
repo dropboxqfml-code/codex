@@ -4,6 +4,10 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.6.1 배포 이미지 포함 검사
+
+기본 화면 미리보기 이미지가 portable source allowlist에서 빠지는 항목을 수정했습니다. 실제 배포용 파일을 복사한 뒤 README가 참조하는 이미지의 존재와 원본 일치를 검사합니다. 2026-11-12 Linux 개발 환경에서 전체 **411개 통과**, Ruff·포맷 검사를 통과했습니다. Windows 결과는 [v0.6.1 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.6.1)의 `Windows-software-tests.xml`·`build-report.json`에서 별도로 확인합니다. 프로그램 동작은 아래 v0.6.0 변경을 포함합니다.
+
 ## v0.6.0 진행 표시·준비 상태·화면 정리
 
 `Test-Simulation.cmd`는 START와 사전검사, 연결·ARM·START·전압 단계·판독·요약·OFF·완료 및 최종 PASS/FAIL·종료 코드를 표시합니다. CLI의 `simulate --progress`는 stderr를 즉시 flush하고 stdout의 최종 JSON 형식을 유지합니다.

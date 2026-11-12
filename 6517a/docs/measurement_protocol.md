@@ -43,3 +43,16 @@ source current limit이면 실제 DUT 전압이 설정 전압이라는 전제가
 ## 파일과 복구
 
 고유 run 폴더마다 설정 snapshot과 장비 식별·simulation truth를 보존합니다. `readings.csv`는 SI 열과 손실 없는 raw response를 CSV 인코딩합니다. strict JSON에서 비유한 수는 쓰지 않습니다. 샘플별 flush, 중요 event 즉시 기록, atomic status 갱신을 사용합니다. 저장 실패는 OFF를 시도하고 중지합니다. 중단된 run은 명시적인 `cli recover DIRECTORY`로 `interrupted`로 표시하며 자동 재인가·재개하지 않습니다. 복구는 해당 directory에 활동 중인 run이 없는 것을 확인한 후 실행하세요. 다른 프로세스의 실행 중 상태를 복구 대상으로 변경하지 마세요.
+
+`analysis.txt`는 분석 도구로 바로 가져올 수 있는 탭 구분 파일입니다. 첫 행은 `Time (s)`, `Resistance (Ohm)`, `Voltage (V)`, `Current (A)`이고 다음 행부터 네 개의 수치만 기록합니다. 다음 열을 같은 순서로 내보냅니다.
+
+| TXT 열 | 원본 값 |
+|---|---|
+| Time (s) | `elapsed_s`: 측정 시작 후 경과 시간 |
+| Resistance (Ohm) | `native_r_ohm`이 있으면 해당 값, 그 외 `resistance_apparent_ohm` |
+| Voltage (V) | `voltage_programmed_readback_V`: source 설정 readback |
+| Current (A) | `current_raw_A`: 원시 판독 전류 |
+
+SI 단위·부호·0·저장 정밀도를 유지하며 누락값은 숫자형 결측 표기인 `nan`으로 채웁니다. Native 모드의 역산 전류를 원시 전류 대신 넣지 않습니다. 전압 열은 시료 단자 전압의 독립 실측값이 아닙니다. `valid_for_summary`로 행을 거르지 않으므로 과도·제외·STOP 전 자료도 CSV와 같은 순서로 보존합니다. 이 파일에는 품질 플래그나 추가 메타데이터를 넣지 않으며 해석 시 기존 CSV·JSON을 함께 확인합니다.
+
+파일은 ARM 시 준비하고 각 판독마다 기록·flush·fsync합니다. TXT 저장 실패도 수집 실패로 전달해 OFF 처리를 진행합니다. 완료·STOP 때 데이터를 한꺼번에 생성하는 방식이 아니므로 이미 저장한 행은 남습니다. 이전 CSV는 `export-analysis readings.csv [--output output.txt]`로 장비 연결 없이 변환할 수 있으며 원본과 기존 출력 파일을 덮어쓰지 않습니다.

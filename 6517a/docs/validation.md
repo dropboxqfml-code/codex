@@ -4,6 +4,16 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.7.0 분석용 텍스트 저장
+
+기존 결과에 `analysis.txt`를 추가합니다. 첫 행에 네 개 물리량·단위를 기록하고 이후에는 탭으로 구분한 경과 시간·저항·source 설정 readback·원시 전류의 SI 수치만 저장합니다. 모든 판독 행을 보존하며 누락값은 `nan`으로 표시합니다. 이전 CSV 변환은 장비 연결 없이 수행하고 기존 파일을 덮어쓰지 않습니다.
+
+Native Windows smoke는 기본 simulation과 1 GΩ simulation 모두에서 TXT 헤더·네 열·행 수·각 수치를 원본 CSV와 독립적으로 비교합니다. 이 검사는 재추출된 번들에서도 수행되며 `analysis_text_export_verified=true`를 확인해야 통과합니다. 구체적인 실행 결과는 [v0.7.0 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.7.0)의 Windows JUnit·build report로 구분합니다.
+
+2026-11-12 Linux 개발 환경의 전체 자동 테스트 **433개**, Ruff 검사와 포맷 검사를 통과했습니다. TXT 생성 실패의 ON 차단, 기록 실패의 OFF 처리, 모든 행·정밀도·부호·결측 처리, 기존 CSV 변환의 덮어쓰기 방지와 잘못된 입력 정리를 확인했습니다. 전달받은 146행 CSV도 실제 변환하여 TXT의 모든 수치가 원본과 일치함을 확인했습니다.
+
+사용자가 전달한 후속 1 GΩ ZIP은 `simulation=true` 기록입니다. 1 V에서 146개 판독, 평균 전류 약 1.000064 nA·평균 겉보기 저항 약 0.999936 GΩ를 확인했습니다. 약 145.7 s에 사용자 STOP 후 출력 OFF가 기록됐습니다. 300 s 시험의 마지막 30 s 요약 구간 전에 중지해 `summary.csv`가 비어 있으며, 분석 TXT는 이와 관계없이 146개 판독을 내보내야 합니다. 이 첨부를 실제 VISA 전류 수집 검증으로 분류하지 않습니다.
+
 ## v0.6.2 Windows 배포 실행기
 
 GitHub의 `windows-latest` 실행기가 할당되지 않아 소프트웨어 검사 시작 전에 서버 오류가 발생했습니다. 배포 워크플로를 지원되는 `windows-2022` 실행기로 변경했습니다. 프로그램 동작·의존성·검증 기준은 동일하며, [v0.6.2 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.6.2)의 Windows JUnit·build report에서 실제 실행 결과를 확인합니다.

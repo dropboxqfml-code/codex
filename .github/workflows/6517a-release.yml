@@ -184,6 +184,8 @@ jobs:
               raise SystemExit('Relocated Windows bundle verification was not confirmed')
           if report.get('relocation_check', {}).get('checks', {}).get('reference_1gohm_simulation_verified') is not True:
               raise SystemExit('Bundled 1 Gohm reference simulation was not confirmed')
+          if report.get('relocation_check', {}).get('checks', {}).get('analysis_text_export_verified') is not True:
+              raise SystemExit('Bundled four-column analysis text export was not confirmed')
           repo = os.environ['GITHUB_REPOSITORY']
           def api(path):
               return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
@@ -202,6 +204,10 @@ jobs:
           notes="${RUNNER_TEMP}/6517a-release-notes.md"
           cat > "$notes" <<'NOTES'
           6517A · NI GPIB-USB 시험용 프로그램입니다. Windows 64비트 ZIP에는 Python과 Python 의존성이 포함되어 있습니다.
+
+          측정 결과 폴더에 analysis.txt를 자동 저장합니다. 첫 행은 Time (s), Resistance (Ohm), Voltage (V), Current (A)이며 탭으로 구분합니다. 이후에는 SI 단위 데이터 네 열만 기록합니다.
+          모든 판독을 포함하며 STOP 전에 취득한 데이터도 남습니다. 값이 없는 항목은 nan으로 표시하고, 전압은 소스 설정 readback·전류는 원시 측정값·저항은 native 또는 V/I 계산값을 사용합니다.
+          이전 readings.csv는 Run-CLI.cmd export-analysis "경로\readings.csv"로 변환할 수 있습니다. 기존 파일은 덮어쓰지 않습니다.
 
           Test-Simulation.cmd의 중간 처리 표시, ARM·START 대기 이유와 간소화된 기본 화면을 제공합니다. 고급 설정과 진단·로그는 별도 탭에 있습니다.
           '1. 시험 설정'에서 '1 GΩ · 1 V 시험값 적용'으로 1 V·10 nA trip을 준비하고 사용자 확인·잔류 전압 확인·resistive-limit 정책을 선택합니다. '측정 설정 적용'은 필수값을 검사하고, '초안 적용'은 미완료 설정을 보존합니다.

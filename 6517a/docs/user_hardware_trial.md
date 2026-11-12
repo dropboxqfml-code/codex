@@ -1,10 +1,10 @@
 # 6517A · NI GPIB-USB 사용자 시험 순서
 
-v0.6.2은 연결·정격을 사용자가 관리하는 저전압 시험과 기존 검증 fixture 방식을 제공합니다. 사용자 제공 기록에서 파일 무결성·실제 IDN·보호 OFF 조회 `0`은 확인됐습니다. 전압 인가·current 수집·인터록 차단·방전은 그 진단과 별도 시험입니다.
+v0.7.0은 연결·정격을 사용자가 관리하는 저전압 시험과 기존 검증 fixture 방식을 제공합니다. 사용자 제공 기록에서 파일 무결성·실제 IDN·보호 OFF 조회 `0`은 확인됐습니다. 전압 인가·current 수집·인터록 차단·방전은 그 진단과 별도 시험입니다.
 
 ## 1. 패키지 실행
 
-1. GitHub Release에서 `6517A-USB-GPIB-Trial-0.6.2-Windows-x64.zip`과 checksum을 받습니다. 새 쓰기 가능한 폴더에 전체를 풉니다.
+1. GitHub Release에서 `6517A-USB-GPIB-Trial-0.7.0-Windows-x64.zip`과 checksum을 받습니다. 새 쓰기 가능한 폴더에 전체를 풉니다.
 2. `Verify-Bundle.cmd`로 START → CHECK → PASS를 확인합니다. 실패 시 `diagnostics/bundle-verification-*.json`의 파일명·사유를 확인합니다. 보고서를 쓸 수 없으면 WARN과 `report_saved=false`가 표시됩니다.
 3. `Test-Simulation.cmd`로 연결 → ARM → 전압 단계 → 판독 → 요약 → OFF의 중간 진행과 최종 PASS를 확인하고 `Start-GUI.cmd`를 엽니다. GUI의 초기 SIMULATION·0 V·미연결 상태가 정상입니다.
 
@@ -81,5 +81,14 @@ GUI에서 완성·저장한 설정으로 CLI를 실행합니다.
 ## 7. 결과 파일과 문제 보고
 
 한 run의 폴더 전체를 보존합니다. `config.json`·`metadata.json`은 실행 설정과 운용 방식을, `readings.csv`는 실제 판독과 원문·quality flag를, `summary.csv`는 유효 평균 구간을 기록합니다. `events.jsonl`·`raw_io.jsonl`·`run_status.json`으로 명령·중지 이유·최종 상태를 대조합니다. Source 설정값이나 VSO를 독립 측정한 DUT 전압으로 표시하지 않습니다.
+
+`analysis.txt`는 별도 조작 없이 함께 저장됩니다. 탭 구분 열 순서는 **Time (s), Resistance (Ohm), Voltage (V), Current (A)**이며 첫 행의 물리량·단위 외에는 숫자만 기록합니다. 시간은 시작 후 경과 시간, 저항은 native 값 또는 원시 V/I, 전압은 source 설정 readback, 전류는 원시 판독입니다. SI 단위·부호·0을 유지하고 누락값은 `nan`으로 표시합니다. 유효 요약 구간 밖의 판독도 저장하며 STOP 전에 취득한 행도 유지합니다. 품질 판단에는 `readings.csv`의 플래그를 함께 사용합니다.
+
+이전 결과는 다음 명령으로 변환합니다. 장비와 통신하지 않으며 기본 출력은 원본 CSV와 같은 폴더의 `analysis.txt`입니다. 기존 파일이 있으면 덮어쓰지 않고 중지하므로 다른 이름을 `--output`으로 지정합니다.
+
+```powershell
+.\Run-CLI.cmd export-analysis "results\RUN\readings.csv"
+.\Run-CLI.cmd export-analysis "results\RUN\readings.csv" --output "results\RUN\analysis-copy.txt"
+```
 
 문제가 있으면 버전, Windows·어댑터·backend 정보, 실패 단계와 해당 진단/run 폴더를 보존합니다. 파일은 로컬 저장이며 자동 업로드하지 않습니다. 전달 전 시리얼과 로컬 경로를 검토합니다. 활동 중인 run이 없는 폴더에서만 복구 명령을 사용합니다. 복구는 incomplete run을 interrupted로 기록하며 전압 인가나 수집을 재개하지 않습니다.

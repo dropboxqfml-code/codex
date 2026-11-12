@@ -3,14 +3,55 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import importlib.util
 import json
+import math
 import os
 import runpy
 import shutil
 import sys
 import tempfile
+from itertools import zip_longest
 from pathlib import Path
+
+
+def analysis_export_smoke(directory: Path) -> int:
+    """Check delivered numeric text against every saved CSV row, including excluded data."""
+    header = ["Time (s)", "Resistance (Ohm)", "Voltage (V)", "Current (A)"]
+    count = 0
+    with (
+        (directory / "readings.csv").open(encoding="utf-8", newline="") as source,
+        (directory / "analysis.txt").open(encoding="utf-8", newline="") as exported,
+    ):
+        reader = csv.DictReader(source)
+        data = csv.reader(exported, delimiter="\t")
+        if next(data, None) != header:
+            raise RuntimeError("Analysis text must have exactly the four quantity/unit headers")
+        for count, (row, values) in enumerate(zip_longest(reader, data), start=1):
+            if row is None or values is None or len(values) != 4:
+                raise RuntimeError("Analysis text must have one four-column row per CSV reading")
+            resistance = row.get("native_r_ohm")
+            if resistance in (None, ""):
+                resistance = row.get("resistance_apparent_ohm")
+            expected = (
+                row.get("elapsed_s"),
+                resistance,
+                row.get("voltage_programmed_readback_V"),
+                row.get("current_raw_A"),
+            )
+            for original, cell in zip(expected, values, strict=True):
+                actual = float(cell)
+                if original in (None, ""):
+                    matches = math.isnan(actual)
+                else:
+                    value = float(original)
+                    matches = math.isfinite(value) and actual == value
+                if not matches:
+                    raise RuntimeError(f"Analysis text differs from CSV at reading {count}")
+    if count == 0:
+        raise RuntimeError("Analysis export smoke requires at least one saved reading")
+    return count
 
 
 def optional_installer_smoke(root: Path, installer=None):
@@ -89,6 +130,10 @@ def main(argv=None) -> int:
     )
     if status:
         return status
+    default_readings = list((root / "native-smoke-results").glob("*/readings.csv"))
+    if len(default_readings) != 1:
+        raise RuntimeError("Default simulation did not create exactly one run")
+    analysis_export_smoke(default_readings[0].parent)
     reference_results = root / "native-smoke-results/reference-1gohm"
     status = cli_main(
         [
@@ -111,6 +156,7 @@ def main(argv=None) -> int:
         or reference.get("simulation_truth", {}).get("resistance_ohm") != 1e9
     ):
         raise RuntimeError("Bundled 1 Gohm simulation used the wrong reference model")
+    analysis_export_smoke(metadata_files[0].parent)
     if not args.skip_optional_installer:
         optional_installer_smoke(root)
     from PySide6.QtCore import QTimer
@@ -135,6 +181,7 @@ def main(argv=None) -> int:
                 "scope": "native Windows synthetic CLI and GUI",
                 "hardware_verified": False,
                 "reference_1gohm_simulation_verified": True,
+                "analysis_text_export_verified": True,
             }
         )
     )

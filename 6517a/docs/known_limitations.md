@@ -1,4 +1,4 @@
-# v0.6.2 구현 범위와 알려진 제한
+# v0.7.0 구현 범위와 알려진 제한
 
 제공된 6517A 매뉴얼 원문으로 명령·trigger·ASCII parser를 개발했습니다. 사용자 제공 기록에서 native NI-VISA 경로의 실제 6517A IDN과 보호 OFF 조회 `0`은 확인됐습니다. 실제 전압 인가·current 수집·인터록 차단·방전은 별도 검증 대상입니다. Windows 소프트웨어 실행과 실제 장비 결과는 [검증 기록](validation.md)에 구분합니다.
 
@@ -26,6 +26,8 @@ START 권한은 정확한 설정 snapshot과 연결에 묶여 한 번 소비됩�
 | 준비 상태·단계 안내 | 누락 항목과 다음 작업 표시, 연결 OFF 상태에서 종료 후 설정 수정 |
 | 기본 화면·상세 탭 | 판독·그래프 중심 기본 화면; 고급 설정·진단·기록은 별도 탭 |
 | Simulation 진행 표시 | CMD 및 `simulate --progress`에서 단계·판독·결과 경로 표시 |
+| 분석용 TXT | 매 판독을 `analysis.txt` 네 열로 자동 저장; 첫 행 물리량·단위, 이후 SI 수치·결측 `nan` |
+| 이전 결과 변환 | `export-analysis`로 CSV를 장비 연결 없이 TXT로 변환; 기존 파일 덮어쓰기 없음 |
 | 명령형 transport 시뮬레이터 | 매뉴얼 형식·seed·clock·fault 주입; `simulation_resistance_ohm` 모델값과 실제 VISA 판독 분리 |
 | 정전압/list/staircase·cycles | Host-controlled step; 연속 ramp·자동 중간점·점진 ramp-down은 미구현 |
 | Native 저항 판독 | 시뮬레이션만; native R와 역산 전류를 실제 measured current로 표시하지 않음 |
@@ -43,6 +45,8 @@ START 권한은 정확한 설정 snapshot과 연결에 묶여 한 번 소비됩�
 | 단일 EXE·NI driver bundling | 미제작; NI 드라이버·native VISA runtime은 포함하지 않음 |
 
 ## 측정·중지·데이터의 한계
+
+`analysis.txt`는 요약 제외 행도 포함하는 수치 파일이며 품질 판정을 뜻하지 않습니다. 플래그·조건은 기존 CSV·JSON에서 확인합니다. 전압 열은 source 설정 readback이고 저항은 native 판독 또는 원시 V/I입니다. Native 모드의 누락된 원시 전류는 `nan`이며 역산 전류로 대체하지 않습니다.
 
 1 GΩ preset의 1 V → 1 nA는 명목 계산입니다. 교정값·허용차·전압 계수·누설·settling과 실제 판독을 비교해야 하며 시뮬레이션 결과로 대체하지 않습니다. 가상 모델에는 absorption·offset·noise가 포함될 수 있습니다.
 

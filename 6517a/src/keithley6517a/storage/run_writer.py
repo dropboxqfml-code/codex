@@ -21,6 +21,33 @@ interlock_query zero_check_state zero_correct_state status_code reading_number
 temperature_C relative_humidity_percent valid_for_summary quality_flags raw_response
 status_query_start_monotonic_s status_query_end_monotonic_s""".split()
 
+ANALYSIS_HEADER = "Time (s)\tResistance (Ohm)\tVoltage (V)\tCurrent (A)\n"
+
+
+def analysis_line(row):
+    """One SI-unit data row; missing values remain numeric NaN, never inferred values."""
+    resistance = row.get("native_r_ohm")
+    if resistance is None or (isinstance(resistance, str) and not resistance.strip()):
+        resistance = row.get("resistance_apparent_ohm")
+    values = (
+        row.get("elapsed_s"),
+        resistance,
+        row.get("voltage_programmed_readback_V"),
+        row.get("current_raw_A"),
+    )
+    fields = []
+    for value in values:
+        if value is None or (isinstance(value, str) and not value.strip()):
+            fields.append("nan")
+            continue
+        if isinstance(value, bool):
+            raise ValueError("Analysis data must be finite numeric SI units or null")
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("Non-finite sample must be classified and stored as null")
+        fields.append(repr(number))
+    return "\t".join(fields) + "\n"
+
 
 def strict_json(value):
     """Never encode nonstandard NaN/Infinity; callers must classify invalid numeric data."""
@@ -93,6 +120,10 @@ class RunWriter:
             self.csv = csv.DictWriter(self.reading_stream, fieldnames=READING_FIELDS)
             self.csv.writeheader()
             self.reading_stream.flush()
+            self.analysis_stream = self._open("analysis.txt")
+            self.analysis_stream.write(ANALYSIS_HEADER)
+            self.analysis_stream.flush()
+            os.fsync(self.analysis_stream.fileno())
             self.event_stream = self._open("events.jsonl")
             self.io_stream = self._open("raw_io.jsonl")
             self._open("summary.csv").close()
@@ -125,9 +156,13 @@ class RunWriter:
         for value in output.values():
             if isinstance(value, float) and not math.isfinite(value):
                 raise ValueError("Non-finite sample must be classified and stored as null")
+        analysis = analysis_line(output)
         self.csv.writerow(output)
         self.reading_stream.flush()
         os.fsync(self.reading_stream.fileno())
+        self.analysis_stream.write(analysis)
+        self.analysis_stream.flush()
+        os.fsync(self.analysis_stream.fileno())
 
     def summaries(self, rows):
         if not rows:

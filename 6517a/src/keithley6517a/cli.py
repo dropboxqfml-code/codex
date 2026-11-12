@@ -123,13 +123,22 @@ def main(argv=None):
     validate.add_argument("config")
     recovery = commands.add_parser("recover", help="Mark incomplete runs interrupted; never resume")
     recovery.add_argument("directory")
+    export = commands.add_parser("export-analysis", help="Convert an existing readings.csv to text")
+    export.add_argument("readings", help="Existing readings.csv; no instrument is opened")
+    export.add_argument(
+        "--output", help="New text file; default: analysis.txt next to readings.csv"
+    )
     args = parser.parse_args(argv)
     runner = None
     shutdown_done = False
     previous = None
     progress = None
     try:
-        if args.command == "resources":
+        if args.command == "export-analysis":
+            from .storage.analysis_export import export_analysis
+
+            print(json.dumps(export_analysis(args.readings, args.output), ensure_ascii=False))
+        elif args.command == "resources":
             from .transport.visa import VisaTransport
 
             print(json.dumps(VisaTransport.list_resources(args.backend)))

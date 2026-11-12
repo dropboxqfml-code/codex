@@ -149,6 +149,8 @@ def verify_relocated_bundle(archive: Path) -> dict:
             or summary.get("hardware_verified") is not False
             or summary.get("reference_1gohm_simulation_verified") is not True
             or summary.get("analysis_text_export_verified") is not True
+            or summary.get("saved_result_review_verified") is not True
+            or summary.get("user_stop_classification_verified") is not True
         ):
             raise RuntimeError("Relocated synthetic CLI/GUI did not confirm success")
 
@@ -204,6 +206,8 @@ def verify_relocated_bundle(archive: Path) -> dict:
             "relocated_synthetic_cli_gui_passed": True,
             "reference_1gohm_simulation_verified": True,
             "analysis_text_export_verified": True,
+            "saved_result_review_verified": True,
+            "user_stop_classification_verified": True,
             "regenerated_bytecode_files": generated,
             "integrity_after_cache_generation_passed": True,
             "source_and_dll_tampering_rejected": True,

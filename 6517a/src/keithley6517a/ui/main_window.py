@@ -91,6 +91,8 @@ class InstrumentWorker(QObject):
         super().__init__()
         self.runner_factory = runner_factory
         self.runner: Any = None
+        self._active_action: str | None = None
+        self._run_result: dict = {}
 
     def snapshot(self) -> None:
         if self.runner is None:
@@ -100,6 +102,8 @@ class InstrumentWorker(QObject):
                     "output_state": "UNKNOWN",
                     "can_arm": False,
                     "can_start": False,
+                    "worker_busy": self._active_action is not None,
+                    "run_result": dict(self._run_result),
                 }
             )
             return
@@ -122,6 +126,8 @@ class InstrumentWorker(QObject):
                 "can_start": bool(getattr(self.runner, "can_start", False)),
                 "configuration_issues": configuration_issues(self.runner.config),
                 "run_started": bool(getattr(self.runner, "_started", False)),
+                "worker_busy": self._active_action is not None,
+                "run_result": dict(self._run_result),
                 "interlock_query": safety.get("interlock", "UNKNOWN"),
                 "setup_policy": setup_policy,
                 "operator_setup_acknowledged": bool(
@@ -151,6 +157,7 @@ class InstrumentWorker(QObject):
     @Slot(object)
     def dispatch(self, command: tuple) -> None:
         action, config = command
+        self._active_action = action
         try:
             if action in {"discover", "diagnose"}:
                 if self.runner is not None:
@@ -168,6 +175,7 @@ class InstrumentWorker(QObject):
             elif action == "connect":
                 if self.runner is not None:
                     raise RuntimeError("Disconnect before replacing the configuration")
+                self._run_result = {}
                 self.runner = self.runner_factory(
                     config, on_sample=self.sample.emit, on_event=self.handle_event
                 )
@@ -175,7 +183,9 @@ class InstrumentWorker(QObject):
             elif action == "arm":
                 if self.runner is None:
                     raise RuntimeError("Connect first")
-                self.runner.arm()
+                result = self.runner.arm()
+                if isinstance(result, dict):
+                    self._run_result = dict(result)
             elif action in {"commission_open", "commission_closed"}:
                 if self.runner is None:
                     raise RuntimeError("Connect first")
@@ -183,7 +193,13 @@ class InstrumentWorker(QObject):
             elif action == "start":
                 if self.runner is None:
                     raise RuntimeError("Connect and ARM first")
-                self.runner.start()
+                self._run_result = dict(self.runner.start() or {})
+            elif action == "cancel_pending":
+                cancel = getattr(self.runner, "cancel_pending", None)
+                if callable(cancel):
+                    result = cancel(config)
+                    if result:
+                        self._run_result = dict(result)
             elif action in {"disconnect", "shutdown"}:
                 if self.runner is not None:
                     self.runner.shutdown()
@@ -199,6 +215,7 @@ class InstrumentWorker(QObject):
                 self.status.emit({"state": "HV_STATE_UNKNOWN", "output_state": "UNKNOWN"})
                 self.closed.emit()
         finally:
+            self._active_action = None
             if action != "shutdown":
                 self.snapshot()
 
@@ -276,6 +293,7 @@ class MainWindow(QMainWindow):
         self._last_diagnostic_directory = None
         self._loading_controls = False
         self._last_worker_status: dict = {}
+        self._last_run_result: dict = {}
         self._edit_after_disconnect = False
         self._last_error = ""
         self.rows: list[dict] = []
@@ -504,6 +522,10 @@ class MainWindow(QMainWindow):
         right_layout.addLayout(values)
         self.reading_state_label = QLabel("판독 대기 · START 후 값이 표시됩니다")
         right_layout.addWidget(self.reading_state_label)
+        self.result_status_label = QLabel()
+        self.result_status_label.setWordWrap(True)
+        self.result_status_label.hide()
+        right_layout.addWidget(self.result_status_label)
         graph_tabs = QTabWidget()
         self.traces = [
             TracePanel("I(t)", "elapsed_s", "current_raw_A", "time (s)", "I (A)"),
@@ -518,7 +540,11 @@ class MainWindow(QMainWindow):
         self.path_label.setWordWrap(True)
         right_layout.addWidget(self.path_label)
         self.open_run_button = QPushButton("결과 폴더 열기")
-        right_layout.addWidget(self.open_run_button)
+        self.review_results_button = QPushButton("저장 결과 분석")
+        results_actions = QHBoxLayout()
+        results_actions.addWidget(self.review_results_button)
+        results_actions.addWidget(self.open_run_button)
+        right_layout.addLayout(results_actions)
         self.main_tabs.addTab(measurement, "측정")
 
         tools = QWidget()
@@ -637,6 +663,7 @@ class MainWindow(QMainWindow):
         self.off_check_button.clicked.connect(lambda: self._diagnose(True))
         self.setup_button.clicked.connect(self._setup_test)
         self.open_run_button.clicked.connect(lambda: self._open_folder(self._last_run_directory))
+        self.review_results_button.clicked.connect(self._review_results)
         self.open_diagnostic_button.clicked.connect(
             lambda: self._open_folder(self._last_diagnostic_directory)
         )
@@ -774,7 +801,12 @@ class MainWindow(QMainWindow):
             reason = humanize_issue(self._last_error) if self._last_error else state
             stage, action = 2, "장비 확인 필요: " + reason
         elif started and state == "OUTPUT_OFF_CONFIRMED":
-            stage, action = 0, "측정 완료 · 새 시험은 연결 종료 후 준비하세요."
+            outcome = self._last_run_result.get("status")
+            title = "사용자 중지" if outcome == "stopped" else "측정 완료"
+            stage, action = (
+                0,
+                title + " · 저장 결과를 분석하거나 연결 종료 후 새 시험을 준비하세요.",
+            )
         elif issues:
             stage, action = 0, "ARM 비활성: 설정이 미완료입니다. 아래 항목을 수정하세요."
         elif self._can_start:
@@ -811,6 +843,8 @@ class MainWindow(QMainWindow):
         commission_needed = (
             self._connected
             and not issues
+            and self.transport.currentData() == "visa"
+            and not started
             and self.setup_policy.currentData() == "verified_fixture"
             and not self._commissioning.get("ready")
         )
@@ -839,6 +873,8 @@ class MainWindow(QMainWindow):
         if (
             self._connected
             and not self._preparation_issues
+            and self.transport.currentData() == "visa"
+            and not self._last_worker_status.get("run_started")
             and self.setup_policy.currentData() == "verified_fixture"
             and not self._commissioning.get("ready")
         ):
@@ -1064,6 +1100,10 @@ class MainWindow(QMainWindow):
         try:
             config = self.config_from_controls()
             self._last_error = ""
+            self._last_run_result = {}
+            self._last_run_directory = None
+            self.path_label.setText("저장 위치: ARM 후 생성됩니다")
+            self.result_status_label.hide()
             self._busy = True
             self.settings.setEnabled(False)
             self._update_buttons()
@@ -1093,6 +1133,22 @@ class MainWindow(QMainWindow):
     def _stop(self, reason: str) -> None:
         self.worker.request_stop(reason)
         self.log.appendPlainText(f"{reason} 요청 · I/O timeout에 따라 지연될 수 있음")
+        self._busy = True
+        self._update_buttons()
+        self.command.emit(("cancel_pending", reason))
+
+    def _review_results(self) -> None:
+        if (
+            self._closing
+            or self._busy
+            or (self._connected and self.output_label.text() != "OUTPUT OFF")
+        ):
+            return
+        from .result_dialog import SavedResultDialog
+
+        path = self._last_run_result.get("run_directory") or None
+        dialog = SavedResultDialog(path=path, parent=self)
+        dialog.exec()
 
     @Slot(dict)
     def _on_status(self, status: dict) -> None:
@@ -1104,7 +1160,7 @@ class MainWindow(QMainWindow):
             self._can_arm = self._can_start = False
         self._commissioning = status.get("commissioning", {}) or {}
         self._connected = self._state != "DISCONNECTED"
-        self._busy = self._state in {
+        self._busy = bool(status.get("worker_busy")) or self._state in {
             "CONNECTED_UNVERIFIED",
             "CONFIGURING",
             "RAMPING",
@@ -1129,11 +1185,31 @@ class MainWindow(QMainWindow):
         if status.get("run_directory"):
             self.path_label.setText("Run 폴더: " + status["run_directory"])
             self._last_run_directory = status["run_directory"]
-        self.settings.setEnabled(not self._connected and not self._closing)
+        result = status.get("run_result")
+        if result:
+            self._last_run_result = dict(result)
+            if result.get("status") == "aborted":
+                self._last_error = str(result.get("reason") or self._last_error)
+            title = {
+                "completed": "정상 완료",
+                "stopped": "사용자 중지",
+                "aborted": "오류 종료",
+            }.get(result.get("status"), "종료 상태 확인")
+            count = result.get("reading_count")
+            saved = f" · 저장 {count}행" if count is not None else ""
+            elapsed = result.get("elapsed_s")
+            duration = f" · {elapsed:.3g} s" if isinstance(elapsed, (int, float)) else ""
+            self.result_status_label.setText(title + saved + duration)
+            self.result_status_label.setToolTip(str(result.get("reason", "")))
+            self.result_status_label.setStyleSheet(
+                "color:#a32e28" if result.get("status") == "aborted" else "color:#176b88"
+            )
+            self.result_status_label.show()
+        self.settings.setEnabled(not self._connected and not self._busy and not self._closing)
         self.connection_guide.update_status(status)
         self._update_buttons()
         self._mark_stale()
-        if self._edit_after_disconnect and self._state == "DISCONNECTED":
+        if self._edit_after_disconnect and self._state == "DISCONNECTED" and not self._busy:
             self._edit_after_disconnect = False
             QTimer.singleShot(0, self._setup_test)
 
@@ -1211,6 +1287,12 @@ class MainWindow(QMainWindow):
             button.setEnabled(preparation)
         self.off_check_button.setEnabled(preparation and self.transport.currentData() == "visa")
         self.open_run_button.setEnabled(bool(self._last_run_directory) and not closing)
+        review_ready = (
+            not closing
+            and not self._busy
+            and (not self._connected or self.output_label.text() == "OUTPUT OFF")
+        )
+        self.review_results_button.setEnabled(review_ready)
         self.open_diagnostic_button.setEnabled(
             bool(self._last_diagnostic_directory) and not closing
         )

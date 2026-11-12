@@ -12,8 +12,10 @@ import runpy
 import shutil
 import sys
 import tempfile
+from dataclasses import replace
 from itertools import zip_longest
 from pathlib import Path
+from statistics import mean, stdev
 
 
 def analysis_export_smoke(directory: Path) -> int:
@@ -52,6 +54,174 @@ def analysis_export_smoke(directory: Path) -> int:
     if count == 0:
         raise RuntimeError("Analysis export smoke requires at least one saved reading")
     return count
+
+
+def user_stop_smoke(output_directory: Path) -> Path:
+    """A partial synthetic run is stopped, saved, and OFF without becoming a device fault."""
+    from keithley6517a.clock import FakeClock
+    from keithley6517a.config import RunConfig
+    from keithley6517a.measurement.runner import MeasurementRunner
+
+    config = replace(
+        RunConfig(),
+        output_directory=str(output_directory),
+        voltages=(1,),
+        simulation_resistance_ohm=1e9,
+        dwell_s=300,
+        summary_window_s=30,
+        sample_interval_s=1,
+        current_trip_A=1e-8,
+        residual_warning_ack=True,
+    )
+    samples = []
+
+    def stop_after_two(row):
+        samples.append(row)
+        if len(samples) == 2:
+            runner.request_stop("user stop smoke")
+
+    runner = MeasurementRunner(config, clock=FakeClock(), on_sample=stop_after_two)
+    try:
+        runner.connect()
+        runner.arm()
+        result = runner.start()
+        directory = runner.run_directory
+        status = json.loads((directory / "run_status.json").read_text(encoding="utf-8"))
+        if (
+            result.get("status") != "stopped"
+            or result.get("output_state") != "OFF"
+            or result.get("reading_count") != 2
+            or runner.state != "OUTPUT_OFF_CONFIRMED"
+            or runner.can_arm
+            or runner.can_start
+            or status.get("status") != "stopped"
+            or status.get("final_output_state") != "OFF"
+            or any(row.get("phase") == "ERROR" for row in samples)
+        ):
+            raise RuntimeError("Partial user STOP was not saved as stopped with confirmed OFF")
+        if analysis_export_smoke(directory) != 2:
+            raise RuntimeError("Partial STOP did not preserve every CSV/TXT reading")
+        if (directory / "summary.csv").read_bytes():
+            raise RuntimeError("Partial STOP fabricated a completed step summary")
+    finally:
+        runner.shutdown()
+    after_shutdown = json.loads((directory / "run_status.json").read_text(encoding="utf-8"))
+    if after_shutdown.get("status") != "stopped":
+        raise RuntimeError("Disconnect changed a confirmed user STOP into another outcome")
+    return directory
+
+
+def saved_result_review_smoke(directory: Path, output: Path, dialog_factory=None) -> int:
+    """Exercise the delivered offline dialog and compare its interval with source CSV values."""
+    from PySide6.QtWidgets import QApplication
+
+    from keithley6517a.measurement.runner import MeasurementRunner
+    from keithley6517a.transport.visa import VisaTransport
+
+    originals = {path: path.read_bytes() for path in directory.iterdir() if path.is_file()}
+    with (directory / "readings.csv").open(encoding="utf-8", newline="") as stream:
+        original_rows = list(csv.DictReader(stream))
+    times = [float(row["elapsed_s"]) for row in original_rows]
+    if len(times) < 3 or max(times) <= min(times):
+        raise RuntimeError("Offline review smoke requires a nonempty time interval")
+    original_runner_init, original_visa_init = MeasurementRunner.__init__, VisaTransport.__init__
+
+    def no_instrument(*args, **kwargs):
+        raise RuntimeError("Offline result review attempted to create an instrument session")
+
+    dialog = None
+    MeasurementRunner.__init__ = VisaTransport.__init__ = no_instrument
+    try:
+        if dialog_factory is None:
+            from keithley6517a.ui.result_dialog import SavedResultDialog
+
+            dialog_factory = SavedResultDialog
+        dialog = dialog_factory()
+        if not dialog.load_path(directory):
+            raise RuntimeError("Offline result dialog could not load saved readings")
+        low, high = min(times), max(times)
+        dialog.start_time.setValue(low + (high - low) / 4)
+        dialog.end_time.setValue(low + 3 * (high - low) / 4)
+        if not dialog.apply_range():
+            raise RuntimeError("Offline result dialog could not select a time interval")
+        dialog.show()
+        QApplication.processEvents()
+        lower, upper = dialog.start_time.value(), dialog.end_time.value()
+        expected = [row for row in original_rows if lower <= float(row["elapsed_s"]) <= upper]
+        if not expected or len(expected) >= len(original_rows):
+            raise RuntimeError("Offline result review did not select a proper subset")
+        if len(dialog.selected_rows) != len(expected):
+            raise RuntimeError("Offline result review selected the wrong rows")
+        for column, count_key, mean_key, std_key in (
+            ("current_raw_A", "current_count", "current_mean_A", "current_std_A"),
+            (
+                "resistance_apparent_ohm",
+                "resistance_count",
+                "resistance_mean_ohm",
+                "resistance_std_ohm",
+            ),
+        ):
+            values = []
+            for row in expected:
+                value = row.get(column)
+                if column == "resistance_apparent_ohm" and row.get("native_r_ohm") not in (
+                    None,
+                    "",
+                ):
+                    value = row["native_r_ohm"]
+                if value not in (None, "") and math.isfinite(float(value)):
+                    values.append(float(value))
+            if dialog.statistics.get(count_key) != len(values):
+                raise RuntimeError("Offline result review statistic has the wrong sample count")
+            for key, target in (
+                (mean_key, mean(values)),
+                (std_key, stdev(values) if len(values) > 1 else None),
+            ):
+                actual = dialog.statistics.get(key)
+                if (actual is None) != (target is None) or (
+                    target is not None
+                    and not math.isclose(actual, target, rel_tol=1e-12, abs_tol=1e-30)
+                ):
+                    raise RuntimeError(f"Offline result review statistic differs from CSV: {key}")
+        if not dialog.export_to(output):
+            raise RuntimeError("Offline result review could not export its selected interval")
+        with output.open(encoding="utf-8", newline="") as stream:
+            data = list(csv.reader(stream, delimiter="\t"))
+        if data[0] != ["Time (s)", "Resistance (Ohm)", "Voltage (V)", "Current (A)"]:
+            raise RuntimeError("Offline selected export changed its four-column header")
+        if len(data) != len(expected) + 1:
+            raise RuntimeError("Offline selected export has the wrong row count")
+        for row, fields in zip(expected, data[1:], strict=True):
+            resistance = row.get("native_r_ohm") or row.get("resistance_apparent_ohm")
+            desired = (
+                row["elapsed_s"],
+                resistance,
+                row["voltage_programmed_readback_V"],
+                row["current_raw_A"],
+            )
+            if len(fields) != 4:
+                raise RuntimeError("Offline selected export changed its four-column data")
+            for value, cell in zip(desired, fields, strict=True):
+                actual = float(cell)
+                if value in (None, ""):
+                    matches = math.isnan(actual)
+                else:
+                    matches = actual == float(value)
+                if not matches:
+                    raise RuntimeError("Offline selected export differs from source CSV")
+        payload = output.read_bytes()
+        if dialog.export_to(output) is not None or output.read_bytes() != payload:
+            raise RuntimeError("Offline selected export replaced an existing file")
+        if any(path.read_bytes() != original for path, original in originals.items()):
+            raise RuntimeError("Offline review changed original run files")
+        return len(expected)
+    finally:
+        MeasurementRunner.__init__, VisaTransport.__init__ = (
+            original_runner_init,
+            original_visa_init,
+        )
+        if dialog is not None:
+            dialog.close()
 
 
 def optional_installer_smoke(root: Path, installer=None):
@@ -157,6 +327,7 @@ def main(argv=None) -> int:
     ):
         raise RuntimeError("Bundled 1 Gohm simulation used the wrong reference model")
     analysis_export_smoke(metadata_files[0].parent)
+    user_stop_smoke(root / "native-smoke-results/user-stop")
     if not args.skip_optional_installer:
         optional_installer_smoke(root)
     from PySide6.QtCore import QTimer
@@ -165,6 +336,9 @@ def main(argv=None) -> int:
     from keithley6517a.ui.main_window import MainWindow
 
     app = QApplication([])
+    saved_result_review_smoke(
+        metadata_files[0].parent, root / "native-smoke-results/selected-analysis.txt"
+    )
     window = MainWindow()
     if not window.config_from_controls().simulation or window.worker.runner is not None:
         raise RuntimeError("GUI startup must be disconnected and in SIMULATION")
@@ -182,6 +356,8 @@ def main(argv=None) -> int:
                 "hardware_verified": False,
                 "reference_1gohm_simulation_verified": True,
                 "analysis_text_export_verified": True,
+                "saved_result_review_verified": True,
+                "user_stop_classification_verified": True,
             }
         )
     )

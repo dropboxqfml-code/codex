@@ -72,8 +72,9 @@ class SimulationProgress:
 
     def finish(self, result, runner):
         passed = result["status"] == "completed" and runner.output_state == "OFF"
+        stopped = result["status"] == "stopped" and runner.output_state == "OFF"
         self.write(
-            "PASS" if passed else "FAIL",
+            "PASS" if passed else ("STOP" if stopped else "FAIL"),
             f"Simulation {result['status']} | "
             f"{len(getattr(runner, 'rows', []))} readings | "
             f"{len(getattr(runner, 'summaries', []))} summaries | OUTPUT {runner.output_state}",
@@ -238,29 +239,30 @@ def main(argv=None):
                 runner.commission_interlock(1)
             if progress:
                 progress.write("ARM", "Preparing simulation settings and result files")
-            runner.arm()
-            if progress:
-                progress.write("READY", f"Result files: {runner.run_directory}")
-            if real:
-                print(
-                    json.dumps(
-                        {
-                            "state": runner.state,
-                            "voltages_V": config.voltages,
-                            "ceiling_V": config.effective_ceiling,
-                            "software_current_trip_A": config.current_trip_A,
-                            "setup_policy": config.setup_policy,
-                            "operator_setup_acknowledged": config.operator_setup_acknowledged,
-                            "run_directory": str(runner.run_directory),
-                        },
-                        ensure_ascii=False,
+            result = runner.arm()
+            if result is None:
+                if progress:
+                    progress.write("READY", f"Result files: {runner.run_directory}")
+                if real:
+                    print(
+                        json.dumps(
+                            {
+                                "state": runner.state,
+                                "voltages_V": config.voltages,
+                                "ceiling_V": config.effective_ceiling,
+                                "software_current_trip_A": config.current_trip_A,
+                                "setup_policy": config.setup_policy,
+                                "operator_setup_acknowledged": config.operator_setup_acknowledged,
+                                "run_directory": str(runner.run_directory),
+                            },
+                            ensure_ascii=False,
+                        )
                     )
-                )
-                if input("인가 계획을 검토한 후 START 입력: ").strip() != "START":
-                    raise ValueError("Run cancelled while armed; output not enabled")
-            if progress:
-                progress.write("START", "Running simulated acquisition")
-            result = runner.start()
+                    if input("인가 계획을 검토한 후 START 입력: ").strip() != "START":
+                        raise ValueError("Run cancelled while armed; output not enabled")
+                if progress:
+                    progress.write("START", "Running simulated acquisition")
+                result = runner.start()
             runner.shutdown()
             shutdown_done = True
             if runner.output_state != "OFF":
@@ -272,7 +274,7 @@ def main(argv=None):
             if progress:
                 progress.finish(result, runner)
             print(json.dumps(result, ensure_ascii=False, allow_nan=False))
-            return 0 if result["status"] == "completed" else 2
+            return {"completed": 0, "stopped": 130}.get(result["status"], 2)
     except KeyboardInterrupt:
         if progress:
             progress.write("FAIL", "Simulation interrupted")

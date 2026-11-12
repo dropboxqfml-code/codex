@@ -1,10 +1,10 @@
 # 6517A · NI GPIB-USB 사용자 시험 순서
 
-v0.7.1은 연결·정격을 사용자가 관리하는 저전압 시험과 기존 검증 fixture 방식을 제공합니다. 사용자 제공 기록에서 파일 무결성·실제 IDN·보호 OFF 조회 `0`은 확인됐습니다. 전압 인가·current 수집·인터록 차단·방전은 그 진단과 별도 시험입니다.
+v0.8.0은 연결·정격을 사용자가 관리하는 저전압 시험과 기존 검증 fixture 방식을 제공합니다. 사용자 제공 기록에서 파일 무결성·실제 IDN·보호 OFF 조회 `0`은 확인됐습니다. 전압 인가·current 수집·인터록 차단·방전은 그 진단과 별도 시험입니다.
 
 ## 1. 패키지 실행
 
-1. GitHub Release에서 `6517A-USB-GPIB-Trial-0.7.1-Windows-x64.zip`과 checksum을 받습니다. 새 쓰기 가능한 폴더에 전체를 풉니다.
+1. GitHub Release에서 `6517A-USB-GPIB-Trial-0.8.0-Windows-x64.zip`과 checksum을 받습니다. 새 쓰기 가능한 폴더에 전체를 풉니다.
 2. `Verify-Bundle.cmd`로 START → CHECK → PASS를 확인합니다. 실패 시 `diagnostics/bundle-verification-*.json`의 파일명·사유를 확인합니다. 보고서를 쓸 수 없으면 WARN과 `report_saved=false`가 표시됩니다.
 3. `Test-Simulation.cmd`로 연결 → ARM → 전압 단계 → 판독 → 요약 → OFF의 중간 진행과 최종 PASS를 확인하고 `Start-GUI.cmd`를 엽니다. GUI의 초기 SIMULATION·0 V·미연결 상태가 정상입니다.
 
@@ -58,6 +58,16 @@ ARM이 비활성인 경우 왼쪽 준비 상태에 누락된 설정을 표시합
 모든 운용 방식에서 실제 장비 interlock 조회는 `1`이어야 합니다. `0`·조회 실패·current limit·readback 또는 장비 오류에는 출력 ON을 차단하거나 수집을 중지하고 OFF를 시도합니다. 사용자 관리 모드에서도 이 검사를 생략하지 않습니다. 조회 `1`은 물리적 설치 인증으로 표시하지 않습니다.
 
 설정 불러오기·연결·ARM은 자동 출력 ON이 아닙니다. START 권한은 한 번 소비되고 설정·연결 변경 뒤 재사용하지 않습니다. STOP은 software stop이며 진행 중인 I/O와 여러 순차 query의 timeout이 지연에 더해질 수 있습니다. 최종 OFF는 방전 완료의 증거가 아니며 residual 상태는 UNVERIFIED입니다.
+
+## 저장 결과 다시 열기
+
+측정 작업이 끝나 출력 OFF가 확인되면 **저장 결과 분석**을 누릅니다. 과거 결과는 해당 폴더의 `readings.csv`를 엽니다. 저장값을 읽는 작업이며 장비 연결·ARM·START를 실행하지 않습니다.
+
+시작·끝 시간(s)을 지정해 구간을 적용하면 I(t)·R(t), 전류·저항의 평균·표본 표준편차·유효 개수를 확인할 수 있습니다. 양 끝 시각은 포함합니다. 요약 구간 전에 STOP한 자료도 분석하며, 오류 판독은 통계에서 제외합니다. 개별 저항값의 평균은 실행 요약의 V/mean(I)와 별개입니다.
+
+선택 구간은 네 열 TXT로 따로 저장합니다. 선택 행의 순서·SI 수치·누락값을 보존하며 원본 CSV나 전체 판독용 `analysis.txt`를 변경하지 않습니다. 기존 파일명은 덮어쓰지 않으므로 새 이름을 선택합니다.
+
+v0.8.0 이후 사용자 STOP은 OFF와 저장이 확인되면 `stopped`로 기록합니다. 정상 완료는 `completed`, 장비/통신·저장 오류는 `aborted`로 구분하며 OFF 미확인은 계속 UNKNOWN으로 남습니다. 이전 버전의 상태 파일은 다시 쓰지 않습니다.
 
 ## 5. 기존 검증 fixture 방식
 

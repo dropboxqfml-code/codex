@@ -45,6 +45,7 @@ class MeasurementRunner:
         self.identity = {}
         self.run_directory = None
         self.rows = []
+        self._saved_reading_count = 0
         self.summaries = []
         self.events = deque(maxlen=10000)
         self._transcript = deque(maxlen=10000)
@@ -199,13 +200,13 @@ class MeasurementRunner:
         )
 
     def _checkpoint(self):
-        if self._stop.is_set():
-            raise StopRequested(self._stop_reason)
         if self._storage_error:
             raise MeasurementError(f"Storage/callback failed: {self._storage_error}")
         if self._start_time is not None:
             if self.clock.monotonic() - self._start_time >= self.config.max_total_duration_s:
                 raise MeasurementError("Maximum total run duration exceeded")
+        if self._stop.is_set():
+            raise StopRequested(self._stop_reason)
 
     def _wait_until(self, deadline):
         while self.clock.monotonic() < deadline:
@@ -233,6 +234,7 @@ class MeasurementRunner:
         self.writer = None
         self.run_directory = None
         self.rows.clear()
+        self._saved_reading_count = 0
         self.summaries.clear()
         self.events.clear()
         self._transcript.clear()
@@ -275,9 +277,9 @@ class MeasurementRunner:
         if self.state != "OUTPUT_OFF_CONFIRMED" or self._started:
             raise MeasurementError("ARM requires a fresh connection with confirmed output OFF")
         self.config.validate(for_arm=True)
-        self._checkpoint()
-        self._state("CONFIGURING")
         try:
+            self._checkpoint()
+            self._state("CONFIGURING")
             settings_readback = self.instrument.configure(self.config)
             status = self.instrument.safety_status()
             self._validate_status(status, expected_output="OFF")
@@ -344,6 +346,10 @@ class MeasurementRunner:
                 self.writer.event(item)
             self._checkpoint()
             self._state("ARMED")
+        except StopRequested as exc:
+            self._started = True  # cancel this preparation; reconnect before another ARM
+            self._event("stop_requested", reason=str(exc))
+            return self._finish_run("stopped", str(exc))
         except Exception as exc:
             self._event("arm_failed", reason=str(exc))
             self._safe_off()
@@ -355,6 +361,16 @@ class MeasurementRunner:
         """Only cross-thread operation; never opens a second VISA session or performs I/O."""
         self._stop_reason = str(reason)
         self._stop.set()
+
+    def cancel_pending(self, reason="user stop"):
+        """Owner-thread cancellation for an idle preparation; never calls START or ON."""
+        self._check_owner()
+        if self._started or self.state not in {"ARMED", "OUTPUT_OFF_CONFIRMED"}:
+            return None
+        self.request_stop(reason)
+        self._started = True
+        self._event("stop_requested", reason=self._stop_reason)
+        return self._finish_run("stopped", self._stop_reason)
 
     def _validate_status(self, status, expected_output=None):
         self.output_state = status.get("output_state", "UNKNOWN")
@@ -402,39 +418,50 @@ class MeasurementRunner:
                     self._checkpoint()
                     self._validate_status(self.instrument.safety_status(), expected_output="ON")
                     self._run_step(cycle, index, voltage)
+        except StopRequested as exc:
+            result, reason = "stopped", str(exc)
+            self._event("stop_requested", reason=reason)
         except Exception as exc:
             result, reason = "aborted", str(exc)
             self._event("abort", reason=reason, exception=type(exc).__name__)
-            if not isinstance(exc, StopRequested):
-                self._record_error_sample(reason)
+            self._record_error_sample(reason)
         finally:
-            self._state("STOPPING")
-            self._safe_off()
-            if self.output_state != "OFF":
-                result = "aborted"
-                reason += "; output OFF unconfirmed: HV_STATE_UNKNOWN"
-                self._state("HV_STATE_UNKNOWN")
-            elif result == "aborted":
+            outcome = self._finish_run(result, reason)
+        return outcome
+
+    def _finish_run(self, result, reason):
+        self._state("STOPPING")
+        stop_errors = self._safe_off()
+        if self.output_state != "OFF":
+            result = "aborted"
+            reason += "; output OFF unconfirmed: HV_STATE_UNKNOWN"
+            self._state("HV_STATE_UNKNOWN")
+        elif stop_errors:
+            result = "aborted"
+            reason += "; output stop reported errors: " + "; ".join(map(str, stop_errors))
+            self._state("FAULT")
+        elif result == "aborted":
+            self._state("FAULT")
+        else:
+            self._state("OUTPUT_OFF_CONFIRMED")
+        if self._storage_error:
+            result = "aborted"
+            reason += f"; persistence failed: {self._storage_error}"
+            if self.output_state == "OFF":
                 self._state("FAULT")
-            else:
-                self._state("OUTPUT_OFF_CONFIRMED")
-            if self._storage_error:
-                result = "aborted"
-                reason += f"; persistence failed: {self._storage_error}"
-                if self.output_state == "OFF":
-                    self._state("FAULT")
-            self._finalize(result, reason)
-            if self._storage_error:
-                result = "aborted"
-                reason = f"{reason}; final persistence failed: {self._storage_error}"
-                if self.output_state == "OFF":
-                    self._state("FAULT")
+        saved = self._finalize(result, reason)
+        if self._storage_error:
+            result = "aborted"
+            reason = f"{reason}; final persistence failed: {self._storage_error}"
+            if self.output_state == "OFF":
+                self._state("FAULT")
         return dict(
             status=result,
             reason=reason,
-            run_directory=str(self.run_directory),
+            run_directory=str(self.run_directory) if self.run_directory else None,
             output_state=self.output_state,
             residual_voltage_state="UNVERIFIED",
+            **saved,
         )
 
     def _run_step(self, cycle, index, voltage):
@@ -580,9 +607,9 @@ class MeasurementRunner:
             self.rows.append(row)
             step_rows.append(row)
             self.writer.sample(row)
+            self._saved_reading_count += 1
             if self.on_sample:
                 self.on_sample(dict(row))
-            self._checkpoint()
             self._validate_status(after, expected_output="ON")
             if software_trip:
                 raise MeasurementError("Software current trip (not programmable compliance)")
@@ -595,6 +622,7 @@ class MeasurementRunner:
                 raise MeasurementError(
                     "Invalid instrument state/reading: " + str(row["quality_flags"])
                 )
+            self._checkpoint()
             next_sample = max(next_sample + self.config.sample_interval_s, read_end)
         summary = summarize(self.config, step_rows)
         summary.update(step_index=index, cycle_index=cycle, voltage_requested_V=voltage)
@@ -617,10 +645,19 @@ class MeasurementRunner:
         try:
             if self.writer:
                 self.writer.sample(row)
+                self._saved_reading_count += 1
         except Exception as exc:
             self._storage_error = exc
 
     def _finalize(self, result, reason):
+        saved = dict(
+            reading_count=self._saved_reading_count,
+            elapsed_s=(
+                None
+                if self._start_time is None
+                else max(0.0, self.clock.monotonic() - self._start_time)
+            ),
+        )
         if self.writer:
             try:
                 self.writer.status(
@@ -629,12 +666,14 @@ class MeasurementRunner:
                     self.output_state,
                     software_state=self.state,
                     wall_time_iso8601=self.clock.wall_time(),
+                    **saved,
                 )
             except Exception as exc:
                 self._storage_error = exc
                 self.events.append(dict(event="status_persistence_failed", reason=str(exc)))
             finally:
                 self.writer.close()
+        return saved
 
     def shutdown(self):
         self._check_owner()

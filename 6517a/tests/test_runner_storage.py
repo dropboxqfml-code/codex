@@ -284,7 +284,7 @@ def test_stop_long_wait_uses_virtual_time_and_does_not_raise_voltage(tmp_path):
     )
     clock.hook = lambda now: runner.request_stop("fake clock stop") if now >= 3 else None
     result = completed(runner)
-    assert result["status"] == "aborted"
+    assert result["status"] == "stopped"
     assert clock.monotonic() < 3.1
     assert runner.output_state == "OFF"
     assert ":SOUR:VOLT 2" not in source_writes(transport)
@@ -293,7 +293,7 @@ def test_stop_long_wait_uses_virtual_time_and_does_not_raise_voltage(tmp_path):
 def test_stop_from_state_callback_prevents_next_source_write(tmp_path):
     runner, transport, _ = setup_runner(tmp_path)
     runner.on_event = lambda e: runner.request_stop() if e.get("state") == "RAMPING" else None
-    assert completed(runner)["status"] == "aborted"
+    assert completed(runner)["status"] == "stopped"
     assert ":SOUR:VOLT 1" not in source_writes(transport)
 
 

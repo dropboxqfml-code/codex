@@ -4,6 +4,16 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.8.0 종료 분류·오프라인 결과 분석
+
+정상 완료·사용자 STOP·장비/통신 오류를 구분합니다. 합성 1 GΩ run을 두 판독 뒤 STOP하여 `stopped`·출력 OFF·CSV/TXT 보존·미완료 단계 요약 미생성을 검사합니다. 이후 disconnect도 정상 STOP 기록을 보존하는지 확인합니다. OFF 또는 저장 실패는 오류로 남아야 합니다.
+
+Native Windows smoke는 번들의 1 GΩ CSV를 결과 분석 창으로 열고 시간 구간을 선택합니다. 구간 행 수·전류/저항 평균·표본 표준편차·선택 TXT 수치를 CSV와 독립 비교하며 원본·기존 출력 파일의 보존과 장비 session 미생성을 검사합니다. 재추출한 번들에서도 같은 검사를 수행합니다. 공개 build report의 `saved_result_review_verified`, `user_stop_classification_verified`가 모두 true여야 게시합니다.
+
+실행 결과는 [v0.8.0 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.8.0)의 Windows JUnit·build report에서 확인합니다. 이 검사는 시뮬레이션·저장 파일 분석 범위이며 실제 시료의 전압 인가·전류 측정 검증과 구분합니다.
+
+2026-11-12 Linux 개발 환경에서 전체 **497개 통과**, Ruff·포맷 검사를 통과했습니다. START 전·ARM 준비 중·취득 중 STOP과 동시 오류 우선 처리, OFF/저장 실패의 오류 분류, 파일 저장 완료 후 UI 동작, 이전 결과의 포함 경계 구간·통계·TXT를 검사했습니다. 가상 1 GΩ 20행을 취득 후 중지하고 0.5~1.5 s의 10행을 선택해 내보내는 GUI 흐름을 수동 확인했습니다. 분석 창을 닫은 뒤 메인 창과 worker가 정상 종료하는 배포 GUI 순서도 확인했습니다.
+
 ## v0.7.1 Windows GUI 완료 대기 검사
 
 Windows에서는 가상 시계를 사용해도 CSV·TXT의 디스크 동기화에 실제 시간이 걸립니다. GUI 통합 검사는 출력 OFF와 writer 종료를 함께 확인한 뒤 최종 상태 파일을 읽도록 보완했습니다. 완료 대기는 20초로 제한하고 FAULT·HV_STATE_UNKNOWN은 즉시 실패시키며, 실패 시 상태·판독 수·로그를 남깁니다. 실제 장비의 I/O timeout이나 출력 제어 조건을 변경하지 않습니다. Windows 실행 결과는 [v0.7.1 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.7.1)의 JUnit·build report에서 확인합니다.

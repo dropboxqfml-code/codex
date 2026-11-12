@@ -203,13 +203,16 @@ jobs:
           cat > "$notes" <<'NOTES'
           6517A · NI GPIB-USB 시험용 프로그램입니다. Windows 64비트 ZIP에는 Python과 Python 의존성이 포함되어 있습니다.
 
-          사용자 관리 저전압 모드(최대 10 V)를 추가했습니다. 연결·정격은 사용자가 관리하며, 프로그램은 실제 장비 인터록·상태 오류와 current trip·STOP/OFF를 처리합니다.
-          '4. 시료·시험 설정 입력'에서 '1 GΩ · 1 V 시험값 적용'으로 1 V·10 nA trip을 준비하고, 사용자 확인·잔류 전압 확인·resistive-limit 정책을 선택해 적용합니다. 연결 → ARM → START는 별도 동작입니다.
+          Test-Simulation.cmd의 중간 처리 표시, ARM·START 대기 이유와 간소화된 기본 화면을 제공합니다. 고급 설정과 진단·로그는 별도 탭에 있습니다.
+          '1. 시험 설정'에서 '1 GΩ · 1 V 시험값 적용'으로 1 V·10 nA trip을 준비하고 사용자 확인·잔류 전압 확인·resistive-limit 정책을 선택합니다. '측정 설정 적용'은 필수값을 검사하고, '초안 적용'은 미완료 설정을 보존합니다.
+          화면의 1 설정 → 2 연결 → 3 ARM → 4 START를 따릅니다. ARM이 비활성화되면 진행 안내에서 누락 설정이나 장비 조건을 확인하세요. 출력 OFF에서 '연결 종료 후 설정 수정'으로 돌아갈 수 있습니다.
+          사용자 관리 모드는 최대 10 V·source 100 V 범위를 유지합니다. 설정·연결·ARM만으로 출력 ON을 하지 않으며 START는 별도 동작입니다.
 
           압축을 모두 풀고 Verify-Bundle.cmd → Test-Simulation.cmd → Start-GUI.cmd 순서로 실행하세요.
           Verify-Bundle.cmd는 START → CHECK 처리 파일 수 → PASS/FAIL을 표시하고 diagnostics/bundle-verification-*.json에 결과를 저장합니다.
+          Test-Simulation.cmd는 사전검사 → 연결 → ARM → START → 전압 단계·판독 → 요약 → OFF → PASS/FAIL과 결과 경로를 실행 중 표시합니다.
           재생성되는 Python 캐시는 배포 파일에서 제외하며, 새 위치에 압축을 풀고 CLI/GUI 실행·캐시 재생성 후에도 파일 검사를 통과하는지 확인합니다. 새 폴더에 압축을 풀어 사용하세요.
-          NI MAX에서 보이는 장비와 같은 주소를 선택해 새 'NI 실장비 연결 시험 시작' 안내를 따라 IDN부터 확인하세요.
+          NI MAX에서 보이는 장비와 같은 주소를 사용합니다. IDN·보호 OFF가 필요하면 '진단·상세 기록' 탭을 사용하세요.
           기본 경로에는 해당 모델과 호환되는 NI-488.2 및 NI-VISA 64비트가 필요합니다.
           NI-VISA를 생략하는 @py 시험 기능은 Enable-NI-Only.cmd로 선택 확장을 별도 설치한 경우에만 사용할 수 있으며, NI-488.2 드라이버는 여전히 필요합니다. 기본 ZIP은 이 확장을 포함하거나 자동 설치하지 않습니다.
 

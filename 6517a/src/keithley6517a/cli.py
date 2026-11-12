@@ -4,11 +4,82 @@ import argparse
 import json
 import signal
 import sys
+import time
 
 from .clock import FakeClock
 from .config import RunConfig
 from .measurement.runner import MeasurementRunner
 from .storage.run_writer import recover_incomplete_runs
+
+
+class SimulationProgress:
+    """Human progress on stderr; stdout remains the final machine-readable JSON."""
+
+    def __init__(self, config):
+        self.step_count = len(config.voltages)
+        self.cycles = config.cycles
+        self.sample_count = 0
+        self._last_sample_time = None
+        self._last_step = None
+        self._last_state = None
+
+    @staticmethod
+    def write(stage, message):
+        print(f"[{stage}] {message}", file=sys.stderr, flush=True)
+
+    @staticmethod
+    def number(value):
+        return "--" if value is None else f"{value:.6g}"
+
+    def event(self, item):
+        event = item.get("event")
+        if event == "state":
+            state = item.get("state")
+            if state != self._last_state:
+                self.write("STATE", f"{state} | OUTPUT {item.get('output_state', 'UNKNOWN')}")
+                self._last_state = state
+        elif event == "voltage_step":
+            self.write(
+                "STEP",
+                f"cycle {item['cycle_index'] + 1}/{self.cycles}, "
+                f"voltage {item['step_index'] + 1}/{self.step_count}: "
+                f"{self.number(item.get('voltage_programmed_readback_V'))} V",
+            )
+        elif event == "step_summary":
+            self.write("SUMMARY", f"Voltage step saved | samples so far {self.sample_count}")
+        elif event == "abort":
+            self.write("ABORT", str(item.get("reason", "Simulation aborted")))
+
+    def sample(self, row):
+        self.sample_count += 1
+        now = time.monotonic()
+        step = row.get("cycle_index"), row.get("step_index")
+        if (
+            self._last_sample_time is None
+            or step != self._last_step
+            or now - self._last_sample_time >= 0.5
+        ):
+            resistance = row.get("native_r_ohm")
+            if resistance is None:
+                resistance = row.get("resistance_apparent_ohm")
+            self.write(
+                "READ",
+                f"#{self.sample_count} | t={self.number(row.get('elapsed_s'))} s | "
+                f"I={self.number(row.get('current_raw_A'))} A | "
+                f"R={self.number(resistance)} ohm",
+            )
+            self._last_sample_time, self._last_step = now, step
+
+    def finish(self, result, runner):
+        passed = result["status"] == "completed" and runner.output_state == "OFF"
+        self.write(
+            "PASS" if passed else "FAIL",
+            f"Simulation {result['status']} | "
+            f"{len(getattr(runner, 'rows', []))} readings | "
+            f"{len(getattr(runner, 'summaries', []))} summaries | OUTPUT {runner.output_state}",
+        )
+        if result.get("run_directory"):
+            self.write("RESULTS", str(result["run_directory"]))
 
 
 def main(argv=None):
@@ -18,6 +89,9 @@ def main(argv=None):
     simulation.add_argument("--config", required=True)
     simulation.add_argument("--fast", action="store_true", help="Deterministic virtual clock")
     simulation.add_argument("--output", help="Override output directory")
+    simulation.add_argument(
+        "--progress", action="store_true", help="Show simulation stages and readings on stderr"
+    )
     measurement = commands.add_parser(
         "measure", help="Real FVMI run: OFF-only commissioning, ARM, explicit typed START"
     )
@@ -53,6 +127,7 @@ def main(argv=None):
     runner = None
     shutdown_done = False
     previous = None
+    progress = None
     try:
         if args.command == "resources":
             from .transport.visa import VisaTransport
@@ -123,7 +198,15 @@ def main(argv=None):
             if real:
                 config.validate(for_arm=True)
             clock = FakeClock() if getattr(args, "fast", False) else None
-            runner = MeasurementRunner(config, clock=clock)
+            callbacks = {}
+            if not real and args.progress:
+                progress = SimulationProgress(config)
+                progress.write(
+                    "PREPARE",
+                    f"SIMULATION | {len(config.voltages)} voltages | {config.cycles} cycles",
+                )
+                callbacks = {"on_sample": progress.sample, "on_event": progress.event}
+            runner = MeasurementRunner(config, clock=clock, **callbacks)
 
             def interrupt(*_):
                 runner.request_stop("CLI interrupt")
@@ -131,6 +214,8 @@ def main(argv=None):
                     raise KeyboardInterrupt
 
             previous = signal.signal(signal.SIGINT, interrupt)
+            if progress:
+                progress.write("CONNECT", "Opening virtual 6517A")
             runner.connect()
             if real and config.setup_policy == "verified_fixture":
                 print(
@@ -142,7 +227,11 @@ def main(argv=None):
                 if input("lid를 닫고 CLOSED 입력: ").strip() != "CLOSED":
                     raise ValueError("Commissioning cancelled before lid-closed observation")
                 runner.commission_interlock(1)
+            if progress:
+                progress.write("ARM", "Preparing simulation settings and result files")
             runner.arm()
+            if progress:
+                progress.write("READY", f"Result files: {runner.run_directory}")
             if real:
                 print(
                     json.dumps(
@@ -160,6 +249,8 @@ def main(argv=None):
                 )
                 if input("인가 계획을 검토한 후 START 입력: ").strip() != "START":
                     raise ValueError("Run cancelled while armed; output not enabled")
+            if progress:
+                progress.write("START", "Running simulated acquisition")
             result = runner.start()
             runner.shutdown()
             shutdown_done = True
@@ -169,15 +260,21 @@ def main(argv=None):
                     output_state=runner.output_state,
                     reason="Final disconnect could not confirm output OFF",
                 )
+            if progress:
+                progress.finish(result, runner)
             print(json.dumps(result, ensure_ascii=False, allow_nan=False))
             return 0 if result["status"] == "completed" else 2
     except KeyboardInterrupt:
+        if progress:
+            progress.write("FAIL", "Simulation interrupted")
         print(
             json.dumps({"error": "CLI interrupted", "output_OFF_requires_confirmation": True}),
             file=sys.stderr,
         )
         return 130
     except Exception as exc:
+        if progress:
+            progress.write("FAIL", str(exc))
         print(
             json.dumps({"error": str(exc), "type": type(exc).__name__}, ensure_ascii=False),
             file=sys.stderr,

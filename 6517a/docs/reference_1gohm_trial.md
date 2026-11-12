@@ -1,16 +1,16 @@
 # 1 GΩ 기준저항 시험
 
-v0.5.0의 사용자 관리 저전압 모드는 연결 구성을 사용자에게 맡기고, 전압·시간·trip 입력부터 ARM → START → current·저항 그래프와 CSV 저장까지 수행합니다. 별도 프로그램 변경 없이 GUI의 **1 GΩ·1 V 시험값**을 사용할 수 있습니다.
+v0.6.0의 사용자 관리 저전압 모드는 연결 구성을 사용자에게 맡기고, 전압·시간·trip 입력부터 ARM → START → current·저항 그래프와 CSV 저장까지 수행합니다. 별도 프로그램 변경 없이 GUI의 **1 GΩ·1 V 시험값**을 사용할 수 있습니다.
 
 ## GUI 실행 순서
 
 1. 새 ZIP을 풀고 `Verify-Bundle.cmd` → `Test-Simulation.cmd` → `Start-GUI.cmd`를 실행합니다.
-2. 실제 시험은 SIM 연결 종료 → REAL 준비 → NI MAX와 같은 주소 → IDN → 보호 OFF를 확인합니다.
-3. ‘4. 시료·시험 설정 입력’에서 사용자 관리 저전압 방식을 확인하고 **1 GΩ·1 V 시험값**을 누릅니다.
+2. 실제 시험은 **진단·상세 기록** 탭에서 SIM 연결 종료 → REAL 준비 → NI MAX와 같은 주소 → IDN → 보호 OFF를 확인합니다.
+3. 기본 화면의 **1. 시험 설정**에서 사용자 관리 저전압 방식을 확인하고 **1 GΩ·1 V 시험값**을 누릅니다.
 4. 요청 1 V, source 100 V 범위, 상한 10 V 이하, software trip 10 nA와 시간·저장 폴더를 검토합니다. 사용자 연결 관리 확인, 잔류 전압 확인, resistive-limit ON/OFF 정책을 직접 선택합니다.
-5. 설정 적용 → 연결 → ARM → 별도 START로 실행하고 그래프·CSV를 확인합니다. 중지는 STOP을 사용합니다.
+5. **측정 설정 적용 → 2. 연결 → 3. ARM → 4. START**로 실행하고 그래프·CSV를 확인합니다. 중지는 STOP을 사용합니다.
 
-Preset은 사용자가 눌렀을 때만 값을 넣습니다. REAL/SIM·운용 방식·확인 체크·resistive-limit 정책은 자동 승인하지 않습니다. 미완성 설정은 초안으로 적용할 수 있지만 ARM은 필요한 실행 입력과 실제 장비 상태를 별도로 검사합니다.
+Preset은 사용자가 눌렀을 때만 값을 넣습니다. REAL/SIM·운용 방식·확인 체크·resistive-limit 정책은 자동 승인하지 않습니다. **측정 설정 적용**은 누락된 실행 입력을 표시하며, 항목을 누르면 입력란으로 이동합니다. 미완성 설정은 별도 **초안 적용**으로 보존할 수 있습니다. 메인 준비 상태에 ARM이 비활성인 이유와 다음 작업을 표시합니다. 연결 후 수정이 필요하면 출력 OFF에서 **연결 종료 후 설정 수정**을 누르고, 수정 후 다시 연결 → ARM → START로 실행합니다.
 
 [`operator_current_template.json`](../examples/operator_current_template.json)은 REAL·사용자 관리·0 V·미확인 초안입니다. [`simulation_1gohm_config.json`](../examples/simulation_1gohm_config.json)은 가상 1 GΩ 모델 시험입니다. 과거 [`reference_1gohm_draft.json`](../examples/reference_1gohm_draft.json)은 정격 메타데이터를 보관한 준비 파일이며, 실행에는 v0.5.0 운용 방식과 실행 입력을 설정합니다.
 

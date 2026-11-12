@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -41,10 +42,38 @@ from PySide6.QtWidgets import (
 from keithley6517a.config import RunConfig
 from keithley6517a.measurement.runner import MeasurementRunner
 from keithley6517a.ui.connection_guide import ConnectionGuide
+from keithley6517a.ui.readiness import configuration_issues, humanize_issue
 
 
 def _text_state(value: Any) -> str:
     return str(getattr(value, "value", value))
+
+
+def _display_si(value, unit: str) -> str:
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return f"— {unit}"
+    if not math.isfinite(value):
+        return f"— {unit}"
+    if value == 0:
+        return f"0 {unit}"
+    for scale, prefix in (
+        (1e15, "P"),
+        (1e12, "T"),
+        (1e9, "G"),
+        (1e6, "M"),
+        (1e3, "k"),
+        (1, ""),
+        (1e-3, "m"),
+        (1e-6, "µ"),
+        (1e-9, "n"),
+        (1e-12, "p"),
+        (1e-15, "f"),
+    ):
+        if abs(value) >= scale:
+            return f"{value / scale:.5g} {prefix}{unit}"
+    return f"{value:.4g} {unit}"
 
 
 class InstrumentWorker(QObject):
@@ -91,6 +120,8 @@ class InstrumentWorker(QObject):
                 "run_directory": str(getattr(self.runner, "run_directory", "") or ""),
                 "can_arm": bool(getattr(self.runner, "can_arm", False)),
                 "can_start": bool(getattr(self.runner, "can_start", False)),
+                "configuration_issues": configuration_issues(self.runner.config),
+                "run_started": bool(getattr(self.runner, "_started", False)),
                 "interlock_query": safety.get("interlock", "UNKNOWN"),
                 "setup_policy": setup_policy,
                 "operator_setup_acknowledged": bool(
@@ -229,7 +260,7 @@ class MainWindow(QMainWindow):
     def __init__(self, runner_factory: Callable[..., Any] = MeasurementRunner):
         super().__init__()
         self.setWindowTitle("6517A · 고저항 측정")
-        self.resize(1360, 900)
+        self.resize(1280, 820)
         self._state = "DISCONNECTED"
         self._busy = False
         self._connected = False
@@ -244,6 +275,9 @@ class MainWindow(QMainWindow):
         self._last_run_directory = None
         self._last_diagnostic_directory = None
         self._loading_controls = False
+        self._last_worker_status: dict = {}
+        self._edit_after_disconnect = False
+        self._last_error = ""
         self.rows: list[dict] = []
         self._base_config = RunConfig().to_dict()
         self._build_ui()
@@ -278,222 +312,284 @@ class MainWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         root = QVBoxLayout(central)
-        self.mode_badge = QLabel("SIMULATION MODE · 실제 장비 출력 없음")
-        self.mode_badge.setStyleSheet("font-size:20px;font-weight:700;color:#168ba5;padding:8px")
-        root.addWidget(self.mode_badge)
-        self.identity_label = QLabel("연결 안 됨 · model / serial / firmware 미확인")
-        root.addWidget(self.identity_label)
-        status = QHBoxLayout()
+        root.setSpacing(10)
+        header = QHBoxLayout()
+        self.mode_badge = QLabel()
+        self.mode_badge.setStyleSheet("font-size:18px;font-weight:700;color:#176b88")
         self.state_label = QLabel("DISCONNECTED")
         self.output_label = QLabel("OUTPUT UNKNOWN")
-        self.output_label.setStyleSheet("font-weight:bold;color:#b74d21")
-        self.interlock_label = QLabel("Interlock query: UNKNOWN · fixture commissioning: 미확인")
-        for widget in (self.state_label, self.output_label, self.interlock_label):
-            status.addWidget(widget)
-        root.addLayout(status)
-        warning = QLabel(
-            "잔류 전압 UNVERIFIED · 출력 OFF는 방전 완료가 아닙니다. 외부 확인 전 접촉 금지.\n"
-            "software STOP은 하드웨어 비상정지가 아닙니다. "
-            "진행 중인 VISA I/O는 timeout까지 지연될 수 있습니다."
-        )
-        warning.setWordWrap(True)
-        warning.setStyleSheet("background:#fff1d6;color:#774600;padding:8px")
-        root.addWidget(warning)
-        self.connection_guide = ConnectionGuide(self)
-        root.addWidget(self.connection_guide)
+        self.output_label.setStyleSheet("font-weight:bold;color:#a35325")
+        header.addWidget(self.mode_badge, 1)
+        header.addWidget(self.state_label)
+        header.addWidget(self.output_label)
+        root.addLayout(header)
+        self.identity_label = QLabel("연결할 장비를 선택하세요.")
+        root.addWidget(self.identity_label)
+        stages = QHBoxLayout()
+        self.stage_labels = []
+        for name in ("1  설정", "2  연결", "3  ARM", "4  START"):
+            label = QLabel(name)
+            label.setStyleSheet("background:#edf1f4;padding:8px;border-radius:4px")
+            stages.addWidget(label)
+            self.stage_labels.append(label)
+        root.addLayout(stages)
+
         splitter = QSplitter()
         root.addWidget(splitter, 1)
-        settings_scroll = QScrollArea()
-        settings_scroll.setWidgetResizable(True)
-        settings_scroll.setMinimumWidth(480)
+        sidebar = QWidget()
+        sidebar.setMinimumWidth(340)
+        sidebar.setMaximumWidth(460)
+        side = QVBoxLayout(sidebar)
+        side.setContentsMargins(0, 0, 0, 0)
         self.settings = QWidget()
-        settings_scroll.setWidget(self.settings)
-        left = QVBoxLayout(self.settings)
+        settings_layout = QVBoxLayout(self.settings)
+        settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.setting_pages = QTabWidget()
+        settings_layout.addWidget(self.setting_pages)
+        basic = QWidget()
+        basic_layout = QVBoxLayout(basic)
         form = QFormLayout()
         self.transport = QComboBox()
-        self.transport.addItem("SIMULATION", "simulation")
-        self.transport.addItem("VISA USB–GPIB · 명시적 실장비 선택", "visa")
-        form.addRow("연결", self.transport)
+        self.transport.addItem("시뮬레이션", "simulation")
+        self.transport.addItem("실장비 · VISA USB–GPIB", "visa")
+        form.addRow("장비", self.transport)
         self.resource = QLineEdit()
-        self.resource.setPlaceholderText("사용자가 선택한 GPIB resource")
-        form.addRow("Resource", self.resource)
-        self.backend = QLineEdit()
-        self.backend.setPlaceholderText("기본 VISA / @ivi / VISA library 경로")
-        form.addRow("VISA backend", self.backend)
-        self.backend_profiles = QComboBox()
-        self.backend_profiles.addItem("NI-VISA · 기본 권장", "@ivi")
-        self.backend_profiles.addItem("NI-488.2 전용 · 선택 확장 필요 · 시험 기능", "@py")
-        self.backend_profiles.addItem("VISA 라이브러리 직접 지정", "custom")
-        form.addRow("통신 방식", self.backend_profiles)
-        resources_row = QHBoxLayout()
+        self.resource.setPlaceholderText("GPIB0::27::INSTR")
+        resource_row = QHBoxLayout()
+        resource_row.addWidget(self.resource, 1)
+        self.discover_button = QPushButton("주소 조회")
+        resource_row.addWidget(self.discover_button)
+        form.addRow("주소", resource_row)
         self.resource_choices = QComboBox()
-        self.resource_choices.addItem("GPIB 목록을 조회한 뒤 선택")
-        self.discover_button = QPushButton("VISA 목록 조회")
-        resources_row.addWidget(self.resource_choices, 1)
-        resources_row.addWidget(self.discover_button)
-        form.addRow(resources_row)
-        diagnostics_row = QHBoxLayout()
-        self.diagnose_button = QPushButton("연결 진단 · IDN만 조회")
-        self.off_check_button = QPushButton("선택 장비 출력 OFF 시험")
-        diagnostics_row.addWidget(self.diagnose_button)
-        diagnostics_row.addWidget(self.off_check_button)
-        form.addRow(diagnostics_row)
-        self.setup_button = QPushButton("실장비 시험 설정 안내 · 양식 입력")
-        form.addRow(self.setup_button)
+        self.resource_choices.addItem("조회한 주소 선택")
+        form.addRow("조회 결과", self.resource_choices)
+        self.sample_id = QLineEdit("sample")
+        form.addRow("시료 ID", self.sample_id)
+        basic_layout.addLayout(form)
+        self.setup_button = QPushButton("1. 시험 설정")
+        self.setup_button.setMinimumHeight(38)
+        basic_layout.addWidget(self.setup_button)
+        self.plan_summary = QLabel()
+        self.plan_summary.setWordWrap(True)
+        basic_layout.addWidget(self.plan_summary)
+        load_row = QHBoxLayout()
+        self.load_button = QPushButton("설정 불러오기")
+        self.save_button = QPushButton("설정 저장")
+        load_row.addWidget(self.load_button)
+        load_row.addWidget(self.save_button)
+        basic_layout.addLayout(load_row)
+        basic_layout.addStretch()
+        self.setting_pages.addTab(basic, "기본")
+
+        detailed_scroll = QScrollArea()
+        detailed_scroll.setWidgetResizable(True)
+        detailed = QWidget()
+        detailed_scroll.setWidget(detailed)
+        detail_layout = QVBoxLayout(detailed)
+        advanced_form = QFormLayout()
+        self.backend = QLineEdit()
+        self.backend.setPlaceholderText("기본 @ivi / @py / 라이브러리 경로")
+        advanced_form.addRow("VISA backend", self.backend)
+        self.backend_profiles = QComboBox()
+        self.backend_profiles.addItem("NI-VISA", "@ivi")
+        self.backend_profiles.addItem("NI-488.2 전용 · 선택 확장", "@py")
+        self.backend_profiles.addItem("직접 지정", "custom")
+        advanced_form.addRow("통신 방식", self.backend_profiles)
         self.setup_policy = QComboBox()
-        self.setup_policy.addItem("검증 fixture · 기존 승인 기록", "verified_fixture")
-        self.setup_policy.addItem("사용자 관리 · 저전압 시험 ≤10 V", "operator_low_voltage")
-        form.addRow("운용 방식", self.setup_policy)
-        self.operator_setup_ack = QCheckBox("연결·정격·외부 보호를 사용자가 관리하는 시험입니다")
-        form.addRow(self.operator_setup_ack)
-        self.setup_status_label = QLabel()
-        self.setup_status_label.setWordWrap(True)
-        form.addRow(self.setup_status_label)
+        self.setup_policy.addItem("검증 fixture", "verified_fixture")
+        self.setup_policy.addItem("사용자 관리 · 최대 10 V", "operator_low_voltage")
+        advanced_form.addRow("운용 방식", self.setup_policy)
+        self.operator_setup_ack = QCheckBox("연결·정격·외부 보호를 사용자가 관리합니다")
+        advanced_form.addRow(self.operator_setup_ack)
         self.mode = QComboBox()
         self.mode.addItems(["FVMI_CURRENT", "NATIVE_RESISTANCE"])
-        form.addRow("모드", self.mode)
-        self.sample_id = QLineEdit("sample")
-        form.addRow("Sample ID", self.sample_id)
+        advanced_form.addRow("측정 모드", self.mode)
         self.profile = QComboBox()
-        self.profile.addItems(["전압 리스트 / 정전압", "선형 staircase", "Fixed-time 요약 window"])
-        form.addRow("시간 / 전압 프로토콜", self.profile)
+        self.profile.addItems(["전압 리스트 / 정전압", "선형 staircase", "Fixed-time"])
+        advanced_form.addRow("프로토콜", self.profile)
         self.voltages = QLineEdit("0")
-        form.addRow("V-list (V, comma)", self.voltages)
+        advanced_form.addRow("전압 목록 (V)", self.voltages)
         stair = QHBoxLayout()
         self.stair_start = self._spin(-1000, 1000, 0)
         self.stair_stop = self._spin(-1000, 1000, 10)
         self.stair_step = self._spin(-1000, 1000, 1)
-        for widget in (self.stair_start, self.stair_stop, self.stair_step):
-            stair.addWidget(widget)
-        form.addRow("Stair start / stop / step V", stair)
+        for control in (self.stair_start, self.stair_stop, self.stair_step):
+            stair.addWidget(control)
+        advanced_form.addRow("시작/끝/간격 (V)", stair)
         self.ceiling = self._spin(0, 1000, 10)
-        form.addRow("Software ceiling (V)", self.ceiling)
+        advanced_form.addRow("전압 상한 (V)", self.ceiling)
         self.trip = QLineEdit()
-        self.trip.setPlaceholderText("필수: A 단위 (예: 1e-8)")
-        form.addRow("Software current trip (A)", self.trip)
+        self.trip.setPlaceholderText("A 단위 · 예: 1e-8")
+        advanced_form.addRow("Software trip (A)", self.trip)
+        self.source_range = QComboBox()
+        self.source_range.addItems(["100", "1000"])
+        advanced_form.addRow("소스 범위 (V)", self.source_range)
+        self.autorange = QCheckBox("전류 자동 범위")
+        self.autorange.setChecked(True)
+        advanced_form.addRow(self.autorange)
+        self.current_range = QLineEdit("2e-9")
+        advanced_form.addRow("고정 범위 (A)", self.current_range)
+        self.nplc = self._spin(0.01, 10, 10)
+        self.interval = self._spin(0.001, 86400, 1)
+        self.dwell = self._spin(0.001, 86400, 300)
+        self.exclude = self._spin(0, 86400, 1)
+        self.window = self._spin(0.001, 86400, 30)
+        for text, control in (
+            ("NPLC", self.nplc),
+            ("판독 간격 (s)", self.interval),
+            ("전압별 시간 (s)", self.dwell),
+            ("초기 제외 (s)", self.exclude),
+            ("요약 구간 (s)", self.window),
+        ):
+            advanced_form.addRow(text, control)
+        self.output_dir = QLineEdit("runs")
+        advanced_form.addRow("저장 폴더", self.output_dir)
+        self.ack = QCheckBox("잔류 전압 미확인·software stop의 한계를 확인했습니다")
+        advanced_form.addRow(self.ack)
+        detail_layout.addLayout(advanced_form)
         self.protection_label = QLabel(
             "Software trip: 판독·통신 지연 후 소프트웨어 중지\n"
             "V-Source 하드웨어 limit: 100 V 범위 10 mA / 1000 V 범위 1 mA\n"
             "외부 하드웨어 보호는 별도 검증 필요. programmable compliance가 아닙니다."
         )
         self.protection_label.setWordWrap(True)
-        form.addRow(self.protection_label)
-        self.source_range = QComboBox()
-        self.source_range.addItems(["100", "1000"])
-        form.addRow("Source range (V)", self.source_range)
-        self.autorange = QCheckBox("Current autorange (Auto V-Source와 별개)")
-        self.autorange.setChecked(True)
-        form.addRow(self.autorange)
-        self.current_range = QLineEdit("2e-9")
-        form.addRow("고정 current range (A)", self.current_range)
-        self.nplc = self._spin(0.01, 10, 10)
-        form.addRow("NPLC", self.nplc)
-        self.interval = self._spin(0.001, 86400, 1)
-        form.addRow("요청 sample interval (s)", self.interval)
-        self.dwell = self._spin(0.001, 86400, 300)
-        form.addRow("Step dwell / duration (s)", self.dwell)
-        self.exclude = self._spin(0, 86400, 1)
-        form.addRow("초기 제외 구간 (s)", self.exclude)
-        self.window = self._spin(0.001, 86400, 30)
-        form.addRow("마지막 summary window (s)", self.window)
-        self.output_dir = QLineEdit("runs")
-        form.addRow("자동 저장 폴더", self.output_dir)
-        self.ack = QCheckBox("잔류 전압 미확인 및 software stop의 한계를 확인했습니다")
-        form.addRow(self.ack)
-        left.addLayout(form)
-        load_row = QHBoxLayout()
-        self.load_button = QPushButton("설정 불러오기")
-        self.save_button = QPushButton("설정 내보내기")
-        load_row.addWidget(self.load_button)
-        load_row.addWidget(self.save_button)
-        left.addLayout(load_row)
+        detail_layout.addWidget(self.protection_label)
         self.advanced = QPlainTextEdit()
-        self.advanced.setPlaceholderText("정격 / commissioning / 환경 / 시료 metadata JSON")
-        self.advanced.setMinimumHeight(160)
-        self.advanced_apply = QPushButton("고급 JSON을 입력란에 적용 (출력 변경 없음)")
-        left.addWidget(QLabel("전체 설정 JSON · ARM은 설정 snapshot을 검증합니다"))
-        left.addWidget(self.advanced)
-        left.addWidget(self.advanced_apply)
-        left.addStretch()
-        splitter.addWidget(settings_scroll)
-        right = QWidget()
-        right_layout = QVBoxLayout(right)
-        self.live_label = QLabel("STALE · 아직 취득한 판독값 없음")
-        self.live_label.setWordWrap(True)
-        right_layout.addWidget(self.live_label)
-        tabs = QTabWidget()
+        self.advanced.setMinimumHeight(180)
+        detail_layout.addWidget(QLabel("전체 설정 JSON"))
+        detail_layout.addWidget(self.advanced)
+        self.advanced_apply = QPushButton("JSON을 설정에 적용")
+        detail_layout.addWidget(self.advanced_apply)
+        self.setting_pages.addTab(detailed_scroll, "고급")
+        side.addWidget(self.settings, 1)
+
+        readiness = QGroupBox("진행 안내")
+        readiness_layout = QVBoxLayout(readiness)
+        self.workflow_label = QLabel()
+        self.workflow_label.setWordWrap(True)
+        self.workflow_label.setStyleSheet("font-weight:600;color:#176b88")
+        self.setup_status_label = QLabel()
+        self.setup_status_label.setWordWrap(True)
+        self.blockers_label = QLabel()
+        self.blockers_label.setWordWrap(True)
+        self.repair_button = QPushButton("설정 확인")
+        self.repair_button.clicked.connect(self._repair_settings)
+        for control in (
+            self.workflow_label,
+            self.setup_status_label,
+            self.blockers_label,
+            self.repair_button,
+        ):
+            readiness_layout.addWidget(control)
+        side.addWidget(readiness)
+        splitter.addWidget(sidebar)
+
+        self.main_tabs = QTabWidget()
+        measurement = QWidget()
+        right_layout = QVBoxLayout(measurement)
+        values = QHBoxLayout()
+        self.value_labels = {}
+        for key, title, unit in (
+            ("voltage", "전압", "V"),
+            ("current", "전류", "A"),
+            ("resistance", "저항", "Ω"),
+        ):
+            box = QGroupBox(title)
+            box_layout = QVBoxLayout(box)
+            label = QLabel(f"— {unit}")
+            label.setStyleSheet("font-size:24px;font-weight:600;color:#173f5f")
+            box_layout.addWidget(label)
+            values.addWidget(box)
+            self.value_labels[key] = label
+        right_layout.addLayout(values)
+        self.reading_state_label = QLabel("판독 대기 · START 후 값이 표시됩니다")
+        right_layout.addWidget(self.reading_state_label)
+        graph_tabs = QTabWidget()
         self.traces = [
-            TracePanel("I(t) · current raw", "elapsed_s", "current_raw_A", "time (s)", "I (A)"),
-            TracePanel("R(t) · V/I 또는 native", "elapsed_s", "_display_r", "time (s)", "R (Ω)"),
-            TracePanel(
-                "I–V · 각 판독",
-                "voltage_programmed_readback_V",
-                "current_raw_A",
-                "setpoint (V)",
-                "I (A)",
-            ),
-            TracePanel(
-                "R–V · 각 판독",
-                "voltage_programmed_readback_V",
-                "_display_r",
-                "setpoint (V)",
-                "R (Ω)",
-            ),
+            TracePanel("I(t)", "elapsed_s", "current_raw_A", "time (s)", "I (A)"),
+            TracePanel("R(t)", "elapsed_s", "_display_r", "time (s)", "R (Ω)"),
+            TracePanel("I–V", "voltage_programmed_readback_V", "current_raw_A", "V", "I (A)"),
+            TracePanel("R–V", "voltage_programmed_readback_V", "_display_r", "V", "R (Ω)"),
         ]
-        for name, trace in zip(("I(t)", "R(t)", "I–V", "R–V"), self.traces, strict=True):
-            tabs.addTab(trace, name)
-        right_layout.addWidget(tabs, 1)
-        right_layout.addWidget(
-            QLabel("표시 전용 signed-log: 부호·0 보존 · smoothing OFF · raw 저장값 유지")
-        )
-        self.log = QPlainTextEdit()
-        self.log.setReadOnly(True)
-        self.log.setMaximumBlockCount(1000)
-        self.log.setMaximumHeight(150)
-        right_layout.addWidget(self.log)
-        self.path_label = QLabel("Run 폴더: 아직 없음")
+        for title, trace in zip(("I(t)", "R(t)", "I–V", "R–V"), self.traces, strict=True):
+            graph_tabs.addTab(trace, title)
+        right_layout.addWidget(graph_tabs, 1)
+        self.path_label = QLabel("저장 위치: 실행 후 생성됩니다")
         self.path_label.setWordWrap(True)
         right_layout.addWidget(self.path_label)
-        self.diagnostic_label = QLabel("연결 진단 보고서: 아직 없음")
-        self.diagnostic_label.setWordWrap(True)
-        right_layout.addWidget(self.diagnostic_label)
-        files_row = QHBoxLayout()
         self.open_run_button = QPushButton("결과 폴더 열기")
-        self.open_diagnostic_button = QPushButton("연결 진단 폴더 열기")
-        files_row.addWidget(self.open_run_button)
-        files_row.addWidget(self.open_diagnostic_button)
-        right_layout.addLayout(files_row)
-        splitter.addWidget(right)
-        splitter.setSizes([520, 800])
-        commission_actions = QHBoxLayout()
-        self.commission_open_button = QPushButton("인터록 열림 확인 (출력 OFF)")
-        self.commission_closed_button = QPushButton("인터록 닫힘 확인 (출력 OFF)")
+        right_layout.addWidget(self.open_run_button)
+        self.main_tabs.addTab(measurement, "측정")
+
+        tools = QWidget()
+        tool_layout = QVBoxLayout(tools)
+        self.connection_guide = ConnectionGuide(self)
+        tool_layout.addWidget(self.connection_guide)
+        diagnostic_actions = QHBoxLayout()
+        self.diagnose_button = QPushButton("IDN 확인")
+        self.off_check_button = QPushButton("보호 OFF 확인")
+        self.open_diagnostic_button = QPushButton("진단 폴더")
+        for control in (self.diagnose_button, self.off_check_button, self.open_diagnostic_button):
+            diagnostic_actions.addWidget(control)
+        tool_layout.addLayout(diagnostic_actions)
+        self.diagnostic_label = QLabel("진단 기록 없음")
+        self.diagnostic_label.setWordWrap(True)
+        self.interlock_label = QLabel("Interlock query: UNKNOWN · fixture commissioning: 미확인")
+        self.interlock_label.setWordWrap(True)
+        tool_layout.addWidget(self.diagnostic_label)
+        tool_layout.addWidget(self.interlock_label)
         self.commissioning_hint = QLabel()
         self.commissioning_hint.setWordWrap(True)
-        commission_actions.addWidget(self.commissioning_hint)
-        commission_actions.addWidget(self.commission_open_button)
-        commission_actions.addWidget(self.commission_closed_button)
-        root.addLayout(commission_actions)
-        actions = QHBoxLayout()
-        self.connect_button = QPushButton("연결 (출력 ON 없음)")
-        self.arm_button = QPushButton("검토 / ARM")
-        self.start_button = QPushButton("START · 출력 인가")
-        self.stop_button = QPushButton("STOP")
-        self.fast_stop_button = QPushButton("즉시 출력 중지 (software)")
-        self.fast_stop_button.setStyleSheet(
-            "background:#a32e28;color:white;font-weight:bold;padding:8px"
+        tool_layout.addWidget(self.commissioning_hint)
+        commissions = QHBoxLayout()
+        self.commission_open_button = QPushButton("인터록 열림 확인")
+        self.commission_closed_button = QPushButton("인터록 닫힘 확인")
+        commissions.addWidget(self.commission_open_button)
+        commissions.addWidget(self.commission_closed_button)
+        tool_layout.addLayout(commissions)
+        warning = QLabel(
+            "잔류 전압 UNVERIFIED · 출력 OFF는 방전 완료가 아닙니다.\n"
+            "software STOP은 하드웨어 비상정지가 아닙니다. "
+            "VISA I/O는 timeout까지 지연될 수 있습니다."
         )
-        self.disconnect_button = QPushButton("연결 종료 / 설정 편집")
-        for button in (
+        warning.setWordWrap(True)
+        tool_layout.addWidget(warning)
+        self.live_label = QLabel("STALE · 아직 취득한 판독값 없음")
+        self.live_label.setWordWrap(True)
+        tool_layout.addWidget(self.live_label)
+        self.log = QPlainTextEdit()
+        self.log.setReadOnly(True)
+        self.log.setMaximumBlockCount(1500)
+        tool_layout.addWidget(self.log, 1)
+        self.fast_stop_button = QPushButton("즉시 출력 중지 (software)")
+        tool_layout.addWidget(self.fast_stop_button)
+        self.main_tabs.addTab(tools, "진단 · 상세 기록")
+        splitter.addWidget(self.main_tabs)
+        splitter.setSizes([390, 880])
+
+        actions = QHBoxLayout()
+        self.connect_button = QPushButton("2. 연결")
+        self.arm_button = QPushButton("3. ARM")
+        self.start_button = QPushButton("4. START")
+        self.stop_button = QPushButton("STOP")
+        self.stop_button.setStyleSheet(
+            "background:#aa3026;color:white;font-weight:bold;padding:9px"
+        )
+        self.disconnect_button = QPushButton("연결 종료")
+        for control in (
             self.connect_button,
             self.arm_button,
             self.start_button,
             self.stop_button,
-            self.fast_stop_button,
             self.disconnect_button,
         ):
-            actions.addWidget(button)
+            control.setMinimumHeight(36)
+            actions.addWidget(control)
         root.addLayout(actions)
+        footer = QLabel("출력 OFF ≠ 방전 완료 · STOP은 소프트웨어 중지")
+        footer.setStyleSheet("color:#687582;font-size:11px")
+        root.addWidget(footer)
+
         self.connect_button.clicked.connect(self._connect)
         self.commission_open_button.clicked.connect(lambda: self._send("commission_open"))
         self.commission_closed_button.clicked.connect(lambda: self._send("commission_closed"))
@@ -628,18 +724,104 @@ class MainWindow(QMainWindow):
         self._refresh_connection_guide()
 
     def _refresh_connection_guide(self) -> None:
-        arm_issue = ""
+        if self._loading_controls:
+            return
+        issues = []
         try:
             config = self.config_from_controls()
-            config.validate(for_arm=True)
-            self.setup_status_label.setText(
-                f"설정 준비됨 · 상한 {config.effective_ceiling:g} V · 연결 후 ARM → 별도 START"
+            issues = configuration_issues(config)
+            voltages = ", ".join(f"{value:g}" for value in config.voltages[:4])
+            if len(config.voltages) > 4:
+                voltages += f" … ({len(config.voltages)}단계)"
+            self.plan_summary.setText(
+                f"전압  {voltages} V\n"
+                f"Trip  {_display_si(config.current_trip_A, 'A')}\n"
+                f"전압별 {config.dwell_s:g} s · 간격 {config.sample_interval_s:g} s"
             )
-            self.setup_status_label.setStyleSheet("color:#16667a")
         except (ValueError, TypeError) as exc:
-            arm_issue = str(exc)
-            self.setup_status_label.setText(f"준비 초안 · ARM 전 확인: {arm_issue}")
-            self.setup_status_label.setStyleSheet("color:#9b6817")
+            issues = [{"field": "", "code": "INVALID_SETTINGS", "message": humanize_issue(exc)}]
+            self.plan_summary.setText("설정 입력을 확인하세요.")
+        if self._connected and "configuration_issues" in self._last_worker_status:
+            issues = self._last_worker_status["configuration_issues"]
+        self._preparation_issues = issues
+        idle = not self._busy and not self._closing
+        self.arm_button.setEnabled(self._can_arm and idle and not issues)
+        self.start_button.setEnabled(self._can_start and idle and not issues)
+        arm_issue = " / ".join(issue["message"] for issue in issues)
+        self.setup_status_label.setText(
+            f"준비 초안 · 미완료 {len(issues)}개" if issues else "설정 준비 완료"
+        )
+        self.setup_status_label.setStyleSheet("color:#9b6817" if issues else "color:#16667a")
+        visible = issues[:5]
+        self.blockers_label.setText("\n".join("• " + issue["message"] for issue in visible))
+        self.blockers_label.setVisible(bool(issues))
+        self.blockers_label.setToolTip(arm_issue)
+        state = self._state
+        output = self.output_label.text().removeprefix("OUTPUT ")
+        interlock = self._last_worker_status.get("interlock_query")
+        started = self._last_worker_status.get("run_started", False)
+        if self._closing:
+            stage, action = 3, "종료 중 · 출력 정리 작업을 기다리세요."
+        elif self._busy:
+            stage = 2 if state == "CONFIGURING" else (3 if self._connected else 1)
+            action = "ARM 설정 검증 중…" if state == "CONFIGURING" else "장비 작업 중…"
+        elif not self._connected:
+            stage = 0 if issues else 1
+            action = "1. 시험 설정에서 필수 항목을 완료하세요." if issues else "2. 연결을 누르세요."
+        elif interlock in (0, "0"):
+            stage, action = 2, "장비 인터록 조회 0 · ARM·START 조건 미충족"
+        elif state in {"FAULT", "HV_STATE_UNKNOWN"}:
+            reason = humanize_issue(self._last_error) if self._last_error else state
+            stage, action = 2, "장비 확인 필요: " + reason
+        elif started and state == "OUTPUT_OFF_CONFIRMED":
+            stage, action = 0, "측정 완료 · 새 시험은 연결 종료 후 준비하세요."
+        elif issues:
+            stage, action = 0, "ARM 비활성: 설정이 미완료입니다. 아래 항목을 수정하세요."
+        elif self._can_start:
+            stage, action = 3, "ARM 완료 · 4. START를 누르면 측정합니다."
+        elif self._can_arm:
+            stage, action = 2, "연결 완료 · 3. ARM으로 장비 설정을 검증하세요."
+        elif self.setup_policy.currentData() == "verified_fixture" and not self._commissioning.get(
+            "ready"
+        ):
+            stage, action = 2, "ARM 대기 · 진단 화면에서 현재 연결의 인터록을 확인하세요."
+        else:
+            stage, action = 2, "장비 ARM 조건 확인 필요 · 진단 기록을 확인하세요."
+        self.workflow_label.setText(action)
+        for index, label in enumerate(self.stage_labels):
+            active = index == stage
+            label.setStyleSheet(
+                "padding:8px;border-radius:4px;"
+                + (
+                    "background:#d8edf7;color:#12516c;font-weight:700"
+                    if active
+                    else "background:#edf1f4;color:#697684"
+                )
+            )
+        self.arm_button.setToolTip(
+            "ARM 실행 가능 · 출력은 켜지지 않습니다."
+            if self.arm_button.isEnabled()
+            else ("ARM 비활성: " + arm_issue if issues else action)
+        )
+        self.start_button.setToolTip(
+            "START 실행 가능"
+            if self.start_button.isEnabled()
+            else ("START 대기: ARM을 먼저 완료하세요." if self._can_arm and not issues else action)
+        )
+        commission_needed = (
+            self._connected
+            and not issues
+            and self.setup_policy.currentData() == "verified_fixture"
+            and not self._commissioning.get("ready")
+        )
+        self.repair_button.setText(
+            "현재 연결의 인터록 확인"
+            if commission_needed
+            else ("연결 종료 후 설정 수정" if self._connected else "설정 확인")
+        )
+        self.repair_button.setEnabled(
+            not self._closing and not self._busy and (not self._connected or output == "OFF")
+        )
         self.connection_guide.set_context(
             simulation=self.transport.currentData() != "visa",
             resource=self.resource.text().strip(),
@@ -650,6 +832,23 @@ class MainWindow(QMainWindow):
             operator_setup_acknowledged=self.operator_setup_ack.isChecked(),
             arm_issue=arm_issue,
         )
+
+    def _repair_settings(self) -> None:
+        if self._busy or self._closing:
+            return
+        if (
+            self._connected
+            and not self._preparation_issues
+            and self.setup_policy.currentData() == "verified_fixture"
+            and not self._commissioning.get("ready")
+        ):
+            self.main_tabs.setCurrentIndex(1)
+        elif self._connected:
+            if self.output_label.text() == "OUTPUT OFF":
+                self._edit_after_disconnect = True
+                self._send("disconnect")
+        else:
+            self._setup_test()
 
     def _load_controls(self, data: dict) -> None:
         self._loading_controls = True
@@ -743,11 +942,14 @@ class MainWindow(QMainWindow):
             resources = tuple(
                 self.resource_choices.itemText(i) for i in range(1, self.resource_choices.count())
             )
-            dialog = TestSetupDialog(current, self, resources=resources)
+            field = next(iter(getattr(self, "_preparation_issues", [])), {}).get("field")
+            dialog = TestSetupDialog(current, self, resources=resources, focus_field=field)
             if dialog.exec() and dialog.result_config is not None:
                 self._load_controls(dialog.result_config.to_dict())
                 self.log.appendPlainText(
-                    "시험 설정을 입력했습니다. 연결·ARM·START는 각각 별도입니다."
+                    "초안을 적용했습니다. ARM 준비 항목을 확인하세요."
+                    if getattr(dialog, "applied_as_draft", False)
+                    else "측정 설정을 적용했습니다. 다음: 연결 → ARM → START"
                 )
         except Exception as exc:
             self._on_error(str(exc))
@@ -861,6 +1063,7 @@ class MainWindow(QMainWindow):
     def _connect(self) -> None:
         try:
             config = self.config_from_controls()
+            self._last_error = ""
             self._busy = True
             self.settings.setEnabled(False)
             self._update_buttons()
@@ -869,6 +1072,8 @@ class MainWindow(QMainWindow):
             self._on_error(str(exc))
 
     def _send(self, action: str) -> None:
+        if action == "arm":
+            self._last_error = ""
         self._busy = True
         self._update_buttons()
         self.command.emit((action, None))
@@ -876,6 +1081,10 @@ class MainWindow(QMainWindow):
     def _start(self) -> None:
         self.rows.clear()
         self._last_elapsed = None
+        self._last_sample_time = None
+        for key, unit in (("voltage", "V"), ("current", "A"), ("resistance", "Ω")):
+            self.value_labels[key].setText(f"— {unit}")
+        self.reading_state_label.setText("판독 대기 · 첫 측정값을 기다립니다")
         for trace in self.traces:
             trace.rows = self.rows
             trace.redraw()
@@ -887,6 +1096,7 @@ class MainWindow(QMainWindow):
 
     @Slot(dict)
     def _on_status(self, status: dict) -> None:
+        self._last_worker_status = dict(status)
         self._state = status.get("state", self._state)
         self._can_arm = status.get("can_arm", False)
         self._can_start = status.get("can_start", False)
@@ -894,7 +1104,14 @@ class MainWindow(QMainWindow):
             self._can_arm = self._can_start = False
         self._commissioning = status.get("commissioning", {}) or {}
         self._connected = self._state != "DISCONNECTED"
-        self._busy = self._state in {"CONFIGURING", "RAMPING", "SETTLING", "ACQUIRING", "STOPPING"}
+        self._busy = self._state in {
+            "CONNECTED_UNVERIFIED",
+            "CONFIGURING",
+            "RAMPING",
+            "SETTLING",
+            "ACQUIRING",
+            "STOPPING",
+        }
         self.state_label.setText(self._state)
         self.output_label.setText("OUTPUT " + status.get("output_state", "UNKNOWN"))
         identity = status.get("identity")
@@ -916,6 +1133,9 @@ class MainWindow(QMainWindow):
         self.connection_guide.update_status(status)
         self._update_buttons()
         self._mark_stale()
+        if self._edit_after_disconnect and self._state == "DISCONNECTED":
+            self._edit_after_disconnect = False
+            QTimer.singleShot(0, self._setup_test)
 
     @Slot(dict)
     def _on_sample(self, row: dict) -> None:
@@ -930,6 +1150,14 @@ class MainWindow(QMainWindow):
         if display["_display_r"] is None:
             display["_display_r"] = row.get("resistance_apparent_ohm")
         self.rows.append(display)
+        self.value_labels["voltage"].setText(
+            _display_si(row.get("voltage_programmed_readback_V"), "V")
+        )
+        self.value_labels["current"].setText(_display_si(row.get("current_raw_A"), "A"))
+        self.value_labels["resistance"].setText(_display_si(display["_display_r"], "Ω"))
+        self.reading_state_label.setText(
+            "판독 중" if elapsed is None else f"판독 중 · {elapsed:g} s"
+        )
         for trace in self.traces:
             trace.rows = self.rows
             trace.redraw()
@@ -955,18 +1183,21 @@ class MainWindow(QMainWindow):
     @Slot(dict)
     def _on_event(self, event: dict) -> None:
         self.log.appendPlainText(json.dumps(event, ensure_ascii=False, default=str))
+        if event.get("event") == "abort":
+            self._last_error = str(event.get("reason") or "측정 중단")
+            self._refresh_connection_guide()
 
     @Slot(str)
     def _on_error(self, message: str) -> None:
         self._busy = False
+        self._last_error = message
+        self._edit_after_disconnect = False
         self.log.appendPlainText("ERROR · " + message)
         self._update_buttons()
 
     def _update_buttons(self) -> None:
         closing = self._closing
         self.connect_button.setEnabled(not self._connected and not self._busy and not closing)
-        self.arm_button.setEnabled(self._can_arm and not self._busy and not closing)
-        self.start_button.setEnabled(self._can_start and not self._busy and not closing)
         self.stop_button.setEnabled(self._connected and not closing)
         self.fast_stop_button.setEnabled(self._connected and not closing)
         self.disconnect_button.setEnabled(self._connected and not self._busy and not closing)
@@ -1005,6 +1236,9 @@ class MainWindow(QMainWindow):
         if stale and not self.live_label.property("stale"):
             self.live_label.setText("STALE · 현재 새 판독값 아님\n" + self.live_label.text())
             self.live_label.setProperty("stale", True)
+        self.reading_state_label.setProperty("stale", stale)
+        if stale and self._last_sample_time is not None:
+            self.reading_state_label.setText("마지막 판독값 · 현재 실시간 값 아님")
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self._closed:

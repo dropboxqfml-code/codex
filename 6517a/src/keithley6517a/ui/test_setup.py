@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -13,6 +14,8 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
@@ -23,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..config import ConfigurationError, RunConfig
+from .readiness import configuration_issues, humanize_issue
 
 
 class TestSetupDialog(QDialog):
@@ -32,63 +36,131 @@ class TestSetupDialog(QDialog):
     does no device, filesystem, or network I/O, including while applying settings.
     """
 
-    def __init__(self, config: RunConfig, parent=None, *, resources: Sequence[str] = ()) -> None:
+    def __init__(
+        self, config: RunConfig, parent=None, *, resources: Sequence[str] = (), focus_field=None
+    ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("6517A · USB-GPIB 시험 설정")
-        self.resize(800, 760)
+        self.setWindowTitle("6517A · 측정 설정")
+        self.resize(900, 760)
         self._original = config
         self.result_config: RunConfig | None = None
+        self.applied_as_draft: bool | None = None
         self._edits: list[QWidget] = []
         root = QVBoxLayout(self)
-        intro = QLabel(
-            "이 창은 설정만 준비합니다. 연결·ARM·출력 ON은 실행하지 않습니다.\n"
-            "운용 방식을 선택하고 시험값을 입력한 뒤, 메인 화면에서 연결 → ARM → START합니다."
-        )
+        intro = QLabel("설정 적용 후 메인 화면에서 연결 → ARM → START 순서로 진행합니다.")
         intro.setWordWrap(True)
         root.addWidget(intro)
-        tabs = QTabWidget()
-        root.addWidget(tabs, 1)
+        self.tabs = QTabWidget()
+        root.addWidget(self.tabs, 1)
+        basic = self._tab(self.tabs, "1. 기본 설정")
+        advanced = self._tab(self.tabs, "2. 상세 설정")
+        approval = self._tab(self.tabs, "3. fixture 기록")
 
-        connection = self._tab(tabs, "1. 연결")
-        self.real_mode = QCheckBox("REAL VISA · 실제 6517A 시험 설정을 명시적으로 선택")
+        self.real_mode = QCheckBox("실제 장비 사용 · REAL VISA")
         self.real_mode.setChecked(not config.simulation)
-        connection.addRow(self.real_mode)
         self._edits.append(self.real_mode)
+        basic.addRow(self.real_mode)
         self.setup_policy = QComboBox()
-        self.setup_policy.addItem("검증된 fixture · 기존 승인 기록 사용", "verified_fixture")
+        self.setup_policy.addItem("검증된 fixture", "verified_fixture")
         self.setup_policy.addItem("사용자 관리 · 저전압 시험 ≤10 V", "operator_low_voltage")
-        self.setup_policy.setCurrentIndex(
-            1
-            if getattr(config, "setup_policy", "verified_fixture") == "operator_low_voltage"
-            else 0
-        )
+        self.setup_policy.setCurrentIndex(1 if config.setup_policy == "operator_low_voltage" else 0)
         self._edits.append(self.setup_policy)
-        connection.addRow("운용 방식", self.setup_policy)
-        self.operator_ack = QCheckBox("연결·부품 정격·외부 보호를 사용자가 관리함을 확인합니다")
-        self.operator_ack.setChecked(getattr(config, "operator_setup_acknowledged", False))
-        self._edits.append(self.operator_ack)
-        connection.addRow(self.operator_ack)
-        self.policy_note = QLabel()
-        self.policy_note.setWordWrap(True)
-        connection.addRow(self.policy_note)
+        basic.addRow("운용 방식", self.setup_policy)
         self.resource = QComboBox()
         self.resource.setEditable(True)
         self.resource.addItems(list(dict.fromkeys(resources)))
         self.resource.setCurrentText(config.resource)
-        self.resource.setToolTip(
-            "GPIB resource를 선택하거나 입력합니다. 주소를 자동 탐색하지 않습니다."
-        )
+        self.resource.setToolTip("NI MAX와 같은 GPIB 주소를 선택하거나 입력합니다.")
         self._edits.append(self.resource)
-        connection.addRow("선택한 VISA GPIB resource", self.resource)
+        basic.addRow("GPIB 주소", self.resource)
+        self.sample_id = self._text(config.sample_id)
+        basic.addRow("시료 ID", self.sample_id)
+        self.reference_preset_button = QPushButton("1 GΩ · 1 V 시험값 적용")
+        self.reference_preset_button.setToolTip(
+            "1 V · software trip 10 nA · 명목 기준저항 1 GΩ. 확인 항목은 자동 선택하지 않습니다."
+        )
+        self.reference_preset_button.clicked.connect(self._apply_reference_preset)
+        basic.addRow(self.reference_preset_button)
+        self.voltages = self._text(", ".join(str(v) for v in config.voltages))
+        basic.addRow("전압 (V, 쉼표로 구분)", self.voltages)
+        self.current_trip = self._text(self._optional_text(config.current_trip_A))
+        self.current_trip.setPlaceholderText("예: 1e-8 = 10 nA")
+        basic.addRow("Software current trip (A)", self.current_trip)
+        self.dwell = self._text(str(config.dwell_s))
+        basic.addRow("전압별 측정 시간 (s)", self.dwell)
+        self.reference_current_label = QLabel()
+        self.reference_current_label.setWordWrap(True)
+        basic.addRow(self.reference_current_label)
+        self.resistive_limit = QComboBox()
+        self.resistive_limit.addItem("선택 필요", None)
+        self.resistive_limit.addItem("OFF · 내부 저항성 전류 제한 미사용", False)
+        self.resistive_limit.addItem("ON · 내부 저항성 전류 제한 사용", True)
+        self.resistive_limit.setCurrentIndex(
+            0
+            if config.resistive_limit_enabled is None
+            else (2 if config.resistive_limit_enabled else 1)
+        )
+        self._edits.append(self.resistive_limit)
+        basic.addRow("Resistive-limit", self.resistive_limit)
+        self.operator_ack = QCheckBox("연결·정격·외부 보호를 사용자가 관리함을 확인합니다")
+        self.operator_ack.setChecked(config.operator_setup_acknowledged)
+        self._edits.append(self.operator_ack)
+        basic.addRow(self.operator_ack)
+        self.residual_ack = QCheckBox("출력 OFF와 방전 완료가 다름을 확인했습니다")
+        self.residual_ack.setChecked(config.residual_warning_ack)
+        self._edits.append(self.residual_ack)
+        basic.addRow(self.residual_ack)
+        self.policy_note = QLabel()
+        self.policy_note.setWordWrap(True)
+        basic.addRow(self.policy_note)
+
+        self.output_directory = self._text(config.output_directory)
+        advanced.addRow("결과 저장 폴더", self.output_directory)
+        self.mode = QComboBox()
+        self.mode.addItems(["FVMI_CURRENT", "NATIVE_RESISTANCE"])
+        self.mode.setCurrentText(config.mode)
+        self._edits.append(self.mode)
+        advanced.addRow("측정 모드", self.mode)
+        self.ceiling = self._text(str(config.voltage_ceiling_V))
+        advanced.addRow("소프트웨어 상한 (V)", self.ceiling)
+        self.source_range = QComboBox()
+        self.source_range.addItems(["100", "1000"])
+        self.source_range.setCurrentText(str(int(config.source_range_V)))
+        self._edits.append(self.source_range)
+        advanced.addRow("V-Source 범위 (V)", self.source_range)
+        self.reference_resistance = self._text(
+            self._optional_text(config.sample_metadata.get("reference_resistance_ohm"))
+        )
+        advanced.addRow("기준저항 명목값 (Ω)", self.reference_resistance)
+        self.simulation_resistance = self._text(str(config.simulation_resistance_ohm))
+        self.simulation_resistance.setToolTip("SIMULATION 전용 가상 저항값입니다.")
+        self.simulation_resistance.setEnabled(not self.real_mode.isChecked())
+        advanced.addRow("SIM 저항 모델 (Ω)", self.simulation_resistance)
+        self.nplc = self._text(str(config.nplc))
+        self.line_frequency = QComboBox()
+        self.line_frequency.addItems(["50", "60"])
+        self.line_frequency.setCurrentText(str(int(config.line_frequency_hz)))
+        self._edits.append(self.line_frequency)
+        self.interval = self._text(str(config.sample_interval_s))
+        self.summary_window = self._text(str(config.summary_window_s))
+        self.exclude_initial = self._text(str(config.exclude_initial_s))
+        for label, widget in (
+            ("NPLC", self.nplc),
+            ("전원 주파수 (Hz)", self.line_frequency),
+            ("Sample interval (s)", self.interval),
+            ("요약 window (s)", self.summary_window),
+            ("초기 제외 구간 (s)", self.exclude_initial),
+        ):
+            advanced.addRow(label, widget)
         self.visa_backend = self._text(config.visa_backend or "")
-        self.visa_backend.setPlaceholderText("기본 VISA 사용 시 비움 / @ivi 또는 VISA library 경로")
-        connection.addRow("VISA backend / library", self.visa_backend)
+        self.visa_backend.setPlaceholderText("기본 VISA / @ivi / library 경로")
         self.backend_profiles = QComboBox()
         self.backend_profiles.addItem("NI-VISA · 기본 권장", "@ivi")
-        self.backend_profiles.addItem("NI-488.2 전용 · 선택 확장 설치 필요 · 시험 기능", "@py")
+        self.backend_profiles.addItem("NI-488.2 전용 · 선택 확장 필요", "@py")
         self.backend_profiles.addItem("라이브러리 경로 직접 지정", "custom")
         self._edits.append(self.backend_profiles)
-        connection.addRow("통신 방식", self.backend_profiles)
+        advanced.addRow("통신 방식", self.backend_profiles)
+        advanced.addRow("VISA backend / library", self.visa_backend)
         self.backend_profiles.currentIndexChanged.connect(self._select_backend)
         self.visa_backend.textChanged.connect(self._sync_backend)
         self._sync_backend()
@@ -96,160 +168,110 @@ class TestSetupDialog(QDialog):
         self.timeout_ms.setRange(1, 60000)
         self.timeout_ms.setValue(config.timeout_ms)
         self._edits.append(self.timeout_ms)
-        connection.addRow("I/O timeout (ms)", self.timeout_ms)
+        advanced.addRow("I/O timeout (ms)", self.timeout_ms)
         self.send_end = QCheckBox("EOI / send_end 사용")
         self.send_end.setChecked(config.send_end)
         self._edits.append(self.send_end)
-        connection.addRow(self.send_end)
+        advanced.addRow(self.send_end)
         self.read_termination = self._termination(config.read_termination)
         self.write_termination = self._termination(config.write_termination)
-        connection.addRow("읽기 terminator", self.read_termination)
-        connection.addRow("쓰기 terminator", self.write_termination)
-        driver_note = QLabel(
-            "기본 경로는 NI-VISA입니다. NI-488.2 전용 @py 시험 기능은 선택 확장을 "
-            "따로 설치해야 하며 NI-488.2 드라이버는 여전히 필요합니다. "
-            "NI MAX에서 주소를 확인한 뒤 다른 제어 프로그램의 test panel은 종료하세요."
-        )
-        driver_note.setWordWrap(True)
-        connection.addRow(driver_note)
-
-        experiment = self._tab(tabs, "2. 시료·측정")
-        self.sample_id = self._text(config.sample_id)
-        self.output_directory = self._text(config.output_directory)
-        experiment.addRow("시료 ID", self.sample_id)
-        experiment.addRow("결과 저장 폴더", self.output_directory)
-        self.mode = QComboBox()
-        self.mode.addItems(["FVMI_CURRENT", "NATIVE_RESISTANCE"])
-        self.mode.setCurrentText(config.mode)
-        self._edits.append(self.mode)
-        experiment.addRow("측정 모드 (실장비는 FVMI_CURRENT)", self.mode)
-        self.reference_preset_button = QPushButton("1 GΩ · 1 V 시험값 적용")
-        self.reference_preset_button.setToolTip(
-            "요청 1 V, software 상한 10 V, 100 V 범위, software trip 10 nA, "
-            "명목 기준저항·SIM 저항 모델 1 GΩ를 입력합니다. 운용 방식과 확인 체크는 유지합니다."
-        )
-        self.reference_preset_button.clicked.connect(self._apply_reference_preset)
-        experiment.addRow(self.reference_preset_button)
-        self.voltages = self._text(", ".join(str(v) for v in config.voltages))
-        experiment.addRow("요청 전압 (V, 쉼표로 구분)", self.voltages)
-        self.ceiling = self._text(str(config.voltage_ceiling_V))
-        experiment.addRow("소프트웨어 전압 상한 (V)", self.ceiling)
-        self.source_range = QComboBox()
-        self.source_range.addItems(["100", "1000"])
-        self.source_range.setCurrentText(str(int(config.source_range_V)))
-        self._edits.append(self.source_range)
-        experiment.addRow("V-Source 범위 (V)", self.source_range)
-        self.current_trip = self._text(self._optional_text(config.current_trip_A))
-        self.current_trip.setPlaceholderText("사용자가 결정해야 하는 software trip, A 단위")
-        experiment.addRow("Software current trip (A)", self.current_trip)
-        self.reference_resistance = self._text(
-            self._optional_text(config.sample_metadata.get("reference_resistance_ohm"))
-        )
-        self.reference_resistance.setPlaceholderText("선택 입력 · 1e9 = 1 GΩ")
-        experiment.addRow("기준저항 명목값 (Ω)", self.reference_resistance)
-        self.simulation_resistance = self._text(
-            str(getattr(config, "simulation_resistance_ohm", 1e12))
-        )
-        self.simulation_resistance.setToolTip(
-            "SIMULATION의 가상 전류를 만드는 저항값입니다. 실장비에서는 사용하지 않습니다."
-        )
-        self.simulation_resistance.setEnabled(not self.real_mode.isChecked())
-        experiment.addRow("SIM 저항 모델 (Ω)", self.simulation_resistance)
-        self.reference_current_label = QLabel()
-        self.reference_current_label.setWordWrap(True)
-        experiment.addRow(self.reference_current_label)
-        self.nplc = self._text(str(config.nplc))
-        self.line_frequency = QComboBox()
-        self.line_frequency.addItems(["50", "60"])
-        self.line_frequency.setCurrentText(str(int(config.line_frequency_hz)))
-        self._edits.append(self.line_frequency)
-        self.interval = self._text(str(config.sample_interval_s))
-        self.dwell = self._text(str(config.dwell_s))
-        self.summary_window = self._text(str(config.summary_window_s))
-        self.exclude_initial = self._text(str(config.exclude_initial_s))
-        for label, widget in (
-            ("NPLC", self.nplc),
-            ("전원 주파수 입력값 (Hz)", self.line_frequency),
-            ("요청 sample interval (s)", self.interval),
-            ("전압별 dwell / duration (s)", self.dwell),
-            ("마지막 요약 window (s)", self.summary_window),
-            ("초기 제외 구간 (s)", self.exclude_initial),
-        ):
-            experiment.addRow(label, widget)
+        advanced.addRow("읽기 terminator", self.read_termination)
+        advanced.addRow("쓰기 terminator", self.write_termination)
         self.note = QPlainTextEdit(config.note)
-        self.note.setMaximumHeight(90)
+        self.note.setMaximumHeight(75)
         self._edits.append(self.note)
-        experiment.addRow("실험 메모", self.note)
+        advanced.addRow("메모", self.note)
 
-        approval = self._tab(tabs, "3. 정격·승인 기록")
         self.approval_note = QLabel()
         self.approval_note.setWordWrap(True)
         approval.addRow(self.approval_note)
         self.sample_rating = self._text(self._optional_text(config.sample_limit_V))
         self.fixture_rating = self._text(self._optional_text(config.fixture_limit_V))
         self.cable_rating = self._text(self._optional_text(config.cable_limit_V))
-        approval.addRow("확인한 시료 최대 전압 (V)", self.sample_rating)
-        approval.addRow("확인한 fixture 최대 전압 (V)", self.fixture_rating)
-        approval.addRow("확인한 케이블·커넥터 최대 전압 (V)", self.cable_rating)
+        approval.addRow("시료 최대 전압 (V)", self.sample_rating)
+        approval.addRow("Fixture 최대 전압 (V)", self.fixture_rating)
+        approval.addRow("케이블 최대 전압 (V)", self.cable_rating)
         self.rating_approval = self._text(config.rating_approval)
-        approval.addRow("정격·실험 승인 문서 / 기록", self.rating_approval)
         self.fixture_id = self._text(str(config.commissioning.get("fixture_id", "")))
         self.approved_by = self._text(str(config.commissioning.get("approved_by", "")))
+        approval.addRow("정격·실험 승인 기록", self.rating_approval)
         approval.addRow("Fixture ID", self.fixture_id)
-        approval.addRow("승인 담당자", self.approved_by)
-        self.resistive_limit = QComboBox()
-        self.resistive_limit.addItem("미결정 — 실장비 ARM 불가", None)
-        self.resistive_limit.addItem("OFF — 승인된 하드웨어 보호 계획", False)
-        self.resistive_limit.addItem("ON — 내부 resistive-limit 사용 승인", True)
-        self.resistive_limit.setCurrentIndex(
-            0
-            if config.resistive_limit_enabled is None
-            else (2 if config.resistive_limit_enabled else 1)
-        )
-        self._edits.append(self.resistive_limit)
-        approval.addRow("Resistive-limit 정책", self.resistive_limit)
+        approval.addRow("담당자", self.approved_by)
         self.installation = self._record_check(
-            "installation_confirmed", "승인된 저측 FVMI 결선·정격·인터록 설치를 확인했습니다"
+            "installation_confirmed", "결선·정격·인터록 설치를 확인했습니다"
         )
         self.hardware_protection = self._record_check(
-            "hardware_protection_reviewed", "독립적인 하드웨어 보호·차단·방전 절차를 검토했습니다"
+            "hardware_protection_reviewed", "독립 보호·차단·방전 절차를 검토했습니다"
         )
-        self.lid_open = self._record_check(
-            "lid_open_zero", "출력 OFF 상태의 lid-open=0 검증 기록이 있습니다"
-        )
+        self.lid_open = self._record_check("lid_open_zero", "출력 OFF에서 lid-open=0 확인 기록")
         self.lid_closed = self._record_check(
-            "lid_closed_one", "출력 OFF 상태의 lid-closed=1 검증 기록이 있습니다"
+            "lid_closed_one", "출력 OFF에서 lid-closed=1 확인 기록"
         )
-        self.residual_ack = QCheckBox("출력 OFF와 잔류 전압 미확인이 별개임을 확인했습니다")
-        self.residual_ack.setChecked(config.residual_warning_ack)
-        self._edits.append(self.residual_ack)
-        for checkbox in (
-            self.installation,
-            self.hardware_protection,
-            self.lid_open,
-            self.lid_closed,
-            self.residual_ack,
-        ):
-            approval.addRow(checkbox)
-        limits = QLabel(
-            "전압 상한은 장비·사용자·시료·fixture·케이블 정격의 최솟값입니다. "
-            "10 V 초기 제한도 시료 안전 전압의 보증이 아닙니다. "
-            "Software current trip은 장비의 programmable compliance가 아닙니다."
-        )
-        limits.setWordWrap(True)
-        approval.addRow(limits)
+        for widget in (self.installation, self.hardware_protection, self.lid_open, self.lid_closed):
+            approval.addRow(widget)
 
         self.status_label = QLabel()
         self.status_label.setWordWrap(True)
         root.addWidget(self.status_label)
+        self.issue_list = QListWidget()
+        self.issue_list.setMaximumHeight(112)
+        self.issue_list.setToolTip("항목을 누르면 해당 입력란으로 이동합니다.")
+        self.issue_list.itemClicked.connect(
+            lambda item: self.focus_field(item.data(Qt.ItemDataRole.UserRole))
+        )
+        root.addWidget(self.issue_list)
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
-        self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText("설정 적용 · 연결하지 않음")
+        self.ready_button = self.buttons.button(QDialogButtonBox.StandardButton.Ok)
+        self.ready_button.setText("측정 설정 적용")
         self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("취소")
-        self.buttons.accepted.connect(self.accept)
+        self.draft_button = self.buttons.addButton(
+            "초안 적용", QDialogButtonBox.ButtonRole.ActionRole
+        )
+        self.draft_button.clicked.connect(self.accept)
+        self.buttons.accepted.connect(self.accept_ready)
         self.buttons.rejected.connect(self.reject)
         root.addWidget(self.buttons)
+        self._focus_targets = {}
+        for index, pairs in enumerate(
+            (
+                {
+                    "resource": self.resource,
+                    "sample_id": self.sample_id,
+                    "voltages": self.voltages,
+                    "current_trip_A": self.current_trip,
+                    "dwell_s": self.dwell,
+                    "resistive_limit_enabled": self.resistive_limit,
+                    "operator_setup_acknowledged": self.operator_ack,
+                    "residual_warning_ack": self.residual_ack,
+                    "setup_policy": self.setup_policy,
+                },
+                {
+                    "voltage_ceiling_V": self.ceiling,
+                    "source_range_V": self.source_range,
+                    "nplc": self.nplc,
+                    "sample_interval_s": self.interval,
+                    "summary_window_s": self.summary_window,
+                    "exclude_initial_s": self.exclude_initial,
+                    "simulation_resistance_ohm": self.simulation_resistance,
+                    "mode": self.mode,
+                },
+                {
+                    "sample_limit_V": self.sample_rating,
+                    "fixture_limit_V": self.fixture_rating,
+                    "cable_limit_V": self.cable_rating,
+                    "rating_approval": self.rating_approval,
+                    "commissioning.fixture_id": self.fixture_id,
+                    "commissioning.approved_by": self.approved_by,
+                    "commissioning.installation_confirmed": self.installation,
+                    "commissioning.hardware_protection_reviewed": self.hardware_protection,
+                    "commissioning.lid_open_zero": self.lid_open,
+                    "commissioning.lid_closed_one": self.lid_closed,
+                },
+            )
+        ):
+            self._focus_targets.update({key: (index, value) for key, value in pairs.items()})
         self.setup_policy.currentIndexChanged.connect(self._policy_changed)
         self.real_mode.toggled.connect(
             lambda checked: self.simulation_resistance.setEnabled(not checked)
@@ -266,6 +288,21 @@ class TestSetupDialog(QDialog):
             elif isinstance(widget, QCheckBox):
                 widget.toggled.connect(self._refresh_status)
         self._policy_changed()
+        if focus_field:
+            QTimer.singleShot(0, lambda: self.focus_field(focus_field))
+
+    def focus_field(self, field) -> bool:
+        target = self._focus_targets.get(field)
+        if target is None:
+            return False
+        index, widget = target
+        self.tabs.setCurrentIndex(index)
+        scroll = self.tabs.widget(index)
+        scroll.ensureWidgetVisible(widget)
+        widget.setFocus(Qt.FocusReason.OtherFocusReason)
+        if isinstance(widget, QLineEdit):
+            widget.selectAll()
+        return True
 
     @staticmethod
     def _tab(tabs, title):
@@ -307,8 +344,7 @@ class TestSetupDialog(QDialog):
         if operator:
             self.source_range.setCurrentText("100")
             self.policy_note.setText(
-                "사용자 관리 시험은 software 상한 10 V·100 V 범위로 제한됩니다. "
-                "실장비의 인터록 오류, limit와 STOP/OFF 처리는 계속 검사합니다."
+                "사용자 관리 시험 · 최대 10 V · 장비 상태 검사는 ARM에서 진행합니다."
             )
             self.approval_note.setText(
                 "이 방식에서 정격·fixture 기록은 선택 입력입니다. "
@@ -317,12 +353,12 @@ class TestSetupDialog(QDialog):
             )
         else:
             self.policy_note.setText(
-                "검증된 fixture 방식은 승인 기록과 현재 연결의 출력 OFF 상태에서 "
-                "인터록 열림 0 → 닫힘 1 확인을 사용합니다."
+                "검증된 fixture · 현재 연결에서 인터록 열림 0 → 닫힘 1 확인이 필요합니다."
             )
             self.approval_note.setText(
                 "이 방식의 실장비 ARM에는 아래 정격·설치·승인 기록이 필요합니다."
             )
+        self.tabs.setTabText(2, "3. fixture 기록" if not operator else "3. 추가 기록 (선택)")
         self._refresh_status()
 
     def _apply_reference_preset(self):
@@ -493,43 +529,77 @@ class TestSetupDialog(QDialog):
             "명목 예상 전류 · 설정 분해능 기준 · " + ", ".join(points) + " · 실측값 아님"
         )
 
+    def _show_issues(self, issues):
+        self.issue_list.clear()
+        for issue in issues:
+            item = QListWidgetItem(issue["message"])
+            item.setData(Qt.ItemDataRole.UserRole, issue.get("field", ""))
+            self.issue_list.addItem(item)
+        self.issue_list.setVisible(bool(issues))
+
     def _refresh_status(self, *_):
         try:
             config = self._draft_config()
             self._reference_preview(config)
-            try:
-                self._ready_config(config)
-            except (ValueError, TypeError) as exc:
-                self.status_label.setText(f"초안 적용 가능 · ARM 준비 미완료: {exc}")
+            issues = configuration_issues(config)
+            self._show_issues(issues)
+            if issues:
+                self.status_label.setText(f"초안 적용 가능 · ARM 준비 미완료 ({len(issues)}개)")
                 self.status_label.setStyleSheet("color:#805c15")
-                self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText(
-                    "초안 적용 · 연결하지 않음"
-                )
                 return
             requested = list(config.voltages)
             quantized = [config.quantize_voltage(v) for v in config.voltages]
             scope = "SIMULATION" if config.simulation else "실장비"
-            text = (
-                f"{scope} 설정 준비됨 · 상한 {config.effective_ceiling:g} V · "
-                f"요청 {requested} V → 설정 분해능 기준 {quantized} V\n"
-                "적용 후 별도로 연결·ARM·START합니다."
+            self.status_label.setText(
+                f"{scope} 설정 준비됨 · 요청 {requested} V → 적용 {quantized} V · "
+                "연결은 메인 화면에서 진행합니다."
             )
-            self.status_label.setText(text)
             self.status_label.setStyleSheet("color:#16667a")
-            self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText(
-                "설정 적용 · 연결하지 않음"
-            )
         except (ValueError, TypeError) as exc:
             self.reference_current_label.setText("설정값을 확인하면 명목 예상 전류를 표시합니다.")
-            self.status_label.setText(f"설정 확인 필요: {exc}")
+            message = humanize_issue(exc)
+            self.status_label.setText(f"설정 확인 필요: {message}")
             self.status_label.setStyleSheet("color:#a32e28")
+            self._show_issues([{"message": message, "field": ""}])
 
-    def accept(self):
+    def accept_ready(self):
+        """Default apply requires measurement-ready values, but never performs instrument I/O."""
         try:
-            self.result_config = self._draft_config()
+            config = self._draft_config()
+            issues = configuration_issues(config)
+            if issues:
+                self.result_config = None
+                self.applied_as_draft = None
+                self._show_issues(issues)
+                self.status_label.setText(
+                    f"설정 적용 안 됨 · 필수 설정 {len(issues)}개를 확인하세요"
+                )
+                self.status_label.setStyleSheet("color:#a32e28")
+                self.focus_field(issues[0].get("field"))
+                return
+            self.result_config = self._ready_config(config)
+            self.applied_as_draft = False
         except (ValueError, TypeError) as exc:
             self.result_config = None
-            self.status_label.setText(f"설정 적용 안 됨: {exc}")
+            self.applied_as_draft = None
+            message = humanize_issue(exc)
+            self.status_label.setText(f"설정 적용 안 됨: {message}")
             self.status_label.setStyleSheet("color:#a32e28")
+            self._show_issues([{"message": message, "field": ""}])
+            return
+        super().accept()
+
+    def accept(self):
+        """Explicit draft apply preserves incomplete settings without claiming ARM readiness."""
+        try:
+            self.result_config = self._draft_config()
+            self.applied_as_draft = True
+        except (ValueError, TypeError) as exc:
+            self.result_config = None
+            self.applied_as_draft = None
+            message = humanize_issue(exc)
+            self.status_label.setText(f"설정 적용 안 됨: {message}")
+            self.status_label.setStyleSheet("color:#a32e28")
+            self._show_issues([{"message": message, "field": ""}])
             return
         super().accept()

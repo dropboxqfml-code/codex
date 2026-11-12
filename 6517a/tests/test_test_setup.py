@@ -1,6 +1,7 @@
 """The trial settings dialog never connects, commissions, arms, or starts hardware."""
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog
 
 from keithley6517a.config import ConfigurationError, RunConfig
@@ -183,7 +184,7 @@ def test_native_real_cannot_be_applied_and_request_quantization_is_visible(qtbot
     dialog.mode.setCurrentText("NATIVE_RESISTANCE")
     dialog.accept()
     assert dialog.result_config is None
-    assert "native" in dialog.status_label.text().lower()
+    assert "FVMI_CURRENT" in dialog.status_label.text()
 
 
 def test_eoi_only_terminators_and_selection_are_preserved(qtbot):
@@ -309,3 +310,76 @@ def test_reference_expected_current_uses_programmed_resolution_and_keeps_sign(qt
     assert "1 V → 1 nA" in label
     assert "-1 V → -1 nA" in label
     assert "0 V → 0 A" in label
+
+
+def test_default_apply_shows_every_missing_operator_setting_without_applying(qtbot, monkeypatch):
+    monkeypatch.setattr(
+        VisaTransport, "open", lambda *a, **k: pytest.fail("Settings must not open VISA")
+    )
+    dialog = dialog_for(qtbot)
+    dialog.real_mode.setChecked(True)
+    dialog.setup_policy.setCurrentIndex(1)
+    dialog.resource.setCurrentText("GPIB0::27::INSTR")
+    assert dialog.ready_button.text() == "측정 설정 적용"
+    fields = {
+        dialog.issue_list.item(i).data(Qt.ItemDataRole.UserRole)
+        for i in range(dialog.issue_list.count())
+    }
+    assert {
+        "current_trip_A",
+        "operator_setup_acknowledged",
+        "residual_warning_ack",
+        "resistive_limit_enabled",
+    } <= fields
+    dialog.ready_button.click()
+    assert dialog.result_config is None
+    assert dialog.applied_as_draft is None
+    assert dialog.result() == QDialog.DialogCode.Rejected
+    assert "필수 설정" in dialog.status_label.text()
+    assert dialog.issue_list.count() >= 4
+
+
+def test_ready_apply_and_draft_apply_have_distinct_results_without_hardware(qtbot, monkeypatch):
+    monkeypatch.setattr(
+        Instrument, "connect", lambda *a, **k: pytest.fail("Apply must not connect")
+    )
+    draft = dialog_for(qtbot)
+    draft.real_mode.setChecked(True)
+    draft.setup_policy.setCurrentIndex(1)
+    draft.resource.setCurrentText("GPIB0::27::INSTR")
+    draft.draft_button.click()
+    assert draft.result() == QDialog.DialogCode.Accepted
+    assert draft.result_config is not None and draft.applied_as_draft is True
+    with pytest.raises(ConfigurationError):
+        draft.result_config.validate(for_arm=True)
+    ready = dialog_for(qtbot)
+    fill_operator(ready)
+    ready.ready_button.click()
+    assert ready.result() == QDialog.DialogCode.Accepted
+    assert ready.result_config is not None and ready.applied_as_draft is False
+    ready.result_config.validate(for_arm=True)
+    assert not any(ready.result_config.commissioning.values())
+
+
+def test_operator_required_controls_share_the_basic_page(qtbot):
+    dialog = dialog_for(qtbot)
+    fill_operator(dialog)
+    for field in (
+        "current_trip_A",
+        "operator_setup_acknowledged",
+        "residual_warning_ack",
+        "resistive_limit_enabled",
+    ):
+        assert dialog.focus_field(field)
+        assert dialog.tabs.currentIndex() == 0
+    assert dialog.focus_field("commissioning.fixture_id")
+    assert dialog.tabs.currentIndex() == 2
+
+
+def test_focus_argument_opens_requested_field_and_preserves_values(qtbot):
+    dialog = dialog_for(qtbot, focus_field="nplc")
+    dialog.show()
+    qtbot.waitUntil(lambda: dialog.tabs.currentIndex() == 1)
+    assert dialog.focusWidget() == dialog.nplc
+    assert dialog.nplc.text() == "10.0"
+    assert dialog.result_config is None

@@ -176,8 +176,9 @@ def test_gui_reference_preset_connect_arm_start_completes_and_saves(tmp_path, qt
     dialog.dwell.setText("0.5")
     dialog.summary_window.setText("0.5")
     dialog.interval.setText("0.1")
-    dialog.accept()
+    dialog.ready_button.click()
     assert dialog.result_config is not None
+    assert not dialog.applied_as_draft
     window._load_controls(dialog.result_config.to_dict())
     assert not buses
     window.connect_button.click()

@@ -47,6 +47,7 @@ def arguments(action: str, supplied: list[str], root: Path) -> list[str]:
         return [
             "simulate",
             "--fast",
+            "--progress",
             "--config",
             str(root / "app/examples/simulation_config.json"),
             "--output",

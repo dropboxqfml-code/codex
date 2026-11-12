@@ -4,6 +4,24 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.6.0 진행 표시·준비 상태·화면 정리
+
+`Test-Simulation.cmd`는 START와 사전검사, 연결·ARM·START·전압 단계·판독·요약·OFF·완료 및 최종 PASS/FAIL·종료 코드를 표시합니다. CLI의 `simulate --progress`는 stderr를 즉시 flush하고 stdout의 최종 JSON 형식을 유지합니다.
+
+설정 창은 필수 입력을 검사하는 **측정 설정 적용**과 미완료 입력을 보존하는 **초안 적용**을 구분합니다. 누락 항목을 모아 보여 주며 항목에서 입력란으로 이동합니다. 메인 화면은 설정 누락, 연결 대기, ARM 대기, START 가능, 측정 완료를 구분하고 출력 OFF에서 연결 종료 후 설정 수정으로 돌아갑니다. 기본 화면은 설정 요약·판독·그래프 중심이며 고급 설정과 진단·로그는 별도 탭에 둡니다.
+
+| 검증 대상 | 확인할 동작 |
+|---|---|
+| Simulation 진행 | 최종 JSON 전 단계 출력, 실패 종료 코드, CMD의 사전 안내·최종 결과 |
+| 설정 준비 | 운용 방식별 모든 누락 항목, ready/draft 구분, 누락 입력 이동 |
+| 메인 흐름 | ARM·START 비활성 사유와 단계 안내, 연결 OFF에서 수정 후 재연결 |
+| 보호 회귀 | 확인 자동 승인 없음, 설정·연결·ARM에서 ON 없음, 기존 한도·실제 장비 조건 유지 |
+| 배포 | Windows 전체 검사·번들 CLI/GUI·추출 후 무결성 및 가상 1 GΩ 실행 |
+
+v0.6.0 실행 결과는 [해당 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.6.0)의 `Windows-software-tests.xml`·`build-report.json`과 함께 기록합니다. 이 문서의 이전 버전 시험 수는 해당 버전의 역사 기록입니다. 화면 안내 변경으로 실제 6517A의 전압 인가·current 수집을 검증한 것으로 간주하지 않습니다.
+
+2026-11-12 Linux 개발 환경에서 전체 **410개 통과**, Ruff 검사와 포맷 검사를 통과했습니다. 연결된 실제 설정의 누락 목록, SIM 초안의 ARM 차단, 연결 후 별도 ARM과 START, OFF에서 연결 종료 후 설정 수정, 중단 이유와 마지막 판독값 표시를 회귀 검사했습니다. 화면은 1280×820에서 가상 1 GΩ 실행과 준비 미완료 상태를 확인했습니다. Windows 검증 결과는 배포 CI 보고서에서 별도로 확인합니다.
+
 ## v0.5.0 사용자 관리 저전압 측정 흐름
 
 이번 버전은 사용자 관리 저전압 경로(`operator_low_voltage`)와 기존 검증 fixture 경로(`verified_fixture`)를 구분합니다. 사용자 관리 경로는 source 100 V 범위·절대 10 V 이하이며, 연결·정격·외부 보호는 사용자가 관리한다는 명시적 확인을 사용합니다. 정격 문서·fixture ID·과거 lid 전이 이력은 필수 입력이 아닙니다. 실제 장비의 interlock `1`, OFF·current limit·zero check·readback·오류 상태와 별도 ARM/START는 검사합니다. 물리적 설치 확인 필드를 사용자 확인만으로 true로 만들지 않습니다. 기존 fixture 경로의 정격·승인·현재 연결 `0 → 1` 관찰 조건은 유지합니다.

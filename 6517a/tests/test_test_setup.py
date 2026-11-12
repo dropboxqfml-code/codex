@@ -94,20 +94,31 @@ def test_explicit_real_form_creates_snapshot_but_never_live_commissioning(qtbot)
     assert "연결" in dialog.status_label.text()
 
 
-def test_real_missing_records_are_rejected_and_not_auto_checked(qtbot):
+def test_real_missing_records_can_be_applied_as_draft_but_cannot_arm(qtbot, monkeypatch):
+    monkeypatch.setattr(
+        MeasurementRunner, "connect", lambda *a: pytest.fail("Draft apply must not connect")
+    )
+    monkeypatch.setattr(
+        MeasurementRunner, "arm", lambda *a: pytest.fail("Draft apply must not ARM")
+    )
     dialog = dialog_for(qtbot)
     dialog.real_mode.setChecked(True)
     dialog.resource.setCurrentText("GPIB0::27::INSTR")
     dialog.accept()
-    assert dialog.result_config is None
-    assert dialog.result() == QDialog.DialogCode.Rejected
-    assert "설정 적용 안 됨" in dialog.status_label.text()
+    assert dialog.result_config is not None
+    assert dialog.result() == QDialog.DialogCode.Accepted
+    assert "초안 적용 가능" in dialog.status_label.text()
+    with pytest.raises(ConfigurationError):
+        dialog.result_config.validate(for_arm=True)
     assert not dialog.hardware_protection.isChecked()
     fill_real(dialog)
     dialog.lid_closed.setChecked(False)
     dialog.accept()
-    assert dialog.result_config is None
-    assert dialog.result() == QDialog.DialogCode.Rejected
+    assert dialog.result_config is not None
+    assert dialog.result() == QDialog.DialogCode.Accepted
+    assert not dialog.result_config.commissioning.get("lid_closed_one", False)
+    with pytest.raises(ConfigurationError, match="commissioning"):
+        dialog.result_config.validate(for_arm=True)
 
 
 @pytest.mark.parametrize(
@@ -119,6 +130,8 @@ def test_real_missing_records_are_rejected_and_not_auto_checked(qtbot):
         ("voltages", "1,,2"),
         ("ceiling", "inf"),
         ("current_trip", "nonsense"),
+        ("reference_resistance", "-1"),
+        ("simulation_resistance", "0"),
     ],
 )
 def test_numeric_errors_are_visible_and_cannot_be_applied(qtbot, field, value):
@@ -183,3 +196,116 @@ def test_eoi_only_terminators_and_selection_are_preserved(qtbot):
     assert config.resource == "GPIB0::5::INSTR"
     assert config.read_termination is None and config.write_termination is None
     assert config.send_end is True
+
+
+def fill_operator(dialog):
+    dialog.real_mode.setChecked(True)
+    dialog.setup_policy.setCurrentIndex(1)
+    dialog.resource.setCurrentText("GPIB0::27::INSTR")
+    dialog.current_trip.setText("1e-8")
+    dialog.residual_ack.setChecked(True)
+    dialog.resistive_limit.setCurrentIndex(1)
+    dialog.operator_ack.setChecked(True)
+
+
+def test_operator_form_uses_explicit_ack_without_inventing_fixture_approval(qtbot):
+    dialog = dialog_for(qtbot)
+    fill_operator(dialog)
+    dialog.accept()
+    config = dialog.result_config
+    config.validate(for_arm=True)
+    assert config.setup_policy == "operator_low_voltage"
+    assert config.operator_setup_acknowledged is True
+    assert config.source_range_V == 100
+    assert config.effective_ceiling == 10
+    assert config.sample_limit_V is None and config.fixture_limit_V is None
+    assert config.cable_limit_V is None and config.rating_approval == ""
+    assert not any(config.commissioning.values())
+    assert not dialog.installation.isChecked()
+    assert not dialog.hardware_protection.isChecked()
+    assert not dialog.lid_open.isChecked() and not dialog.lid_closed.isChecked()
+    assert "선택 입력" in dialog.approval_note.text()
+    assert not dialog.source_range.model().item(1).isEnabled()
+
+
+def test_operator_draft_applies_without_ack_but_readiness_stays_incomplete(qtbot):
+    dialog = dialog_for(qtbot)
+    fill_operator(dialog)
+    dialog.operator_ack.setChecked(False)
+    assert "ARM 준비 미완료" in dialog.status_label.text()
+    dialog.accept()
+    assert dialog.result_config is not None
+    assert dialog.result_config.operator_setup_acknowledged is False
+    with pytest.raises(ConfigurationError):
+        dialog.result_config.validate(for_arm=True)
+
+
+@pytest.mark.parametrize("field,value", [("ceiling", "11"), ("voltages", "10.005")])
+def test_operator_out_of_range_values_cannot_be_applied(qtbot, field, value):
+    dialog = dialog_for(qtbot)
+    fill_operator(dialog)
+    getattr(dialog, field).setText(value)
+    dialog.accept()
+    assert dialog.result_config is None
+    assert dialog.result() == QDialog.DialogCode.Rejected
+    assert "설정 적용 안 됨" in dialog.status_label.text()
+
+
+def test_operator_cannot_apply_programmatic_1000v_range_or_silently_fix_high_ceiling(qtbot):
+    dialog = dialog_for(qtbot)
+    dialog.ceiling.setText("20")
+    dialog.source_range.setCurrentText("1000")
+    dialog.setup_policy.setCurrentIndex(1)
+    assert dialog.source_range.currentText() == "100"
+    assert dialog.ceiling.text() == "20"
+    with pytest.raises(ConfigurationError):
+        dialog.build_config()
+    dialog.ceiling.setText("10")
+    dialog.source_range.setCurrentIndex(1)
+    with pytest.raises(ConfigurationError):
+        dialog.build_config()
+
+
+@pytest.mark.parametrize("real", [False, True])
+def test_reference_preset_only_populates_values_and_never_grants_execution(
+    qtbot, monkeypatch, real
+):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Reference preset must not access or start hardware")
+
+    monkeypatch.setattr(VisaTransport, "open", forbidden)
+    monkeypatch.setattr(Instrument, "connect", forbidden)
+    monkeypatch.setattr(MeasurementRunner, "start", forbidden)
+    dialog = dialog_for(qtbot)
+    dialog.real_mode.setChecked(real)
+    dialog.setup_policy.setCurrentIndex(1)
+    dialog.reference_preset_button.click()
+    config = dialog.build_config()
+    assert config.simulation is not real
+    assert config.setup_policy == "operator_low_voltage"
+    assert config.voltages == (1,)
+    assert config.current_trip_A == 1e-8
+    assert config.source_range_V == 100 and config.voltage_ceiling_V == 10
+    assert config.sample_metadata["reference_resistance_ohm"] == 1e9
+    assert config.simulation_resistance_ohm == 1e9
+    assert config.operator_setup_acknowledged is False
+    assert config.residual_warning_ack is False
+    assert config.resistive_limit_enabled is None
+    assert not any(config.commissioning.values())
+    assert "1 nA" in dialog.reference_current_label.text()
+    assert "실측값 아님" in dialog.reference_current_label.text()
+    assert "ARM 준비 미완료" in dialog.status_label.text()
+    with pytest.raises(ConfigurationError):
+        config.validate(for_arm=True)
+
+
+def test_reference_expected_current_uses_programmed_resolution_and_keeps_sign(qtbot):
+    config = RunConfig(bipolar_authorized=True)
+    dialog = dialog_for(qtbot, config)
+    dialog.reference_resistance.setText("1e9")
+    dialog.voltages.setText("1.001, -1, 0")
+    label = dialog.reference_current_label.text()
+    assert "설정 분해능 기준" in label
+    assert "1 V → 1 nA" in label
+    assert "-1 V → -1 nA" in label
+    assert "0 V → 0 A" in label

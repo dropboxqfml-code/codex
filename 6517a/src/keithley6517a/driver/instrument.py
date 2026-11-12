@@ -1,4 +1,4 @@
-"""Manual-verified 6517A control with connection-scoped commissioning and START.
+"""Manual-verified 6517A control with explicit setup policies and one-use START.
 
 VISA commands are implemented from the supplied manual, but not hardware tested.
 Native resistance on real hardware stays blocked: inferred current is not a
@@ -224,6 +224,8 @@ class Instrument:
             raise UnsupportedOperation(
                 "Real native resistance has no verified current-trip channel"
             )
+        if config.setup_policy == "operator_low_voltage":
+            return
         record = config.commissioning
         if not (
             self._commissioning["ready"]
@@ -313,6 +315,10 @@ class Instrument:
         self.output_state = "UNKNOWN"
         self._verify(":OUTP1?", False)
         self.output_state = "OFF"
+        if _get(config, "setup_policy") == "operator_low_voltage":
+            # The operator owns the external setup, but an open/error device
+            # interlock still blocks every source-setting operation.
+            self._verify(":SYST:INT?", True)
         if hasattr(config, "validate"):
             config.validate()
         if bool(_get(config, "simulation", self.is_simulation)) != self.is_simulation:
@@ -336,7 +342,9 @@ class Instrument:
         self._check_errors("zero source setting")
         self.voltage_programmed = 0.0
         self._set(":SOUR:VOLT:RANG", self.source_range_V, self.source_range_V)
-        ceiling = _get(config, "voltage_ceiling_V", 10)
+        ceiling = min(1000.0, _get(config, "voltage_ceiling_V", 10))
+        if _get(config, "setup_policy") == "operator_low_voltage":
+            ceiling = min(ceiling, 10.0)
         for name in ("sample_limit_V", "fixture_limit_V", "cable_limit_V"):
             value = _get(config, name)
             if value is not None:
@@ -378,9 +386,18 @@ class Instrument:
         self._verify(":SOUR:VOLT?", 0)
         self._check_errors("final configuration")
         status = self.safety_status()
-        if status["output_state"] != "OFF" or status["interlock"] != 1 or status["zero_check"]:
+        if (
+            status["output_state"] != "OFF"
+            or status["interlock"] != 1
+            or status["zero_check"]
+            or status["current_limit"]
+        ):
             raise ProtocolError("Configuration did not establish required safe state")
-        if not self.is_simulation and status.get("fixture_installation_confirmed") is False:
+        if (
+            not self.is_simulation
+            and _get(config, "setup_policy") != "operator_low_voltage"
+            and status.get("fixture_installation_confirmed") is False
+        ):
             raise ProtocolError("Installed interlock commissioning is missing")
         self.configured = True
         self._configured_snapshot = _snapshot(config)
@@ -403,6 +420,8 @@ class Instrument:
             "manual_sha256": MANUAL_SHA256,
             "hardware_verified": False,
             "commissioning": self.commissioning,
+            "setup_policy": _get(config, "setup_policy", "verified_fixture"),
+            "operator_setup_acknowledged": _get(config, "operator_setup_acknowledged", False),
             "resistive_limit_enabled": resistive_limit,
         }
 
@@ -418,7 +437,10 @@ class Instrument:
             or status["interlock"] != 1
             or status["current_limit"]
             or status["zero_check"]
-            or status.get("fixture_installation_confirmed") is False
+            or (
+                _get(config, "setup_policy") != "operator_low_voltage"
+                and status.get("fixture_installation_confirmed") is False
+            )
         ):
             raise RuntimeError("START safety authorization failed")
         self._verify(":SOUR:VOLT?", 0)
@@ -443,7 +465,10 @@ class Instrument:
             or status["interlock"] != 1
             or status["current_limit"]
             or status["zero_check"]
-            or status.get("fixture_installation_confirmed") is False
+            or (
+                _get(self.config, "setup_policy") != "operator_low_voltage"
+                and status.get("fixture_installation_confirmed") is False
+            )
         ):
             raise RuntimeError("START safety checks failed")
         self._verify(":SOUR:VOLT?", 0)
@@ -459,7 +484,9 @@ class Instrument:
         self._require_real_approval(self.config)
         if not math.isfinite(voltage):
             raise ValueError("Non-finite voltage")
-        ceiling = _get(self.config, "voltage_ceiling_V", 10)
+        ceiling = min(1000.0, _get(self.config, "voltage_ceiling_V", 10))
+        if _get(self.config, "setup_policy") == "operator_low_voltage":
+            ceiling = min(ceiling, 10.0)
         for name in ("sample_limit_V", "fixture_limit_V", "cable_limit_V"):
             rating = _get(self.config, name)
             if rating is not None:

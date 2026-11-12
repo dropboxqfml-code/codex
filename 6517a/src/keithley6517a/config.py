@@ -1,4 +1,4 @@
-"""Strict SI configuration and immutable, JSON-serializable approval snapshots."""
+"""Strict SI configuration and immutable, JSON-serializable execution snapshots."""
 
 from __future__ import annotations
 
@@ -54,6 +54,8 @@ class RunConfig:
     schema_version: int = 1
     simulation: bool = True
     transport: str = "simulation"
+    setup_policy: str = "verified_fixture"
+    operator_setup_acknowledged: bool = False
     resource: str = ""
     visa_backend: str | None = None
     timeout_ms: int = 2000
@@ -112,6 +114,7 @@ class RunConfig:
     stability_consecutive: int = 2
     stop_policy: str = "immediate_off"
     seed: int = 6517
+    simulation_resistance_ohm: float = 1e12
 
     def __post_init__(self) -> None:
         if not isinstance(self.voltages, (list, tuple)):
@@ -183,6 +186,8 @@ class RunConfig:
     @property
     def effective_ceiling(self) -> float:
         limits = [1000.0, self.voltage_ceiling_V]
+        if self.setup_policy == "operator_low_voltage":
+            limits.append(10.0)
         limits.extend(
             v
             for v in (self.sample_limit_V, self.fixture_limit_V, self.cable_limit_V)
@@ -220,6 +225,7 @@ class RunConfig:
             "bipolar_authorized",
             "residual_warning_ack",
             "series_correction_verified",
+            "operator_setup_acknowledged",
         )
         for name in bool_fields:
             if type(getattr(self, name)) is not bool:
@@ -246,6 +252,7 @@ class RunConfig:
             "resource",
             "mode",
             "transport",
+            "setup_policy",
             "protocol",
             "sample_id",
             "output_directory",
@@ -263,6 +270,8 @@ class RunConfig:
             raise ConfigurationError("sample_id and output_directory are required")
         if self.mode not in {"FVMI_CURRENT", "NATIVE_RESISTANCE"}:
             raise ConfigurationError("Unknown measurement mode")
+        if self.setup_policy not in {"verified_fixture", "operator_low_voltage"}:
+            raise ConfigurationError("Unknown setup_policy")
         if self.transport not in {"simulation", "visa"}:
             raise ConfigurationError("Only simulation and VISA USB-GPIB are supported")
         if self.simulation != (self.transport == "simulation"):
@@ -303,6 +312,7 @@ class RunConfig:
             "noise_fraction",
             "absolute_drift_A_per_s",
             "absolute_noise_A",
+            "simulation_resistance_ohm",
         )
         for name in numeric_names:
             value = getattr(self, name)
@@ -334,6 +344,7 @@ class RunConfig:
             "voltage_ceiling_V",
             "line_frequency_hz",
             "background_sigma_multiplier",
+            "simulation_resistance_ohm",
         ):
             if getattr(self, name) <= 0:
                 raise ConfigurationError(f"{name} must be positive")
@@ -365,6 +376,13 @@ class RunConfig:
             raise ConfigurationError("series_resistance_ohm cannot be negative")
         if self.source_range_V not in (100, 1000) or not 0.01 <= self.nplc <= 10:
             raise ConfigurationError("source range must be 100/1000 V; NPLC must be 0.01..10")
+        if self.setup_policy == "operator_low_voltage":
+            if self.source_range_V != 100:
+                raise ConfigurationError(
+                    "Operator low-voltage mode requires the 100 V source range"
+                )
+            if self.voltage_ceiling_V > 10:
+                raise ConfigurationError("Operator low-voltage mode has an absolute 10 V ceiling")
         if self.line_frequency_hz not in (50, 60):
             raise ConfigurationError("line_frequency_hz must be explicitly 50 or 60 Hz")
         if self.current_range_A > 0.02:
@@ -419,26 +437,33 @@ class RunConfig:
                     raise ConfigurationError("Real ARM requires an explicit resistive-limit policy")
                 if not self.resource or not self.resource.upper().startswith("GPIB"):
                     raise ConfigurationError("A selected VISA GPIB resource is required")
-                if any(
-                    v is None
-                    for v in (self.sample_limit_V, self.fixture_limit_V, self.cable_limit_V)
-                ):
-                    raise ConfigurationError("All physical voltage ratings are required")
-                if not self.rating_approval.strip():
-                    raise ConfigurationError("Experiment/rating approval record is required")
-                required = ("installation_confirmed", "lid_open_zero", "lid_closed_one")
-                if any(self.commissioning.get(k) is not True for k in required):
-                    raise ConfigurationError(
-                        "Installed interlock and OFF-state 0/1 transition commissioning required"
-                    )
-                if self.commissioning.get("hardware_protection_reviewed") is not True:
-                    raise ConfigurationError("Independent hardware protection review is required")
-                for name in ("fixture_id", "approved_by"):
-                    value = self.commissioning.get(name)
-                    if not isinstance(value, str) or not value.strip():
+                if self.setup_policy == "operator_low_voltage":
+                    if not self.operator_setup_acknowledged:
+                        raise ConfigurationError("Operator setup acknowledgment is required to ARM")
+                else:
+                    if any(
+                        v is None
+                        for v in (self.sample_limit_V, self.fixture_limit_V, self.cable_limit_V)
+                    ):
+                        raise ConfigurationError("All physical voltage ratings are required")
+                    if not self.rating_approval.strip():
+                        raise ConfigurationError("Experiment/rating approval record is required")
+                    required = ("installation_confirmed", "lid_open_zero", "lid_closed_one")
+                    if any(self.commissioning.get(k) is not True for k in required):
                         raise ConfigurationError(
-                            "Commissioning fixture identity and approver required"
+                            "Installed interlock and OFF-state 0/1 transition "
+                            "commissioning required"
                         )
+                    if self.commissioning.get("hardware_protection_reviewed") is not True:
+                        raise ConfigurationError(
+                            "Independent hardware protection review is required"
+                        )
+                    for name in ("fixture_id", "approved_by"):
+                        value = self.commissioning.get(name)
+                        if not isinstance(value, str) or not value.strip():
+                            raise ConfigurationError(
+                                "Commissioning fixture identity and approver required"
+                            )
                 if self.mode == "NATIVE_RESISTANCE":
                     raise ConfigurationError(
                         "Real native resistance disabled: measured-current trip unverified"

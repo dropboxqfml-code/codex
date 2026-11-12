@@ -78,6 +78,8 @@ class InstrumentWorker(QObject):
         safety = getattr(instrument, "last_safety", None) or {}
         commissioning = getattr(self.runner, "commissioning", {}) or {}
         commissioned = bool(commissioning.get("ready", False))
+        setup_policy = getattr(self.runner.config, "setup_policy", "verified_fixture")
+        operator_setup = setup_policy == "operator_low_voltage"
         self.status.emit(
             {
                 "state": _text_state(self.runner.state),
@@ -90,14 +92,22 @@ class InstrumentWorker(QObject):
                 "can_arm": bool(getattr(self.runner, "can_arm", False)),
                 "can_start": bool(getattr(self.runner, "can_start", False)),
                 "interlock_query": safety.get("interlock", "UNKNOWN"),
+                "setup_policy": setup_policy,
+                "operator_setup_acknowledged": bool(
+                    getattr(self.runner.config, "operator_setup_acknowledged", False)
+                ),
                 "commissioning": commissioning,
                 "fixture_commissioning": (
                     "SIMULATED · 실장비 인증 아님"
                     if self.runner.config.simulation
                     else (
-                        "현재 연결의 OFF 상태 0→1 확인 · 하드웨어 인증 아님"
-                        if commissioned
-                        else "현재 연결의 OFF 상태 lid open=0 / closed=1 확인 필요"
+                        "연결·정격: 사용자 관리 · 최대 10 V · 물리 인터록 인증 미수행"
+                        if operator_setup
+                        else (
+                            "현재 연결의 OFF 상태 0→1 확인 · 하드웨어 인증 아님"
+                            if commissioned
+                            else "현재 연결의 OFF 상태 lid open=0 / closed=1 확인 필요"
+                        )
                     )
                 ),
             }
@@ -295,6 +305,7 @@ class MainWindow(QMainWindow):
         root.addWidget(splitter, 1)
         settings_scroll = QScrollArea()
         settings_scroll.setWidgetResizable(True)
+        settings_scroll.setMinimumWidth(480)
         self.settings = QWidget()
         settings_scroll.setWidget(self.settings)
         left = QVBoxLayout(self.settings)
@@ -329,6 +340,15 @@ class MainWindow(QMainWindow):
         form.addRow(diagnostics_row)
         self.setup_button = QPushButton("실장비 시험 설정 안내 · 양식 입력")
         form.addRow(self.setup_button)
+        self.setup_policy = QComboBox()
+        self.setup_policy.addItem("검증 fixture · 기존 승인 기록", "verified_fixture")
+        self.setup_policy.addItem("사용자 관리 · 저전압 시험 ≤10 V", "operator_low_voltage")
+        form.addRow("운용 방식", self.setup_policy)
+        self.operator_setup_ack = QCheckBox("연결·정격·외부 보호를 사용자가 관리하는 시험입니다")
+        form.addRow(self.operator_setup_ack)
+        self.setup_status_label = QLabel()
+        self.setup_status_label.setWordWrap(True)
+        form.addRow(self.setup_status_label)
         self.mode = QComboBox()
         self.mode.addItems(["FVMI_CURRENT", "NATIVE_RESISTANCE"])
         form.addRow("모드", self.mode)
@@ -444,13 +464,13 @@ class MainWindow(QMainWindow):
         files_row.addWidget(self.open_diagnostic_button)
         right_layout.addLayout(files_row)
         splitter.addWidget(right)
-        splitter.setSizes([420, 900])
+        splitter.setSizes([520, 800])
         commission_actions = QHBoxLayout()
         self.commission_open_button = QPushButton("인터록 열림 확인 (출력 OFF)")
         self.commission_closed_button = QPushButton("인터록 닫힘 확인 (출력 OFF)")
-        commission_actions.addWidget(
-            QLabel("실장비: 승인된 fixture에서 lid를 직접 조작한 뒤 순서대로 확인")
-        )
+        self.commissioning_hint = QLabel()
+        self.commissioning_hint.setWordWrap(True)
+        commission_actions.addWidget(self.commissioning_hint)
         commission_actions.addWidget(self.commission_open_button)
         commission_actions.addWidget(self.commission_closed_button)
         root.addLayout(commission_actions)
@@ -487,6 +507,26 @@ class MainWindow(QMainWindow):
         self.advanced_apply.clicked.connect(self._apply_json)
         self.transport.currentIndexChanged.connect(self._transport_changed)
         self.mode.currentIndexChanged.connect(self._mode_changed)
+        self.setup_policy.currentIndexChanged.connect(self._setup_policy_changed)
+        self.operator_setup_ack.toggled.connect(self._refresh_connection_guide)
+        self.ack.toggled.connect(self._refresh_connection_guide)
+        self.profile.currentIndexChanged.connect(self._refresh_connection_guide)
+        self.source_range.currentIndexChanged.connect(self._refresh_connection_guide)
+        self.autorange.toggled.connect(self._refresh_connection_guide)
+        for control in (self.voltages, self.trip, self.current_range):
+            control.textChanged.connect(self._refresh_connection_guide)
+        for control in (
+            self.ceiling,
+            self.nplc,
+            self.interval,
+            self.dwell,
+            self.exclude,
+            self.window,
+            self.stair_start,
+            self.stair_stop,
+            self.stair_step,
+        ):
+            control.valueChanged.connect(self._refresh_connection_guide)
         self.backend_profiles.currentIndexChanged.connect(self._backend_profile_changed)
         self.backend.textChanged.connect(self._backend_text_changed)
         self.resource.textChanged.connect(self._refresh_connection_guide)
@@ -511,7 +551,11 @@ class MainWindow(QMainWindow):
             (
                 "REAL VISA · NATIVE_RESISTANCE 비활성: 측정 전류 보호 미검증"
                 if self.mode.currentText() == "NATIVE_RESISTANCE"
-                else "REAL VISA · 승인된 FVMI만 지원 · 실제 장비 동작 미검증"
+                else (
+                    "REAL VISA · 사용자 관리 저전압 시험 · 최대 10 V"
+                    if self.setup_policy.currentData() == "operator_low_voltage"
+                    else "REAL VISA · 검증 fixture 운용 · 실제 장비 동작 미검증"
+                )
             )
             if real
             else "SIMULATION MODE · 실제 장비 출력 없음"
@@ -539,6 +583,8 @@ class MainWindow(QMainWindow):
             settings.update(
                 simulation=False,
                 transport="visa",
+                setup_policy="operator_low_voltage",
+                operator_setup_acknowledged=False,
                 resource=self.resource.text().strip(),
                 visa_backend=self.backend.text().strip() or "@ivi",
                 output_directory=self.output_dir.text().strip() or "runs",
@@ -550,6 +596,22 @@ class MainWindow(QMainWindow):
             )
         self.resource.setFocus()
         self._refresh_connection_guide()
+
+    def _setup_policy_changed(self) -> None:
+        operator_setup = self.setup_policy.currentData() == "operator_low_voltage"
+        self.commissioning_hint.setText(
+            "사용자 관리 저전압 시험: 설정 검토 → 연결 → ARM → 별도 START"
+            if operator_setup
+            else "실장비: 승인된 fixture에서 lid를 직접 조작한 뒤 순서대로 확인"
+        )
+        self.ceiling.setMaximum(10 if operator_setup else 1000)
+        self.source_range.setEnabled(not operator_setup)
+        self.operator_setup_ack.setEnabled(operator_setup)
+        if not self._loading_controls:
+            self.operator_setup_ack.setChecked(False)
+            if operator_setup:
+                self.source_range.setCurrentText("100")
+        self._mode_changed()
 
     def _backend_profile_changed(self) -> None:
         choice = self.backend_profiles.currentData()
@@ -566,12 +628,27 @@ class MainWindow(QMainWindow):
         self._refresh_connection_guide()
 
     def _refresh_connection_guide(self) -> None:
+        arm_issue = ""
+        try:
+            config = self.config_from_controls()
+            config.validate(for_arm=True)
+            self.setup_status_label.setText(
+                f"설정 준비됨 · 상한 {config.effective_ceiling:g} V · 연결 후 ARM → 별도 START"
+            )
+            self.setup_status_label.setStyleSheet("color:#16667a")
+        except (ValueError, TypeError) as exc:
+            arm_issue = str(exc)
+            self.setup_status_label.setText(f"준비 초안 · ARM 전 확인: {arm_issue}")
+            self.setup_status_label.setStyleSheet("color:#9b6817")
         self.connection_guide.set_context(
             simulation=self.transport.currentData() != "visa",
             resource=self.resource.text().strip(),
             backend=self.backend.text().strip() or None,
             busy=self._busy,
             closing=self._closing,
+            setup_policy=self.setup_policy.currentData(),
+            operator_setup_acknowledged=self.operator_setup_ack.isChecked(),
+            arm_issue=arm_issue,
         )
 
     def _load_controls(self, data: dict) -> None:
@@ -579,6 +656,10 @@ class MainWindow(QMainWindow):
         self._base_config = dict(data)
         self.advanced.setPlainText(json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False))
         self.transport.setCurrentIndex(1 if data.get("transport") == "visa" else 0)
+        policy = data.get("setup_policy", "verified_fixture")
+        self.setup_policy.setCurrentIndex(max(0, self.setup_policy.findData(policy)))
+        self._setup_policy_changed()
+        self.operator_setup_ack.setChecked(data.get("operator_setup_acknowledged", False))
         self.resource.setText(str(data.get("resource") or ""))
         self.backend.setText(str(data.get("visa_backend") or ""))
         self.mode.setCurrentText(data.get("mode", "FVMI_CURRENT"))
@@ -630,6 +711,8 @@ class MainWindow(QMainWindow):
             summary_window_s=self.window.value(),
             output_directory=self.output_dir.text().strip(),
             residual_warning_ack=self.ack.isChecked(),
+            setup_policy=self.setup_policy.currentData(),
+            operator_setup_acknowledged=self.operator_setup_ack.isChecked(),
         )
         data["protocol"] = (
             "staircase"
@@ -807,6 +890,8 @@ class MainWindow(QMainWindow):
         self._state = status.get("state", self._state)
         self._can_arm = status.get("can_arm", False)
         self._can_start = status.get("can_start", False)
+        if status.get("interlock_query") in (0, "0"):
+            self._can_arm = self._can_start = False
         self._commissioning = status.get("commissioning", {}) or {}
         self._connected = self._state != "DISCONNECTED"
         self._busy = self._state in {"CONFIGURING", "RAMPING", "SETTLING", "ACQUIRING", "STOPPING"}
@@ -905,6 +990,7 @@ class MainWindow(QMainWindow):
             and self.transport.currentData() == "visa"
             and not self._busy
             and not closing
+            and self.setup_policy.currentData() == "verified_fixture"
         )
         self.commission_open_button.setEnabled(can_commission)
         self.commission_closed_button.setEnabled(can_commission)

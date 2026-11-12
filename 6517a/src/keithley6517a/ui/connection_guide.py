@@ -32,6 +32,9 @@ class ConnectionGuide(QGroupBox):
         self._simulation = True
         self._resource = ""
         self._backend = ""
+        self._setup_policy = "verified_fixture"
+        self._operator_setup_acknowledged = False
+        self._arm_issue = ""
         self._busy = False
         self._closing = False
         self._resources = []
@@ -85,16 +88,32 @@ class ConnectionGuide(QGroupBox):
         return label
 
     def set_context(
-        self, *, simulation: bool, resource: str = "", backend=None, busy=False, closing=False
+        self,
+        *,
+        simulation: bool,
+        resource: str = "",
+        backend=None,
+        busy=False,
+        closing=False,
+        setup_policy="verified_fixture",
+        operator_setup_acknowledged=False,
+        arm_issue="",
     ):
         """Update selected controls; changing a target invalidates old observations."""
         old = self._simulation, self._resource, self._backend
         new = bool(simulation), resource.strip(), (backend or "").strip()
         if old != new:
             self._diagnostic = None
-            if self._status.get("state") != "DISCONNECTED":
-                self._changed_while_connected = True
+        if self._status.get("state") != "DISCONNECTED" and (
+            old != new
+            or self._setup_policy != setup_policy
+            or self._operator_setup_acknowledged != bool(operator_setup_acknowledged)
+        ):
+            self._changed_while_connected = True
         self._simulation, self._resource, self._backend = new
+        self._setup_policy = setup_policy
+        self._operator_setup_acknowledged = bool(operator_setup_acknowledged)
+        self._arm_issue = str(arm_issue)
         self._busy, self._closing = bool(busy), bool(closing)
         self._render()
 
@@ -164,6 +183,11 @@ class ConnectionGuide(QGroupBox):
         connected = state != "DISCONNECTED"
         output = self._status.get("output_state", "UNKNOWN")
         report, idn_observed, off_observed = self._observations()
+        setup_policy = self._status.get("setup_policy", self._setup_policy)
+        operator_setup = setup_policy == "operator_low_voltage"
+        operator_acknowledged = self._status.get(
+            "operator_setup_acknowledged", self._operator_setup_acknowledged
+        )
         real = not self._simulation
         available = real and not connected and not self._busy and not self._closing
         self.real_mode_button.setEnabled(
@@ -207,12 +231,30 @@ class ConnectionGuide(QGroupBox):
                 f"Firmware {identity.get('firmware', '?')} · "
                 f"현재 OUTPUT {output} · 잔류 전압 UNVERIFIED"
             )
-            if self._status.get("can_start") is True:
+            if self._status.get("interlock_query") in (0, "0"):
+                self.current_step = 5
+                next_action = "장비 인터록 조회 0 · ARM·START 조건을 충족하지 않습니다."
+            elif self._status.get("can_start") is True:
                 self.current_step = 6
                 next_action = "ARM 완료 · 인가 계획을 검토한 뒤 기존 START 버튼을 직접 누르세요."
             elif self._status.get("can_arm") is True:
                 self.current_step = 5
-                next_action = "현재 연결 확인 완료 · 기존 ARM 버튼으로 설정·저장 준비를 검증하세요."
+                next_action = (
+                    "사용자 관리 저전압 설정 · ARM으로 장비 상태·설정·저장 준비를 검증하세요."
+                    if operator_setup
+                    else "현재 연결 확인 완료 · 기존 ARM 버튼으로 설정·저장 준비를 검증하세요."
+                )
+            elif operator_setup:
+                self.current_step = 5
+                next_action = (
+                    f"ARM 준비 확인: {self._arm_issue}"
+                    if self._arm_issue
+                    else (
+                        "연결 종료 후 사용자 관리 시험 확인과 측정 설정을 입력하세요."
+                        if not operator_acknowledged
+                        else "측정 설정과 장비 상태를 확인한 뒤 ARM → 별도 START로 진행하세요."
+                    )
+                )
             else:
                 self.current_step = 5
                 next_action = "현재 연결의 출력 OFF에서 인터록 열림 0 → 닫힘 1을 확인하세요."
@@ -233,10 +275,14 @@ class ConnectionGuide(QGroupBox):
         else:
             self.current_step = 5
             next_action = "진단 시 OFF 관찰 · 다음: 시료·시험 설정을 입력하고 별도로 연결하세요."
-            detail = (
-                "과거 진단은 현재 연결의 승인 상태가 아닙니다. "
-                "연결 후 lid 0→1, ARM, START는 별도입니다."
+            detail = "과거 진단은 현재 연결의 승인 상태가 아닙니다. " + (
+                "사용자 관리 설정을 입력하고 연결 → ARM → 별도 START로 진행하세요."
+                if operator_setup
+                else "연결 후 lid 0→1, ARM, START는 별도입니다."
             )
+
+        if real and operator_setup:
+            detail += " · 사용자 관리 ≤10 V · 물리 인터록 설치 인증 미수행"
 
         if report:
             simulation = (
@@ -275,7 +321,7 @@ class ConnectionGuide(QGroupBox):
             "2 주소 선택",
             "3 IDN 응답",
             "4 보호 OFF",
-            "5 설정·인터록",
+            "5 설정·장비 상태" if operator_setup else "5 설정·인터록",
             "6 ARM·START",
         )
         self.stage_label.setText(

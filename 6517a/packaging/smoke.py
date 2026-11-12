@@ -89,6 +89,28 @@ def main(argv=None) -> int:
     )
     if status:
         return status
+    reference_results = root / "native-smoke-results/reference-1gohm"
+    status = cli_main(
+        [
+            "simulate",
+            "--config",
+            str(root / "app/examples/simulation_1gohm_config.json"),
+            "--fast",
+            "--output",
+            str(reference_results),
+        ]
+    )
+    if status:
+        return status
+    metadata_files = list(reference_results.glob("*/metadata.json"))
+    if len(metadata_files) != 1:
+        raise RuntimeError("Reference simulation did not create exactly one run")
+    reference = json.loads(metadata_files[0].read_text(encoding="utf-8"))
+    if (
+        reference.get("simulation") is not True
+        or reference.get("simulation_truth", {}).get("resistance_ohm") != 1e9
+    ):
+        raise RuntimeError("Bundled 1 Gohm simulation used the wrong reference model")
     if not args.skip_optional_installer:
         optional_installer_smoke(root)
     from PySide6.QtCore import QTimer
@@ -112,6 +134,7 @@ def main(argv=None) -> int:
                 "status": "passed",
                 "scope": "native Windows synthetic CLI and GUI",
                 "hardware_verified": False,
+                "reference_1gohm_simulation_verified": True,
             }
         )
     )

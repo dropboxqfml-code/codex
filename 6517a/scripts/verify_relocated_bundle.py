@@ -144,7 +144,11 @@ def verify_relocated_bundle(archive: Path) -> dict:
             ],
         )
         summary = json.loads(result.stdout.strip().splitlines()[-1])
-        if summary.get("status") != "passed" or summary.get("hardware_verified") is not False:
+        if (
+            summary.get("status") != "passed"
+            or summary.get("hardware_verified") is not False
+            or summary.get("reference_1gohm_simulation_verified") is not True
+        ):
             raise RuntimeError("Relocated synthetic CLI/GUI did not confirm success")
 
         print(
@@ -197,6 +201,7 @@ def verify_relocated_bundle(archive: Path) -> dict:
             "archive_has_no_source_backed_bytecode": True,
             "initial_integrity_passed": True,
             "relocated_synthetic_cli_gui_passed": True,
+            "reference_1gohm_simulation_verified": True,
             "regenerated_bytecode_files": generated,
             "integrity_after_cache_generation_passed": True,
             "source_and_dll_tampering_rejected": True,

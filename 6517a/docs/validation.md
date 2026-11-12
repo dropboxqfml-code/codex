@@ -4,6 +4,40 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.5.0 사용자 관리 저전압 측정 흐름
+
+이번 버전은 사용자 관리 저전압 경로(`operator_low_voltage`)와 기존 검증 fixture 경로(`verified_fixture`)를 구분합니다. 사용자 관리 경로는 source 100 V 범위·절대 10 V 이하이며, 연결·정격·외부 보호는 사용자가 관리한다는 명시적 확인을 사용합니다. 정격 문서·fixture ID·과거 lid 전이 이력은 필수 입력이 아닙니다. 실제 장비의 interlock `1`, OFF·current limit·zero check·readback·오류 상태와 별도 ARM/START는 검사합니다. 물리적 설치 확인 필드를 사용자 확인만으로 true로 만들지 않습니다. 기존 fixture 경로의 정격·승인·현재 연결 `0 → 1` 관찰 조건은 유지합니다.
+
+설정창은 문법·수치가 유효한 미완성 초안을 적용할 수 있고 ARM 준비 여부를 따로 표시합니다. 명시적 1 GΩ·1 V preset은 1 V·10 nA trip·명목 1 GΩ·가상 모델 1 GΩ를 입력하지만 REAL/SIM·운용 방식·확인 체크·resistive-limit 정책을 바꾸지 않습니다. 초기 SIM 및 REAL 준비는 0 V로 시작합니다. `simulation_resistance_ohm`은 가상 transport만 사용하며 실제 VISA current를 대신하지 않습니다.
+
+| 검증 대상 | 확인할 동작 |
+|---|---|
+| 사용자 관리 설정 | 10 V·100 V-range 경계, 명시적 확인·trip·정책, 초안과 ARM 검증 구분 |
+| 장비 실행 | interlock `0`·오류·상태 불일치 시 ON 차단, 설정·START snapshot·일회 권한 유지 |
+| 기존 fixture 회귀 | 기존 정격·승인 및 현재 연결 lid 전이 경로 유지 |
+| GUI | preset·예상 current, 초안 적용만으로 연결·ON 없음, 운용 방식 표시와 기록 |
+| 가상 1 GΩ | 실제 transport와 구분된 모델, current·V/I·CSV 결과 |
+| Windows 배포 | 전체 검사·번들 CLI/GUI·선택 installer·추출/캐시/변조 회귀 및 게시 게이트 |
+
+다음은 v0.5.0 최종 로컬 실행 기록입니다. 이 기록 시점의 새 Windows CI는 실행 전이며, 이후 실제 Windows 결과는 해당 Release의 `Windows-software-tests.xml`·`build-report.json`에서 확인합니다.
+
+| 항목 | v0.5.0 로컬 결과 |
+|---|---|
+| 전체 자동 테스트 | Linux offscreen **371개 통과**, 8.27 s |
+| Ruff check / format | 통과; Python 파일 59개 |
+| 설치 metadata | locked sync로 v0.5.0 적용 확인 |
+| 1 GΩ simulation CLI | 실제 실행: reading 11개·summary 1개, completed / OFF / residual UNVERIFIED; 가상 모델 1e9 Ω 기록 확인 |
+| GUI 전체 실행 흐름 | 모의 VISA 버스를 주입한 preset → 연결 → ARM → START → CSV·OFF 경로를 전체 시험에 포함 |
+| 실제 장비 current 측정 | 미수행; 사용자 제공 기록은 아래 v0.4.6 IDN·보호 OFF 관찰 범위 |
+
+모의 VISA를 사용하는 실측 소프트웨어 경로와 시뮬레이션은 실제 장비 전압 인가 성공을 뜻하지 않습니다. 새 사용자 관리 모드의 실제 current 결과는 아직 제공되지 않았습니다.
+
+## v0.4.6 GitHub Release의 Windows 실행 증거
+
+[CI 실행 43151775381](https://github.com/dropboxqfml-code/codex/actions/runs/43151775381)의 Windows 검사와 게시가 성공했습니다. 공개 [Windows-software-tests.xml](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.4.6/Windows-software-tests.xml)은 320개 시험, 실패·오류·건너뜀 0개를 기록했습니다. 공개 build report는 `native_windows_execution_verified=true`, `relocated_windows_execution_verified=true`, `hardware_verified=false`입니다.
+
+한글·공백이 있는 새 경로의 번들 CLI/GUI 실행, 캐시 46개 생성 후 무결성 PASS, 소스·DLL 변조 FAIL, 복원 후 PASS와 manifest 불변을 확인했습니다. 아래 v0.4.6 로컬 제작 시점의 Windows 실행 전 표시는 이 추가 CI 이전 기록으로 보존합니다.
+
 ## v0.4.6 사용자 PC 후속 진단과 1 GΩ 시험 준비
 
 사용자가 제공한 후속 기록에서 파일 무결성 6,885개가 모두 통과하고 오류가 없음을 확인했습니다. Discovery와 실제 6517A IDN 진단도 성공했습니다. 보호 OFF 진단은 `:OUTP1?`를 두 번 조회해 모두 `0`을 받았으며 최종 `output_state=OFF`, `output_OFF_confirmed=true`, 이슈 없음으로 기록됐습니다. 출력 ON·측정 시작 명령은 없었습니다. 여러 OFF/abort 명령은 연결 시와 종료 정리 시의 보호 절차이며 통신 실패 재시도를 뜻하지 않습니다.

@@ -65,7 +65,11 @@ class MeasurementRunner:
             if config.simulation:
                 from ..transport.simulator import SimulatorTransport
 
-                transport = SimulatorTransport(clock=self.clock, seed=config.seed)
+                transport = SimulatorTransport(
+                    clock=self.clock,
+                    seed=config.seed,
+                    resistance_ohm=config.simulation_resistance_ohm,
+                )
             else:
                 from ..transport.visa import VisaTransport
 
@@ -91,10 +95,22 @@ class MeasurementRunner:
 
     @property
     def can_arm(self):
+        if not self.config.simulation and self.config.setup_policy == "operator_low_voltage":
+            try:
+                self.config.validate(for_arm=True)
+            except ValueError:
+                return False
         return (
             self.state == "OUTPUT_OFF_CONFIRMED"
             and not self._started
-            and (self.config.simulation or self.commissioning.get("ready") is True)
+            and (
+                self.config.simulation
+                or (
+                    self.config.setup_policy == "operator_low_voltage"
+                    and self.config.operator_setup_acknowledged
+                )
+                or self.commissioning.get("ready") is True
+            )
         )
 
     @property
@@ -302,6 +318,11 @@ class MeasurementRunner:
                 simulation=self.config.simulation,
                 sample=self.config.to_dict()["sample_metadata"],
                 commissioning=self.config.to_dict()["commissioning"],
+                setup_policy=self.config.setup_policy,
+                operator_setup_acknowledged=self.config.operator_setup_acknowledged,
+                operator_voltage_cap_V=(
+                    10.0 if self.config.setup_policy == "operator_low_voltage" else None
+                ),
                 connection_commissioning=self.commissioning,
                 rating_approval=self.config.rating_approval,
                 temperature_C=self.config.temperature_C,
@@ -343,7 +364,10 @@ class MeasurementRunner:
             raise MeasurementError(f"Expected output {expected_output}, got {self.output_state}")
         if status.get("interlock") != 1:
             raise MeasurementError("Interlock open or unknown; reapproval required")
-        if status.get("fixture_installation_confirmed") is False:
+        if (
+            self.config.setup_policy != "operator_low_voltage"
+            and status.get("fixture_installation_confirmed") is False
+        ):
             raise MeasurementError("Interlock cable absent; query=1 is not commissioning")
         if status.get("current_limit") is not False:
             raise MeasurementError("Source current limit active or unknown")
@@ -468,7 +492,10 @@ class MeasurementRunner:
                 flags.append("SOFTWARE_POWER_TRIP")
             if after.get("interlock") != 1:
                 flags.append("INTERLOCK_OPEN_OR_UNKNOWN")
-            if after.get("fixture_installation_confirmed") is False:
+            if (
+                self.config.setup_policy != "operator_low_voltage"
+                and after.get("fixture_installation_confirmed") is False
+            ):
                 flags.append("INTERLOCK_INSTALLATION_UNCONFIRMED")
             if self.output_state != "ON":
                 flags.append("OUTPUT_NOT_ON")

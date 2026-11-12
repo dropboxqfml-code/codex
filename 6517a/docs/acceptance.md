@@ -1,5 +1,7 @@
 # 요구사항 추적과 acceptance 범위
 
+v0.5.0은 기존 `verified_fixture` 경로에 더해 명시적 사용자 확인을 사용하는 `operator_low_voltage` 경로를 제공합니다. 사용자 관리 모드는 최대 10 V·100 V source range이며, 물리 fixture 문서·lid 0→1 기록을 요구하는 아래 항목은 `verified_fixture`에 적용합니다. 두 경로 모두 실제 장비 인터록·limit·출력 상태 검사, 별도 ARM/START, STOP/OFF, 원시 기록을 유지합니다. 새 운용 경로 검증은 `test_operator_mode.py`, `test_operator_runner.py`, `test_operator_ui_flow.py`와 설정 창 시험에 있습니다.
+
 업로드 요구사항 16절의 번호를 유지합니다. 아래는 구현·시험의 추적표이며, 실제 실행 결과는 [검증 기록](validation.md)에 기록합니다. 자동 시험은 명시적으로 주입한 transport/clock/fault에 대한 소프트웨어 검증입니다. 장비 원문 확인·실장비 시험을 대체하지 않습니다.
 
 | 번호 | 요구사항·검증할 동작 | 대표 자동 시험의 실제 이름 |

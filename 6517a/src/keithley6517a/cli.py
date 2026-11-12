@@ -132,7 +132,7 @@ def main(argv=None):
 
             previous = signal.signal(signal.SIGINT, interrupt)
             runner.connect()
-            if real:
+            if real and config.setup_policy == "verified_fixture":
                 print(
                     "OUTPUT OFF 확인. 잔류 전압 UNVERIFIED. 현장 차단·방전 확인 절차를 따르십시오."
                 )
@@ -151,6 +151,8 @@ def main(argv=None):
                             "voltages_V": config.voltages,
                             "ceiling_V": config.effective_ceiling,
                             "software_current_trip_A": config.current_trip_A,
+                            "setup_policy": config.setup_policy,
+                            "operator_setup_acknowledged": config.operator_setup_acknowledged,
                             "run_directory": str(runner.run_directory),
                         },
                         ensure_ascii=False,

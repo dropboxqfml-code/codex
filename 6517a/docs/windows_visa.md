@@ -1,5 +1,7 @@
 # Windows 64-bit와 USB-GPIB / VISA
 
+v0.5.0에서는 NI-VISA/NI-488.2 연결 경로를 그대로 사용하며 사용자 관리 저전압 시험 모드를 선택할 수 있습니다. 새 모드의 연결·정격은 사용자가 관리하고 프로그램은 최대 10 V와 장비 상태·오류 처리를 적용합니다. 측정 순서는 [사용자 시험 안내](user_hardware_trial.md)를 따릅니다.
+
 ## 실행 방법 선택
 
 사용자 시험에는 Windows x64 portable ZIP을 사용합니다. 포함된 Python 3.12.14와 잠금 버전의 Windows 의존성을 사용하므로 Python·uv를 별도로 설치하지 않습니다. ZIP을 완전히 푼 뒤 `Verify-Bundle.cmd`로 내부 파일을 검사하고 `Start-GUI.cmd`로 기본 SIMULATION 화면을 시작합니다. `Test-Simulation.cmd`는 실장비 없이 기능을 확인하는 실행 경로입니다. 자세한 순서는 [사용자 시험 안내](user_hardware_trial.md)에 있습니다.
@@ -39,7 +41,7 @@ uv run --locked python -m keithley6517a.cli identify "GPIB0::27::INSTR" --backen
 
 ## NI-VISA를 생략하는 선택 경로
 
-v0.4.6 기본 ZIP에는 다음 대체 Python 패키지를 사전 설치하지 않습니다. 사용자가 NI-VISA를 생략하는 대안을 선택한 경우에만 선택 확장으로 설치합니다. 정확한 버전과 해시는 `uv.lock` 및 선택 확장 요구사항에 기록합니다.
+v0.5.0 기본 ZIP에는 다음 대체 Python 패키지를 사전 설치하지 않습니다. 사용자가 NI-VISA를 생략하는 대안을 선택한 경우에만 선택 확장으로 설치합니다. 정확한 버전과 해시는 `uv.lock` 및 선택 확장 요구사항에 기록합니다.
 
 - PyVISA-py 0.8.1: `@py` backend.
 - gpib-ctypes 0.3.0: 기존 NI/Linux GPIB C API의 Python binding.

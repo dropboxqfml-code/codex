@@ -1,0 +1,34 @@
+{
+  "simulation": true,
+  "transport": "simulation",
+  "mode": "FVMI_CURRENT",
+  "protocol": "constant",
+  "sample_id": "SIM-1GOHM",
+  "output_directory": "runs",
+  "note": "1Gohm 가상시료:1V에서약1nA. 실제장비/안전/교정검증자료가아님.",
+  "voltages": [
+    1
+  ],
+  "cycles": 1,
+  "dwell_s": 2,
+  "min_dwell_s": 0.5,
+  "exclude_initial_s": 0.5,
+  "summary_window_s": 1,
+  "sample_interval_s": 0.2,
+  "range_settle_s": 0.2,
+  "max_total_duration_s": 60,
+  "nplc": 1,
+  "line_frequency_hz": 60,
+  "current_autorange": true,
+  "current_range_A": 2e-09,
+  "current_trip_A": 1e-08,
+  "current_floor_A": 1e-14,
+  "source_range_V": 100,
+  "voltage_ceiling_V": 10,
+  "bipolar_authorized": false,
+  "residual_warning_ack": true,
+  "simulation_resistance_ohm": 1000000000.0,
+  "sample_metadata": {
+    "reference_resistance_ohm": 1000000000.0
+  }
+}

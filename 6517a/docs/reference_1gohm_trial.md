@@ -1,27 +1,20 @@
-# 1 GΩ 기준저항 시험 준비
+# 1 GΩ 기준저항 시험
 
-먼저 기존 v0.4.6에서 파일 무결성 검사, IDN 및 보호 OFF 진단을 마칩니다. 보호 OFF는 출력을 켜거나 측정을 시작하지 않으므로 이미 OFF인 장비에서는 전면 화면 변화가 작을 수 있습니다. `:OUTP1?` 응답 `0`은 그 진단 시점의 소스 출력 OFF를 뜻하며 시료 방전 확인은 아닙니다.
+v0.5.0의 사용자 관리 저전압 모드는 연결 구성을 사용자에게 맡기고, 전압·시간·trip 입력부터 ARM → START → current·저항 그래프와 CSV 저장까지 수행합니다. 별도 프로그램 변경 없이 GUI의 **1 GΩ·1 V 시험값**을 사용할 수 있습니다.
 
-[`reference_1gohm_draft.json`](../examples/reference_1gohm_draft.json)은 확인된 GPIB 주소·native VISA 설정과 1 GΩ 명목값을 담은 **미승인 0 V 초안**입니다. 기존 프로그램에서 파일을 `configs` 폴더에 저장하고 메인 화면의 ‘설정 불러오기’로 읽습니다. 설정을 읽는 동작은 장비 연결·출력 ON을 실행하지 않습니다. 초안에는 미정인 정격·current trip·fixture와 승인 항목을 채우지 않았으므로 ARM 검증은 실패해야 합니다.
+## GUI 실행 순서
 
-## 제공된 정격의 적용 범위
+1. 새 ZIP을 풀고 `Verify-Bundle.cmd` → `Test-Simulation.cmd` → `Start-GUI.cmd`를 실행합니다.
+2. 실제 시험은 SIM 연결 종료 → REAL 준비 → NI MAX와 같은 주소 → IDN → 보호 OFF를 확인합니다.
+3. ‘4. 시료·시험 설정 입력’에서 사용자 관리 저전압 방식을 확인하고 **1 GΩ·1 V 시험값**을 누릅니다.
+4. 요청 1 V, source 100 V 범위, 상한 10 V 이하, software trip 10 nA와 시간·저장 폴더를 검토합니다. 사용자 연결 관리 확인, 잔류 전압 확인, resistive-limit ON/OFF 정책을 직접 선택합니다.
+5. 설정 적용 → 연결 → ARM → 별도 START로 실행하고 그래프·CSV를 확인합니다. 중지는 STOP을 사용합니다.
 
-| 부품·절연 구간 | 제공된 사양 | 해석 |
-|---|---|---|
-| 저항 | Maximum pulse voltage 30 kV | 펄스 정격이며 연속 DC 허용전압은 미확정 |
-| Triax 중심–inner shield | Working voltage 600 V peak | 해당 두 도체 사이의 전위차 한도 |
-| Triax 중심/inner shield–outer shell | Working voltage 1,300 V peak | outer shell에 대한 절연 정격; 중심–inner 한도를 대체하지 않음 |
-| 바나나 소스 케이블 | Max 3 kV | 제공된 최대값; 연속 DC 조건·CAT 등급은 추가 추정하지 않음 |
+Preset은 사용자가 눌렀을 때만 값을 넣습니다. REAL/SIM·운용 방식·확인 체크·resistive-limit 정책은 자동 승인하지 않습니다. 미완성 설정은 초안으로 적용할 수 있지만 ARM은 필요한 실행 입력과 실제 장비 상태를 별도로 검사합니다.
 
-초안은 위 내용을 `sample_metadata.reported_voltage_specifications`에 구분해 기록합니다. 저항의 펄스 정격을 `sample_limit_V`에 넣거나, Triax의 높은 숫자를 단일 `cable_limit_V`로 자동 승인하지 않습니다. 두 운전 한도는 실제 결선·DC 조건 검토 전까지 비워 둡니다.
+[`operator_current_template.json`](../examples/operator_current_template.json)은 REAL·사용자 관리·0 V·미확인 초안입니다. [`simulation_1gohm_config.json`](../examples/simulation_1gohm_config.json)은 가상 1 GΩ 모델 시험입니다. 과거 [`reference_1gohm_draft.json`](../examples/reference_1gohm_draft.json)은 정격 메타데이터를 보관한 준비 파일이며, 실행에는 v0.5.0 운용 방식과 실행 입력을 설정합니다.
 
-케이블 정격과 계측기 INPUT 정격은 별개입니다. 매뉴얼 2-10 Figure 2-6은 입력 신호와 input LO–chassis 공통모드 한도를 따로 제시하며, 후자는 500 V peak입니다. Source 전압을 그대로 INPUT에 가할 수 있는 근거로 케이블의 1,300 V를 사용하지 않습니다. 정상 저측 FVMI에서 DUT 인가 전압이 Triax 중심–inner 전위차와 같다고 단정하는 것도 맞지 않습니다. 실제 노드 결선과 고장 조건을 검토해야 합니다.
-
-인터록 fixture가 없는 구성은 현재 프로그램의 실측 ARM 요건을 충족하지 않습니다. 이전에 높은 전압에서 외관상 이상이 없었다는 관찰은 정격·절연·보호 확인 기록을 대신하지 않습니다.
-
-## 명목 저항의 계산값
-
-아래 전압은 비교용 계산점이며 실제 인가 조건으로 승인한 값이 아닙니다. 기준저항의 교정값·허용차, 전압 계수, 누설, settling, 측정 오차는 아직 반영하지 않았습니다.
+## 명목 계산값
 
 | 전압 | 예상 전류 I=V/R | 저항 소모 전력 V²/R |
 |---|---|---|
@@ -29,13 +22,23 @@
 | 5 V | 5 nA | 25 nW |
 | 10 V | 10 nA | 100 nW |
 
-작은 소모 전력만으로 저항·케이블·fixture의 허용 전압이나 절연 정격을 판단하지 않습니다. Software current trip도 이 계산값만으로 자동 결정하지 않습니다.
+이 표는 명목 1 GΩ의 계산입니다. 기준저항의 교정값·허용차·전압 계수, 누설·settling·측정 오차는 실제 결과와 함께 평가합니다. 10 nA preset은 검토 가능한 software trip이며 hardware current limit나 programmable compliance가 아닙니다.
 
-## 실제 조건이 정해진 뒤
+## 운용 범위와 기록
 
-1. ‘4. 시료·시험 설정 입력’에서 기준저항 ID와 확인된 시험 전압, 정격, current trip, fixture·인터록과 독립 보호 검토 기록을 입력합니다. 모르는 값이나 미수행 확인 항목은 승인하지 않습니다.
-2. 설정을 적용한 뒤 별도로 연결합니다. 이전 보호 OFF 진단 세션은 이미 종료됐으므로 현재 연결에서 OFF와 인터록 열림 `0` → 닫힘 `1`을 확인합니다.
-3. ARM으로 설정 readback·오류 큐·저장 준비를 검사합니다. 별도 START가 인가를 시작합니다.
-4. 실행 후 `readings.csv`의 실제 판독 전류와 `summary.csv`의 V/I를 기준저항의 교정값·허용차와 비교합니다. DUT 전압을 독립 측정하지 않았다면 소스 설정값과 실제 DUT 전압을 동일한 측정값으로 표시하지 않습니다.
+사용자 관리 방식은 source 100 V 범위에서 **절대 10 V 이하**로 제한됩니다. 연결·정격·외부 보호는 사용자가 관리하고 이를 명시적으로 확인합니다. 정격 문서·fixture ID·과거 lid 전이 기록을 필수로 요구하지 않지만, 실제 장비의 interlock 조회 `0`·실패·오류 상태는 출력을 차단합니다. 물리적인 인터록 설치를 인증된 것으로 기록하지 않습니다. 기존 검증 fixture 방식은 원래의 정격·승인·현재 연결 `0 → 1` 관찰 절차를 유지합니다.
 
-현재 확인된 사용자 기록은 무결성·식별·보호 목적 OFF 진단까지입니다. 인터록 설치·전이, 실제 판독·전압 인가, 장비 오류 큐, 방전은 다음 검증 범위입니다.
+측정 결과는 `readings.csv`의 current와 `summary.csv`의 V/I를 비교합니다. 가상 모델은 `simulation_resistance_ohm`을 사용하지만 실제 VISA 경로는 장비 응답을 사용합니다. Current와 역산·native 저항은 다른 필드에 기록됩니다.
+
+## 제공된 부품 정격 메타데이터
+
+| 부품·절연 구간 | 제공된 사양 | 기록 의미 |
+|---|---|---|
+| 저항 | Maximum pulse voltage 30 kV | 펄스 정격; 연속 DC 정격으로 자동 전환하지 않음 |
+| Triax 중심–inner shield | Working voltage 600 V peak | 해당 도체쌍 사이 전위차 정격 |
+| Triax 중심/inner shield–outer shell | Working voltage 1,300 V peak | outer shell 기준의 별도 절연 정격 |
+| 바나나 소스 케이블 | Max 3 kV | 제공된 최대값; 시간·CAT 조건은 추가 추정하지 않음 |
+
+이 값은 메타데이터로 보존합니다. 케이블 정격은 6517A INPUT 한도를 바꾸지 않으며, 저항의 펄스 정격이나 낮은 소모 전력을 근거로 프로그램이 DC 정격·물리적 보호를 인증하지 않습니다. 사용자 관리 모드의 10 V 제한은 이 값으로 올릴 수 없습니다.
+
+현재 사용자 원문에서 확인된 장비 근거는 IDN과 보호 OFF 조회까지입니다. 전압 인가·current 수집과 독립 차단·방전의 실제 결과는 별도로 검증하며, OFF 후 residual 상태는 UNVERIFIED로 남습니다.

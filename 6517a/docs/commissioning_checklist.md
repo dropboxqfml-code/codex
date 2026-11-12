@@ -1,5 +1,7 @@
 # 실장비 commissioning 기록지
 
+이 기록지는 `verified_fixture` 운용 경로의 설치·승인 기록입니다. v0.5.0의 `operator_low_voltage`는 최대 10 V·100 V source range로 제한하며 연결·정격은 사용자 관리 확인으로 기록합니다. 이 모드는 아래 문서·lid 전이 기록을 ARM 필수 조건으로 요구하지 않으며, 물리 fixture 인증을 완료했다고 표시하지 않습니다. 실제 장비 인터록 오류·current limit·readback·STOP/OFF 검사는 유지합니다.
+
 첨부된 6517A-900-01 Rev. D 원문을 반영한 current 측정 경로를 제공합니다. 문서 체크나 JSON의 과거 승인값만으로 현재 연결의 출력을 승인하지 않습니다. 아래 절차는 자격 있는 담당자가 승인된 enclosure와 독립적인 하드웨어 보호·차단·방전 수단 아래 수행해야 하며, 실제 시험은 아직 수행하지 않았습니다. Native resistance 실장비 경로는 측정 전류 보호를 검증하지 못해 비활성 상태입니다.
 
 | 항목 | 기록 |

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPlainTextEdit,
+    QPushButton,
     QScrollArea,
     QSpinBox,
     QTabWidget,
@@ -41,8 +42,7 @@ class TestSetupDialog(QDialog):
         root = QVBoxLayout(self)
         intro = QLabel(
             "이 창은 설정만 준비합니다. 연결·ARM·출력 ON은 실행하지 않습니다.\n"
-            "실장비는 연결 후 출력 OFF 상태에서 lid 열림 0 → 닫힘 1을 다시 확인해야 합니다. "
-            "출력 OFF나 이 확인 절차는 시료 방전 또는 하드웨어 안전 인증이 아닙니다."
+            "운용 방식을 선택하고 시험값을 입력한 뒤, 메인 화면에서 연결 → ARM → START합니다."
         )
         intro.setWordWrap(True)
         root.addWidget(intro)
@@ -54,6 +54,23 @@ class TestSetupDialog(QDialog):
         self.real_mode.setChecked(not config.simulation)
         connection.addRow(self.real_mode)
         self._edits.append(self.real_mode)
+        self.setup_policy = QComboBox()
+        self.setup_policy.addItem("검증된 fixture · 기존 승인 기록 사용", "verified_fixture")
+        self.setup_policy.addItem("사용자 관리 · 저전압 시험 ≤10 V", "operator_low_voltage")
+        self.setup_policy.setCurrentIndex(
+            1
+            if getattr(config, "setup_policy", "verified_fixture") == "operator_low_voltage"
+            else 0
+        )
+        self._edits.append(self.setup_policy)
+        connection.addRow("운용 방식", self.setup_policy)
+        self.operator_ack = QCheckBox("연결·부품 정격·외부 보호를 사용자가 관리함을 확인합니다")
+        self.operator_ack.setChecked(getattr(config, "operator_setup_acknowledged", False))
+        self._edits.append(self.operator_ack)
+        connection.addRow(self.operator_ack)
+        self.policy_note = QLabel()
+        self.policy_note.setWordWrap(True)
+        connection.addRow(self.policy_note)
         self.resource = QComboBox()
         self.resource.setEditable(True)
         self.resource.addItems(list(dict.fromkeys(resources)))
@@ -106,6 +123,13 @@ class TestSetupDialog(QDialog):
         self.mode.setCurrentText(config.mode)
         self._edits.append(self.mode)
         experiment.addRow("측정 모드 (실장비는 FVMI_CURRENT)", self.mode)
+        self.reference_preset_button = QPushButton("1 GΩ · 1 V 시험값 적용")
+        self.reference_preset_button.setToolTip(
+            "요청 1 V, software 상한 10 V, 100 V 범위, software trip 10 nA, "
+            "명목 기준저항·SIM 저항 모델 1 GΩ를 입력합니다. 운용 방식과 확인 체크는 유지합니다."
+        )
+        self.reference_preset_button.clicked.connect(self._apply_reference_preset)
+        experiment.addRow(self.reference_preset_button)
         self.voltages = self._text(", ".join(str(v) for v in config.voltages))
         experiment.addRow("요청 전압 (V, 쉼표로 구분)", self.voltages)
         self.ceiling = self._text(str(config.voltage_ceiling_V))
@@ -118,6 +142,22 @@ class TestSetupDialog(QDialog):
         self.current_trip = self._text(self._optional_text(config.current_trip_A))
         self.current_trip.setPlaceholderText("사용자가 결정해야 하는 software trip, A 단위")
         experiment.addRow("Software current trip (A)", self.current_trip)
+        self.reference_resistance = self._text(
+            self._optional_text(config.sample_metadata.get("reference_resistance_ohm"))
+        )
+        self.reference_resistance.setPlaceholderText("선택 입력 · 1e9 = 1 GΩ")
+        experiment.addRow("기준저항 명목값 (Ω)", self.reference_resistance)
+        self.simulation_resistance = self._text(
+            str(getattr(config, "simulation_resistance_ohm", 1e12))
+        )
+        self.simulation_resistance.setToolTip(
+            "SIMULATION의 가상 전류를 만드는 저항값입니다. 실장비에서는 사용하지 않습니다."
+        )
+        self.simulation_resistance.setEnabled(not self.real_mode.isChecked())
+        experiment.addRow("SIM 저항 모델 (Ω)", self.simulation_resistance)
+        self.reference_current_label = QLabel()
+        self.reference_current_label.setWordWrap(True)
+        experiment.addRow(self.reference_current_label)
         self.nplc = self._text(str(config.nplc))
         self.line_frequency = QComboBox()
         self.line_frequency.addItems(["50", "60"])
@@ -142,6 +182,9 @@ class TestSetupDialog(QDialog):
         experiment.addRow("실험 메모", self.note)
 
         approval = self._tab(tabs, "3. 정격·승인 기록")
+        self.approval_note = QLabel()
+        self.approval_note.setWordWrap(True)
+        approval.addRow(self.approval_note)
         self.sample_rating = self._text(self._optional_text(config.sample_limit_V))
         self.fixture_rating = self._text(self._optional_text(config.fixture_limit_V))
         self.cable_rating = self._text(self._optional_text(config.cable_limit_V))
@@ -207,6 +250,10 @@ class TestSetupDialog(QDialog):
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
         root.addWidget(self.buttons)
+        self.setup_policy.currentIndexChanged.connect(self._policy_changed)
+        self.real_mode.toggled.connect(
+            lambda checked: self.simulation_resistance.setEnabled(not checked)
+        )
         for widget in self._edits:
             if isinstance(widget, QLineEdit):
                 widget.textChanged.connect(self._refresh_status)
@@ -218,7 +265,7 @@ class TestSetupDialog(QDialog):
                 widget.valueChanged.connect(self._refresh_status)
             elif isinstance(widget, QCheckBox):
                 widget.toggled.connect(self._refresh_status)
-        self._refresh_status()
+        self._policy_changed()
 
     @staticmethod
     def _tab(tabs, title):
@@ -251,6 +298,41 @@ class TestSetupDialog(QDialog):
         self.backend_profiles.blockSignals(True)
         self.backend_profiles.setCurrentIndex(index)
         self.backend_profiles.blockSignals(False)
+
+    def _policy_changed(self, *_):
+        operator = self.setup_policy.currentData() == "operator_low_voltage"
+        self.operator_ack.setEnabled(operator)
+        model = self.source_range.model()
+        model.item(1).setEnabled(not operator)
+        if operator:
+            self.source_range.setCurrentText("100")
+            self.policy_note.setText(
+                "사용자 관리 시험은 software 상한 10 V·100 V 범위로 제한됩니다. "
+                "실장비의 인터록 오류, limit와 STOP/OFF 처리는 계속 검사합니다."
+            )
+            self.approval_note.setText(
+                "이 방식에서 정격·fixture 기록은 선택 입력입니다. "
+                "입력한 전압 정격은 상한 계산에 사용하며, "
+                "물리적 설치 확인 기록은 자동 승인하지 않습니다."
+            )
+        else:
+            self.policy_note.setText(
+                "검증된 fixture 방식은 승인 기록과 현재 연결의 출력 OFF 상태에서 "
+                "인터록 열림 0 → 닫힘 1 확인을 사용합니다."
+            )
+            self.approval_note.setText(
+                "이 방식의 실장비 ARM에는 아래 정격·설치·승인 기록이 필요합니다."
+            )
+        self._refresh_status()
+
+    def _apply_reference_preset(self):
+        self.voltages.setText("1")
+        self.ceiling.setText("10")
+        self.source_range.setCurrentText("100")
+        self.current_trip.setText("1e-8")
+        self.reference_resistance.setText("1e9")
+        self.simulation_resistance.setText("1e9")
+        self._refresh_status()
 
     def _termination(self, selected):
         widget = QComboBox()
@@ -319,6 +401,14 @@ class TestSetupDialog(QDialog):
             if key in record or value:
                 record[key] = value
         real = self.real_mode.isChecked()
+        metadata = dict(data["sample_metadata"])
+        reference = self._number(self.reference_resistance, "기준저항", optional=True)
+        if reference is None:
+            metadata.pop("reference_resistance_ohm", None)
+        elif reference <= 0:
+            raise ConfigurationError("기준저항은 0보다 커야 합니다")
+        else:
+            metadata["reference_resistance_ohm"] = reference
         data.update(
             simulation=not real,
             transport="visa" if real else "simulation",
@@ -329,6 +419,10 @@ class TestSetupDialog(QDialog):
             read_termination=self.read_termination.currentData(),
             write_termination=self.write_termination.currentData(),
             mode=self.mode.currentText(),
+            setup_policy=self.setup_policy.currentData(),
+            operator_setup_acknowledged=self.operator_ack.isChecked(),
+            simulation_resistance_ohm=self._number(self.simulation_resistance, "SIM 저항 모델"),
+            sample_metadata=metadata,
             sample_id=self.sample_id.text().strip(),
             output_directory=self.output_directory.text().strip(),
             note=self.note.toPlainText(),
@@ -353,36 +447,86 @@ class TestSetupDialog(QDialog):
         )
         return RunConfig.from_dict(data)
 
-    def _ready_config(self) -> RunConfig:
+    def _draft_config(self) -> RunConfig:
         config = self.build_config()
-        if not config.simulation:
-            if not self.hardware_protection.isChecked():
-                raise ConfigurationError("독립적인 하드웨어 보호·차단·방전 검토 기록이 필요합니다")
-            config.validate(for_arm=True)
+        if not config.simulation and config.mode == "NATIVE_RESISTANCE":
+            raise ConfigurationError(
+                "Real native resistance disabled: measured-current trip unverified"
+            )
         return config
+
+    def _ready_config(self, config: RunConfig | None = None) -> RunConfig:
+        config = config or self._draft_config()
+        if not config.simulation:
+            if (
+                config.setup_policy == "verified_fixture"
+                and not self.hardware_protection.isChecked()
+            ):
+                raise ConfigurationError("독립적인 하드웨어 보호·차단·방전 검토 기록이 필요합니다")
+        config.validate(for_arm=True)
+        return config
+
+    @staticmethod
+    def _current_text(current):
+        if current == 0:
+            return "0 A"
+        for scale, unit in ((1, "A"), (1e-3, "mA"), (1e-6, "µA"), (1e-9, "nA"), (1e-12, "pA")):
+            if abs(current) >= scale:
+                return f"{current / scale:g} {unit}"
+        return f"{current:g} A"
+
+    def _reference_preview(self, config):
+        reference = config.sample_metadata.get("reference_resistance_ohm")
+        if reference is None:
+            self.reference_current_label.setText(
+                "기준저항 명목값을 입력하면 I=V/R 예상값을 표시합니다."
+            )
+            return
+        points = [
+            f"{config.quantize_voltage(v):g} V → "
+            f"{self._current_text(config.quantize_voltage(v) / reference)}"
+            for v in config.voltages[:4]
+        ]
+        if len(config.voltages) > 4:
+            points.append(f"… 총 {len(config.voltages)}점")
+        self.reference_current_label.setText(
+            "명목 예상 전류 · 설정 분해능 기준 · " + ", ".join(points) + " · 실측값 아님"
+        )
 
     def _refresh_status(self, *_):
         try:
-            config = self._ready_config()
-            if config.simulation:
-                text = "SIMULATION 설정 · 실제 장비 연결 없음. 적용 후 별도로 ARM·START합니다."
-            else:
-                requested = list(config.voltages)
-                quantized = [config.quantize_voltage(v) for v in config.voltages]
-                text = (
-                    f"실장비 설정 준비됨 · 상한 {config.effective_ceiling:g} V · "
-                    f"요청 {requested} V → 설정 분해능 기준 {quantized} V\n"
-                    "아직 연결·출력 승인이 아닙니다. 연결 후 OFF 상태의 lid 전이를 확인하세요."
+            config = self._draft_config()
+            self._reference_preview(config)
+            try:
+                self._ready_config(config)
+            except (ValueError, TypeError) as exc:
+                self.status_label.setText(f"초안 적용 가능 · ARM 준비 미완료: {exc}")
+                self.status_label.setStyleSheet("color:#805c15")
+                self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText(
+                    "초안 적용 · 연결하지 않음"
                 )
+                return
+            requested = list(config.voltages)
+            quantized = [config.quantize_voltage(v) for v in config.voltages]
+            scope = "SIMULATION" if config.simulation else "실장비"
+            text = (
+                f"{scope} 설정 준비됨 · 상한 {config.effective_ceiling:g} V · "
+                f"요청 {requested} V → 설정 분해능 기준 {quantized} V\n"
+                "적용 후 별도로 연결·ARM·START합니다."
+            )
             self.status_label.setText(text)
             self.status_label.setStyleSheet("color:#16667a")
+            self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText(
+                "설정 적용 · 연결하지 않음"
+            )
         except (ValueError, TypeError) as exc:
+            self.reference_current_label.setText("설정값을 확인하면 명목 예상 전류를 표시합니다.")
             self.status_label.setText(f"설정 확인 필요: {exc}")
             self.status_label.setStyleSheet("color:#a32e28")
 
     def accept(self):
         try:
-            self.result_config = self._ready_config()
+            self.result_config = self._draft_config()
         except (ValueError, TypeError) as exc:
             self.result_config = None
             self.status_label.setText(f"설정 적용 안 됨: {exc}")

@@ -1,12 +1,12 @@
 # Keithley 6517A · USB-GPIB 시험용 프로그램
 
-Windows 10/11 64-bit용 v0.6.1 프로그램입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
+Windows 10/11 64-bit용 v0.6.2 프로그램입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
 
 연결 구성은 사용자가 관리하는 **저전압 시험 모드**와 기존 **검증 fixture 모드**를 선택합니다. 시작 화면은 SIMULATION·0 V이며, REAL 준비도 0 V·trip 미설정·사용자 확인 미선택에서 시작합니다. 설정 불러오기·초안 적용·연결만으로 출력 ON을 하지 않습니다.
 
 ## Windows에서 실행
 
-[Windows ZIP 다운로드](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.6.1/6517A-USB-GPIB-Trial-0.6.1-Windows-x64.zip)와 [SHA-256](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.6.1/6517A-USB-GPIB-Trial-0.6.1-Windows-x64.zip.sha256)을 받습니다. 새 쓰기 가능한 폴더에 모두 풀고 `Verify-Bundle.cmd` → `Test-Simulation.cmd` → `Start-GUI.cmd`를 실행합니다. Python과 Python 의존성은 포함돼 있습니다. 호환되는 기존 NI-488.2·NI-VISA 64-bit 설치를 사용하며, 드라이버 설치 상태와 이 프로그램의 통신 결과는 구분합니다.
+[Windows ZIP 다운로드](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.6.2/6517A-USB-GPIB-Trial-0.6.2-Windows-x64.zip)와 [SHA-256](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.6.2/6517A-USB-GPIB-Trial-0.6.2-Windows-x64.zip.sha256)을 받습니다. 새 쓰기 가능한 폴더에 모두 풀고 `Verify-Bundle.cmd` → `Test-Simulation.cmd` → `Start-GUI.cmd`를 실행합니다. Python과 Python 의존성은 포함돼 있습니다. 호환되는 기존 NI-488.2·NI-VISA 64-bit 설치를 사용하며, 드라이버 설치 상태와 이 프로그램의 통신 결과는 구분합니다.
 
 `Verify-Bundle.cmd`는 START → 처리 파일 수 → PASS/FAIL을 표시합니다. `Test-Simulation.cmd`도 연결·ARM·전압 단계·판독·요약·OFF·완료를 실행 중 표시하고, 끝나면 결과 폴더와 PASS/FAIL을 남깁니다. 실패한 경우 창에 표시된 단계와 종료 코드를 확인합니다.
 
@@ -14,7 +14,7 @@ Windows 10/11 64-bit용 v0.6.1 프로그램입니다. NI GPIB-USB와 6517A를 �
 
 기본 화면에는 장비·주소, 시험 설정, 준비 상태, 판독값과 그래프를 표시합니다. 상단 **1 설정 → 2 연결 → 3 ARM → 4 START**에서 현재 단계와 다음 작업을 확인합니다. 세부 설정은 왼쪽 **고급**, 연결 진단·장비 기록은 오른쪽 **진단·상세 기록** 탭에 있습니다.
 
-![v0.6.1 기본 화면: 가상 1 GΩ 측정 후 값·그래프·다음 단계](docs/images/v060-main-simulation.png)
+![v0.6.2 기본 화면: 가상 1 GΩ 측정 후 값·그래프·다음 단계](docs/images/v060-main-simulation.png)
 
 가상 측정 화면이며 실제 장비 측정 결과가 아닙니다.
 

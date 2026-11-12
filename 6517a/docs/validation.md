@@ -4,6 +4,10 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.6.2 Windows 배포 실행기
+
+GitHub의 `windows-latest` 실행기가 할당되지 않아 소프트웨어 검사 시작 전에 서버 오류가 발생했습니다. 배포 워크플로를 지원되는 `windows-2022` 실행기로 변경했습니다. 프로그램 동작·의존성·검증 기준은 동일하며, [v0.6.2 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.6.2)의 Windows JUnit·build report에서 실제 실행 결과를 확인합니다.
+
 ## v0.6.1 배포 이미지 포함 검사
 
 기본 화면 미리보기 이미지가 portable source allowlist에서 빠지는 항목을 수정했습니다. 실제 배포용 파일을 복사한 뒤 README가 참조하는 이미지의 존재와 원본 일치를 검사합니다. 2026-11-12 Linux 개발 환경에서 전체 **411개 통과**, Ruff·포맷 검사를 통과했습니다. Windows 결과는 [v0.6.1 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.6.1)의 `Windows-software-tests.xml`·`build-report.json`에서 별도로 확인합니다. 프로그램 동작은 아래 v0.6.0 변경을 포함합니다.

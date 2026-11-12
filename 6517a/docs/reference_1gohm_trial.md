@@ -4,6 +4,21 @@
 
 [`reference_1gohm_draft.json`](../examples/reference_1gohm_draft.json)은 확인된 GPIB 주소·native VISA 설정과 1 GΩ 명목값을 담은 **미승인 0 V 초안**입니다. 기존 프로그램에서 파일을 `configs` 폴더에 저장하고 메인 화면의 ‘설정 불러오기’로 읽습니다. 설정을 읽는 동작은 장비 연결·출력 ON을 실행하지 않습니다. 초안에는 미정인 정격·current trip·fixture와 승인 항목을 채우지 않았으므로 ARM 검증은 실패해야 합니다.
 
+## 제공된 정격의 적용 범위
+
+| 부품·절연 구간 | 제공된 사양 | 해석 |
+|---|---|---|
+| 저항 | Maximum pulse voltage 30 kV | 펄스 정격이며 연속 DC 허용전압은 미확정 |
+| Triax 중심–inner shield | Working voltage 600 V peak | 해당 두 도체 사이의 전위차 한도 |
+| Triax 중심/inner shield–outer shell | Working voltage 1,300 V peak | outer shell에 대한 절연 정격; 중심–inner 한도를 대체하지 않음 |
+| 바나나 소스 케이블 | Max 3 kV | 제공된 최대값; 연속 DC 조건·CAT 등급은 추가 추정하지 않음 |
+
+초안은 위 내용을 `sample_metadata.reported_voltage_specifications`에 구분해 기록합니다. 저항의 펄스 정격을 `sample_limit_V`에 넣거나, Triax의 높은 숫자를 단일 `cable_limit_V`로 자동 승인하지 않습니다. 두 운전 한도는 실제 결선·DC 조건 검토 전까지 비워 둡니다.
+
+케이블 정격과 계측기 INPUT 정격은 별개입니다. 매뉴얼 2-10 Figure 2-6은 입력 신호와 input LO–chassis 공통모드 한도를 따로 제시하며, 후자는 500 V peak입니다. Source 전압을 그대로 INPUT에 가할 수 있는 근거로 케이블의 1,300 V를 사용하지 않습니다. 정상 저측 FVMI에서 DUT 인가 전압이 Triax 중심–inner 전위차와 같다고 단정하는 것도 맞지 않습니다. 실제 노드 결선과 고장 조건을 검토해야 합니다.
+
+인터록 fixture가 없는 구성은 현재 프로그램의 실측 ARM 요건을 충족하지 않습니다. 이전에 높은 전압에서 외관상 이상이 없었다는 관찰은 정격·절연·보호 확인 기록을 대신하지 않습니다.
+
 ## 명목 저항의 계산값
 
 아래 전압은 비교용 계산점이며 실제 인가 조건으로 승인한 값이 아닙니다. 기준저항의 교정값·허용차, 전압 계수, 누설, settling, 측정 오차는 아직 반영하지 않았습니다.

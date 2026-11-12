@@ -11,7 +11,7 @@
   "protocol": "constant",
   "sample_id": "REFERENCE-1GOHM-UNAPPROVED",
   "output_directory": "runs",
-  "note": "1 Gohm 기준저항 시험 준비 초안. 통신 및 보호 OFF 진단만 확인됨. 시험 전압·저항/fixture/케이블 정격·current trip·인터록 및 독립 보호 검토가 미정이므로 0 V를 유지하며 ARM할 수 없음. 1 V에서 예상 1 nA는 명목 저항의 계산값이며 인가 승인이나 실측값이 아님.",
+  "note": "1 Gohm 기준저항 시험 준비 초안. 제공된 저항 30 kV는 pulse 정격이며 연속 DC 정격이 아님. Triax 600/1300 V peak는 절연쌍별 정격으로 metadata에 분리 기록. 실제 결선과 DC 정격·current trip·인터록 보호 확인 전에는 단일 운전한도로 승인하지 않고 0 V·미승인 상태를 유지함. 1 V에서 예상 1 nA는 계산값이며 실측값이나 인가 승인이 아님.",
   "voltages": [
     0
   ],
@@ -40,6 +40,23 @@
   "resistive_limit_enabled": null,
   "sample_metadata": {
     "reference_resistance_ohm": 1000000000,
-    "reference_value_kind": "nominal; calibration and tolerance not provided"
+    "reference_value_kind": "nominal; calibration and tolerance not provided",
+    "reported_voltage_specifications": {
+      "source": "user-provided component specifications; circuit approval pending",
+      "resistor": {
+        "maximum_pulse_voltage_V": 30000,
+        "continuous_dc_working_voltage_V": null
+      },
+      "triaxial_cable": {
+        "center_to_inner_shield_working_peak_V": 600,
+        "center_to_outer_shell_working_peak_V": 1300,
+        "inner_shield_to_outer_shell_working_peak_V": 1300
+      },
+      "banana_source_cable": {
+        "reported_maximum_voltage_V": 3000,
+        "rating_duration_and_category": "not provided"
+      }
+    },
+    "interlocked_fixture_present": false
   }
 }

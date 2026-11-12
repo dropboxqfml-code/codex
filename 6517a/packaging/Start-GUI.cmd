@@ -5,5 +5,5 @@ if not exist "%~dp0runtime\pythonw.exe" (
   pause
   exit /b 2
 )
-start "6517A trial program" "%~dp0runtime\pythonw.exe" -I "%~dp0tools\launch.py" gui
+start "6517A trial program" "%~dp0runtime\pythonw.exe" -I -B "%~dp0tools\launch.py" gui
 exit /b %errorlevel%

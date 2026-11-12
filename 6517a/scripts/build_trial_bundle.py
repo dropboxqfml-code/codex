@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -57,14 +58,22 @@ def sha256(path: Path) -> str:
 
 
 def run(arguments, *, directory=PROJECT_ROOT, environment=None):
-    return subprocess.run(
-        [str(v) for v in arguments],
-        cwd=directory,
-        env=environment,
-        check=True,
-        text=True,
-        capture_output=True,
-    )
+    try:
+        return subprocess.run(
+            [str(v) for v in arguments],
+            cwd=directory,
+            env=environment,
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = f"{exc}\n{(exc.stdout or '')[-1000:]}\n{(exc.stderr or '')[-5000:]}"
+        print(detail, file=sys.stderr, flush=True)
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            escaped = detail.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+            print(f"::error title=Bundle subprocess failed::{escaped}", flush=True)
+        raise
 
 
 def version(root=PROJECT_ROOT):
@@ -313,11 +322,30 @@ def third_party_notices(root):
     return notices
 
 
+def source_backed_bytecode(path: Path) -> bool:
+    """Derived CPython caches can change on extraction/import; code without source stays checked."""
+    if path.suffix != ".pyc" or path.parent.name != "__pycache__":
+        return False
+    try:
+        source = Path(importlib.util.source_from_cache(str(path)))
+    except ValueError:
+        return False
+    return source.is_file()
+
+
+def static_payload_files(root: Path):
+    return (
+        path
+        for path in sorted(root.rglob("*"))
+        if path.is_file() and not source_backed_bytecode(path)
+    )
+
+
 def write_manifest(root, *, release_version, native_verified, layout=None):
     files = {
         path.relative_to(root).as_posix(): sha256(path)
-        for path in sorted(root.rglob("*"))
-        if path.is_file() and path.name != "bundle_manifest.json"
+        for path in static_payload_files(root)
+        if path.name != "bundle_manifest.json"
     }
     manifest = dict(
         schema_version=1,
@@ -325,6 +353,7 @@ def write_manifest(root, *, release_version, native_verified, layout=None):
         files=files,
         native_windows_execution_verified=native_verified,
         hardware_verified=False,
+        cache_policy="source-backed __pycache__ bytecode excluded",
     )
     if layout is not None:
         manifest["layout_validation"] = layout
@@ -338,9 +367,8 @@ def archive(root: Path, output: Path):
     if output.exists():
         raise FileExistsError(f"Refusing to overwrite existing release: {output}")
     with zipfile.ZipFile(output, "x", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as stream:
-        for path in sorted(root.rglob("*")):
-            if path.is_file():
-                stream.write(path, (Path(root.name) / path.relative_to(root)).as_posix())
+        for path in static_payload_files(root):
+            stream.write(path, (Path(root.name) / path.relative_to(root)).as_posix())
     (output.with_suffix(output.suffix + ".sha256")).write_text(
         f"{sha256(output)}  {output.name}\n", encoding="ascii"
     )
@@ -442,6 +470,7 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
     if native_smoke and sys.platform != "win32":
         raise ValueError("--native-smoke requires an actual Windows host")
     runtime, site, requirements, provenance = payload or install_windows_payload(cache, uv)
+    relocation_check = None
     with tempfile.TemporaryDirectory(prefix="6517a-package-", dir=output) as temporary:
         working = Path(temporary)
         portable = working / f"{stem}-Windows-x64"
@@ -499,7 +528,7 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
         layout = validate_windows_layout(portable)
         if native_smoke:
             run(
-                [portable / "runtime/python.exe", "-I", portable / "tools/smoke.py"],
+                [portable / "runtime/python.exe", "-I", "-B", portable / "tools/smoke.py"],
                 directory=portable,
             )
             shutil.rmtree(portable / "native-smoke-results", ignore_errors=True)
@@ -508,8 +537,28 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
         )
         # Verify exactly what will be archived using the same helper shipped to testers.
         verify_python = portable / "runtime/python.exe" if native_smoke else sys.executable
-        run([verify_python, "-I", portable / "tools/verify_bundle.py", portable, "--progress"])
+        run(
+            [verify_python, "-I", "-B", portable / "tools/verify_bundle.py", portable, "--progress"]
+        )
         archive(portable, portable_zip)
+        if native_smoke:
+            relocated = run(
+                [
+                    sys.executable,
+                    "-I",
+                    "-B",
+                    PROJECT_ROOT / "scripts/verify_relocated_bundle.py",
+                    "--archive",
+                    portable_zip.resolve(),
+                ]
+            )
+            relocation_check = json.loads(relocated.stdout)
+            if (
+                relocation_check.get("status") != "passed"
+                or relocation_check.get("relocated_windows_execution_verified") is not True
+                or relocation_check.get("hardware_verified") is not False
+            ):
+                raise RuntimeError("Relocated Windows bundle validation was not confirmed")
         source = working / f"{stem}-Source"
         source.mkdir()
         copy_sources(source, developer=True)
@@ -525,6 +574,8 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
         "source": str(source_zip),
         "native_windows_execution_verified": native_smoke,
         "hardware_verified": False,
+        "relocated_windows_execution_verified": relocation_check is not None,
+        "relocation_check": relocation_check,
         "layout_validation": layout,
     }
     (output / f"{stem}-build-report.json").write_text(

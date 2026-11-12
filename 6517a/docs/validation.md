@@ -4,6 +4,22 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.4.6 소스 기반 캐시 배포 오류 수정
+
+사용자 제공 v0.4.5 검사 보고서는 7,271개 파일 통과와 368개 해시 불일치를 기록했으며, 실패는 모두 소스 기반 `__pycache__/*.pyc`였습니다. 공개 원본 ZIP의 manifest 7,639개 중 캐시 754개는 원본에서는 해시가 맞지만, native smoke가 만든 캐시를 배포한 탓에 추출·실행 후 재생성되면 내용이 바뀔 수 있었습니다. ZIP의 소스 수정 시각 정밀도 차이와 동일 소스 import에 따른 캐시 해시 변화를 별도 임시 폴더에서 재현했습니다.
+
+해당 파생 캐시를 manifest와 ZIP에서 제외하고 실행 진입점·선택 설치 하위 프로세스에 `-B`를 적용했습니다. 소스·확장 모듈·DLL·표준 라이브러리 ZIP·소스 없는 bytecode의 검증은 유지합니다. 검증기가 기존 해시 불일치를 무시하도록 바꾸지는 않았습니다. Windows 배포 게이트는 새 위치에 실제 ZIP 추출, CLI/GUI 실행, 캐시 생성 후 PASS, 소스·DLL 변조 FAIL, 복원 후 PASS와 manifest 불변을 확인하도록 추가했습니다. 그 결과는 `build-report.json`의 `relocated_windows_execution_verified`와 `relocation_check`에 기록됩니다.
+
+사용자 제공 IDN-only 원문에는 실제 VISA 경로의 `*IDN?` 송신과 6517A 응답이 있으며 `simulation=false`, `ok=true`, 이슈 없음이 확인됩니다. 이 사용자 PC에서 native NI-VISA 경로의 장비 식별은 성공했습니다. 출력 상태는 UNKNOWN, OFF 확인은 false, 측정 시작과 출력 ON 명령은 false, 잔류 전압은 UNVERIFIED이므로 전체 측정·차단·방전 검증으로 확대하지 않습니다. 아래 과거 IDN 미수행 표시는 당시 배포 기록입니다.
+
+| 항목 | v0.4.6 로컬 검증 |
+|---|---|
+| 전체 테스트 | Linux offscreen 320개 통과, 실패·건너뜀 없음, 6.90 s |
+| Ruff check / format | 통과; Python 파일 55개 |
+| 배포 회귀 | 전체 44개; 실제 캐시 생성→ZIP 추출→다른 위치 import→재검사 PASS, 소스·확장 모듈·stdlib ZIP 변조 FAIL, 독립 bytecode 계속 검증 포함 |
+| Windows 실행·이동 후 검사 | 이 로컬 기록 시점에는 새 CI 전; 해당 Release의 JUnit 및 build report로 확인 |
+| 실제 장비 근거 | 사용자 제공 v0.4.5 native IDN-only 성공; 출력 OFF·측정·방전은 미확인 |
+
 ## v0.4.5 파일 검사 진행·결과 표시
 
 사용자는 `Verify-Bundle.cmd` 실행 후 화면 변화를 보지 못했고, GUI에서는 NI MAX와 동일한 GPIB 주소를 가져왔다고 보고했습니다. IDN 확인은 아직 누르지 않았다고 확인했으므로 장비 식별·통신 성공으로 기록하지 않습니다. 기존 검사기는 전체 파일 해시가 끝난 뒤에만 출력하는 구조였지만, 이것이 사용자 PC에서 나타난 현상의 확정 원인인지는 알 수 없습니다.

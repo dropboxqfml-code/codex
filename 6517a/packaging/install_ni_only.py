@@ -96,6 +96,7 @@ def pip_arguments(interpreter, requirements, target):
     return [
         str(interpreter),
         "-I",
+        "-B",
         "-m",
         "pip",
         "--isolated",

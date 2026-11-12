@@ -11,7 +11,7 @@ if not exist "%~dp0tools\verify_bundle.py" (
   pause
   exit /b 2
 )
-"%~dp0runtime\python.exe" -I -u "%~dp0tools\verify_bundle.py" --progress --save-report
+"%~dp0runtime\python.exe" -I -B -u "%~dp0tools\verify_bundle.py" --progress --save-report
 set "verify_result=%errorlevel%"
 if "%verify_result%"=="0" (
   echo [PASS] Bundle file integrity verified.

@@ -180,6 +180,8 @@ jobs:
               raise SystemExit('Native Windows smoke test was not confirmed')
           if report.get('hardware_verified') is not False:
               raise SystemExit('This workflow cannot verify physical hardware')
+          if report.get('relocated_windows_execution_verified') is not True:
+              raise SystemExit('Relocated Windows bundle verification was not confirmed')
           repo = os.environ['GITHUB_REPOSITORY']
           def api(path):
               return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
@@ -201,6 +203,7 @@ jobs:
 
           압축을 모두 풀고 Verify-Bundle.cmd → Test-Simulation.cmd → Start-GUI.cmd 순서로 실행하세요.
           Verify-Bundle.cmd는 START → CHECK 처리 파일 수 → PASS/FAIL을 표시하고 diagnostics/bundle-verification-*.json에 결과를 저장합니다.
+          재생성되는 Python 캐시는 배포 파일에서 제외하며, 새 위치에 압축을 풀고 CLI/GUI 실행·캐시 재생성 후에도 파일 검사를 통과하는지 확인합니다. 새 폴더에 압축을 풀어 사용하세요.
           NI MAX에서 보이는 장비와 같은 주소를 선택해 새 'NI 실장비 연결 시험 시작' 안내를 따라 IDN부터 확인하세요.
           기본 경로에는 해당 모델과 호환되는 NI-488.2 및 NI-VISA 64비트가 필요합니다.
           NI-VISA를 생략하는 @py 시험 기능은 Enable-NI-Only.cmd로 선택 확장을 별도 설치한 경우에만 사용할 수 있으며, NI-488.2 드라이버는 여전히 필요합니다. 기본 ZIP은 이 확장을 포함하거나 자동 설치하지 않습니다.

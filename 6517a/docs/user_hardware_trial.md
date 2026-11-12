@@ -1,12 +1,12 @@
 # 6517A·USB-GPIB 사용자 시험 순서
 
-이 문서는 Windows 10/11 64-bit에서 **시험용 프로그램을 실제 PC와 장비 조합으로 검증하는 절차**입니다. 현재 개발 환경은 Linux이고 실제 6517A·USB-GPIB·fixture는 개발 환경에 제공되지 않았습니다. 사용자는 v0.3.0 GUI 화면 실행과 NI MAX에서 6517A 인식을 확인했습니다. 프로그램 자체의 IDN·측정 성공 여부는 아직 사용자 시험 기록으로 전달되지 않았습니다. 매뉴얼 대조·시뮬레이터·모의 VISA·배포 파일 검사를 실제 Windows/장비 시험으로 해석하지 않습니다. 수행한 범위는 [검증 기록](validation.md)에 구분합니다.
+이 문서는 Windows 10/11 64-bit에서 **시험용 프로그램을 실제 PC와 장비 조합으로 검증하는 절차**입니다. 현재 개발 환경은 Linux이고 실제 6517A·USB-GPIB·fixture는 개발 환경에 제공되지 않았습니다. 사용자는 v0.3.0 GUI 화면 실행과 NI MAX에서 6517A 인식을 확인했습니다. 이후 사용자 제공 원문으로 native NI-VISA 경로의 실제 6517A IDN 응답을 확인했습니다. 출력 OFF·측정·방전 확인은 다음 시험 범위입니다. 매뉴얼 대조·시뮬레이터·모의 VISA·배포 파일 검사를 실제 Windows/장비 시험으로 해석하지 않습니다. 수행한 범위는 [검증 기록](validation.md)에 구분합니다.
 
 고전압을 자동 인가하는 self-test는 없습니다. 시료·fixture·케이블의 확인된 정격, 보호 enclosure·인터록·독립적인 차단/방전 수단과 자격 있는 담당자의 승인 아래 시험합니다. `OUTPUT OFF`는 시료 방전 완료가 아닙니다. 실제 잔류 전압 확인이 제공되지 않았으므로 프로그램은 `UNVERIFIED`를 유지합니다.
 
 ## 1. 압축 해제와 시뮬레이션
 
-1. `6517A-USB-GPIB-Trial-0.4.5-Windows-x64.zip`과 배포 시 제공한 SHA-256을 함께 받습니다. ZIP 파일의 `Get-FileHash -Algorithm SHA256` 결과를 비교합니다. 일치하지 않으면 실행하지 않고 파일을 다시 받습니다.
+1. `6517A-USB-GPIB-Trial-0.4.6-Windows-x64.zip`과 배포 시 제공한 SHA-256을 함께 받습니다. ZIP 파일의 `Get-FileHash -Algorithm SHA256` 결과를 비교합니다. 일치하지 않으면 실행하지 않고 파일을 다시 받습니다.
 2. 로컬의 쓰기 가능한 폴더에 **모든 파일**을 풉니다. ZIP 안에서 직접 실행하지 말고, `Start-GUI.cmd`와 함께 있는 runtime·app 폴더를 분리하거나 삭제하지 않습니다. 실행 전에 출력이 이미 켜진 장비가 있다면 현장 절차로 관리합니다.
 3. `Start-GUI.cmd`로 GUI를 실행해 상단 `SIMULATION`과 초기 0 V, trip 미설정, START 비활성 상태를 확인합니다. 이 화면은 실장비 기능이 없다는 뜻이 아니라 의도한 기본 상태입니다. 프로그램 시작이나 설정 load만으로 장비에 연결하거나 출력 ON을 하지 않습니다.
 4. `Test-Simulation.cmd`를 실행하거나 GUI에서 가상 예제 설정을 불러와 연결 → ARM → START를 시험합니다. 예제 trip과 전압은 가상 시료용이며 실제 시료 승인값이 아닙니다.
@@ -15,6 +15,8 @@
 Portable 패키지에는 `runtime/python.exe`, `app/src`·`app/docs`·`app/examples`, 사용자 설정용 `configs`와 실행용 CMD가 포함됩니다. `Verify-Bundle.cmd`로 내부 파일의 manifest SHA-256을 검사할 수 있습니다. Python과 Python 의존성이 포함되므로 Python·uv 설치가 필요하지 않습니다. 어댑터 driver와 VISA runtime은 다음 단계에서 별도로 설치합니다. Native Windows에서 아직 실행하지 못한 패키지라면 그 사실을 [검증 기록](validation.md)의 결과와 함께 보존합니다.
 
 `Verify-Bundle.cmd`는 먼저 `[START]`를 표시하고 `[CHECK] 처리한 파일 수/전체 파일 수`를 갱신합니다. 마지막 `[PASS]`는 검사한 배포 파일이 manifest와 일치한다는 결과입니다. `[FAIL]`이면 누락·변조·읽기 오류 또는 도구 실행 오류를 확인합니다. 결과 JSON은 `diagnostics/bundle-verification-*.json`에 저장됩니다. 저장 경로를 만들 수 없으면 `[WARN]`과 `report_saved=false`가 표시되므로 콘솔 결과를 보존합니다. 파일 검사 완료는 장비 IDN 확인과 별개입니다.
+
+v0.4.5에는 실행 중 재생성되는 Python 캐시를 고정 검사 목록에 포함한 오류가 있었습니다. v0.4.6 ZIP은 소스 기반 캐시를 제외하고 이동·추출 후 재검사도 수행합니다. 이전 버전의 캐시를 재사용하지 않도록 새 폴더에 풉니다. 소스·DLL 등의 실패는 캐시 문제로 간주하지 않고 원문 오류를 확인합니다.
 
 ## 2. 어댑터와 VISA 준비
 

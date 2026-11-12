@@ -3,7 +3,10 @@
 import importlib.util
 import json
 import os
+import py_compile
 import struct
+import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
@@ -80,6 +83,76 @@ def test_bundle_manifest_detects_corruption_and_missing_files(tmp_path):
     assert result["errors"] == [{"file": "app.txt", "reason": "hash mismatch"}]
     (tmp_path / "app.txt").unlink()
     assert verifier.verify(tmp_path)["errors"] == [{"file": "app.txt", "reason": "missing"}]
+
+
+def test_extracting_and_importing_preserves_integrity_without_shipping_derived_bytecode(tmp_path):
+    original = tmp_path / "build" / "portable"
+    source = original / "app" / "portable_cache_probe.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("value = 42\n")
+    os.utime(source, (1_700_000_001, 1_700_000_001))
+    py_compile.compile(str(source), doraise=True)
+    assert list(source.parent.glob("__pycache__/*.pyc"))
+    binary = original / "runtime" / "extension.pyd"
+    binary.parent.mkdir()
+    binary.write_bytes(b"binary payload")
+    stdlib = original / "runtime" / "python312.zip"
+    with zipfile.ZipFile(stdlib, "w") as package:
+        package.writestr("stdlib.pyc", b"immutable stdlib bytecode")
+    manifest = builder.write_manifest(original, release_version="test", native_verified=False)
+    assert not any("__pycache__/" in name for name in manifest["files"])
+    target = tmp_path / "portable.zip"
+    builder.archive(original, target)
+    with zipfile.ZipFile(target) as package:
+        assert not any("__pycache__/" in name for name in package.namelist())
+        package.extractall(tmp_path / "elsewhere")
+    relocated = tmp_path / "elsewhere" / "portable"
+    assert verifier.verify(relocated)["status"] == "passed"
+    app = relocated / "app"
+    subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            f"import sys; sys.path.insert(0, {str(app)!r}); "
+            "import portable_cache_probe; assert portable_cache_probe.value == 42",
+        ],
+        check=True,
+        capture_output=True,
+        timeout=30,
+    )
+    assert list(app.glob("__pycache__/*.pyc"))
+    assert (app / source.name).read_bytes() == source.read_bytes()
+    assert verifier.verify(relocated)["status"] == "passed"
+    (app / source.name).write_text("value = 43\n")
+    (relocated / "runtime/extension.pyd").write_bytes(b"changed binary")
+    (relocated / "runtime/python312.zip").write_bytes(b"changed stdlib archive")
+    result = verifier.verify(relocated)
+    assert result["status"] == "failed"
+    assert {error["file"] for error in result["errors"]} == {
+        "app/portable_cache_probe.py",
+        "runtime/extension.pyd",
+        "runtime/python312.zip",
+    }
+
+
+def test_bytecode_without_source_is_still_archived_and_hash_checked(tmp_path):
+    root = tmp_path / "portable"
+    for name in ("standalone.pyc", "__pycache__/orphan.cpython-312.pyc"):
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"source-less bytecode")
+    manifest = builder.write_manifest(root, release_version="test", native_verified=False)
+    assert set(manifest["files"]) == {"standalone.pyc", "__pycache__/orphan.cpython-312.pyc"}
+    target = tmp_path / "portable.zip"
+    builder.archive(root, target)
+    with zipfile.ZipFile(target) as package:
+        assert "portable/standalone.pyc" in package.namelist()
+        assert "portable/__pycache__/orphan.cpython-312.pyc" in package.namelist()
+    (root / "standalone.pyc").write_bytes(b"changed")
+    assert verifier.verify(root)["errors"] == [
+        {"file": "standalone.pyc", "reason": "hash mismatch"}
+    ]
 
 
 def test_verification_feedback_starts_before_hashing_and_saves_the_result(

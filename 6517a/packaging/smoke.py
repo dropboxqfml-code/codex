@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import json
 import os
@@ -62,7 +63,10 @@ def optional_installer_smoke(root: Path, installer=None):
     return report
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--skip-optional-installer", action="store_true")
+    args = parser.parse_args(argv)
     if sys.platform != "win32":
         raise RuntimeError("Native smoke test must run on Windows")
     root = Path(__file__).resolve().parents[1]
@@ -85,7 +89,8 @@ def main() -> int:
     )
     if status:
         return status
-    optional_installer_smoke(root)
+    if not args.skip_optional_installer:
+        optional_installer_smoke(root)
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
 

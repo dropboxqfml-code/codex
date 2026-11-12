@@ -7,9 +7,9 @@ if "%~1"=="" (
   exit /b 2
 )
 if "%~2"=="" (
-  "%~dp0runtime\python.exe" -I "%~dp0tools\launch.py" confirm-off "%~1"
+  "%~dp0runtime\python.exe" -I -B "%~dp0tools\launch.py" confirm-off "%~1"
 ) else (
-  "%~dp0runtime\python.exe" -I "%~dp0tools\launch.py" confirm-off "%~1" "%~2"
+  "%~dp0runtime\python.exe" -I -B "%~dp0tools\launch.py" confirm-off "%~1" "%~2"
 )
 set "off_result=%errorlevel%"
 echo OFF check result code: %off_result%

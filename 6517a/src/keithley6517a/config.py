@@ -101,6 +101,10 @@ class RunConfig:
     sample_metadata: Mapping[str, Any] = None
     temperature_C: float | None = None
     relative_humidity_percent: float | None = None
+    sample_length_mm: float | None = None
+    sample_width_mm: float | None = None
+    sample_depth_mm: float | None = None
+    current_path_axis: str | None = None
     thickness_m: float | None = None
     area_m2: float | None = None
     series_resistance_ohm: float | None = None
@@ -202,6 +206,32 @@ class RunConfig:
         )
 
     @property
+    def effective_geometry_m(self) -> tuple[float | None, float | None]:
+        """Return transverse area and current-path length in SI units.
+
+        Rectangular dimensions describe full-face electrodes. Partial new inputs
+        remain metadata; they never silently reuse an unrelated legacy geometry.
+        Legacy area/thickness stay independent so clearing dimensions is reversible.
+        """
+        supplied = (
+            self.sample_length_mm,
+            self.sample_width_mm,
+            self.sample_depth_mm,
+            self.current_path_axis,
+        )
+        if not any(value is not None for value in supplied):
+            return self.area_m2, self.thickness_m
+        if any(value is None for value in supplied):
+            return None, None
+        dimensions = {
+            "L": self.sample_length_mm * 1e-3,
+            "W": self.sample_width_mm * 1e-3,
+            "D": self.sample_depth_mm * 1e-3,
+        }
+        transverse = [value for axis, value in dimensions.items() if axis != self.current_path_axis]
+        return transverse[0] * transverse[1], dimensions[self.current_path_axis]
+
+    @property
     def voltage_resolution_V(self) -> float:
         return 0.005 if self.source_range_V == 100 else 0.05
 
@@ -212,6 +242,42 @@ class RunConfig:
         )
 
     def validate(self, for_arm: bool = True) -> None:
+        for name in ("sample_length_mm", "sample_width_mm", "sample_depth_mm"):
+            value = getattr(self, name)
+            if value is None:
+                continue
+            try:
+                valid = type(value) in (int, float) and math.isfinite(value)
+            except OverflowError:
+                valid = False
+            if not valid:
+                raise ConfigurationError(f"{name} must be finite numeric millimetres")
+            if value <= 0:
+                raise ConfigurationError(f"{name} must be positive")
+        if self.current_path_axis is not None and (
+            not isinstance(self.current_path_axis, str)
+            or self.current_path_axis not in {"L", "W", "D"}
+        ):
+            raise ConfigurationError("current_path_axis must be L, W, D or null")
+        if all(
+            value is not None
+            for value in (
+                self.sample_length_mm,
+                self.sample_width_mm,
+                self.sample_depth_mm,
+                self.current_path_axis,
+            )
+        ):
+            area, length = self.effective_geometry_m
+            if (
+                not math.isfinite(area)
+                or not math.isfinite(length)
+                or area <= 0
+                or length <= 0
+                or not math.isfinite(area / length)
+                or area / length <= 0
+            ):
+                raise ConfigurationError("Sample dimensions produce an unrepresentable SI geometry")
         if (
             self.resistive_limit_enabled is not None
             and type(self.resistive_limit_enabled) is not bool

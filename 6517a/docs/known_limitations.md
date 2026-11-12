@@ -1,4 +1,4 @@
-# v0.8.1 구현 범위와 알려진 제한
+# v0.8.2 구현 범위와 알려진 제한
 
 제공된 6517A 매뉴얼 원문으로 명령·trigger·ASCII parser를 개발했습니다. 사용자 제공 기록에서 native NI-VISA 경로의 실제 6517A IDN과 보호 OFF 조회 `0`은 확인됐습니다. 실제 전압 인가·current 수집·인터록 차단·방전은 별도 검증 대상입니다. Windows 소프트웨어 실행과 실제 장비 결과는 [검증 기록](validation.md)에 구분합니다.
 
@@ -30,6 +30,7 @@ START 권한은 정확한 설정 snapshot과 연결에 묶여 한 번 소비됩�
 | 자동 시작 검사 | Start-GUI.cmd에서 Bundle → Simulation → GUI 자동 진행; 검사는 장비 연결 없이 수행 |
 | Simulation 진행 표시 | 시작 창·CMD 및 `simulate --progress`에서 단계·판독·결과 경로 표시 |
 | 분석용 TXT | 매 판독을 `analysis.txt` 네 열로 자동 저장; 첫 행 물리량·단위, 이후 SI 수치·결측 `nan` |
+| 시료 치수·비저항 | L/W/D(mm)와 전류 방향으로 직육면체 단면적·경로 길이를 환산; 완료된 기하조건에서만 겉보기 체적 비저항(Ω·m) 계산 |
 | 이전 결과 변환 | `export-analysis`로 CSV를 장비 연결 없이 TXT로 변환; 기존 파일 덮어쓰기 없음 |
 | 명령형 transport 시뮬레이터 | 매뉴얼 형식·seed·clock·fault 주입; `simulation_resistance_ohm` 모델값과 실제 VISA 판독 분리 |
 | 정전압/list/staircase·cycles | Host-controlled step; 연속 ramp·자동 중간점·점진 ramp-down은 미구현 |
@@ -46,6 +47,8 @@ START 권한은 정확한 설정 snapshot과 연결에 묶여 한 번 소비됩�
 | Prologix/serial controller | 미지원; 가상 COM·자동 `++` 전송 없음 |
 | Windows portable ZIP | Python·locked wheels·CMD 포함; 새 위치 CLI/GUI·무결성 회귀를 배포 검사에 포함 |
 | 단일 EXE·NI driver bundling | 미제작; NI 드라이버·native VISA runtime은 포함하지 않음 |
+
+치수 기반 비저항은 전극이 전류 방향에 수직인 전체 단면을 덮는 직육면체 모델입니다. 전극 유효 면적이 더 작거나 원형·guard 전극을 사용하는 경우에는 해당 전극 기하조건을 사용해야 합니다. 치수와 방향이 일부만 있으면 저항 측정과 입력 기록은 유지하지만 비저항은 비웁니다. 새 치수·방향이 전혀 없을 때는 기존 `area_m2`·`thickness_m` 설정을 지원합니다. 자동·선택 TXT의 네 열은 그대로이며 비저항은 CSV에 별도 저장합니다.
 
 ## 측정·중지·데이터의 한계
 
@@ -75,7 +78,7 @@ v0.4.6부터 소스 기반 `__pycache__/*.pyc`를 manifest·ZIP에서 제외하�
 기본 ZIP에는 NI driver·native VISA·선택 `@py` 패키지가 포함되지 않습니다. 선택 installer는 명시적 INSTALL 후 hash-pinned pure wheel만 설치하고, 기존 불완전·변경된 확장 폴더를 덮어쓰지 않습니다. 해당 확장을 포함한 배포본의 라이선스 조건은 별도 검토하며 app·NI driver 라이선스를 자동 변경하지 않습니다.
 
 
-## v0.8.1 저장 결과 분석 범위
+## v0.8.2 저장 결과 분석 범위
 
 저장 결과 분석은 한 실행의 `readings.csv` 또는 해당 폴더를 읽어 I(t)·R(t), 시간 구간 통계와 선택 TXT를 제공합니다. 여러 실행 그래프를 겹치는 비교와 예상 남은 시간 표시는 이번 범위에 포함하지 않습니다. 분석은 저장값·품질 플래그를 사용하며 원본 결과를 수정하지 않습니다.
 

@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 
 from ..config import ConfigurationError, RunConfig
 from .readiness import configuration_issues, humanize_issue
+from .sample_geometry import SampleGeometryFields
 
 
 class TestSetupDialog(QDialog):
@@ -79,6 +80,8 @@ class TestSetupDialog(QDialog):
         basic.addRow("GPIB 주소", self.resource)
         self.sample_id = self._text(config.sample_id)
         basic.addRow("시료 ID", self.sample_id)
+        self.sample_geometry = SampleGeometryFields(config)
+        basic.addRow("치수 (mm)", self.sample_geometry)
         self.reference_preset_button = QPushButton("1 GΩ · 1 V 시험값 적용")
         self.reference_preset_button.setToolTip(
             "1 V · software trip 10 nA · 명목 기준저항 1 GΩ. 확인 항목은 자동 선택하지 않습니다."
@@ -243,6 +246,8 @@ class TestSetupDialog(QDialog):
                 {
                     "resource": self.resource,
                     "sample_id": self.sample_id,
+                    **self.sample_geometry.fields,
+                    "current_path_axis": self.sample_geometry.axis,
                     "voltages": self.voltages,
                     "current_trip_A": self.current_trip,
                     "dwell_s": self.dwell,
@@ -292,6 +297,7 @@ class TestSetupDialog(QDialog):
             elif isinstance(widget, QCheckBox):
                 widget.toggled.connect(self._refresh_status)
         self._policy_changed()
+        self.sample_geometry.changed.connect(self._refresh_status)
         if focus_field:
             QTimer.singleShot(0, lambda: self.focus_field(focus_field))
 
@@ -484,6 +490,7 @@ class TestSetupDialog(QDialog):
             resistive_limit_enabled=self.resistive_limit.currentData(),
             residual_warning_ack=self.residual_ack.isChecked(),
             commissioning=record,
+            **self.sample_geometry.config_values(),
         )
         return RunConfig.from_dict(data)
 

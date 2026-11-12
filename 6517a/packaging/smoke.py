@@ -56,6 +56,86 @@ def analysis_export_smoke(directory: Path) -> int:
     return count
 
 
+def verify_sample_geometry(directory: Path) -> int:
+    """Independently verify saved mm geometry, SI conversion, rho, and unchanged TXT."""
+    snapshot = json.loads((directory / "config.json").read_text(encoding="utf-8"))
+    settings = snapshot.get("settings", {})
+    expected_dimensions = dict(sample_length_mm=20, sample_width_mm=10, sample_depth_mm=2)
+    if any(settings.get(key) != value for key, value in expected_dimensions.items()) or (
+        settings.get("current_path_axis") != "D"
+    ):
+        raise RuntimeError("Sample geometry settings were not saved in mm with their current axis")
+    metadata = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
+    geometry = metadata.get("sample_geometry", {})
+    try:
+        units_match = math.isclose(geometry.get("area_m2"), 2e-4, rel_tol=1e-12) and math.isclose(
+            geometry.get("current_path_length_m"), 2e-3, rel_tol=1e-12
+        )
+    except (TypeError, ValueError):
+        units_match = False
+    if (
+        geometry.get("dimensions_mm") != {"L": 20, "W": 10, "D": 2}
+        or geometry.get("current_path_axis") != "D"
+        or not units_match
+    ):
+        raise RuntimeError("Sample geometry metadata must record its mm inputs and SI geometry")
+    count = 0
+    with (directory / "readings.csv").open(encoding="utf-8", newline="") as stream:
+        for row in csv.DictReader(stream):
+            resistance = row.get("resistance_corrected_ohm")
+            rho = row.get("resistivity_ohm_m")
+            if resistance in (None, ""):
+                if rho not in (None, ""):
+                    raise RuntimeError("Resistivity must be absent when resistance is unavailable")
+                continue
+            if (
+                rho in (None, "")
+                or not math.isfinite(float(rho))
+                or not math.isclose(float(rho), float(resistance) * 0.1, rel_tol=1e-12)
+            ):
+                raise RuntimeError("Saved resistivity must equal R * (20 mm * 10 mm) / 2 mm")
+            count += 1
+    if count == 0:
+        raise RuntimeError("Sample geometry smoke requires at least one finite resistivity reading")
+    analysis_export_smoke(directory)
+    return count
+
+
+def sample_geometry_resistivity_smoke(output_directory: Path) -> Path:
+    """Exercise rectangular D-axis resistivity with synthetic readings only."""
+    from keithley6517a.clock import FakeClock
+    from keithley6517a.config import RunConfig
+    from keithley6517a.measurement.runner import MeasurementRunner
+
+    config = replace(
+        RunConfig(),
+        output_directory=str(output_directory),
+        voltages=(1,),
+        simulation_resistance_ohm=1e9,
+        current_trip_A=1e-8,
+        residual_warning_ack=True,
+        dwell_s=0.5,
+        summary_window_s=0.5,
+        sample_interval_s=0.1,
+        nplc=0.1,
+        sample_length_mm=20,
+        sample_width_mm=10,
+        sample_depth_mm=2,
+        current_path_axis="D",
+    )
+    runner = MeasurementRunner(config, clock=FakeClock())
+    try:
+        runner.connect()
+        runner.arm()
+        result = runner.start()
+        if result.get("status") != "completed" or result.get("output_state") != "OFF":
+            raise RuntimeError("Synthetic sample geometry run did not complete with output OFF")
+        verify_sample_geometry(runner.run_directory)
+        return runner.run_directory
+    finally:
+        runner.shutdown()
+
+
 def startup_checks_smoke(root: Path, startup_factory=None, *, timeout_ms=120000):
     """Exercise the delivered automatic checks before showing a disconnected GUI."""
     from PySide6.QtCore import QEventLoop, QProcess, QTimer
@@ -449,6 +529,7 @@ def main(argv=None) -> int:
         raise RuntimeError("Bundled 1 Gohm simulation used the wrong reference model")
     analysis_export_smoke(metadata_files[0].parent)
     user_stop_smoke(root / "native-smoke-results/user-stop")
+    sample_geometry_resistivity_smoke(root / "native-smoke-results/sample-geometry")
     if not args.skip_optional_installer:
         optional_installer_smoke(root)
     from PySide6.QtCore import QTimer
@@ -482,6 +563,7 @@ def main(argv=None) -> int:
                 "user_stop_classification_verified": True,
                 "automatic_startup_checks_verified": True,
                 "graph_order_verified": True,
+                "sample_geometry_resistivity_verified": True,
             }
         )
     )

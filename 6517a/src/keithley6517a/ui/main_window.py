@@ -43,6 +43,7 @@ from keithley6517a.config import RunConfig
 from keithley6517a.measurement.runner import MeasurementRunner
 from keithley6517a.ui.connection_guide import ConnectionGuide
 from keithley6517a.ui.readiness import configuration_issues, humanize_issue
+from keithley6517a.ui.sample_geometry import SampleGeometryFields
 
 
 def _text_state(value: Any) -> str:
@@ -396,6 +397,8 @@ class MainWindow(QMainWindow):
         form.addRow("조회 결과", self.resource_choices)
         self.sample_id = QLineEdit("sample")
         form.addRow("시료 ID", self.sample_id)
+        self.sample_geometry = SampleGeometryFields()
+        form.addRow("치수 (mm)", self.sample_geometry)
         basic_layout.addLayout(form)
         self.setup_button = QPushButton("1. 시험 설정")
         self.setup_button.setMinimumHeight(38)
@@ -530,6 +533,17 @@ class MainWindow(QMainWindow):
             label = QLabel(f"— {unit}")
             label.setStyleSheet("font-size:24px;font-weight:600;color:#173f5f")
             box_layout.addWidget(label)
+            if key == "resistance":
+                self.resistivity_label = QLabel("ρ — Ω·m")
+                self.resistivity_label.setStyleSheet("color:#176b88")
+                self.resistivity_label.setToolTip(
+                    "겉보기 체적 비저항 ρ = R × 단면적 / 전류 경로 길이 (Ω·m).\n"
+                    "FVMI는 보정 저항, native는 장비 저항값을 기준으로 합니다.\n"
+                    "치수와 전류 방향을 입력한 직육면체·전극의 단면 전체 접촉 기준입니다.\n"
+                    "기존 설정은 등록된 면적·전류 경로 길이 조건을 사용합니다."
+                )
+                self.resistivity_label.hide()
+                box_layout.addWidget(self.resistivity_label)
             values.addWidget(box)
             self.value_labels[key] = label
         right_layout.addLayout(values)
@@ -665,6 +679,7 @@ class MainWindow(QMainWindow):
         self.backend_profiles.currentIndexChanged.connect(self._backend_profile_changed)
         self.backend.textChanged.connect(self._backend_text_changed)
         self.resource.textChanged.connect(self._refresh_connection_guide)
+        self.sample_geometry.changed.connect(self._geometry_changed)
         self.connection_guide.request_real_mode.connect(self._enter_real_test)
         self.connection_guide.request_discover.connect(self._discover)
         self.connection_guide.request_identify.connect(lambda: self._diagnose(False))
@@ -698,6 +713,13 @@ class MainWindow(QMainWindow):
         )
         self._update_buttons()
 
+    def _geometry_changed(self) -> None:
+        if self._loading_controls:
+            return
+        # Old acquired resistivity belongs to its original geometry, not newly typed dimensions.
+        self.resistivity_label.setText("ρ — Ω·m")
+        self._refresh_connection_guide()
+
     def _transport_changed(self) -> None:
         if (
             not self._loading_controls
@@ -724,8 +746,13 @@ class MainWindow(QMainWindow):
                 resource=self.resource.text().strip(),
                 visa_backend=self.backend.text().strip() or "@ivi",
                 output_directory=self.output_dir.text().strip() or "runs",
+                sample_id=self.sample_id.text().strip(),
+                area_m2=self._base_config.get("area_m2"),
+                thickness_m=self._base_config.get("thickness_m"),
             )
+            geometry = self.sample_geometry.raw_values()
             self._load_controls(settings)
+            self.sample_geometry.load_config(dict(settings, **geometry))
             self.log.appendPlainText(
                 "REAL 연결 시험 준비: 시뮬레이션의 전압·trip·승인을 재사용하지 않습니다. "
                 "목표 0 V에서 시작하며 먼저 NI MAX와 같은 주소의 IDN을 조회하세요."
@@ -769,6 +796,9 @@ class MainWindow(QMainWindow):
         issues = []
         try:
             config = self.config_from_controls()
+            self.resistivity_label.setVisible(
+                all(value is not None for value in config.effective_geometry_m)
+            )
             issues = configuration_issues(config)
             voltages = ", ".join(f"{value:g}" for value in config.voltages[:4])
             if len(config.voltages) > 4:
@@ -779,6 +809,7 @@ class MainWindow(QMainWindow):
                 f"전압별 {config.dwell_s:g} s · 간격 {config.sample_interval_s:g} s"
             )
         except (ValueError, TypeError) as exc:
+            self.resistivity_label.hide()
             issues = [{"field": "", "code": "INVALID_SETTINGS", "message": humanize_issue(exc)}]
             self.plan_summary.setText("설정 입력을 확인하세요.")
         if self._connected and "configuration_issues" in self._last_worker_status:
@@ -913,6 +944,8 @@ class MainWindow(QMainWindow):
         self.mode.setCurrentText(data.get("mode", "FVMI_CURRENT"))
         self.profile.setCurrentIndex(2 if data.get("protocol") == "fixed_time" else 0)
         self.sample_id.setText(str(data.get("sample_id", "sample")))
+        self.sample_geometry.load_config(data)
+        self.resistivity_label.setText("ρ — Ω·m")
         self.voltages.setText(", ".join(str(v) for v in data.get("voltages", [0])))
         self.ceiling.setValue(data.get("voltage_ceiling_V", 10))
         self.trip.setText("" if data.get("current_trip_A") is None else str(data["current_trip_A"]))
@@ -961,6 +994,7 @@ class MainWindow(QMainWindow):
             residual_warning_ack=self.ack.isChecked(),
             setup_policy=self.setup_policy.currentData(),
             operator_setup_acknowledged=self.operator_setup_ack.isChecked(),
+            **self.sample_geometry.config_values(),
         )
         data["protocol"] = (
             "staircase"
@@ -1138,6 +1172,7 @@ class MainWindow(QMainWindow):
         for key, unit in (("voltage", "V"), ("current", "A"), ("resistance", "Ω")):
             self.value_labels[key].setText(f"— {unit}")
         self.reading_state_label.setText("판독 대기 · 첫 측정값을 기다립니다")
+        self.resistivity_label.setText("ρ — Ω·m")
         for trace in self.traces:
             trace.rows = self.rows
             trace.redraw()
@@ -1244,6 +1279,7 @@ class MainWindow(QMainWindow):
         )
         self.value_labels["current"].setText(_display_si(row.get("current_raw_A"), "A"))
         self.value_labels["resistance"].setText(_display_si(display["_display_r"], "Ω"))
+        self.resistivity_label.setText("ρ " + _display_si(row.get("resistivity_ohm_m"), "Ω·m"))
         self.reading_state_label.setText(
             "판독 중" if elapsed is None else f"판독 중 · {elapsed:g} s"
         )

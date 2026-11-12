@@ -2,7 +2,7 @@
 
 ## 설정과 실행
 
-설정 JSON의 숫자는 SI 단위를 사용합니다. NaN/Infinity, 음수·0 시간, 잘못된 전압 방향과 point 수, 0 이하 두께·면적을 오류로 처리합니다. 상한과 시간 계획은 ARM에서 검증하고 immutable snapshot으로 고정합니다. 변경하려면 중지 후 다시 ARM합니다. `current_trip_A`와 잔류 전하 경고 확인은 예제 시뮬레이션에서도 명시합니다.
+설정 JSON의 기본 숫자는 SI 단위를 사용하며 `sample_length_mm`, `sample_width_mm`, `sample_depth_mm`는 이름대로 mm 단위입니다. NaN/Infinity, 음수·0 시간, 잘못된 전압 방향과 point 수, 0 이하 두께·면적·입력 치수를 오류로 처리합니다. 상한과 시간 계획은 ARM에서 검증하고 immutable snapshot으로 고정합니다. 변경하려면 중지 후 다시 ARM합니다. `current_trip_A`와 잔류 전하 경고 확인은 예제 시뮬레이션에서도 명시합니다.
 
 입력 예제는 설정 필드를 최상위에 둔 flat JSON입니다. 실행 폴더의 `config.json`은 `schema_version`·`software`·`settings` wrapper로 저장하며 software version·Git commit·dirty 상태·`source_sha256`을 함께 기록합니다. `RunConfig.load`와 GUI/CLI 설정 load는 두 형식을 모두 지원하므로 저장된 승인 snapshot을 다시 검토·불러올 수 있습니다. load만으로 연결·출력·측정을 재개하지 않습니다. Git commit은 당시 저장소 HEAD이며 미커밋 구현의 실제 소스 구분에는 dirty 상태와 source fingerprint도 함께 확인하세요.
 
@@ -36,7 +36,13 @@ source current limit이면 실제 DUT 전압이 설정 전압이라는 전제가
 
 기본은 background subtraction을 하지 않습니다. 사용 시 `background_approved`, `background_reference`와 동일 전압·시간·환경·배선에서 검증한 background를 명시합니다. 0 V 전류를 유한 전압 fixture leakage로 자동 대체하지 않습니다. 보정 전 raw current와 보정값을 따로 보존합니다.
 
-직렬저항·burden·누설 경로가 확인되지 않았으므로 자동 series-drop 보정은 하지 않으며 `SERIES_DROP_UNVERIFIED`를 남깁니다. 6517A internal resistive-limit의 상충된 값 중 하나를 선택하지 않습니다. Geometry를 명시한 경우에만 rho=R·area/thickness를 계산하며 겉보기 체적 비저항입니다. 표면 전류·접촉이 분리되지 않았으면 intrinsic bulk resistivity로 단정하지 않습니다.
+직렬저항·burden·누설 경로가 확인되지 않았으므로 자동 series-drop 보정은 하지 않으며 `SERIES_DROP_UNVERIFIED`를 남깁니다. 6517A internal resistive-limit의 상충된 값 중 하나를 선택하지 않습니다. Geometry를 명시한 경우에만 `ρ=R×A/ℓ`를 계산하며 겉보기 체적 비저항입니다. 표면 전류·접촉이 분리되지 않았으면 intrinsic bulk resistivity로 단정하지 않습니다.
+
+직육면체 치수 L/W/D를 mm로 기록하고 `current_path_axis`를 L/W/D 중에서 선택합니다. L 방향은 `A=W×D, ℓ=L`, W 방향은 `A=L×D, ℓ=W`, D 방향은 `A=L×W, ℓ=D`입니다. 면적에는 `10⁻⁶`, 길이에는 `10⁻³`을 곱해 m²·m로 환산합니다. 세 치수와 전류 방향이 모두 있어야 새 비저항을 계산하며, 일부만 입력된 경우에는 치수 기록과 저항 측정을 유지하고 비저항은 비웁니다.
+
+이 모델은 전극이 해당 단면 전체를 덮는 경우입니다. 실제 유효 접촉 면적이 다르거나 원형 전극·guard 전극을 사용하면 해당 전극 기하조건을 사용해야 합니다. 기존 `area_m2`·`thickness_m` 입력은 새 치수·방향이 전혀 없는 설정에서 계속 지원하며, 새 치수가 일부라도 있으면 기존 기하조건으로 조용히 대체하지 않습니다.
+
+FVMI 비저항은 기존 보정 저항 `resistance_corrected_ohm`, native 모드에서는 `native_r_ohm`을 기반으로 계산합니다. 계산할 저항이 없거나 유한한 결과를 표현할 수 없으면 `resistivity_ohm_m`을 비웁니다. mm 입력과 방향, SI 환산값은 저장 설정·metadata에서 추적합니다. 자동·선택 구간 `analysis.txt`의 시간/R/V/I 네 열에는 비저항 열을 추가하지 않습니다.
 
 전압 인가 후 전류에는 conduction 외에도 충전·흡수·polarization·fixture leakage·offset·noise가 포함될 수 있습니다. 시뮬레이터의 `V/R + sum(A*exp(-t/tau)) + offset + drift*t + noise`는 시험 모델이며 실제 시료 physics 검증이 아닙니다. raw I(t)와 이력을 우선 해석하세요.
 

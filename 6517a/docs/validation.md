@@ -4,6 +4,16 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.8.2 시료 치수와 비저항
+
+시료 ID 아래에 길이 L·폭 W·두께 D(mm)와 전류 방향을 입력합니다. 완성된 치수·방향에서만 단면적과 전류 경로 길이를 SI로 환산하고 `ρ=R×A/ℓ`(Ω·m)을 계산합니다. 부분 입력은 치수 기록과 저항 측정을 허용하며 비저항을 비웁니다. 직육면체의 전체 단면에 전극이 접촉한다는 모델이며, 물리적인 전극 접촉 면적을 자동 검증하지 않습니다.
+
+Native Windows smoke는 합성 1 GΩ 시료에 L=20, W=10, D=2 mm와 D 방향을 설정해 완성된 run을 저장합니다. 설정 snapshot과 metadata의 mm 치수·전류 방향·2×10⁻⁴ m² 면적·2×10⁻³ m 경로 길이를 확인하고 CSV의 비저항이 보정 저항×0.1 m와 일치하는지 독립 비교합니다. 기존 분석 TXT의 네 열과 모든 판독 보존을 함께 확인합니다. 재추출된 번들에서도 같은 검사를 수행하며 `sample_geometry_resistivity_verified=true`가 있어야 게시합니다.
+
+실행 결과는 [v0.8.2 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.8.2)의 Windows JUnit·build report에서 확인합니다. 이 검사는 계산·저장·시뮬레이션 범위이며 실제 시료의 비저항 교정이나 전극 면적 검증을 뜻하지 않습니다.
+
+2026-11-13(한국 시간) Linux 개발 환경에서 전체 **576개**, Ruff·포맷 검사를 통과했습니다. 세 전류 방향의 단위 환산, 불완전 치수·삭제·기존 면적/길이 호환, 보정/native 저항 기준과 수치 범위, UI 저장·VISA 전환·비저항 표시, 실제 가상 측정 CSV/metadata와 기존 4열 TXT를 검사했습니다. 가상 1 GΩ 측정에서 D 방향·20×10×2 mm의 비저항 표시와 1280×820 화면 배치를 확인했습니다.
+
 ## v0.8.1 자동 시작 검사·그래프 순서·연결 이름
 
 `Start-GUI.cmd`는 Bundle 파일 검사와 Simulation 동작 검사를 순서대로 실행한 뒤 GUI를 엽니다. 시작 창은 자식 프로세스의 진행 기록을 표시하며 실패하면 메인 화면을 열지 않습니다. Simulation 결과는 일반 측정과 별도로 `diagnostics/startup-simulation`에 저장합니다.

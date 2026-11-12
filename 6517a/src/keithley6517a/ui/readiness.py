@@ -16,6 +16,9 @@ _FIELD_LABELS = {
     "voltage_ceiling_V": "전압 상한",
     "voltages": "요청 전압",
     "sample_id": "시료 ID",
+    "sample_length_mm": "시료 길이 L (mm)",
+    "sample_width_mm": "시료 폭 W (mm)",
+    "sample_depth_mm": "시료 두께 D (mm)",
     "output_directory": "저장 폴더",
     "sample_limit_V": "시료 정격 전압",
     "fixture_limit_V": "Fixture 정격 전압",
@@ -34,6 +37,14 @@ _FIELD_LABELS = {
 
 # The messages remain display-only. RunConfig.validate is the execution authority.
 _KNOWN_ERRORS = {
+    "current_path_axis must be L, W, D or null": (
+        "current_path_axis",
+        "전류 방향을 L·W·D 중에서 선택하거나 미지정으로 두세요.",
+    ),
+    "Sample dimensions produce an unrepresentable SI geometry": (
+        "sample_length_mm",
+        "시료 치수가 너무 크거나 작습니다. mm 단위 입력값을 확인하세요.",
+    ),
     "Explicit software current trip is required to ARM": (
         "current_trip_A",
         "Software current trip (A)을 입력하세요.",
@@ -132,6 +143,7 @@ def humanize_issue(error: str | Exception) -> str:
         return known[1]
     match = re.fullmatch(
         r"([A-Za-z_]+) (must be positive|must be nonnegative|must be finite numeric SI units|"
+        r"must be finite numeric millimetres|"
         r"must be a boolean|must be an integer|is required)",
         text,
     )
@@ -142,6 +154,7 @@ def humanize_issue(error: str | Exception) -> str:
             "must be positive": f"{label}에 0보다 큰 값을 입력하세요.",
             "must be nonnegative": f"{label}에 0 이상의 값을 입력하세요.",
             "must be finite numeric SI units": f"{label}에 유한한 숫자를 입력하세요.",
+            "must be finite numeric millimetres": f"{label}에 유한한 숫자를 입력하세요.",
             "must be a boolean": f"{label}의 확인 상태를 선택하세요.",
             "must be an integer": f"{label}에 정수를 입력하세요.",
             "is required": f"{label}을 입력하세요.",

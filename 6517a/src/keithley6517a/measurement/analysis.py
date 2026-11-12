@@ -124,9 +124,11 @@ def analyze_reading(
         if config.mode == "NATIVE_RESISTANCE"
         else result["resistance_corrected_ohm"]
     )
-    if resistance is not None and config.area_m2 is not None:
-        rho = resistance * config.area_m2 / config.thickness_m
-        result["resistivity_ohm_m"] = rho if math.isfinite(rho) else None
+    area, length = config.effective_geometry_m
+    if resistance is not None and area is not None and length is not None:
+        rho = resistance * (area / length)
+        if math.isfinite(rho) and (rho != 0 or resistance == 0):
+            result["resistivity_ohm_m"] = rho
     result["quality_flags"] = list(dict.fromkeys(quality))
     return result
 

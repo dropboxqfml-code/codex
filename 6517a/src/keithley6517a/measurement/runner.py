@@ -310,6 +310,16 @@ class MeasurementRunner:
             for path in sorted(source_root.rglob("*.py")):
                 source_digest.update(path.relative_to(source_root).as_posix().encode())
                 source_digest.update(path.read_bytes())
+            geometry_area, geometry_path = self.config.effective_geometry_m
+            dimensions = {
+                "L": self.config.sample_length_mm,
+                "W": self.config.sample_width_mm,
+                "D": self.config.sample_depth_mm,
+            }
+            has_dimensions = (
+                any(value is not None for value in dimensions.values())
+                or self.config.current_path_axis is not None
+            )
             metadata = dict(
                 schema_version=1,
                 software_version=__version__,
@@ -319,6 +329,19 @@ class MeasurementRunner:
                 identity=self.identity,
                 simulation=self.config.simulation,
                 sample=self.config.to_dict()["sample_metadata"],
+                sample_geometry=dict(
+                    dimensions_mm=dimensions,
+                    current_path_axis=self.config.current_path_axis,
+                    model=(
+                        "rectangular_full_face"
+                        if has_dimensions
+                        else ("legacy_area_length" if geometry_area is not None else "unspecified")
+                    ),
+                    area_m2=geometry_area,
+                    current_path_length_m=geometry_path,
+                    complete=geometry_area is not None and geometry_path is not None,
+                    resistivity_unit="ohm m",
+                ),
                 commissioning=self.config.to_dict()["commissioning"],
                 setup_policy=self.config.setup_policy,
                 operator_setup_acknowledged=self.config.operator_setup_acknowledged,

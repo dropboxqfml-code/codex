@@ -87,9 +87,9 @@ def main(argv=None) -> int:
         configure_qt_environment(root)
         if sys.platform == "win32":
             os.environ["QT_QPA_PLATFORM"] = "windows"
-        from keithley6517a.ui.main_window import main as gui_main
+        from keithley6517a.ui.startup_checks import run_gui
 
-        return gui_main()
+        return run_gui(root)
     from keithley6517a.cli import main as cli_main
 
     return cli_main(arguments(argv[0], argv[1:], root))

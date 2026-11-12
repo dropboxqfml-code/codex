@@ -151,6 +151,8 @@ def verify_relocated_bundle(archive: Path) -> dict:
             or summary.get("analysis_text_export_verified") is not True
             or summary.get("saved_result_review_verified") is not True
             or summary.get("user_stop_classification_verified") is not True
+            or summary.get("automatic_startup_checks_verified") is not True
+            or summary.get("graph_order_verified") is not True
         ):
             raise RuntimeError("Relocated synthetic CLI/GUI did not confirm success")
 
@@ -208,6 +210,8 @@ def verify_relocated_bundle(archive: Path) -> dict:
             "analysis_text_export_verified": True,
             "saved_result_review_verified": True,
             "user_stop_classification_verified": True,
+            "automatic_startup_checks_verified": True,
+            "graph_order_verified": True,
             "regenerated_bytecode_files": generated,
             "integrity_after_cache_generation_passed": True,
             "source_and_dll_tampering_rejected": True,

@@ -16,7 +16,7 @@ from typing import Any
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import QObject, QThread, QTimer, QUrl, Signal, Slot
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QCloseEvent, QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
@@ -368,8 +368,21 @@ class MainWindow(QMainWindow):
         basic_layout = QVBoxLayout(basic)
         form = QFormLayout()
         self.transport = QComboBox()
-        self.transport.addItem("시뮬레이션", "simulation")
-        self.transport.addItem("실장비 · VISA USB–GPIB", "visa")
+        self.transport.addItem("시뮬레이션 (가상 시험)", "simulation")
+        self.transport.addItem("VISA · USB–GPIB", "visa")
+        self.transport.setItemData(
+            0,
+            "6517A에 연결하지 않고 가상 데이터로 설정·그래프·저장을 시험합니다. "
+            "GPIB 통신은 하지 않습니다.",
+            Qt.ItemDataRole.ToolTipRole,
+        )
+        self.transport.setItemData(
+            1,
+            "USB–GPIB 어댑터의 VISA 주소를 사용합니다. "
+            "주소 선택 후 연결 → ARM → START 순서로 실행합니다.",
+            Qt.ItemDataRole.ToolTipRole,
+        )
+        self.transport.setToolTip("시뮬레이션: 장비 없이 가상 시험 · VISA: USB–GPIB로 6517A 측정")
         form.addRow("장비", self.transport)
         self.resource = QLineEdit()
         self.resource.setPlaceholderText("GPIB0::27::INSTR")
@@ -526,16 +539,16 @@ class MainWindow(QMainWindow):
         self.result_status_label.setWordWrap(True)
         self.result_status_label.hide()
         right_layout.addWidget(self.result_status_label)
-        graph_tabs = QTabWidget()
+        self.graph_tabs = QTabWidget()
         self.traces = [
-            TracePanel("I(t)", "elapsed_s", "current_raw_A", "time (s)", "I (A)"),
             TracePanel("R(t)", "elapsed_s", "_display_r", "time (s)", "R (Ω)"),
+            TracePanel("I(t)", "elapsed_s", "current_raw_A", "time (s)", "I (A)"),
             TracePanel("I–V", "voltage_programmed_readback_V", "current_raw_A", "V", "I (A)"),
             TracePanel("R–V", "voltage_programmed_readback_V", "_display_r", "V", "R (Ω)"),
         ]
-        for title, trace in zip(("I(t)", "R(t)", "I–V", "R–V"), self.traces, strict=True):
-            graph_tabs.addTab(trace, title)
-        right_layout.addWidget(graph_tabs, 1)
+        for title, trace in zip(("R(t)", "I(t)", "I–V", "R–V"), self.traces, strict=True):
+            self.graph_tabs.addTab(trace, title)
+        right_layout.addWidget(self.graph_tabs, 1)
         self.path_label = QLabel("저장 위치: 실행 후 생성됩니다")
         self.path_label.setWordWrap(True)
         right_layout.addWidget(self.path_label)
@@ -681,7 +694,7 @@ class MainWindow(QMainWindow):
                 )
             )
             if real
-            else "SIMULATION MODE · 실제 장비 출력 없음"
+            else "SIMULATION · 가상 측정 · 장비 미연결"
         )
         self._update_buttons()
 

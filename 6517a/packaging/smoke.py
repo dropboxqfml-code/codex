@@ -56,6 +56,127 @@ def analysis_export_smoke(directory: Path) -> int:
     return count
 
 
+def startup_checks_smoke(root: Path, startup_factory=None, *, timeout_ms=120000):
+    """Exercise the delivered automatic checks before showing a disconnected GUI."""
+    from PySide6.QtCore import QEventLoop, QProcess, QTimer
+    from PySide6.QtWidgets import QApplication
+
+    from keithley6517a.transport.visa import VisaTransport
+    from keithley6517a.ui.main_window import MainWindow
+
+    if startup_factory is None:
+        from keithley6517a.ui.startup_checks import StartupChecks
+
+        startup_factory = StartupChecks
+    app = QApplication.instance()
+    if app is None:
+        raise RuntimeError("Startup smoke requires the existing QApplication")
+    loop = QEventLoop()
+    failures, windows = [], []
+    passed = []
+    previous_quit = app.quitOnLastWindowClosed()
+    original_visa_init = VisaTransport.__init__
+
+    def no_instrument(*args, **kwargs):
+        raise RuntimeError("Automatic startup attempted to connect a VISA instrument")
+
+    def main_window():
+        reports = startup.stage_results
+        bundle, simulation = reports.get("bundle", {}), reports.get("simulation", {})
+        if (
+            bundle.get("status") != "passed"
+            or bundle.get("hardware_verified") is not False
+            or bundle.get("verified_files", 0) <= 0
+            or simulation.get("status") != "completed"
+            or simulation.get("output_state") != "OFF"
+            or simulation.get("reading_count", 0) <= 0
+        ):
+            raise RuntimeError("Automatic startup opened its GUI before both checks passed")
+        window = MainWindow()
+        windows.append(window)
+        config = window.config_from_controls()
+        if not config.simulation or config.voltages != (0.0,) or window.worker.runner is not None:
+            raise RuntimeError(
+                "Automatic startup must leave the GUI disconnected at SIMULATION 0 V"
+            )
+        titles = [window.graph_tabs.tabText(index) for index in range(window.graph_tabs.count())]
+        if titles != ["R(t)", "I(t)", "I–V", "R–V"] or window.graph_tabs.currentIndex() != 0:
+            raise RuntimeError("The main graph order/default must be R, I, I-V, R-V")
+        if [trace.y_key for trace in window.traces] != [
+            "_display_r",
+            "current_raw_A",
+            "current_raw_A",
+            "_display_r",
+        ]:
+            raise RuntimeError("Graph labels do not match the plotted resistance/current data")
+        return window
+
+    def failed(message):
+        failures.append(str(message))
+        loop.quit()
+
+    def checked():
+        passed.append(True)
+        if len(windows) != 1:
+            failed("Automatic startup did not create exactly one main window")
+        else:
+            QTimer.singleShot(100, windows[0].close)
+
+    def poll():
+        if windows and windows[0]._closed:
+            loop.quit()
+
+    timer, deadline = QTimer(), QTimer()
+    timer.setInterval(20)
+    timer.timeout.connect(poll)
+    deadline.setSingleShot(True)
+    deadline.timeout.connect(lambda: failed("Automatic startup smoke exceeded its deadline"))
+    startup = None
+    app.setQuitOnLastWindowClosed(False)
+    VisaTransport.__init__ = no_instrument
+    try:
+        startup = startup_factory(root, main_window_factory=main_window)
+        startup.checks_passed.connect(checked)
+        startup.checks_failed.connect(failed)
+        startup.show()
+        timer.start()
+        deadline.start(timeout_ms)
+        loop.exec()
+        if failures:
+            raise RuntimeError("Automatic startup failed: " + "; ".join(failures))
+        if len(passed) != 1 or len(windows) != 1 or not windows[0]._closed:
+            raise RuntimeError("Automatic startup did not complete and close its worker normally")
+        return {"automatic_startup_checks_verified": True, "graph_order_verified": True}
+    finally:
+        timer.stop()
+        deadline.stop()
+        if startup is not None:
+            startup.close()
+            process = getattr(startup, "process", None)
+            if process is not None and process.state() != QProcess.ProcessState.NotRunning:
+                cleanup_process = QEventLoop()
+                process.finished.connect(cleanup_process.quit)
+                QTimer.singleShot(5000, cleanup_process.quit)
+                cleanup_process.exec()
+        for window in windows:
+            if not window._closed:
+                window.close()
+                cleanup = QEventLoop()
+                watcher = QTimer()
+                watcher.setInterval(20)
+                watcher.timeout.connect(
+                    lambda window=window, cleanup=cleanup: (
+                        cleanup.quit() if window._closed else None
+                    )
+                )
+                QTimer.singleShot(5000, cleanup.quit)
+                watcher.start()
+                cleanup.exec()
+                watcher.stop()
+        VisaTransport.__init__ = original_visa_init
+        app.setQuitOnLastWindowClosed(previous_quit)
+
+
 def user_stop_smoke(output_directory: Path) -> Path:
     """A partial synthetic run is stopped, saved, and OFF without becoming a device fault."""
     from keithley6517a.clock import FakeClock
@@ -336,6 +457,7 @@ def main(argv=None) -> int:
     from keithley6517a.ui.main_window import MainWindow
 
     app = QApplication([])
+    startup_checks_smoke(root)
     saved_result_review_smoke(
         metadata_files[0].parent, root / "native-smoke-results/selected-analysis.txt"
     )
@@ -358,6 +480,8 @@ def main(argv=None) -> int:
                 "analysis_text_export_verified": True,
                 "saved_result_review_verified": True,
                 "user_stop_classification_verified": True,
+                "automatic_startup_checks_verified": True,
+                "graph_order_verified": True,
             }
         )
     )

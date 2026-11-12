@@ -4,6 +4,16 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.8.1 자동 시작 검사·그래프 순서·연결 이름
+
+`Start-GUI.cmd`는 Bundle 파일 검사와 Simulation 동작 검사를 순서대로 실행한 뒤 GUI를 엽니다. 시작 창은 자식 프로세스의 진행 기록을 표시하며 실패하면 메인 화면을 열지 않습니다. Simulation 결과는 일반 측정과 별도로 `diagnostics/startup-simulation`에 저장합니다.
+
+Native Windows와 재추출 번들 검사는 실제 QProcess로 두 시작 검사를 수행하고, 모두 통과한 뒤 메인 창이 정확히 한 번 열리는지 확인합니다. 메인 창은 SIMULATION·0 V·미연결이며 VISA 연결 생성은 차단해 검사합니다. R(t)·I(t)·I–V·R–V 순서와 실제 데이터 축도 확인합니다. 공개 build report의 `automatic_startup_checks_verified`, `graph_order_verified`가 모두 true여야 게시합니다.
+
+시뮬레이션 선택은 장비 없이 측정·그래프·저장을 시험하는 기능으로 유지하고, 연결 항목은 `VISA · USB–GPIB`로 표시합니다. 결과 분석 기능의 변경과 v0.9.0 통합 기능은 이번 수정 범위에 포함하지 않습니다. 실행 결과는 [v0.8.1 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.8.1)의 Windows JUnit·build report에서 확인합니다.
+
+2026-11-12 Linux 개발 환경에서 전체 **520개**, Ruff·포맷 검사를 통과했습니다. 시작 검사 순서·실시간 진행·실패 차단·재시도·취소 및 취소 중 실행기 시작 실패를 검사했습니다. 실제 QProcess로 파일 검증과 CLI 가상 측정(52행·출력 OFF)을 실행하고 미연결 GUI·R 우선 그래프·검사 자료 분리를 확인했습니다. 파일 변조 시 GUI가 열리지 않으며, 배포 생성 중 임시 검사 자료 삭제가 실패하면 패키징도 중단합니다.
+
 ## v0.8.0 종료 분류·오프라인 결과 분석
 
 정상 완료·사용자 STOP·장비/통신 오류를 구분합니다. 합성 1 GΩ run을 두 판독 뒤 STOP하여 `stopped`·출력 OFF·CSV/TXT 보존·미완료 단계 요약 미생성을 검사합니다. 이후 disconnect도 정상 STOP 기록을 보존하는지 확인합니다. OFF 또는 저장 실패는 오류로 남아야 합니다.

@@ -520,6 +520,7 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
             hardware_verified=False,
             default_mode="SIMULATION",
             automatic_output_enable=False,
+            automatic_startup_checks=True,
             vendor_visa_included=False,
         )
         (portable / "release.json").write_text(
@@ -528,11 +529,20 @@ def build(output: Path, cache: Path, uv="uv", *, native_smoke=False, payload=Non
         third_party_notices(portable)
         layout = validate_windows_layout(portable)
         if native_smoke:
+            # The automatic startup path verifies the package before opening its GUI.
+            # Native execution is confirmed only after that path and its tests finish.
+            write_manifest(
+                portable, release_version=release_version, native_verified=False, layout=layout
+            )
             run(
                 [portable / "runtime/python.exe", "-I", "-B", portable / "tools/smoke.py"],
                 directory=portable,
             )
-            shutil.rmtree(portable / "native-smoke-results", ignore_errors=True)
+            for name in ("native-smoke-results", "diagnostics"):
+                generated = portable / name
+                if generated.exists():
+                    # A cleanup failure must stop packaging, not ship startup test data.
+                    shutil.rmtree(generated)
         write_manifest(
             portable, release_version=release_version, native_verified=native_smoke, layout=layout
         )

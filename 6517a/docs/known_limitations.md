@@ -1,4 +1,4 @@
-# v0.8.0 구현 범위와 알려진 제한
+# v0.8.1 구현 범위와 알려진 제한
 
 제공된 6517A 매뉴얼 원문으로 명령·trigger·ASCII parser를 개발했습니다. 사용자 제공 기록에서 native NI-VISA 경로의 실제 6517A IDN과 보호 OFF 조회 `0`은 확인됐습니다. 실제 전압 인가·current 수집·인터록 차단·방전은 별도 검증 대상입니다. Windows 소프트웨어 실행과 실제 장비 결과는 [검증 기록](validation.md)에 구분합니다.
 
@@ -15,6 +15,8 @@ API 기본값과 기존 저장 설정은 검증 fixture 방식을 유지합니�
 
 START 권한은 정확한 설정 snapshot과 연결에 묶여 한 번 소비됩니다. 설정 변경·재연결·fault 뒤에 setpoint·출력·수집을 자동 재개하지 않습니다. 실장비 `NATIVE_RESISTANCE`는 별도 측정 전류 기반 trip 채널이 없어 계속 차단합니다. 실측은 `FVMI_CURRENT`로 current를 읽고 V/I를 계산합니다.
 
+기본 그래프 순서는 R(t) -> I(t) -> I-V -> R-V입니다. 시작 화면의 시뮬레이션은 가상 시험용이고 VISA · USB–GPIB는 장비 연결용입니다. 자동 시작 검사는 파일·소프트웨어 동작 범위이며 장비 측정 성능을 검증하지 않습니다.
+
 ## 기능 상태
 
 | 기능 | 상태·범위 |
@@ -25,7 +27,8 @@ START 권한은 정확한 설정 snapshot과 연결에 묶여 한 번 소비됩�
 | 측정 설정 적용·초안 적용·설정 저장 | 필수값 검증과 초안 보존 구분; 연결·ARM·START와 분리 |
 | 준비 상태·단계 안내 | 누락 항목과 다음 작업 표시, 연결 OFF 상태에서 종료 후 설정 수정 |
 | 기본 화면·상세 탭 | 판독·그래프 중심 기본 화면; 고급 설정·진단·기록은 별도 탭 |
-| Simulation 진행 표시 | CMD 및 `simulate --progress`에서 단계·판독·결과 경로 표시 |
+| 자동 시작 검사 | Start-GUI.cmd에서 Bundle → Simulation → GUI 자동 진행; 검사는 장비 연결 없이 수행 |
+| Simulation 진행 표시 | 시작 창·CMD 및 `simulate --progress`에서 단계·판독·결과 경로 표시 |
 | 분석용 TXT | 매 판독을 `analysis.txt` 네 열로 자동 저장; 첫 행 물리량·단위, 이후 SI 수치·결측 `nan` |
 | 이전 결과 변환 | `export-analysis`로 CSV를 장비 연결 없이 TXT로 변환; 기존 파일 덮어쓰기 없음 |
 | 명령형 transport 시뮬레이터 | 매뉴얼 형식·seed·clock·fault 주입; `simulation_resistance_ohm` 모델값과 실제 VISA 판독 분리 |
@@ -72,7 +75,7 @@ v0.4.6부터 소스 기반 `__pycache__/*.pyc`를 manifest·ZIP에서 제외하�
 기본 ZIP에는 NI driver·native VISA·선택 `@py` 패키지가 포함되지 않습니다. 선택 installer는 명시적 INSTALL 후 hash-pinned pure wheel만 설치하고, 기존 불완전·변경된 확장 폴더를 덮어쓰지 않습니다. 해당 확장을 포함한 배포본의 라이선스 조건은 별도 검토하며 app·NI driver 라이선스를 자동 변경하지 않습니다.
 
 
-## v0.8.0 저장 결과 분석 범위
+## v0.8.1 저장 결과 분석 범위
 
 저장 결과 분석은 한 실행의 `readings.csv` 또는 해당 폴더를 읽어 I(t)·R(t), 시간 구간 통계와 선택 TXT를 제공합니다. 여러 실행 그래프를 겹치는 비교와 예상 남은 시간 표시는 이번 범위에 포함하지 않습니다. 분석은 저장값·품질 플래그를 사용하며 원본 결과를 수정하지 않습니다.
 

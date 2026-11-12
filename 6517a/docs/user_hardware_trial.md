@@ -1,12 +1,12 @@
 # 6517A · NI GPIB-USB 사용자 시험 순서
 
-v0.8.0은 연결·정격을 사용자가 관리하는 저전압 시험과 기존 검증 fixture 방식을 제공합니다. 사용자 제공 기록에서 파일 무결성·실제 IDN·보호 OFF 조회 `0`은 확인됐습니다. 전압 인가·current 수집·인터록 차단·방전은 그 진단과 별도 시험입니다.
+v0.8.1은 연결·정격을 사용자가 관리하는 저전압 시험과 기존 검증 fixture 방식을 제공합니다. 사용자 제공 기록에서 파일 무결성·실제 IDN·보호 OFF 조회 `0`은 확인됐습니다. 전압 인가·current 수집·인터록 차단·방전은 그 진단과 별도 시험입니다.
 
 ## 1. 패키지 실행
 
-1. GitHub Release에서 `6517A-USB-GPIB-Trial-0.8.0-Windows-x64.zip`과 checksum을 받습니다. 새 쓰기 가능한 폴더에 전체를 풉니다.
-2. `Verify-Bundle.cmd`로 START → CHECK → PASS를 확인합니다. 실패 시 `diagnostics/bundle-verification-*.json`의 파일명·사유를 확인합니다. 보고서를 쓸 수 없으면 WARN과 `report_saved=false`가 표시됩니다.
-3. `Test-Simulation.cmd`로 연결 → ARM → 전압 단계 → 판독 → 요약 → OFF의 중간 진행과 최종 PASS를 확인하고 `Start-GUI.cmd`를 엽니다. GUI의 초기 SIMULATION·0 V·미연결 상태가 정상입니다.
+1. GitHub Release에서 `6517A-USB-GPIB-Trial-0.8.1-Windows-x64.zip`과 checksum을 받습니다. 새 쓰기 가능한 폴더에 전체를 풉니다.
+2. **`Start-GUI.cmd` 하나만 실행**합니다. 시작 창이 Bundle 파일 검사 → Simulation 동작 검사 → GUI를 자동으로 진행합니다. 진행 기록을 확인할 수 있고, 실패하면 해당 단계와 기록을 확인해 재시도합니다.
+3. 두 검사를 통과하면 메인 화면이 열립니다. 초기 시뮬레이션·0 V·미연결 상태가 정상이며, 기본 그래프는 R(t)입니다. 자동 가상 결과는 `diagnostics/startup-simulation`에 저장합니다. `Verify-Bundle.cmd`와 `Test-Simulation.cmd`는 개별 점검용입니다.
 
 Python과 Python 의존성은 포함됩니다. v0.4.6부터 소스가 있는 파생 bytecode는 패키지와 고정 manifest에서 제외하며, 소스·DLL·확장 모듈·stdlib ZIP·독립 bytecode는 계속 해시 검사합니다. 배포 검사는 실제 Windows에서 새 위치에 추출한 ZIP의 실행과 캐시 생성 후 재검사를 포함합니다.
 
@@ -14,7 +14,7 @@ Python과 Python 의존성은 포함됩니다. v0.4.6부터 소스가 있는 파
 
 NI MAX와 동일한 board·주소를 선택하고 NI MAX test panel과 다른 제어 프로그램을 닫습니다. 이미 호환 NI-488.2·NI-VISA 64-bit 설치가 동작하면 기존 설치를 사용합니다. 예시 resource는 `GPIB0::27::INSTR`이며 실제 보유 장비의 주소를 선택합니다.
 
-GUI의 **진단·상세 기록** 탭에서 SIM 연결을 종료한 뒤 ‘NI 실장비 연결 시험 시작’을 선택합니다. REAL 준비는 0 V·trip 미설정·사용자 확인 미선택 상태로 시작합니다. 목록 조회 → 주소 선택 → IDN → 보호 OFF 순서로 진단합니다. IDN 조회는 출력 변경을 하지 않습니다. 보호 OFF는 식별된 장비에 OFF·abort를 요청하며 진단 종료 시 session을 닫습니다. 이후 측정 연결은 별도로 수행합니다.
+시뮬레이션 (가상 시험)은 장비 없이 측정 흐름·그래프·저장을 확인할 때 사용합니다. 6517A를 사용하려면 장비 선택에서 **VISA · USB–GPIB**를 선택합니다. GUI의 **진단·상세 기록** 탭에서 SIM 연결을 종료한 뒤 ‘NI 실장비 연결 시험 시작’을 선택합니다. REAL 준비는 0 V·trip 미설정·사용자 확인 미선택 상태로 시작합니다. 목록 조회 → 주소 선택 → IDN → 보호 OFF 순서로 진단합니다. IDN 조회는 출력 변경을 하지 않습니다. 보호 OFF는 식별된 장비에 OFF·abort를 요청하며 진단 종료 시 session을 닫습니다. 이후 측정 연결은 별도로 수행합니다.
 
 Portable의 직접 진단 명령은 다음과 같습니다.
 

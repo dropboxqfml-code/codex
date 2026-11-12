@@ -56,7 +56,11 @@ class TestSetupDialog(QDialog):
         advanced = self._tab(self.tabs, "2. 상세 설정")
         approval = self._tab(self.tabs, "3. fixture 기록")
 
-        self.real_mode = QCheckBox("실제 장비 사용 · REAL VISA")
+        self.real_mode = QCheckBox("VISA · USB–GPIB 사용")
+        self.real_mode.setToolTip(
+            "선택: USB–GPIB의 VISA 주소로 측정합니다. "
+            "미선택: 장비 연결 없이 시뮬레이션(가상 시험)을 준비합니다."
+        )
         self.real_mode.setChecked(not config.simulation)
         self._edits.append(self.real_mode)
         basic.addRow(self.real_mode)

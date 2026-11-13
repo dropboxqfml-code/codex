@@ -185,7 +185,7 @@ jobs:
           if report.get('relocation_check', {}).get('checks', {}).get('reference_1gohm_simulation_verified') is not True:
               raise SystemExit('Bundled 1 Gohm reference simulation was not confirmed')
           if report.get('relocation_check', {}).get('checks', {}).get('analysis_text_export_verified') is not True:
-              raise SystemExit('Bundled four-column analysis text export was not confirmed')
+              raise SystemExit('Bundled analysis text export was not confirmed')
           if report.get('relocation_check', {}).get('checks', {}).get('saved_result_review_verified') is not True:
               raise SystemExit('Bundled offline saved-result review was not confirmed')
           if report.get('relocation_check', {}).get('checks', {}).get('user_stop_classification_verified') is not True:
@@ -196,6 +196,8 @@ jobs:
               raise SystemExit('Bundled resistance-first graph order was not confirmed')
           if report.get('relocation_check', {}).get('checks', {}).get('sample_geometry_resistivity_verified') is not True:
               raise SystemExit('Bundled sample dimensions and resistivity conversion were not confirmed')
+          if report.get('relocation_check', {}).get('checks', {}).get('adaptive_resistivity_analysis_verified') is not True:
+              raise SystemExit('Bundled four/five-column text and offline resistivity analysis were not confirmed')
           repo = os.environ['GITHUB_REPOSITORY']
           def api(path):
               return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
@@ -215,18 +217,20 @@ jobs:
           cat > "$notes" <<'NOTES'
           6517A · NI GPIB-USB 시험용 프로그램입니다. Windows 64비트 ZIP에는 Python과 Python 의존성이 포함되어 있습니다.
 
+          analysis.txt는 시료 치수와 전류 방향이 완성되면 Time/Resistance/Resistivity/Voltage/Current 다섯 열, 미완료이면 기존 네 열로 자동 저장합니다. 비저항 단위는 Ohm m이며, 헤더 이후에는 탭으로 구분한 수치만 기록합니다. 측정 중 파일의 열 구성은 바뀌지 않습니다.
+          저장 결과 분석에 비저항 ρ(t) 그래프·평균·표본 표준편차·유효값 수를 추가했습니다. v0.8.2 CSV의 저장된 비저항도 분석하며, 선택 구간 TXT 역시 전체 실행의 네 열/다섯 열 구성을 유지합니다.
+
           시료 ID 아래에 길이 L·폭 W·두께 D(mm)와 전류 방향 선택을 추가했습니다. 치수와 방향을 모두 지정하면 단면적·전류 경로를 m 단위로 환산하여 비저항 ρ = R×A/ℓ를 Ω·m 단위로 표시하고 readings.csv에 저장합니다.
           예를 들어 D 방향이면 A=L×W, ℓ=D입니다. 전극이 단면 전체를 덮는 직육면체 모델이며, 치수 또는 방향 미완료 시 저항 측정은 가능하고 비저항은 비워 둡니다. 치수와 환산 기하조건은 설정·metadata에 보존합니다.
-          기존 analysis.txt는 Time/Resistance/Voltage/Current 네 열을 유지합니다.
 
           Start-GUI.cmd 하나로 Bundle 파일 검사 → Simulation 동작 검사 → GUI를 자동 실행합니다. 시작 창에서 진행 상태를 확인하며, 두 검사를 통과하면 메인 화면이 열립니다. 자동 검사는 GPIB 장비에 연결하지 않습니다.
           메인 그래프는 R(t) → I(t) → I–V → R–V 순서이며 R(t)가 먼저 열립니다. 연결 선택은 '시뮬레이션 (가상 시험)' / 'VISA · USB–GPIB'로 표시합니다. 가상 시험은 장비 없이 설정·그래프·저장 동작을 확인하는 모드입니다.
 
           정상 완료·사용자 STOP·실제 오류를 구분하고 저장 행 수와 경과 시간을 표시합니다. START 전 STOP도 전압을 인가하지 않고 준비를 취소합니다. 출력 종료 처리·저장 오류는 오류 종료로 기록합니다.
-          '저장 결과 분석'에서 이전 readings.csv를 장비 연결 없이 열고, 시작·끝 시간을 지정해 전류·저항 그래프와 평균·표본 표준편차를 확인할 수 있습니다.
-          '선택 구간 TXT 저장'은 해당 시간 구간의 데이터만 네 열로 저장합니다. 원본 파일과 기존 파일은 덮어쓰지 않습니다. 결과 분석은 별도 창에서 수행합니다.
+          '저장 결과 분석'에서 이전 readings.csv를 장비 연결 없이 열고, 시작·끝 시간을 지정해 전류·저항·비저항 그래프와 평균·표본 표준편차를 확인할 수 있습니다. 비저항은 저장된 값을 사용하며 누락값을 새로 계산하지 않습니다.
+          '선택 구간 TXT 저장'은 전체 측정의 네 열/다섯 열 구성을 유지하여 해당 시간 구간만 저장합니다. 원본 파일과 기존 파일은 덮어쓰지 않습니다. 결과 분석은 별도 창에서 수행합니다.
 
-          측정 결과 폴더에 analysis.txt를 자동 저장합니다. 첫 행은 Time (s), Resistance (Ohm), Voltage (V), Current (A)이며 탭으로 구분합니다. 이후에는 SI 단위 데이터 네 열만 기록합니다.
+          측정 결과 폴더에 analysis.txt를 자동 저장합니다. 첫 행은 Time (s), Resistance (Ohm), [Resistivity (Ohm m)], Voltage (V), Current (A)이며 비저항 열은 계산 조건이 있을 때만 포함합니다. 이후에는 SI 단위 데이터만 기록합니다.
           모든 판독을 포함하며 STOP 전에 취득한 데이터도 남습니다. 값이 없는 항목은 nan으로 표시하고, 전압은 소스 설정 readback·전류는 원시 측정값·저항은 native 또는 V/I 계산값을 사용합니다.
           이전 readings.csv는 Run-CLI.cmd export-analysis "경로\readings.csv"로 변환할 수 있습니다. 기존 파일은 덮어쓰지 않습니다.
 

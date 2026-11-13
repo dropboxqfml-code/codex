@@ -1,4 +1,4 @@
-"""The Windows geometry smoke verifies saved units and rho without changing analysis TXT."""
+"""The Windows geometry smoke verifies saved units and five-column resistivity TXT."""
 
 import csv
 import importlib.util
@@ -56,15 +56,15 @@ def geometry_run(directory):
         writer.writeheader()
         writer.writerows(rows)
     (directory / "analysis.txt").write_text(
-        "Time (s)\tResistance (Ohm)\tVoltage (V)\tCurrent (A)\n"
-        "1.0\t1000000000.0\t1.0\t1e-9\n"
-        "2.0\t2000000000.0\t1.0\t5e-10\n",
+        "Time (s)\tResistance (Ohm)\tResistivity (Ohm m)\tVoltage (V)\tCurrent (A)\n"
+        "1.0\t1000000000.0\t100000000.0\t1.0\t1e-9\n"
+        "2.0\t2000000000.0\t200000000.0\t1.0\t5e-10\n",
         encoding="utf-8",
     )
     return directory
 
 
-def test_geometry_smoke_checks_saved_units_and_four_column_export(tmp_path):
+def test_geometry_smoke_checks_saved_units_and_five_column_export(tmp_path):
     directory = geometry_run(tmp_path / "sample")
     assert smoke.verify_sample_geometry(directory) == 2
 
@@ -92,7 +92,7 @@ def test_geometry_smoke_rejects_wrong_axis_units_rho_or_extra_txt_columns(tmp_pa
         smoke.verify_sample_geometry(directory)
 
 
-def test_native_geometry_smoke_uses_synthetic_measurements_and_retains_original_txt(
+def test_native_geometry_smoke_uses_synthetic_measurements_and_exports_resistivity(
     tmp_path, monkeypatch
 ):
     def no_instrument(*args, **kwargs):
@@ -102,4 +102,4 @@ def test_native_geometry_smoke_uses_synthetic_measurements_and_retains_original_
     directory = smoke.sample_geometry_resistivity_smoke(tmp_path / "runs")
     assert smoke.verify_sample_geometry(directory) > 0
     lines = (directory / "analysis.txt").read_text().splitlines()
-    assert all(len(line.split("\t")) == 4 for line in lines)
+    assert all(len(line.split("\t")) == 5 for line in lines)

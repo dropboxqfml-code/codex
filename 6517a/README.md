@@ -1,12 +1,12 @@
 # Keithley 6517A · USB-GPIB 시험용 프로그램
 
-Windows 10/11 64-bit용 v0.8.2 프로그램입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV·분석용 TXT 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
+Windows 10/11 64-bit용 v0.8.3 프로그램입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV·분석용 TXT 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
 
 연결 구성은 사용자가 관리하는 **저전압 시험 모드**와 기존 **검증 fixture 모드**를 선택합니다. 시작 화면은 SIMULATION·0 V이며, REAL 준비도 0 V·trip 미설정·사용자 확인 미선택에서 시작합니다. 설정 불러오기·초안 적용·연결만으로 출력 ON을 하지 않습니다.
 
 ## Windows에서 실행
 
-[Windows ZIP 다운로드](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.8.2/6517A-USB-GPIB-Trial-0.8.2-Windows-x64.zip)와 [SHA-256](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.8.2/6517A-USB-GPIB-Trial-0.8.2-Windows-x64.zip.sha256)을 받습니다. 새 쓰기 가능한 폴더에 모두 풀고 **`Start-GUI.cmd` 하나만 실행**합니다. 시작 창이 **Bundle 파일 검사 → Simulation 동작 검사 → GUI**를 자동으로 진행하며, 두 검사를 통과하면 메인 화면을 엽니다. Python과 Python 의존성은 포함돼 있습니다. 호환되는 기존 NI-488.2·NI-VISA 64-bit 설치를 사용하며, 드라이버 설치 상태와 이 프로그램의 통신 결과는 구분합니다.
+[Windows ZIP 다운로드](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.8.3/6517A-USB-GPIB-Trial-0.8.3-Windows-x64.zip)와 [SHA-256](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.8.3/6517A-USB-GPIB-Trial-0.8.3-Windows-x64.zip.sha256)을 받습니다. 새 쓰기 가능한 폴더에 모두 풀고 **`Start-GUI.cmd` 하나만 실행**합니다. 시작 창이 **Bundle 파일 검사 → Simulation 동작 검사 → GUI**를 자동으로 진행하며, 두 검사를 통과하면 메인 화면을 엽니다. Python과 Python 의존성은 포함돼 있습니다. 호환되는 기존 NI-488.2·NI-VISA 64-bit 설치를 사용하며, 드라이버 설치 상태와 이 프로그램의 통신 결과는 구분합니다.
 
 시작 창에서 현재 단계와 진행 기록을 확인합니다. 검사 실패 시 실패 단계와 기록을 확인하고 재시도할 수 있습니다. 자동 Simulation은 장비 연결 없이 수행하며 결과는 `diagnostics/startup-simulation`에 저장합니다. `Verify-Bundle.cmd`와 `Test-Simulation.cmd`는 개별 점검용으로 계속 사용할 수 있습니다.
 
@@ -41,19 +41,19 @@ ARM이 비활성화되면 준비 상태에 누락 설정 또는 장비 조건을
 
 예를 들어 L=20, W=10, D=2 mm를 D 방향으로 측정하면 `A=2×10⁻⁴ m²`, `ℓ=2×10⁻³ m`입니다. 저항이 1 GΩ라면 겉보기 체적 비저항은 **1×10⁸ Ω·m**입니다. 이 계산은 전극이 해당 단면 전체를 덮는 직육면체 모델입니다. 전극 접촉 면적이 더 작으면 실제 유효 전극 면적을 사용해야 합니다.
 
-치수가 일부만 입력됐거나 전류 방향이 미지정이면 저항 측정과 치수 저장은 가능하며 비저항은 비워 둡니다. 치수·방향은 `config.json`과 `metadata.json`, 계산된 비저항은 `readings.csv`의 `resistivity_ohm_m`에 저장합니다. 기존 **`analysis.txt`는 시간·저항·전압·전류 네 열을 유지**합니다.
+치수가 일부만 입력됐거나 전류 방향이 미지정이면 저항 측정과 치수 저장은 가능하며 비저항은 비워 둡니다. 치수·방향은 `config.json`과 `metadata.json`, 계산된 비저항은 `readings.csv`의 `resistivity_ohm_m`에 저장합니다. **`analysis.txt`는 비저항 계산 조건이 없으면 시간·저항·전압·전류 네 열**, 조건이 완성되면 **시간·저항·비저항·전압·전류 다섯 열**로 자동 저장합니다. 시료 ID만 있거나 치수가 일부만 있거나 전류 방향이 미지정이면 네 열입니다. 기존 면적·경로 길이 설정도 완성된 기하조건으로 지원합니다.
 
 ## 종료 상태와 저장 결과 분석
 
-v0.8.2는 **정상 완료·사용자 중지·장비/통신 오류**를 구분합니다. STOP 뒤 출력 OFF와 저장이 확인되면 `stopped`로 기록하며, 오류나 OFF 미확인은 별도로 표시합니다. 저장된 판독 수와 결과 폴더를 확인할 수 있습니다.
+v0.8.3은 **정상 완료·사용자 중지·장비/통신 오류**를 구분합니다. STOP 뒤 출력 OFF와 저장이 확인되면 `stopped`로 기록하며, 오류나 OFF 미확인은 별도로 표시합니다. 저장된 판독 수와 결과 폴더를 확인할 수 있습니다.
 
-**저장 결과 분석**에서 이전 결과 폴더의 `readings.csv`를 엽니다. 장비 연결 없이 I(t)·R(t)를 다시 보고 시작·끝 시간(s)을 지정해 구간을 선택합니다. 전류·저항 각각의 유효 개수, 평균, 표본 표준편차를 표시합니다. 값이 하나면 표준편차는 `—`입니다.
+**저장 결과 분석**에서 이전 결과 폴더의 `readings.csv`를 엽니다. 장비 연결 없이 I(t)·R(t)·ρ(t)를 다시 보고 시작·끝 시간(s)을 지정해 구간을 선택합니다. 전류·저항·비저항 각각의 유효 개수, 평균, 표본 표준편차를 표시합니다. 비저항은 CSV에 저장된 Ω·m 값을 사용하며 저장값이 없으면 새로 계산하지 않습니다. 값이 하나면 표준편차는 `—`입니다.
 
-![가상 측정 결과의 구간 선택·통계·TXT 저장](docs/images/v080-saved-analysis.png)
+![합성 시료 결과의 비저항 구간 통계·ρ(t)·TXT 저장](docs/images/v083-result-resistivity.png)
 
 요약 구간 전에 STOP한 자료도 직접 분석할 수 있습니다. 선택 구간의 통계는 실행 중 자동 요약과 별개이며, 저항 평균은 개별 저항값의 산술평균입니다. 오류 판독은 통계에서 제외하지만 선택 TXT에는 선택한 원시 행을 보존합니다.
 
-선택 구간을 네 열 TXT로 저장할 수 있으며 원본 CSV·자동 `analysis.txt`·기존 출력 파일을 덮어쓰지 않습니다. 원본 자동 TXT는 계속 모든 판독을 담습니다.
+선택 구간을 원본 실행의 조건에 맞는 네 열 또는 다섯 열 TXT로 저장할 수 있으며 원본 CSV·자동 `analysis.txt`·기존 출력 파일을 덮어쓰지 않습니다. 원본 자동 TXT는 계속 모든 판독을 담습니다.
 
 ## 1 GΩ 저전압 시험 시작
 
@@ -107,17 +107,23 @@ NI-VISA를 생략하는 `@py` 대안은 GUI를 닫고 `Enable-NI-Only.cmd`로 �
 
 ## 데이터와 검증
 
-각 run은 기존 CSV·JSON 파일에 더해 **`analysis.txt`를 자동 저장**합니다. 탭으로 구분한 네 열이며 첫 행은 다음과 같습니다.
+각 run은 기존 CSV·JSON 파일에 더해 **`analysis.txt`를 자동 저장**합니다. 탭으로 구분하며 비저항 계산 조건이 없으면 다음 네 열입니다.
 
 ```text
 Time (s)	Resistance (Ohm)	Voltage (V)	Current (A)
 ```
 
-두 번째 행부터는 SI 단위의 숫자만 기록합니다. 시간은 측정 시작 후 경과 시간, 저항은 native 값이 있으면 그 값이고 그 외에는 원시 전류로 계산한 V/I, 전압은 source 설정 readback, 전류는 원시 판독입니다. 전압은 독립 측정한 시료 단자 전압이 아닙니다. 누락값은 `nan`으로 기록하며 역산 전류를 실제 판독처럼 채우지 않습니다.
+완성된 L/W/D·전류 방향 또는 기존 면적·경로 길이가 있으면 다음 다섯 열을 사용합니다.
+
+```text
+Time (s)	Resistance (Ohm)	Resistivity (Ohm m)	Voltage (V)	Current (A)
+```
+
+헤더와 열 수는 실행 시작에 고정합니다. 완성된 기하조건에서 0 V 등으로 비저항이 계산되지 않은 행은 다섯 열을 유지하고 해당 비저항을 `nan`으로 기록합니다. 첫 행에만 물리량·단위를 쓰고 두 번째 행부터는 SI 단위의 숫자만 기록합니다. 시간은 측정 시작 후 경과 시간, 저항은 native 값이 있으면 그 값이고 그 외에는 원시 전류로 계산한 V/I, 전압은 source 설정 readback, 전류는 원시 판독입니다. 전압은 독립 측정한 시료 단자 전압이 아닙니다. 누락값은 `nan`으로 기록하며 역산 전류를 실제 판독처럼 채우지 않습니다.
 
 요약 제외·과도 구간을 포함해 `readings.csv`의 모든 판독을 같은 순서로 저장하므로 STOP 전에 취득한 데이터도 남습니다. 품질 플래그와 측정 조건은 기존 `readings.csv`·JSON에서 확인합니다. 그래프는 signed-linear/symlog 표시와 부호·0을 유지하고 smoothing을 적용하지 않습니다.
 
-이전 버전의 결과도 장비 연결 없이 변환할 수 있습니다. 기본 출력은 CSV와 같은 폴더의 `analysis.txt`이며 기존 파일은 덮어쓰지 않습니다.
+v0.8.2에서 저장한 비저항도 결과 분석 창에서 분석하고 다섯 열 TXT로 내보낼 수 있습니다. 이전 결과의 TXT를 자동 수정하지 않으며 새 이름으로 저장합니다. 이전 버전의 결과도 장비 연결 없이 변환할 수 있습니다. 기본 출력은 CSV와 같은 폴더의 `analysis.txt`이며 기존 파일은 덮어쓰지 않습니다.
 
 ```powershell
 .\Run-CLI.cmd export-analysis "results\RUN\readings.csv"

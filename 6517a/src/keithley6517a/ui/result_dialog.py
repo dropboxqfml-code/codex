@@ -130,7 +130,7 @@ class SavedResultDialog(QDialog):
 
         self.selection_label = QLabel("선택된 데이터 없음")
         root.addWidget(self.selection_label)
-        self.statistics_table = QTableWidget(2, 4)
+        self.statistics_table = QTableWidget(3, 4)
         self.statistics_table.setHorizontalHeaderLabels(["물리량", "평균", "표준편차", "유효값 수"])
         self.statistics_table.verticalHeader().hide()
         self.statistics_table.horizontalHeader().setSectionResizeMode(
@@ -138,9 +138,10 @@ class SavedResultDialog(QDialog):
         )
         self.statistics_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.statistics_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        self.statistics_table.setMaximumHeight(112)
+        self.statistics_table.setMaximumHeight(144)
         self.statistics_table.setToolTip(
-            "표준편차: 표본 기준(n−1). 저항: native 우선, 없으면 V/I. 전류: 원시 측정값."
+            "표준편차: 표본 기준(n−1). 저항: native 우선, 없으면 V/I. 전류: 원시 측정값. "
+            "비저항: 저장된 값만 사용하며, 값이 없으면 계산하지 않습니다."
         )
         root.addWidget(self.statistics_table)
         self.graph_tabs = QTabWidget()
@@ -149,6 +150,7 @@ class SavedResultDialog(QDialog):
         for key, title, axis in (
             ("current", "전류 I(t)", "I (A)"),
             ("resistance", "저항 R(t)", "R (Ohm)"),
+            ("resistivity", "비저항 ρ(t)", "ρ (Ω·m)"),
         ):
             plot = pg.PlotWidget()
             plot.setBackground("#111c2d")
@@ -159,7 +161,7 @@ class SavedResultDialog(QDialog):
             self.plots[key], self.curves[key] = plot, curve
             self.graph_tabs.addTab(plot, title)
         root.addWidget(self.graph_tabs, 1)
-        self.status_label = QLabel("첫 행은 항목·단위, 이후에는 네 열의 수치를 저장합니다.")
+        self.status_label = QLabel("첫 행은 항목·단위, 이후에는 측정 수치를 저장합니다.")
         self.status_label.setTextFormat(Qt.TextFormat.PlainText)
         self.status_label.setWordWrap(True)
         root.addWidget(self.status_label)
@@ -297,16 +299,25 @@ class SavedResultDialog(QDialog):
             f"{self.start_time.value():g}–{self.end_time.value():g} s · 선택 {len(rows):,}개"
             + (f" · 통계 제외 {invalid:,}개" if invalid else "")
         )
-        self.status_label.setText("표준편차는 n−1 기준입니다. 유효값이 한 개이면 —로 표시합니다.")
+        message = "표준편차는 n−1 기준입니다. 유효값이 한 개이면 —로 표시합니다."
+        if rows and not any(
+            row.get("resistivity_ohm_m") is not None and math.isfinite(row["resistivity_ohm_m"])
+            for row in rows
+        ):
+            message += " 선택 구간에 저장된 비저항이 없습니다."
+        self.status_label.setText(message)
         self.status_label.setStyleSheet("color:#687582")
         self.export_button.setEnabled(bool(rows))
         return True
 
     def _display_statistics(self, values):
-        for index, (key, label, unit) in enumerate(
-            (("current", "전류", "A"), ("resistance", "저항", "Ω"))
+        for index, (key, suffix, label, unit) in enumerate(
+            (
+                ("current", "A", "전류", "A"),
+                ("resistance", "ohm", "저항", "Ω"),
+                ("resistivity", "ohm_m", "비저항", "Ω·m"),
+            )
         ):
-            suffix = "A" if key == "current" else "ohm"
             fields = (
                 label,
                 _quantity(values.get(f"{key}_mean_{suffix}"), unit),
@@ -319,7 +330,7 @@ class SavedResultDialog(QDialog):
                 self.statistics_table.setItem(index, column, item)
 
     def _draw(self, rows):
-        current, resistance = [], []
+        current, resistance, resistivity = [], [], []
         for row in rows:
             elapsed = row.get("elapsed_s")
             if elapsed is None:
@@ -332,7 +343,14 @@ class SavedResultDialog(QDialog):
                 current.append((elapsed, amps))
             if ohms is not None and math.isfinite(ohms):
                 resistance.append((elapsed, ohms))
-        for name, pairs in (("current", current), ("resistance", resistance)):
+            rho = row.get("resistivity_ohm_m")
+            if rho is not None and math.isfinite(rho):
+                resistivity.append((elapsed, rho))
+        for name, pairs in (
+            ("current", current),
+            ("resistance", resistance),
+            ("resistivity", resistivity),
+        ):
             self.curves[name].setData([pair[0] for pair in pairs], [pair[1] for pair in pairs])
 
     def _choose_export(self):
@@ -366,6 +384,9 @@ class SavedResultDialog(QDialog):
         except (OSError, ValueError, TypeError) as exc:
             self._error(f"TXT 저장 실패: {exc}")
             return None
-        self.status_label.setText(f"TXT 저장 완료 · {len(self.selected_rows):,}개 · {path}")
+        columns = 5 if self.saved_run.include_resistivity else 4
+        self.status_label.setText(
+            f"TXT 저장 완료 · {len(self.selected_rows):,}개 · {columns}열 · {path}"
+        )
         self.status_label.setStyleSheet("color:#16667a")
         return result

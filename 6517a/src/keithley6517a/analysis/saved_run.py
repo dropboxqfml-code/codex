@@ -7,10 +7,14 @@ import json
 import math
 import os
 import statistics
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..storage.run_writer import ANALYSIS_HEADER, analysis_line
+from ..storage.run_writer import (
+    analysis_header,
+    analysis_includes_resistivity,
+    analysis_line,
+)
 
 _NUMERIC_FIELDS = {
     "elapsed_s",
@@ -19,6 +23,7 @@ _NUMERIC_FIELDS = {
     "voltage_programmed_readback_V",
     "native_r_ohm",
     "resistance_apparent_ohm",
+    "resistivity_ohm_m",
 }
 _INFORMATIONAL_FLAGS = {
     "OUTSIDE_SUMMARY_WINDOW",
@@ -46,6 +51,12 @@ class SavedRun:
     rows: list[dict]
     status: dict
     metadata: dict
+    settings: dict = field(default_factory=dict)
+
+    @property
+    def include_resistivity(self) -> bool:
+        """Keep the whole run's text schema when exporting any selected interval."""
+        return analysis_includes_resistivity(self.rows, self.metadata, self.settings)
 
     @property
     def start_s(self) -> float | None:
@@ -119,12 +130,17 @@ def load_saved_run(path) -> SavedRun:
                 raise ValueError(f"CSV {index}행의 valid_for_summary 형식을 확인하세요.")
             row["valid_for_summary"] = None if not valid else valid.lower() == "true"
             rows.append(row)
+    snapshot = _sidecar(source.parent / "config.json")
+    settings = snapshot.get("settings", snapshot)
+    if not isinstance(settings, dict):
+        raise ValueError("config.json: settings는 JSON 객체여야 합니다.")
     return SavedRun(
         source_path=source,
         directory=source.parent,
         rows=rows,
         status=_sidecar(source.parent / "run_status.json"),
         metadata=_sidecar(source.parent / "metadata.json"),
+        settings=settings,
     )
 
 
@@ -166,7 +182,7 @@ def _stats(values):
 
 
 def summarize_rows(rows) -> dict:
-    """Raw-current/display-resistance sample statistics; never infer missing current."""
+    """Sample statistics from stored values; never infer missing current or resistivity."""
     rows = list(rows)
     eligible = [row for row in rows if _eligible(row)]
     current = [row["current_raw_A"] for row in eligible if _finite(row.get("current_raw_A"))]
@@ -179,6 +195,10 @@ def summarize_rows(rows) -> dict:
             resistance.append(value)
     mean_i, std_i = _stats(current)
     mean_r, std_r = _stats(resistance)
+    resistivity = [
+        row["resistivity_ohm_m"] for row in eligible if _finite(row.get("resistivity_ohm_m"))
+    ]
+    mean_rho, std_rho = _stats(resistivity)
     return dict(
         row_count=len(rows),
         invalid_count=len(rows) - len(eligible),
@@ -188,12 +208,16 @@ def summarize_rows(rows) -> dict:
         resistance_count=len(resistance),
         resistance_mean_ohm=mean_r,
         resistance_std_ohm=std_r,
+        resistivity_count=len(resistivity),
+        resistivity_mean_ohm_m=mean_rho,
+        resistivity_std_ohm_m=std_rho,
     )
 
 
 def export_selection(saved: SavedRun, output, start_s: float, end_s: float) -> dict:
-    """Write all selected rows as a new four-column text file without replacing data."""
+    """Write selected rows using the whole run's four/five-column text schema."""
     rows = select_rows(saved, start_s, end_s)
+    include_resistivity = saved.include_resistivity
     destination = Path(output).expanduser().absolute()
     if destination.resolve() == saved.source_path.resolve():
         raise ValueError("TXT 저장 경로는 원본 readings.csv와 달라야 합니다.")
@@ -201,9 +225,13 @@ def export_selection(saved: SavedRun, output, start_s: float, end_s: float) -> d
     try:
         with destination.open("x", encoding="utf-8", newline="") as stream:
             created = True
-            stream.write(ANALYSIS_HEADER)
+            stream.write(analysis_header(include_resistivity))
             for row in rows:
-                stream.write(analysis_line(row))
+                stream.write(
+                    analysis_line(row, include_resistivity=True)
+                    if include_resistivity
+                    else analysis_line(row)
+                )
             stream.flush()
             os.fsync(stream.fileno())
     except BaseException:

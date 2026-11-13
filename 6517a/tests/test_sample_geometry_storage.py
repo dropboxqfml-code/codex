@@ -44,7 +44,7 @@ def complete(config):
         runner.shutdown()
 
 
-def test_geometry_and_resistivity_roundtrip_without_changing_four_column_export(tmp_path):
+def test_geometry_and_resistivity_roundtrip_with_five_column_export(tmp_path):
     settings = config(tmp_path)
     folder = complete(settings)
     assert RunConfig.load(folder / "config.json") == settings
@@ -64,9 +64,11 @@ def test_geometry_and_resistivity_roundtrip_without_changing_four_column_export(
             float(row["resistance_corrected_ohm"]) * 0.1
         )
     lines = (folder / "analysis.txt").read_text().splitlines()
-    assert lines[0] == "Time (s)\tResistance (Ohm)\tVoltage (V)\tCurrent (A)"
+    assert lines[0] == ("Time (s)\tResistance (Ohm)\tResistivity (Ohm m)\tVoltage (V)\tCurrent (A)")
     assert len(lines) == len(readings) + 1
-    assert all(len(line.split("\t")) == 4 for line in lines)
+    assert all(len(line.split("\t")) == 5 for line in lines)
+    for row, line in zip(readings, lines[1:], strict=True):
+        assert float(line.split("\t")[2]) == pytest.approx(float(row["resistivity_ohm_m"]))
 
 
 @pytest.mark.parametrize(
@@ -86,3 +88,7 @@ def test_incomplete_geometry_saves_known_dimensions_and_resistance_without_resis
         rows = list(csv.DictReader(stream))
     assert rows and any(row["resistance_apparent_ohm"] for row in rows)
     assert all(row["resistivity_ohm_m"] == "" for row in rows)
+    lines = (folder / "analysis.txt").read_text().splitlines()
+    assert lines[0] == "Time (s)\tResistance (Ohm)\tVoltage (V)\tCurrent (A)"
+    assert len(lines) == len(rows) + 1
+    assert all(len(line.split("\t")) == 4 for line in lines)

@@ -42,7 +42,7 @@ source current limit이면 실제 DUT 전압이 설정 전압이라는 전제가
 
 이 모델은 전극이 해당 단면 전체를 덮는 경우입니다. 실제 유효 접촉 면적이 다르거나 원형 전극·guard 전극을 사용하면 해당 전극 기하조건을 사용해야 합니다. 기존 `area_m2`·`thickness_m` 입력은 새 치수·방향이 전혀 없는 설정에서 계속 지원하며, 새 치수가 일부라도 있으면 기존 기하조건으로 조용히 대체하지 않습니다.
 
-FVMI 비저항은 기존 보정 저항 `resistance_corrected_ohm`, native 모드에서는 `native_r_ohm`을 기반으로 계산합니다. 계산할 저항이 없거나 유한한 결과를 표현할 수 없으면 `resistivity_ohm_m`을 비웁니다. mm 입력과 방향, SI 환산값은 저장 설정·metadata에서 추적합니다. 자동·선택 구간 `analysis.txt`의 시간/R/V/I 네 열에는 비저항 열을 추가하지 않습니다.
+FVMI 비저항은 기존 보정 저항 `resistance_corrected_ohm`, native 모드에서는 `native_r_ohm`을 기반으로 계산합니다. 계산할 저항이 없거나 유한한 결과를 표현할 수 없으면 `resistivity_ohm_m`을 비웁니다. mm 입력과 방향, SI 환산값은 저장 설정·metadata에서 추적합니다. 자동·선택 TXT는 비저항 계산 조건이 없으면 시간/R/V/I 네 열, 조건이 완성되면 시간/R/ρ/V/I 다섯 열입니다. 시료 ID만 있거나 부분 치수·방향 미지정이면 네 열이며, 기존 면적·경로 길이가 완성된 경우도 다섯 열을 지원합니다.
 
 전압 인가 후 전류에는 conduction 외에도 충전·흡수·polarization·fixture leakage·offset·noise가 포함될 수 있습니다. 시뮬레이터의 `V/R + sum(A*exp(-t/tau)) + offset + drift*t + noise`는 시험 모델이며 실제 시료 physics 검증이 아닙니다. raw I(t)와 이력을 우선 해석하세요.
 
@@ -50,12 +50,13 @@ FVMI 비저항은 기존 보정 저항 `resistance_corrected_ohm`, native 모드
 
 고유 run 폴더마다 설정 snapshot과 장비 식별·simulation truth를 보존합니다. `readings.csv`는 SI 열과 손실 없는 raw response를 CSV 인코딩합니다. strict JSON에서 비유한 수는 쓰지 않습니다. 샘플별 flush, 중요 event 즉시 기록, atomic status 갱신을 사용합니다. 저장 실패는 OFF를 시도하고 중지합니다. 중단된 run은 명시적인 `cli recover DIRECTORY`로 `interrupted`로 표시하며 자동 재인가·재개하지 않습니다. 복구는 해당 directory에 활동 중인 run이 없는 것을 확인한 후 실행하세요. 다른 프로세스의 실행 중 상태를 복구 대상으로 변경하지 마세요.
 
-`analysis.txt`는 분석 도구로 바로 가져올 수 있는 탭 구분 파일입니다. 첫 행은 `Time (s)`, `Resistance (Ohm)`, `Voltage (V)`, `Current (A)`이고 다음 행부터 네 개의 수치만 기록합니다. 다음 열을 같은 순서로 내보냅니다.
+`analysis.txt`는 분석 도구로 바로 가져올 수 있는 탭 구분 파일입니다. 첫 행은 비저항 계산 조건이 없을 때 `Time (s)`, `Resistance (Ohm)`, `Voltage (V)`, `Current (A)`입니다. 조건이 완성되면 저항과 전압 사이에 `Resistivity (Ohm m)`를 추가합니다. 헤더·열 수는 실행 시작에 고정하고, 다음 행부터 수치만 기록합니다. 완성된 기하조건에서 0 V 등으로 계산값이 없으면 다섯 열을 유지하고 해당 비저항은 `nan`입니다. 다음 열을 같은 순서로 내보냅니다.
 
 | TXT 열 | 원본 값 |
 |---|---|
 | Time (s) | `elapsed_s`: 측정 시작 후 경과 시간 |
 | Resistance (Ohm) | `native_r_ohm`이 있으면 해당 값, 그 외 `resistance_apparent_ohm` |
+| Resistivity (Ohm m), 조건 충족 시 | `resistivity_ohm_m`: 저장된 비저항, Ω·m |
 | Voltage (V) | `voltage_programmed_readback_V`: source 설정 readback |
 | Current (A) | `current_raw_A`: 원시 판독 전류 |
 
@@ -70,6 +71,8 @@ SI 단위·부호·0·저장 정밀도를 유지하며 누락값은 숫자형 �
 
 표시 저항은 native 값이 있으면 그 값이고 그 외에는 저장된 겉보기 V/I입니다. 선택 구간의 저항 평균은 개별 저항 판독의 산술평균이며 실행 요약의 `V/mean(I)`와 별개입니다. 표준편차는 표본 표준편차(n−1)이며 유효 값 0개는 평균·표준편차 없음, 1개는 평균만 표시합니다. 임의의 smoothing·보정이나 안정 판정은 추가하지 않습니다.
 
-선택 TXT는 자동 `analysis.txt`와 같은 헤더·네 열을 사용합니다. 선택한 원시 행의 결측·부호·정밀도를 보존하고 원본과 기존 출력 파일을 덮어쓰지 않습니다.
+비저항 통계·ρ(t)는 저장된 `resistivity_ohm_m`만 사용하며 저항 평균에서 비저항을 역산하지 않습니다. 비저항도 유효 개수·평균·표본 표준편차를 표시하고 저장값이 없으면 계산하지 않습니다. v0.8.2 CSV의 저장된 비저항도 읽습니다.
+
+선택 TXT는 원본 실행 전체의 저장값·기하조건에 맞는 네 열 또는 다섯 열을 사용합니다. 선택한 구간의 비저항이 모두 결측이어도 전체 실행이 다섯 열 대상이면 비저항 열을 유지합니다. 선택한 원시 행의 결측·부호·정밀도를 보존하고 원본과 기존 출력 파일을 덮어쓰지 않습니다.
 
 사용자 STOP은 OFF 확인·저장 완료 뒤 `stopped`로 확정합니다. OFF 미확인·장비/통신·저장 실패는 `aborted`/FAULT 또는 HV_STATE_UNKNOWN으로 남으며 사용자 중지로 숨기지 않습니다. 중간 STOP으로 완료하지 못한 전압 단계의 요약을 임의로 만들지 않습니다.

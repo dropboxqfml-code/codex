@@ -18,30 +18,80 @@ from pathlib import Path
 from statistics import mean, stdev
 
 
+def _recorded_resistivity_schema(directory: Path, rows: list[dict]) -> bool:
+    """Infer the expected schema independently of the application's export helpers."""
+    for row in rows:
+        value = row.get("resistivity_ohm_m")
+        if value not in (None, "") and math.isfinite(float(value)):
+            return True
+
+    def read_object(name):
+        path = directory / name
+        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+
+    metadata = read_object("metadata.json")
+    declared = metadata.get("analysis_text", {}).get("include_resistivity")
+    if isinstance(declared, bool):
+        return declared
+
+    def positive(value):
+        return (
+            isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and math.isfinite(value)
+            and value > 0
+        )
+
+    snapshot = read_object("config.json")
+    settings = snapshot.get("settings", snapshot) if snapshot else metadata.get("settings", {})
+    names = ("sample_length_mm", "sample_width_mm", "sample_depth_mm")
+    dimensions = [settings.get(name) for name in names]
+    axis = settings.get("current_path_axis")
+    if any(value is not None for value in dimensions) or axis is not None:
+        return all(positive(value) for value in dimensions) and axis in {"L", "W", "D"}
+    area, length = settings.get("area_m2"), settings.get("thickness_m")
+    if area is not None or length is not None:
+        return positive(area) and positive(length)
+    geometry = metadata.get("sample_geometry", {})
+    return (
+        geometry.get("complete") is not False
+        and positive(geometry.get("area_m2"))
+        and positive(geometry.get("current_path_length_m"))
+    )
+
+
+def _analysis_header(include_resistivity):
+    header = ["Time (s)", "Resistance (Ohm)"]
+    if include_resistivity:
+        header.append("Resistivity (Ohm m)")
+    return header + ["Voltage (V)", "Current (A)"]
+
+
+def _analysis_values(row, include_resistivity):
+    resistance = row.get("native_r_ohm")
+    if resistance in (None, ""):
+        resistance = row.get("resistance_apparent_ohm")
+    values = [row.get("elapsed_s"), resistance]
+    if include_resistivity:
+        values.append(row.get("resistivity_ohm_m"))
+    return values + [row.get("voltage_programmed_readback_V"), row.get("current_raw_A")]
+
+
 def analysis_export_smoke(directory: Path) -> int:
     """Check delivered numeric text against every saved CSV row, including excluded data."""
-    header = ["Time (s)", "Resistance (Ohm)", "Voltage (V)", "Current (A)"]
+    with (directory / "readings.csv").open(encoding="utf-8", newline="") as source:
+        rows = list(csv.DictReader(source))
+    include_resistivity = _recorded_resistivity_schema(directory, rows)
+    header = _analysis_header(include_resistivity)
     count = 0
-    with (
-        (directory / "readings.csv").open(encoding="utf-8", newline="") as source,
-        (directory / "analysis.txt").open(encoding="utf-8", newline="") as exported,
-    ):
-        reader = csv.DictReader(source)
+    with (directory / "analysis.txt").open(encoding="utf-8", newline="") as exported:
         data = csv.reader(exported, delimiter="\t")
         if next(data, None) != header:
-            raise RuntimeError("Analysis text must have exactly the four quantity/unit headers")
-        for count, (row, values) in enumerate(zip_longest(reader, data), start=1):
-            if row is None or values is None or len(values) != 4:
-                raise RuntimeError("Analysis text must have one four-column row per CSV reading")
-            resistance = row.get("native_r_ohm")
-            if resistance in (None, ""):
-                resistance = row.get("resistance_apparent_ohm")
-            expected = (
-                row.get("elapsed_s"),
-                resistance,
-                row.get("voltage_programmed_readback_V"),
-                row.get("current_raw_A"),
-            )
+            raise RuntimeError("Analysis text quantity/unit headers differ from recorded geometry")
+        for count, (row, values) in enumerate(zip_longest(rows, data), start=1):
+            if row is None or values is None or len(values) != len(header):
+                raise RuntimeError("Analysis text must have one fixed-width row per CSV reading")
+            expected = _analysis_values(row, include_resistivity)
             for original, cell in zip(expected, values, strict=True):
                 actual = float(cell)
                 if original in (None, ""):
@@ -57,7 +107,7 @@ def analysis_export_smoke(directory: Path) -> int:
 
 
 def verify_sample_geometry(directory: Path) -> int:
-    """Independently verify saved mm geometry, SI conversion, rho, and unchanged TXT."""
+    """Independently verify saved mm geometry, SI conversion, and the five-column TXT."""
     snapshot = json.loads((directory / "config.json").read_text(encoding="utf-8"))
     settings = snapshot.get("settings", {})
     expected_dimensions = dict(sample_length_mm=20, sample_width_mm=10, sample_depth_mm=2)
@@ -98,6 +148,9 @@ def verify_sample_geometry(directory: Path) -> int:
     if count == 0:
         raise RuntimeError("Sample geometry smoke requires at least one finite resistivity reading")
     analysis_export_smoke(directory)
+    with (directory / "analysis.txt").open(encoding="utf-8", newline="") as stream:
+        if next(csv.reader(stream, delimiter="\t")) != _analysis_header(True):
+            raise RuntimeError("Complete sample geometry must create a five-column analysis TXT")
     return count
 
 
@@ -134,6 +187,52 @@ def sample_geometry_resistivity_smoke(output_directory: Path) -> Path:
         return runner.run_directory
     finally:
         runner.shutdown()
+
+
+def adaptive_resistivity_analysis_smoke(output_directory: Path) -> None:
+    """Exercise fixed schemas for complete zero-V and incomplete sample geometry."""
+    from keithley6517a.clock import FakeClock
+    from keithley6517a.config import RunConfig
+    from keithley6517a.measurement.runner import MeasurementRunner
+
+    base = replace(
+        RunConfig(),
+        output_directory=str(output_directory),
+        simulation_resistance_ohm=1e9,
+        current_trip_A=1e-8,
+        residual_warning_ack=True,
+        dwell_s=0.5,
+        summary_window_s=0.5,
+        sample_interval_s=0.1,
+        nplc=0.1,
+        sample_length_mm=20,
+        sample_width_mm=10,
+        sample_depth_mm=2,
+    )
+    for name, config, include_resistivity in (
+        ("zero-voltage", replace(base, voltages=(0,), current_path_axis="D"), True),
+        ("axis-unspecified", replace(base, voltages=(1,), current_path_axis=None), False),
+    ):
+        runner = MeasurementRunner(
+            replace(config, output_directory=str(output_directory / name)), clock=FakeClock()
+        )
+        try:
+            runner.connect()
+            runner.arm()
+            status = runner.start()
+            if status.get("status") != "completed" or status.get("output_state") != "OFF":
+                raise RuntimeError("Adaptive analysis synthetic run did not complete with OFF")
+            analysis_export_smoke(runner.run_directory)
+            with (runner.run_directory / "analysis.txt").open(
+                encoding="utf-8", newline=""
+            ) as stream:
+                rows = list(csv.reader(stream, delimiter="\t"))
+            if rows[0] != _analysis_header(include_resistivity):
+                raise RuntimeError("Adaptive analysis chose the wrong geometry-dependent schema")
+            if include_resistivity and not all(math.isnan(float(row[2])) for row in rows[1:]):
+                raise RuntimeError("Complete zero-V geometry must retain an all-nan rho column")
+        finally:
+            runner.shutdown()
 
 
 def startup_checks_smoke(root: Path, startup_factory=None, *, timeout_ms=120000):
@@ -322,6 +421,7 @@ def saved_result_review_smoke(directory: Path, output: Path, dialog_factory=None
     originals = {path: path.read_bytes() for path in directory.iterdir() if path.is_file()}
     with (directory / "readings.csv").open(encoding="utf-8", newline="") as stream:
         original_rows = list(csv.DictReader(stream))
+    include_resistivity = _recorded_resistivity_schema(directory, original_rows)
     times = [float(row["elapsed_s"]) for row in original_rows]
     if len(times) < 3 or max(times) <= min(times):
         raise RuntimeError("Offline review smoke requires a nonempty time interval")
@@ -361,6 +461,12 @@ def saved_result_review_smoke(directory: Path, output: Path, dialog_factory=None
                 "resistance_mean_ohm",
                 "resistance_std_ohm",
             ),
+            (
+                "resistivity_ohm_m",
+                "resistivity_count",
+                "resistivity_mean_ohm_m",
+                "resistivity_std_ohm_m",
+            ),
         ):
             values = []
             for row in expected:
@@ -375,7 +481,7 @@ def saved_result_review_smoke(directory: Path, output: Path, dialog_factory=None
             if dialog.statistics.get(count_key) != len(values):
                 raise RuntimeError("Offline result review statistic has the wrong sample count")
             for key, target in (
-                (mean_key, mean(values)),
+                (mean_key, mean(values) if values else None),
                 (std_key, stdev(values) if len(values) > 1 else None),
             ):
                 actual = dialog.statistics.get(key)
@@ -384,24 +490,66 @@ def saved_result_review_smoke(directory: Path, output: Path, dialog_factory=None
                     and not math.isclose(actual, target, rel_tol=1e-12, abs_tol=1e-30)
                 ):
                     raise RuntimeError(f"Offline result review statistic differs from CSV: {key}")
+        if (
+            dialog.statistics_table.rowCount() != 3
+            or dialog.statistics_table.item(2, 0).text() != "비저항"
+            or dialog.statistics_table.item(2, 3).text()
+            != str(dialog.statistics["resistivity_count"])
+            or dialog.graph_tabs.count() != 3
+            or "ρ(t)" not in dialog.graph_tabs.tabText(2)
+        ):
+            raise RuntimeError("Offline result review is missing its resistivity table or graph")
+        rho_pairs = [
+            (float(row["elapsed_s"]), float(row["resistivity_ohm_m"]))
+            for row in expected
+            if row.get("resistivity_ohm_m") not in (None, "")
+            and math.isfinite(float(row["resistivity_ohm_m"]))
+        ]
+        xs, ys = dialog.curves["resistivity"].getData()
+        drawn = [] if xs is None else list(zip(xs, ys, strict=True))
+        if drawn != rho_pairs:
+            raise RuntimeError("Offline resistivity graph differs from stored CSV values")
+        for column, key in ((1, "resistivity_mean_ohm_m"), (2, "resistivity_std_ohm_m")):
+            text = dialog.statistics_table.item(2, column).text()
+            target = dialog.statistics[key]
+            if target is None:
+                matches = text == "—"
+            else:
+                number, unit = text.split()
+                prefix = unit.removesuffix("Ω·m")
+                scale = {
+                    "P": 1e15,
+                    "T": 1e12,
+                    "G": 1e9,
+                    "M": 1e6,
+                    "k": 1e3,
+                    "": 1,
+                    "m": 1e-3,
+                    "µ": 1e-6,
+                    "n": 1e-9,
+                    "p": 1e-12,
+                    "f": 1e-15,
+                }.get(prefix)
+                matches = (
+                    unit.endswith("Ω·m")
+                    and scale is not None
+                    and math.isclose(float(number) * scale, target, rel_tol=1e-5, abs_tol=1e-30)
+                )
+            if not matches:
+                raise RuntimeError("Offline resistivity table differs from computed statistics")
         if not dialog.export_to(output):
             raise RuntimeError("Offline result review could not export its selected interval")
         with output.open(encoding="utf-8", newline="") as stream:
             data = list(csv.reader(stream, delimiter="\t"))
-        if data[0] != ["Time (s)", "Resistance (Ohm)", "Voltage (V)", "Current (A)"]:
-            raise RuntimeError("Offline selected export changed its four-column header")
+        header = _analysis_header(include_resistivity)
+        if data[0] != header:
+            raise RuntimeError("Offline selected export changed its geometry-dependent header")
         if len(data) != len(expected) + 1:
             raise RuntimeError("Offline selected export has the wrong row count")
         for row, fields in zip(expected, data[1:], strict=True):
-            resistance = row.get("native_r_ohm") or row.get("resistance_apparent_ohm")
-            desired = (
-                row["elapsed_s"],
-                resistance,
-                row["voltage_programmed_readback_V"],
-                row["current_raw_A"],
-            )
-            if len(fields) != 4:
-                raise RuntimeError("Offline selected export changed its four-column data")
+            desired = _analysis_values(row, include_resistivity)
+            if len(fields) != len(header):
+                raise RuntimeError("Offline selected export changed its fixed column count")
             for value, cell in zip(desired, fields, strict=True):
                 actual = float(cell)
                 if value in (None, ""):
@@ -529,7 +677,8 @@ def main(argv=None) -> int:
         raise RuntimeError("Bundled 1 Gohm simulation used the wrong reference model")
     analysis_export_smoke(metadata_files[0].parent)
     user_stop_smoke(root / "native-smoke-results/user-stop")
-    sample_geometry_resistivity_smoke(root / "native-smoke-results/sample-geometry")
+    geometry_run = sample_geometry_resistivity_smoke(root / "native-smoke-results/sample-geometry")
+    adaptive_resistivity_analysis_smoke(root / "native-smoke-results/adaptive-analysis")
     if not args.skip_optional_installer:
         optional_installer_smoke(root)
     from PySide6.QtCore import QTimer
@@ -541,6 +690,9 @@ def main(argv=None) -> int:
     startup_checks_smoke(root)
     saved_result_review_smoke(
         metadata_files[0].parent, root / "native-smoke-results/selected-analysis.txt"
+    )
+    saved_result_review_smoke(
+        geometry_run, root / "native-smoke-results/selected-resistivity-analysis.txt"
     )
     window = MainWindow()
     if not window.config_from_controls().simulation or window.worker.runner is not None:
@@ -564,6 +716,7 @@ def main(argv=None) -> int:
                 "automatic_startup_checks_verified": True,
                 "graph_order_verified": True,
                 "sample_geometry_resistivity_verified": True,
+                "adaptive_resistivity_analysis_verified": True,
             }
         )
     )

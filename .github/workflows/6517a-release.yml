@@ -198,6 +198,12 @@ jobs:
               raise SystemExit('Bundled sample dimensions and resistivity conversion were not confirmed')
           if report.get('relocation_check', {}).get('checks', {}).get('adaptive_resistivity_analysis_verified') is not True:
               raise SystemExit('Bundled four/five-column text and offline resistivity analysis were not confirmed')
+          if report.get('relocation_check', {}).get('checks', {}).get('analysis_comparison_session_verified') is not True:
+              raise SystemExit('Bundled multiple-result comparison and analysis session restore were not confirmed')
+          if report.get('relocation_check', {}).get('checks', {}).get('estimated_progress_verified') is not True:
+              raise SystemExit('Bundled estimated remaining-time display was not confirmed')
+          if report.get('relocation_check', {}).get('checks', {}).get('diagnostic_zip_export_verified') is not True:
+              raise SystemExit('Bundled local diagnostic ZIP export was not confirmed')
           repo = os.environ['GITHUB_REPOSITORY']
           def api(path):
               return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
@@ -216,6 +222,11 @@ jobs:
           notes="${RUNNER_TEMP}/6517a-release-notes.md"
           cat > "$notes" <<'NOTES'
           6517A · NI GPIB-USB 시험용 프로그램입니다. Windows 64비트 ZIP에는 Python과 Python 의존성이 포함되어 있습니다.
+
+          v0.9.0은 남은 기본 기능을 통합한 시험판입니다. 저장 결과 분석에서 여러 실행의 전류·저항·비저항 곡선을 각 측정의 경과 시간 기준으로 겹쳐 비교하고, 선택한 파일의 구간 통계를 확인합니다. 선택 TXT는 현재 선택한 실행의 데이터만 저장합니다.
+          분석 설정 JSON에 비교 파일 목록·적용 구간·선택 파일·그래프를 저장하고 다시 엽니다. 원본의 누락·변경을 검사하며 원본 데이터와 기존 파일을 덮어쓰지 않습니다.
+          측정 화면은 전압 단계·반복 횟수와 예상 남은 시간을 표시합니다. 예상값은 계획된 dwell 기준이며 통신·종료 처리 시간은 별도입니다. 시간이 0이어도 출력 OFF·저장 완료까지 종료 처리 상태를 유지합니다.
+          진단 탭의 '진단 ZIP 저장'으로 최근 측정·연결·시작 검사 기록과 GUI 로그를 지정 경로에 묶습니다. ZIP에는 시료 정보·장비 식별·통신 기록이 포함될 수 있으며 자동 업로드하지 않습니다.
 
           analysis.txt는 시료 치수와 전류 방향이 완성되면 Time/Resistance/Resistivity/Voltage/Current 다섯 열, 미완료이면 기존 네 열로 자동 저장합니다. 비저항 단위는 Ohm m이며, 헤더 이후에는 탭으로 구분한 수치만 기록합니다. 측정 중 파일의 열 구성은 바뀌지 않습니다.
           저장 결과 분석에 비저항 ρ(t) 그래프·평균·표본 표준편차·유효값 수를 추가했습니다. v0.8.2 CSV의 저장된 비저항도 분석하며, 선택 구간 TXT 역시 전체 실행의 네 열/다섯 열 구성을 유지합니다.

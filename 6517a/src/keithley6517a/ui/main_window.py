@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QPlainTextEdit,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QSplitter,
@@ -42,6 +43,7 @@ from PySide6.QtWidgets import (
 from keithley6517a.config import RunConfig
 from keithley6517a.measurement.runner import MeasurementRunner
 from keithley6517a.ui.connection_guide import ConnectionGuide
+from keithley6517a.ui.progress import MeasurementProgress, duration_text
 from keithley6517a.ui.readiness import configuration_issues, humanize_issue
 from keithley6517a.ui.sample_geometry import SampleGeometryFields
 
@@ -297,6 +299,7 @@ class MainWindow(QMainWindow):
         self._last_run_result: dict = {}
         self._edit_after_disconnect = False
         self._last_error = ""
+        self._progress: MeasurementProgress | None = None
         self.rows: list[dict] = []
         self._base_config = RunConfig().to_dict()
         self._build_ui()
@@ -316,6 +319,7 @@ class MainWindow(QMainWindow):
         self.worker_thread.start()
         self.stale_timer = QTimer(self)
         self.stale_timer.timeout.connect(self._mark_stale)
+        self.stale_timer.timeout.connect(self._refresh_progress)
         self.stale_timer.start(500)
         self._update_buttons()
 
@@ -549,6 +553,20 @@ class MainWindow(QMainWindow):
         right_layout.addLayout(values)
         self.reading_state_label = QLabel("판독 대기 · START 후 값이 표시됩니다")
         right_layout.addWidget(self.reading_state_label)
+        self.progress_label = QLabel()
+        self.progress_label.hide()
+        self.progress_label.setToolTip(
+            "마지막 판독의 단계 경과 시간과 승인된 전압 단계·반복·dwell 기준 예상치입니다. "
+            "향후 통신·설정 조회·요약·출력 OFF·파일 저장 시간은 포함하지 않습니다. "
+            "예상 0초는 종료 완료를 뜻하지 않습니다."
+        )
+        right_layout.addWidget(self.progress_label)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setMaximumHeight(8)
+        self.progress_bar.hide()
+        right_layout.addWidget(self.progress_bar)
         self.result_status_label = QLabel()
         self.result_status_label.setWordWrap(True)
         self.result_status_label.hide()
@@ -582,7 +600,17 @@ class MainWindow(QMainWindow):
         self.diagnose_button = QPushButton("IDN 확인")
         self.off_check_button = QPushButton("보호 OFF 확인")
         self.open_diagnostic_button = QPushButton("진단 폴더")
-        for control in (self.diagnose_button, self.off_check_button, self.open_diagnostic_button):
+        self.export_diagnostic_button = QPushButton("진단 ZIP 저장")
+        self.export_diagnostic_button.setToolTip(
+            "최근 측정·연결·시작 검사와 화면 로그를 로컬 ZIP으로 저장합니다. "
+            "설정·시료 정보·장비 식별·통신 기록이 포함될 수 있으며 자동 업로드하지 않습니다."
+        )
+        for control in (
+            self.diagnose_button,
+            self.off_check_button,
+            self.open_diagnostic_button,
+            self.export_diagnostic_button,
+        ):
             diagnostic_actions.addWidget(control)
         tool_layout.addLayout(diagnostic_actions)
         self.diagnostic_label = QLabel("진단 기록 없음")
@@ -695,6 +723,7 @@ class MainWindow(QMainWindow):
         self.open_diagnostic_button.clicked.connect(
             lambda: self._open_folder(self._last_diagnostic_directory)
         )
+        self.export_diagnostic_button.clicked.connect(self._choose_diagnostic_export)
 
     def _mode_changed(self) -> None:
         real = self.transport.currentData() == "visa"
@@ -1109,6 +1138,74 @@ class MainWindow(QMainWindow):
         self.connection_guide.update_diagnostic(report)
         self._update_buttons()
 
+    def _diagnostic_export_ready(self) -> bool:
+        return (
+            not self._closing
+            and not self._busy
+            and self._state
+            not in {"ARMED", "CONFIGURING", "RAMPING", "SETTLING", "ACQUIRING", "STOPPING"}
+            and self.output_label.text() != "OUTPUT ON"
+        )
+
+    def _choose_diagnostic_export(self) -> None:
+        if not self._diagnostic_export_ready():
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "진단 ZIP 저장",
+            "6517A-diagnostics.zip",
+            "ZIP (*.zip)",
+            options=QFileDialog.Option.DontConfirmOverwrite,
+        )
+        if path:
+            self.export_diagnostics_to(path if Path(path).suffix else path + ".zip")
+
+    def export_diagnostics_to(self, path):
+        """Save existing local records while idle; never operate an instrument."""
+        if not self._diagnostic_export_ready():
+            self.diagnostic_label.setText("진단 ZIP 저장은 장비 작업 종료 후 가능합니다.")
+            return None
+        from .. import __version__
+        from ..storage.diagnostic_bundle import export_diagnostic_bundle
+
+        context = {
+            "software_version": __version__,
+            "state": self._state,
+            "output_state": self.output_label.text().removeprefix("OUTPUT "),
+            "last_error": self._last_error,
+            "run_result": dict(self._last_run_result),
+            "settings_draft": self._base_config,
+            "controls": {
+                "transport": self.transport.currentData(),
+                "resource": self.resource.text(),
+                "visa_backend": self.backend.text(),
+                "sample_id": self.sample_id.text(),
+                "voltages": self.voltages.text(),
+                "current_trip_A": self.trip.text(),
+                "output_directory": self.output_dir.text(),
+            },
+        }
+        try:
+            result = export_diagnostic_bundle(
+                path,
+                run_directory=self._last_run_directory,
+                diagnostic_directory=self._last_diagnostic_directory,
+                startup_directory=Path.cwd() / "diagnostics",
+                log_text=self.log.toPlainText(),
+                context=context,
+            )
+        except (OSError, ValueError, TypeError) as exc:
+            self.diagnostic_label.setText(f"진단 ZIP 저장 실패: {exc}")
+            self.log.appendPlainText(f"진단 ZIP 저장 실패: {exc}")
+            return None
+        omitted = len(result["omitted"])
+        self.diagnostic_label.setText(
+            f"진단 ZIP 저장 완료 · {len(result['included'])}개"
+            + (f" · 생략 {omitted}개(목록은 ZIP 안에서 확인)" if omitted else "")
+            + f" · {result['path']}"
+        )
+        return result
+
     @staticmethod
     def _open_folder(directory) -> None:
         if directory and Path(directory).is_dir():
@@ -1146,6 +1243,7 @@ class MainWindow(QMainWindow):
     def _connect(self) -> None:
         try:
             config = self.config_from_controls()
+            self._set_progress_plan(config)
             self._last_error = ""
             self._last_run_result = {}
             self._last_run_directory = None
@@ -1166,6 +1264,9 @@ class MainWindow(QMainWindow):
         self.command.emit((action, None))
 
     def _start(self) -> None:
+        if self._progress is not None:
+            self._progress.start()
+            self._refresh_progress()
         self.rows.clear()
         self._last_elapsed = None
         self._last_sample_time = None
@@ -1179,6 +1280,9 @@ class MainWindow(QMainWindow):
         self._send("start")
 
     def _stop(self, reason: str) -> None:
+        if self._progress is not None and self._progress.running:
+            self._progress.finishing = True
+            self._refresh_progress()
         self.worker.request_stop(reason)
         self.log.appendPlainText(f"{reason} 요청 · I/O timeout에 따라 지연될 수 있음")
         self._busy = True
@@ -1253,6 +1357,7 @@ class MainWindow(QMainWindow):
                 "color:#a32e28" if result.get("status") == "aborted" else "color:#176b88"
             )
             self.result_status_label.show()
+        self._update_progress_status(status)
         self.settings.setEnabled(not self._connected and not self._busy and not self._closing)
         self.connection_guide.update_status(status)
         self._update_buttons()
@@ -1263,6 +1368,9 @@ class MainWindow(QMainWindow):
 
     @Slot(dict)
     def _on_sample(self, row: dict) -> None:
+        if self._progress is not None:
+            self._progress.update_sample(row)
+            self._refresh_progress()
         self._last_sample_time = time.monotonic()
         elapsed = row.get("elapsed_s")
         interval = (
@@ -1308,6 +1416,9 @@ class MainWindow(QMainWindow):
     @Slot(dict)
     def _on_event(self, event: dict) -> None:
         self.log.appendPlainText(json.dumps(event, ensure_ascii=False, default=str))
+        if event.get("event") == "voltage_step" and self._progress is not None:
+            self._progress.update_step(event.get("cycle_index"), event.get("step_index"))
+            self._refresh_progress()
         if event.get("event") == "abort":
             self._last_error = str(event.get("reason") or "측정 중단")
             self._refresh_connection_guide()
@@ -1318,6 +1429,9 @@ class MainWindow(QMainWindow):
         self._last_error = message
         self._edit_after_disconnect = False
         self.log.appendPlainText("ERROR · " + message)
+        if self._progress is not None and self._progress.running:
+            self._progress.finish("aborted")
+            self._refresh_progress()
         self._update_buttons()
 
     def _update_buttons(self) -> None:
@@ -1345,6 +1459,7 @@ class MainWindow(QMainWindow):
         self.open_diagnostic_button.setEnabled(
             bool(self._last_diagnostic_directory) and not closing
         )
+        self.export_diagnostic_button.setEnabled(self._diagnostic_export_ready())
         can_commission = (
             self._connected
             and self._state == "OUTPUT_OFF_CONFIRMED"
@@ -1357,6 +1472,74 @@ class MainWindow(QMainWindow):
         self.commission_open_button.setEnabled(can_commission)
         self.commission_closed_button.setEnabled(can_commission)
         self._refresh_connection_guide()
+
+    def _set_progress_plan(self, config: RunConfig) -> None:
+        """Freeze only the display plan; this method never creates a runner."""
+        self._progress = MeasurementProgress(config)
+        self._refresh_progress()
+
+    def _update_progress_status(self, status: dict) -> None:
+        if self._progress is None:
+            return
+        state = status.get("state")
+        result = status.get("run_result") or {}
+        outcome = result.get("status")
+        if state == "DISCONNECTED":
+            self._progress = None
+        elif outcome in {"completed", "stopped", "aborted"}:
+            if not status.get("worker_busy") and (
+                outcome == "aborted" or status.get("output_state") == "OFF"
+            ):
+                self._progress.finish(outcome)
+            else:
+                self._progress.finishing = True
+        elif state in {"FAULT", "HV_STATE_UNKNOWN"}:
+            self._progress.finish("aborted")
+        elif self._progress.running and (
+            state == "STOPPING" or (state == "OUTPUT_OFF_CONFIRMED" and status.get("worker_busy"))
+        ):
+            self._progress.finishing = True
+        self._refresh_progress()
+
+    def _refresh_progress(self) -> None:
+        """Refresh display from received records; no I/O or acquisition-clock changes."""
+        progress = self._progress
+        if progress is None:
+            self.progress_label.hide()
+            self.progress_bar.hide()
+            return
+        self.progress_label.show()
+        self.progress_bar.show()
+        estimate = progress.estimate()
+        fraction = estimate.fraction if estimate is not None else 0.0
+        # A finished dwell plan is not yet durable completion or confirmed output OFF.
+        self.progress_bar.setValue(min(99, int(fraction * 100)))
+        if progress.outcome:
+            self.progress_label.setText(
+                {
+                    "completed": "측정 완료",
+                    "stopped": "사용자 중지",
+                    "aborted": "오류 · 종료 상태 확인",
+                }[progress.outcome]
+            )
+            if progress.outcome == "completed":
+                self.progress_bar.setValue(100)
+        elif progress.finishing or (estimate is not None and estimate.remaining_s == 0):
+            self.progress_label.setText("종료처리중 · 출력·저장 상태 확인 중")
+        elif not progress.running:
+            duration = duration_text(progress.planned_total_s)
+            self.progress_label.setText(f"측정 대기 · {progress.total_steps}단계 · 계획 {duration}")
+        elif estimate is None:
+            self.progress_label.setText(f"시작 처리 중 · 전체 {progress.total_steps}단계")
+        else:
+            elapsed = (
+                "" if estimate.elapsed_s is None else f" · 경과 {duration_text(estimate.elapsed_s)}"
+            )
+            self.progress_label.setText(
+                f"진행 {estimate.step_number}/{estimate.total_steps}단계"
+                + elapsed
+                + f" · 예상 남은 시간 {duration_text(estimate.remaining_s)}"
+            )
 
     def _mark_stale(self) -> None:
         stale = (

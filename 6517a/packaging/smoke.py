@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import importlib.util
 import json
 import math
@@ -12,6 +13,7 @@ import runpy
 import shutil
 import sys
 import tempfile
+import zipfile
 from dataclasses import replace
 from itertools import zip_longest
 from pathlib import Path
@@ -573,6 +575,204 @@ def saved_result_review_smoke(directory: Path, output: Path, dialog_factory=None
             dialog.close()
 
 
+def analysis_comparison_session_smoke(first: Path, second: Path, output: Path, dialog_factory=None):
+    """Verify actual overlaid curves and a restored analysis session against two CSVs."""
+    from PySide6.QtWidgets import QApplication
+
+    from keithley6517a.measurement.runner import MeasurementRunner
+    from keithley6517a.transport.visa import VisaTransport
+    from keithley6517a.ui.result_dialog import SavedResultDialog
+
+    output.mkdir(parents=True, exist_ok=True)
+    sources = [first / "readings.csv", second / "readings.csv"]
+    originals = {
+        path: path.read_bytes()
+        for directory in (first, second)
+        for path in directory.iterdir()
+        if path.is_file()
+    }
+    readings = []
+    for source in sources:
+        with source.open(encoding="utf-8", newline="") as stream:
+            readings.append(list(csv.DictReader(stream)))
+    low = max(min(float(row["elapsed_s"]) for row in rows) for rows in readings)
+    high = min(max(float(row["elapsed_s"]) for row in rows) for rows in readings)
+    if low >= high:
+        raise RuntimeError("Comparison smoke requires two overlapping elapsed-time ranges")
+    previous_runner, previous_visa = MeasurementRunner.__init__, VisaTransport.__init__
+    dialogs = []
+
+    def no_instrument(*args, **kwargs):
+        raise RuntimeError("Saved comparison/session opened an instrument session")
+
+    MeasurementRunner.__init__ = VisaTransport.__init__ = no_instrument
+    try:
+        factory = dialog_factory or SavedResultDialog
+        dialog = factory()
+        dialogs.append(dialog)
+        if not dialog.load_path(first) or not dialog.add_paths([sources[1]]):
+            raise RuntimeError("Saved comparison could not load two runs")
+        dialog.start_time.setValue(math.floor(low * 1e6) / 1e6)
+        dialog.end_time.setValue(math.ceil(high * 1e6) / 1e6)
+        if not dialog.apply_range() or not dialog.select_source(1):
+            raise RuntimeError("Saved comparison could not select its interval/active run")
+        dialog.graph_tabs.setCurrentIndex(2)
+        dialog.show()
+        QApplication.processEvents()
+        lower, upper = dialog.start_time.value(), dialog.end_time.value()
+        expected = [
+            [row for row in rows if lower <= float(row["elapsed_s"]) <= upper] for rows in readings
+        ]
+        if len(dialog.saved_runs) != 2 or any(not rows for rows in expected):
+            raise RuntimeError("Saved comparison lost a source or selected no readings")
+        for index, rows in enumerate(expected):
+            for key in ("current", "resistance", "resistivity"):
+                desired = []
+                for row in rows:
+                    if key == "resistance":
+                        value = row.get("native_r_ohm") or row.get("resistance_apparent_ohm")
+                    else:
+                        field = "current_raw_A" if key == "current" else "resistivity_ohm_m"
+                        value = row.get(field)
+                    if value not in (None, "") and math.isfinite(float(value)):
+                        desired.append((float(row["elapsed_s"]), float(value)))
+                xs, ys = dialog.comparison_curves[index][key].getData()
+                actual = [] if xs is None else list(zip(xs, ys, strict=True))
+                if actual != desired:
+                    raise RuntimeError("Comparison curve differs from its own stored CSV")
+        rho = [
+            float(row["resistivity_ohm_m"])
+            for row in expected[1]
+            if row.get("resistivity_ohm_m") not in (None, "")
+        ]
+        if not rho or not math.isclose(
+            dialog.statistics["resistivity_mean_ohm_m"], mean(rho), rel_tol=1e-12
+        ):
+            raise RuntimeError("Active comparison statistics differ from selected source")
+        session = output / "analysis-session.json"
+        if not dialog.save_session_to(session):
+            raise RuntimeError("Analysis session could not be saved")
+        session_before = session.read_bytes()
+        if dialog.save_session_to(session) or session.read_bytes() != session_before:
+            raise RuntimeError("Analysis session overwrote an existing file")
+        restored = factory()
+        dialogs.append(restored)
+        if not restored.load_session_path(session):
+            raise RuntimeError("Analysis session could not be reopened")
+        if (
+            [saved.source_path.resolve() for saved in restored.saved_runs]
+            != [path.resolve() for path in sources]
+            or restored.active_index != 1
+            or restored.start_time.value() != lower
+            or restored.end_time.value() != upper
+            or restored.graph_tabs.currentIndex() != 2
+        ):
+            raise RuntimeError("Analysis session did not restore paths/interval/active quantity")
+        selected = output / "session-selected-analysis.txt"
+        if not restored.export_to(selected):
+            raise RuntimeError("Restored session could not export its active run")
+        with selected.open(encoding="utf-8", newline="") as stream:
+            text = list(csv.reader(stream, delimiter="\t"))
+        if text[0] != _analysis_header(True) or len(text) != len(expected[1]) + 1:
+            raise RuntimeError("Session selected export mixed source rows or changed schema")
+        for row, values in zip(expected[1], text[1:], strict=True):
+            for source, cell in zip(_analysis_values(row, True), values, strict=True):
+                if source in (None, ""):
+                    valid = math.isnan(float(cell))
+                else:
+                    valid = float(source) == float(cell)
+                if not valid:
+                    raise RuntimeError("Session selected text differs from its active CSV")
+        bad_session = output / "invalid-session.json"
+        bad_session.write_text('{"schema_version":999}', encoding="utf-8")
+        if restored.load_session_path(bad_session) or len(restored.saved_runs) != 2:
+            raise RuntimeError("Invalid session replaced the current analysis")
+        if any(path.read_bytes() != content for path, content in originals.items()):
+            raise RuntimeError("Comparison/session review changed original measurement files")
+        return {"analysis_comparison_session_verified": True}
+    finally:
+        MeasurementRunner.__init__, VisaTransport.__init__ = previous_runner, previous_visa
+        for dialog in dialogs:
+            dialog.close()
+
+
+def progress_and_diagnostic_smoke(window, run_directory: Path, output: Path):
+    """Exercise displayed estimates and local diagnostic ZIP using a disconnected GUI."""
+    from PySide6.QtWidgets import QApplication
+
+    output.mkdir(parents=True, exist_ok=True)
+    config = replace(
+        window.config_from_controls(),
+        protocol="list",
+        voltages=(1, 2),
+        cycles=2,
+        dwell_s=10,
+        summary_window_s=10,
+    )
+    window._set_progress_plan(config)
+    window._progress.start()
+    window._progress.update_step(1, 0)
+    window._progress.update_sample(
+        dict(cycle_index=1, step_index=0, time_since_voltage_command_s=4, elapsed_s=24)
+    )
+    estimate = window._progress.estimate()
+    if estimate is None or estimate.total_steps != 4 or estimate.step_number != 3:
+        raise RuntimeError("Progress did not count voltage points and cycles")
+    if not math.isclose(estimate.remaining_s, 16):
+        raise RuntimeError("Progress remaining dwell differs from its schedule")
+    window._on_status(dict(state="ACQUIRING", output_state="ON", worker_busy=True))
+    QApplication.processEvents()
+    if "예상" not in window.progress_label.text() or "16" not in window.progress_label.text():
+        raise RuntimeError("GUI did not show the estimated remaining time")
+    window._progress.update_step(1, 1)
+    window._progress.update_sample(
+        dict(cycle_index=1, step_index=1, time_since_voltage_command_s=11, elapsed_s=41)
+    )
+    window._on_status(dict(state="ACQUIRING", output_state="ON", worker_busy=True))
+    if "종료" not in window.progress_label.text() or window.progress_bar.value() >= 100:
+        raise RuntimeError("Zero ETA was shown as completed before output/save confirmation")
+    window._on_status(dict(state="DISCONNECTED", output_state="UNKNOWN", worker_busy=False))
+    diagnostic = output / "connection"
+    diagnostic.mkdir()
+    (diagnostic / "diagnostic.json").write_text('{"synthetic":true}', encoding="utf-8")
+    (diagnostic / "raw_io.jsonl").write_text('{"scope":"synthetic"}\n', encoding="utf-8")
+    (diagnostic / "unrelated-secret.txt").write_text("must not be copied", encoding="utf-8")
+    window._last_run_directory = str(run_directory)
+    window._last_diagnostic_directory = str(diagnostic)
+    window.log.appendPlainText("synthetic diagnostic export smoke")
+    originals = {
+        path: path.read_bytes()
+        for directory in (run_directory, diagnostic)
+        for path in directory.iterdir()
+        if path.is_file()
+    }
+    archive = output / "diagnostics.zip"
+    result = window.export_diagnostics_to(archive)
+    if not result or window.worker.runner is not None:
+        raise RuntimeError("Diagnostic ZIP failed or opened an instrument session")
+    with zipfile.ZipFile(archive) as bundle:
+        if bundle.testzip() is not None or "manifest.json" not in bundle.namelist():
+            raise RuntimeError("Diagnostic ZIP has invalid contents")
+        json.loads(bundle.read("manifest.json"))
+        for name in ("readings.csv", "config.json", "metadata.json", "raw_io.jsonl"):
+            original = (run_directory / name).read_bytes()
+            exported = bundle.read("source/run/" + name)
+            if hashlib.sha256(exported).digest() != hashlib.sha256(original).digest():
+                raise RuntimeError("Diagnostic ZIP changed a selected run file")
+        if bundle.read("source/diagnostic/diagnostic.json") != b'{"synthetic":true}':
+            raise RuntimeError("Diagnostic ZIP omitted the selected connection diagnostic")
+        if b"synthetic diagnostic export smoke" not in bundle.read("gui/log.txt"):
+            raise RuntimeError("Diagnostic ZIP omitted its GUI log")
+        if any("unrelated-secret" in name for name in bundle.namelist()):
+            raise RuntimeError("Diagnostic ZIP included an unrelated file")
+    previous = archive.read_bytes()
+    if window.export_diagnostics_to(archive) is not None or archive.read_bytes() != previous:
+        raise RuntimeError("Diagnostic ZIP overwrote an existing file")
+    if any(path.read_bytes() != content for path, content in originals.items()):
+        raise RuntimeError("Diagnostic ZIP changed original measurement/connection files")
+    return {"estimated_progress_verified": True, "diagnostic_zip_export_verified": True}
+
+
 def optional_installer_smoke(root: Path, installer=None):
     """Exercise bundled pip outside the release payload without importing a GPIB backend."""
     if installer is None:
@@ -694,9 +894,15 @@ def main(argv=None) -> int:
     saved_result_review_smoke(
         geometry_run, root / "native-smoke-results/selected-resistivity-analysis.txt"
     )
+    analysis_comparison_session_smoke(
+        metadata_files[0].parent, geometry_run, root / "native-smoke-results/comparison"
+    )
     window = MainWindow()
     if not window.config_from_controls().simulation or window.worker.runner is not None:
         raise RuntimeError("GUI startup must be disconnected and in SIMULATION")
+    progress_and_diagnostic_smoke(
+        window, geometry_run, root / "native-smoke-results/progress-and-diagnostics"
+    )
     window.show()
     QTimer.singleShot(100, window.close)
     QTimer.singleShot(10000, lambda: app.exit(3))
@@ -717,6 +923,9 @@ def main(argv=None) -> int:
                 "graph_order_verified": True,
                 "sample_geometry_resistivity_verified": True,
                 "adaptive_resistivity_analysis_verified": True,
+                "analysis_comparison_session_verified": True,
+                "estimated_progress_verified": True,
+                "diagnostic_zip_export_verified": True,
             }
         )
     )

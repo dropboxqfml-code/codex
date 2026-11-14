@@ -198,6 +198,148 @@ class WindowsUI:
             snapshot["diagnostic_error_type"] = type(error).__name__
         return snapshot
 
+    def menu_snapshot(
+        self,
+        *,
+        max_items: int = 80,
+        max_nodes: int = 500,
+        max_depth: int = 6,
+        max_seconds: float = 2,
+    ) -> dict:
+        """Read bounded menu diagnostics from this probe's process tree only.
+
+        Direct desktop children can be virtual Menu roots with no HWND. Include
+        such roots for diagnosis, without treating them as safe input targets.
+        Names are read only for Menu/MenuItem nodes in owned processes. Limits
+        apply between provider calls; a single COM call cannot be interrupted.
+        """
+        snapshot = {
+            "items": [],
+            "roots_seen": 0,
+            "owned_roots": 0,
+            "foreign_roots_excluded": 0,
+            "nodes_scanned": 0,
+            "foreign_nodes_excluded": 0,
+            "bound_menu_nodes": 0,
+            "unbound_menu_nodes": 0,
+            "unknown_binding_menu_nodes": 0,
+            "truncated": False,
+            "errors": [],
+        }
+
+        def error_type(error):
+            name = type(error).__name__
+            if name not in snapshot["errors"] and len(snapshot["errors"]) < 8:
+                snapshot["errors"].append(name)
+
+        def read(operation, default=None):
+            try:
+                return operation()
+            except Exception as error:
+                error_type(error)
+                return default
+
+        def handle(value):
+            return value if type(value) is int and value > 0 else 0
+
+        try:
+            if min(max_items, max_nodes, max_seconds) <= 0 or max_depth < 0:
+                raise ValueError("Diagnostic limits must be positive")
+            pids = self.process_ids()
+            deadline = time.monotonic() + max_seconds
+            visited = set()
+            queue = []
+            for root in self.desktop.windows():
+                if time.monotonic() >= deadline or snapshot["roots_seen"] >= max_nodes:
+                    snapshot["truncated"] = True
+                    break
+                snapshot["roots_seen"] += 1
+                if read(root.process_id) not in pids:
+                    snapshot["foreign_roots_excluded"] += 1
+                    continue
+                snapshot["owned_roots"] += 1
+                root_hwnd = handle(read(lambda root=root: root.handle))
+                root_class = None
+                if (
+                    root_hwnd
+                    and read(lambda root_hwnd=root_hwnd: self._window_pid(root_hwnd)) in pids
+                ):
+                    root_class = read(lambda root_hwnd=root_hwnd: self._class_name(root_hwnd))
+                queue.append((root, 0, root_hwnd, root_class))
+
+            while queue:
+                if (
+                    snapshot["nodes_scanned"] >= max_nodes
+                    or len(snapshot["items"]) >= max_items
+                    or time.monotonic() >= deadline
+                ):
+                    snapshot["truncated"] = True
+                    break
+                node, depth, root_hwnd, root_class = queue.pop(0)
+                snapshot["nodes_scanned"] += 1
+                pid = read(node.process_id)
+                if pid not in pids:
+                    snapshot["foreign_nodes_excluded"] += 1
+                    continue
+                runtime_id = read(lambda node=node: node.element_info.runtime_id)
+                if isinstance(runtime_id, (list, tuple)) and all(
+                    type(part) is int for part in runtime_id
+                ):
+                    identity = (pid, tuple(runtime_id))
+                else:
+                    identity = (pid, id(node))
+                if identity in visited:
+                    continue
+                visited.add(identity)
+                role = read(lambda node=node: node.element_info.control_type)
+                if role in {"Menu", "MenuItem"}:
+                    label = read(node.window_text)
+                    hwnd = handle(read(lambda node=node: node.handle))
+                    binding = read(
+                        lambda hwnd=hwnd, root_hwnd=root_hwnd: self.belongs_to_target(
+                            hwnd or root_hwnd
+                        )
+                    )
+                    binding = binding if type(binding) is bool else None
+                    visible, enabled = read(node.is_visible), read(node.is_enabled)
+                    snapshot["items"].append(
+                        {
+                            "label": label[:120] if isinstance(label, str) else None,
+                            "type": role,
+                            "process_id": pid,
+                            "native_hwnd": hwnd,
+                            "root_hwnd": root_hwnd,
+                            "root_class": root_class,
+                            "is_root": depth == 0,
+                            "belongs_to_target": binding,
+                            "visible": visible if type(visible) is bool else None,
+                            "enabled": enabled if type(enabled) is bool else None,
+                        }
+                    )
+                    key = (
+                        "bound_menu_nodes"
+                        if binding is True
+                        else "unbound_menu_nodes"
+                        if binding is False
+                        else "unknown_binding_menu_nodes"
+                    )
+                    snapshot[key] += 1
+                children = read(node.children, [])
+                if depth < max_depth:
+                    room = max_nodes - snapshot["nodes_scanned"] - len(queue)
+                    if len(children) > room:
+                        snapshot["truncated"] = True
+                    queue.extend(
+                        (child, depth + 1, root_hwnd, root_class)
+                        for child in children[: max(0, room)]
+                    )
+                elif children:
+                    snapshot["truncated"] = True
+        except Exception as error:
+            error_type(error)
+            snapshot["diagnostic_error_type"] = type(error).__name__
+        return snapshot
+
     def assert_ready(self) -> None:
         handle = self.user32.OpenInputDesktop(0, False, 0x0001)  # DESKTOP_READOBJECTS
         if not handle:

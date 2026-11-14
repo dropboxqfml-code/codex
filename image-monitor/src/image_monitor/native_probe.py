@@ -200,7 +200,7 @@ def close_probe_browser(browser, process) -> None:
     # disposable browser and independently confirm that the process actually exited.
     try:
         session = browser.new_browser_cdp_session()
-        session.send("Browser.close")
+        session.send("Browser.close", timeout=5_000)
     except Exception:
         # Closing the browser may disconnect before the CDP response arrives.
         # Process exit below is the required success signal, not this exception.
@@ -316,6 +316,13 @@ def run_probe(work_root: Path, browser: str) -> dict:
             if ui is not None:
                 report["last_stage"] = ui.stage
                 report["focus_at_failure"] = ui.focus_snapshot()
+                if ui.stage == "context_menu":
+                    try:
+                        report["menu_at_failure"] = ui.menu_snapshot()
+                    except Exception as diagnostic_error:
+                        report["menu_at_failure"] = {
+                            "diagnostic_error_type": type(diagnostic_error).__name__
+                        }
             report["error_type"] = type(error).__name__
             report["reason"] = "Probe stopped; inspect its browser and staging before retrying"
             if isinstance(error, KeyboardInterrupt):
@@ -348,6 +355,7 @@ def run_probe(work_root: Path, browser: str) -> dict:
                             "windows_version": report["windows_version"],
                             "environment": report.get("environment"),
                             "focus_at_failure": report.get("focus_at_failure"),
+                            "menu_at_failure": report.get("menu_at_failure"),
                         },
                         ensure_ascii=False,
                     ),

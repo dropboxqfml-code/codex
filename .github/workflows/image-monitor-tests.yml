@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 15
     env:
       IMAGE_MONITOR_ALLOW_PATH_TESTS: '1'
+      PYTHONUTF8: '1'
     defaults:
       run:
         shell: pwsh

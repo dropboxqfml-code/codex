@@ -5,10 +5,13 @@ restore Invoke and use the actual native Save As dialog for this disposable fixt
 Never use a personal profile, unidentified menu entry, direct download or screenshot.
 """
 
+import ctypes
+import hashlib
 import json
 import logging
 import os
 import platform
+import stat
 import subprocess
 import sys
 import time
@@ -20,6 +23,7 @@ from image_monitor.native_probe import (
     close_probe_browser,
     connect_owned_browser,
     create_fixture,
+    exclusive_digest,
     wait_for_debug_port,
     wait_for_fixture,
 )
@@ -189,6 +193,62 @@ def safe_owned_dialog_snapshot(ui):
     return result
 
 
+def safe_fixture_staging_snapshot(target, original, expected_hash):
+    """Inspect only small controlled fixture files; never read other profile/download data."""
+    byte_limit = 256 * 1024
+
+    def inspect_file(path, *, check_exclusive=False):
+        info = {"name": path.name, "exists": None, "size": None, "sha256": None}
+        try:
+            details = path.lstat()
+            info["exists"] = True
+            info["size"] = details.st_size
+            if not stat.S_ISREG(details.st_mode):
+                info["read_skipped"] = "not_regular_file"
+                return info
+            if details.st_size > byte_limit:
+                info["read_skipped"] = "fixture_size_limit"
+                return info
+            try:
+                with path.open("rb") as stream:
+                    data = stream.read(byte_limit + 1)
+                info["bytes_read"] = len(data)
+                if len(data) <= byte_limit:
+                    info["sha256"] = hashlib.sha256(data).hexdigest()
+                else:
+                    info["read_skipped"] = "fixture_size_limit"
+            except Exception as error:
+                info["read_error_type"] = type(error).__name__
+            if check_exclusive:
+                try:
+                    info["exclusive_digest"] = exclusive_digest(path)
+                    if info["exclusive_digest"] is None:
+                        info["exclusive_last_error"] = ctypes.get_last_error()
+                except Exception as error:
+                    info["exclusive_error_type"] = type(error).__name__
+        except FileNotFoundError:
+            info["exists"] = False
+        except Exception as error:
+            info["stat_error_type"] = type(error).__name__
+        return info
+
+    result = {
+        "expected_sha256": expected_hash,
+        "target": inspect_file(target, check_exclusive=True),
+        "original": inspect_file(original, check_exclusive=True),
+        "staging_files": [],
+    }
+    try:
+        entries = sorted(target.parent.iterdir(), key=lambda path: path.name)
+        result["staging_entry_count"] = len(entries)
+        result["staging_files"] = [inspect_file(path) for path in entries[:5]]
+        if len(entries) > 5:
+            result["staging_truncated"] = True
+    except Exception as error:
+        result["staging_error_type"] = type(error).__name__
+    return result
+
+
 def bind_owned_window(process, title, timeout=15):
     deadline = time.monotonic() + timeout
     last_error = None
@@ -351,6 +411,9 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
                 "native_save_stage": native_save_stage,
                 "native_save_error_type": type(error).__name__,
                 "native_save_error": str(error)[:800],
+                "fixture_staging": safe_fixture_staging_snapshot(
+                    target, html.parent / "fixture-original.png", expected_hash
+                ),
                 "owned_dialog_snapshot": safe_owned_dialog_snapshot(ui),
                 "selection_error_type": type(error).__name__,
                 "selection_error": str(error)[:800],

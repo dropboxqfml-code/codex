@@ -11,6 +11,7 @@ from image_monitor import native_probe
 from image_monitor.native_probe import (
     create_fixture,
     save_one_image,
+    wait_for_debug_port,
     wait_for_fixture,
     write_report,
 )
@@ -50,6 +51,27 @@ def test_synthetic_fixture_is_local_and_decodable(tmp_path):
     assert expected == hashlib.sha256(png.read_bytes()).hexdigest()
     assert "https://" not in html.read_text(encoding="utf-8")
     assert 'id="probe-image"' in html.read_text(encoding="utf-8")
+
+
+def test_debug_port_waits_for_edges_transient_exclusive_write(tmp_path, monkeypatch):
+    process = MagicMock()
+    process.poll.return_value = None
+    read = MagicMock(side_effect=[PermissionError("writing"), "51234\n/devtools/browser/test\n"])
+    monkeypatch.setattr(Path, "read_text", read)
+    monkeypatch.setattr(native_probe.time, "sleep", lambda _delay: None)
+    assert wait_for_debug_port(tmp_path, process) == 51234
+    assert read.call_count == 2
+
+
+def test_debug_port_persistent_permission_failure_times_out(tmp_path, monkeypatch):
+    process = MagicMock()
+    process.poll.return_value = None
+    monkeypatch.setattr(Path, "read_text", MagicMock(side_effect=PermissionError("denied")))
+    clock = iter([0, 0, 2])
+    monkeypatch.setattr(native_probe.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(native_probe.time, "sleep", lambda _delay: None)
+    with pytest.raises(NativeUIError, match="debugging endpoint"):
+        wait_for_debug_port(tmp_path, process, timeout=1)
 
 
 def mock_page():

@@ -171,7 +171,9 @@ def wait_for_debug_port(profile: Path, process, timeout: float = 30) -> int:
             port = int((profile / "DevToolsActivePort").read_text().splitlines()[0])
             if 1 <= port <= 65535:
                 return port
-        except (FileNotFoundError, ValueError, IndexError):
+        except (FileNotFoundError, PermissionError, ValueError, IndexError):
+            # Edge can briefly hold this newly-created file without read sharing.
+            # Readiness polling is bounded and performs no browser UI input.
             pass
         time.sleep(0.1)
     raise NativeUIError("Dedicated browser did not expose its local debugging endpoint")

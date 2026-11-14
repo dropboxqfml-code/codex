@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "image-monitor"
+version = "0.1.0"
+description = "Windows native-save image monitor: development foundation"
+requires-python = ">=3.12,<3.13"
+dependencies = ["Pillow>=11.1,<13", "tzdata>=2025.1"]
+
+[project.optional-dependencies]
+windows = [
+  "playwright>=1.65,<2",
+  "pywinauto>=0.6.9,<0.7; sys_platform == 'win32'",
+  "psutil>=7,<8; sys_platform == 'win32'",
+]
+
+[project.scripts]
+image-monitor = "image_monitor.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3,<10", "ruff>=0.11,<1"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

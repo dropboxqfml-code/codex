@@ -15,8 +15,11 @@ import sqlite3
 import stat
 import subprocess
 import sys
+import threading
 import time
-from contextlib import closing
+from contextlib import ExitStack, closing, contextmanager
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
@@ -308,7 +311,65 @@ def safe_profile_downloads_snapshot(profile, expected_target):
                 result["downloads"].append(item)
     except Exception as error:
         result["diagnostic_error_type"] = type(error).__name__
+        if isinstance(error, sqlite3.Error):
+            result["sqlite_errorcode"] = getattr(error, "sqlite_errorcode", None)
+            result["sqlite_errorname"] = getattr(error, "sqlite_errorname", None)
     return result
+
+
+def safe_download_histograms(session):
+    """Read bounded download outcome counters; never collect URLs or change settings."""
+    result = {"histograms": []}
+    try:
+        response = session.send(
+            "Browser.getHistograms", {"query": "Download", "delta": False}, timeout=2_000
+        )
+        selected = [
+            histogram
+            for histogram in response.get("histograms", [])
+            if isinstance(histogram.get("name"), str)
+            and histogram["name"].startswith("Download")
+            and any(word in histogram["name"] for word in ("Interrupt", "Cancel", "Target", "Save"))
+        ]
+        result["matching_count"] = len(selected)
+        for histogram in selected[:40]:
+            result["histograms"].append(
+                {
+                    "name": histogram["name"][:160],
+                    "count": histogram.get("count"),
+                    "sum": histogram.get("sum"),
+                    "buckets": [
+                        {key: bucket.get(key) for key in ("low", "high", "count")}
+                        for bucket in histogram.get("buckets", [])[:12]
+                    ],
+                }
+            )
+    except Exception as error:
+        result["diagnostic_error_type"] = type(error).__name__
+    return result
+
+
+@contextmanager
+def controlled_fixture_page(html, origin):
+    if origin == "file":
+        yield html.as_uri()
+        return
+
+    class QuietHandler(SimpleHTTPRequestHandler):
+        def log_message(self, *_args):
+            pass
+
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(QuietHandler, directory=str(html.parent))
+    )
+    thread = threading.Thread(target=lambda: server.serve_forever(poll_interval=0.05), daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}/probe.html"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=1)
 
 
 def bind_owned_window(process, title, timeout=15):
@@ -342,9 +403,11 @@ def foreground_owned_window(page, ui, timeout=10):
     pytest.fail("CI foreground handoff failed: " + json.dumps(ui.focus_snapshot()))
 
 
-@pytest.mark.parametrize("locale", ["en-US", "ko-KR"])
+@pytest.mark.parametrize(
+    ("locale", "fixture_origin"), [("en-US", "file"), ("ko-KR", "file"), ("en-US", "loopback")]
+)
 def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
-    tmp_path, monkeypatch, capsys, locale
+    tmp_path, monkeypatch, capsys, locale, fixture_origin
 ):
     import psutil
     from playwright.sync_api import sync_playwright
@@ -388,16 +451,20 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
     created_at = owned_process.create_time()
     driver = browser = ui = cleanup_session = None
     selected = []
+    metadata = {"fixture_origin": fixture_origin}
+    native_save_stage = "browser_startup"
+    fixture_resources = ExitStack()
     try:
         port = wait_for_debug_port(profile, process, timeout=30)
         driver = sync_playwright().start()
         browser = connect_owned_browser(driver, port)
         # Create this before native menus/dialogs can enter a modal message loop.
         cleanup_session = browser.new_browser_cdp_session()
-        metadata = {"browser_version": browser.version, "windows_version": platform.version()}
+        metadata.update({"browser_version": browser.version, "windows_version": platform.version()})
         context = browser.contexts[0]
         page = context.pages[0] if context.pages else context.new_page()
-        page.goto(html.as_uri(), wait_until="load", timeout=30_000)
+        page_url = fixture_resources.enter_context(controlled_fixture_page(html, fixture_origin))
+        page.goto(page_url, wait_until="load", timeout=30_000)
         ui = bind_owned_window(process, page.title())
         foreground_owned_window(page, ui)
         image = page.locator("#probe-image")
@@ -510,6 +577,16 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
     finally:
         already_failed = sys.exc_info()[0] is not None
         cleanup_errors = []
+        if already_failed and cleanup_session is not None:
+            public_snapshot(
+                capsys,
+                locale,
+                {
+                    "native_save_stage": native_save_stage,
+                    "download_histograms_before_close": safe_download_histograms(cleanup_session),
+                    **metadata,
+                },
+            )
         try:
             if ui is not None and ui.user32.IsWindow(ui.target_hwnd):
                 # End this owned window's menu loop before asking CDP to close.
@@ -564,6 +641,19 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
                     driver.stop()
                 except Exception as error:
                     cleanup_errors.append(type(error).__name__)
+            fixture_resources.close()
+        if already_failed and process.poll() is not None:
+            public_snapshot(
+                capsys,
+                locale,
+                {
+                    "native_save_stage": native_save_stage,
+                    "profile_downloads_after_close": safe_profile_downloads_snapshot(
+                        profile, target
+                    ),
+                    **metadata,
+                },
+            )
         if process.poll() is None:
             cleanup_errors.append("DedicatedBrowserStillRunning")
         if cleanup_errors:

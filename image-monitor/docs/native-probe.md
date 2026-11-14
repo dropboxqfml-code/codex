@@ -1,5 +1,9 @@
 # Windows에서 이미지 1장 네이티브 저장 검증
 
+Windows 사용자용 짧은 안내는 [WINDOWS_TEST_GUIDE.txt](../WINDOWS_TEST_GUIDE.txt)입니다.
+`RUN_WINDOWS_TEST.cmd`를 더블클릭하면 uv·관리형 Python·의존성 준비와 시험, TXT 결과
+저장을 순서대로 수행합니다. 아래 명령은 개발자 수동 실행용입니다.
+
 이 명령은 개발 중인 Windows 어댑터의 수동 인수 시험용입니다. **실제 Windows에서는
 아직 실행하지 않았습니다.** 모의 테스트 통과는 브라우저 UI 호환성을 보장하지 않습니다.
 실사이트 수집·정기 감시·프로덕션 저장 큐를 실행하는 명령이 아닙니다.

@@ -10,6 +10,10 @@ Windows 전용 [이미지 1장 네이티브 저장 시험](docs/native-probe.md)
 미해결 저장은 세션 공통 상태로 보존하며, 다른 작업 루트로 실행해도 차단됩니다.
 실패 후에는 전용 브라우저를 닫고 안내된 `native-recover` 명령으로 복구합니다.
 
+Windows 사용자는 [짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)를 읽고
+`RUN_WINDOWS_TEST.cmd`를 더블클릭하면 됩니다. uv가 없으면 공식 WinGet으로 설치하고,
+관리형 Python·의존성을 준비한 뒤 시험 결과 TXT를 메모장으로 엽니다.
+
 ## 현재 구현
 
 - Asia/Seoul 작성일/최초 발견일 경로 계획과 작성일 누락 사유.

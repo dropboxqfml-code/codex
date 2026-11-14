@@ -1,5 +1,20 @@
 # Image Monitor Windows 시험판
 
+[자동 준비 포함 시험판 v2 다운로드](image-monitor-windows-test-v2.zip)
+
+[사용자용 짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)
+
+v2는 `uv` 명령을 찾지 못한 첫 시험 오류를 위한 준비 절차를 포함합니다.
+사용자가 할 일은 TXT에 정리했습니다. ZIP을 풀고 `RUN_WINDOWS_TEST.cmd`를 더블클릭하면
+uv·관리형 Python·잠금 의존성을 준비한 뒤 시험하고, 결과 TXT를 메모장으로 엽니다.
+WinGet이 없거나 설치가 실패하면 결과에 기록하고 중단합니다. 자동 재시도·복구는 하지 않습니다.
+실행 정책·패키지 검증·인증서 검증을 끄지 않습니다.
+
+v2의 실제 Windows 실행은 아직 미검증입니다. Linux 테스트 133개와 정적 명령 검토,
+ZIP 무결성·CMD/TXT의 Windows 인코딩·줄바꿈을 확인했습니다.
+
+## 이전 고정 시험판
+
 [image-monitor-windows-probe.zip 다운로드](image-monitor-windows-probe.zip)
 
 이 ZIP은 실제 Windows 브라우저 우클릭/저장 창을 검증하기 위한 **소스 시험판**입니다.

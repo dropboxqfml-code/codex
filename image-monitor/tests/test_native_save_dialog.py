@@ -75,6 +75,8 @@ def test_owned_descendant_process_dialog_uses_its_actual_foreground_hwnd():
     edit.set_edit_text.assert_not_called()
     assert [call.args[1] for call in ui.user32.SendMessageTimeoutW.call_args_list] == [0xB1, 0xC2]
     save.invoke.assert_called_once()
+    edit.element_info.element.SetFocus.assert_not_called()
+    save.element_info.element.SetFocus.assert_not_called()
     ui.owned_windows.assert_not_called()
 
 
@@ -94,50 +96,42 @@ def test_native_replacement_notifies_shell_before_save_invoke():
             state["value"] = state["committed"] = ctypes.wstring_at(lparam)
         return 1
 
-    def focus_save():
-        state["focus"] = "save"
-
     def invoke_save():
         assert state["committed"] == target
-        assert state["focus"] == "save"
+        assert state["focus"] == "edit"
         state["exists"] = False
 
     edit.element_info.element.SetFocus.side_effect = focus_edit
     ui.user32.SendMessageTimeoutW.side_effect = edit_message
     edit.has_keyboard_focus.side_effect = lambda: state["focus"] == "edit"
-    save.element_info.element.SetFocus.side_effect = focus_save
-    save.has_keyboard_focus.side_effect = lambda: state["focus"] == "save"
     save.invoke.side_effect = invoke_save
     assert ui.save_dialog(target) == "fixture-original.png"
     assert state["committed"] == target
     edit.set_edit_text.assert_not_called()
     edit.set_focus.assert_not_called()
     save.set_focus.assert_not_called()
+    save.element_info.element.SetFocus.assert_not_called()
 
 
-@pytest.mark.parametrize("denied_control", ["edit", "save"])
-def test_failed_control_focus_stops_before_save_invoke(denied_control):
+def test_failed_filename_focus_stops_before_text_input_or_save_invoke():
     ui, _state, edit, save = dialog_ui()
-    denied = edit if denied_control == "edit" else save
-    denied.has_keyboard_focus.return_value = False
+    edit.has_keyboard_focus.return_value = False
     with pytest.raises(NativeUIError, match="did not acquire keyboard focus"):
         ui.save_dialog("C:\\staging\\image.png")
     save.invoke.assert_not_called()
-    if denied_control == "edit":
-        edit.set_edit_text.assert_not_called()
-        save.element_info.element.SetFocus.assert_not_called()
+    ui.user32.SendMessageTimeoutW.assert_not_called()
+    edit.set_edit_text.assert_not_called()
+    save.element_info.element.SetFocus.assert_not_called()
 
 
-def test_path_changed_during_focus_commit_is_rejected():
-    ui, _state, edit, save = dialog_ui()
-    edit.get_value.side_effect = [
-        "fixture-original.png",
-        "C:\\staging\\image.png",
-        "fixture-original.png",
-    ]
-    with pytest.raises(NativeUIError, match="did not commit the exact staging path"):
-        ui.save_dialog("C:\\staging\\image.png")
-    save.invoke.assert_not_called()
+def test_filename_focus_is_requested_only_when_needed():
+    ui, state, edit, save = dialog_ui()
+    edit.has_keyboard_focus.side_effect = [False, True]
+    save.invoke.side_effect = lambda: state.update(exists=False)
+    ui.save_dialog("C:\\staging\\image.png")
+    edit.element_info.element.SetFocus.assert_called_once()
+    save.element_info.element.SetFocus.assert_not_called()
+    save.invoke.assert_called_once()
 
 
 def test_focus_loss_after_field_selection_prevents_focusing_or_editing():

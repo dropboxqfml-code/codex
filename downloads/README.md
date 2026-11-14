@@ -1,5 +1,20 @@
 # Image Monitor Windows 시험판
 
+[수정 시험판 v3 다운로드](image-monitor-windows-test-v3.zip)
+
+[사용자용 짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)
+
+v3는 uv 설치가 성공한 뒤 새 위치를 찾지 못하던 오류를 수정했습니다.
+이미 설치된 uv를 우선 재사용하고, 필요하면 Windows에 등록된 Machine/User PATH를
+읽어 검색합니다. 실행 정책이나 레지스트리를 변경하지 않습니다.
+Windows 파일 시각 정보의 API 차이로 정상 이미지를 거부하던 문제도 수정했습니다.
+
+Windows 자동검사: 135개 통과·2개 건너뜀.
+실제 CMD의 현재/새 등록 경로 검색을 포함하며, 브라우저 저장 UI의 성공 검증은 별도입니다.
+[검사 실행](https://github.com/dropboxqfml-code/codex/actions/runs/43634792507)
+
+## 이전 시험판 v2
+
 [자동 준비 포함 시험판 v2 다운로드](image-monitor-windows-test-v2.zip)
 
 [사용자용 짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)

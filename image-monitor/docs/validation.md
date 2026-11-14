@@ -5,7 +5,8 @@
 | 검사 | 결과 |
 | --- | --- |
 | `uv sync --locked` 반복 설치 | 성공 |
-| 새 프로젝트 `pytest -q` | 133 passed (정책/로컬 검증 + Windows UI 모의 테스트 + SQLite 대기열) |
+| 새 프로젝트 Linux `pytest -q` | 135 passed, 2 skipped (Windows CMD 전용 테스트 건너뜀) |
+| Windows CI `pytest -q` | 135 passed, 2 skipped (총 137개, failure/error 0) |
 | 새 프로젝트 Ruff lint / format | 통과 |
 | `image-monitor plan` 실제 CLI 실행 | 날짜 fallback과 경로 JSON 확인 |
 | `image-monitor verify` 실제 CLI 실행 | 생성한 WebP의 형식·24×16 크기·SHA-256 확인 |
@@ -16,7 +17,7 @@
 | `queue-demo` 후 별도 `queue-status` CLI 실행 | 게시글 1개·이미지 작업 2개·실패/대기 상태 유지 |
 
 네이티브 저장 시험 명령은 [Windows 실행 안내](native-probe.md)를 참고하세요.
-133개 테스트에는 잠금 데스크톱·외부 앱 포커스·타 프로세스 창 제외·메뉴 중복/미식별,
+테스트에는 잠금 데스크톱·외부 앱 포커스·타 프로세스 창 제외·메뉴 중복/미식별,
 이미지 decode 후 우클릭/메뉴/저장 창 호출 순서, 완료 파일의 알려진 해시 대응,
 CDP 연결의 `no_defaults` 설정, 브라우저 종료 확인, 저장 창 기본명 기록과 입력 경로
 재확인에 대한 모의 테스트가 포함됩니다.
@@ -92,7 +93,19 @@ CMD의 오류 코드·경로 인용·설치 후 uv 조회 흐름을 독립 검�
 
 후속 사용자 로그에서 uv 0.13.8의 설치 관리자 해시 검증·WinGet 설치 성공·종료 코드 0을
 확인했습니다. 같은 CMD 프로세스가 새 uv 경로를 찾지 못해 `install_uv` 단계에서 종료됐으며,
-Python 준비와 네이티브 저장은 아직 시작되지 않았습니다. 고정된 설치 경로만 찾던 방식에
+Python 준비와 네이티브 저장은 아직 시작되지 않았습니다. 현재 프로세스 PATH와 고정된 설치 경로를 찾던 방식에
 영구 Machine/User PATH를 읽어 확장하는 조회를 추가했습니다. 자식 PowerShell의 PATH만
 설정하며 레지스트리·실행 정책·패키지 검증은 변경하지 않습니다. 최초 조회에도 적용해
 이미 설치된 uv를 재사용합니다. 사용자 안내는 짧은 TXT 3단계로 유지합니다.
+
+Windows CI에서 파일 생성 시각과 descriptor의 변경 시각을 같은 값으로 비교해 정상 이미지가
+거부되는 문제도 확인했습니다. 경로/descriptor 사이에는 공통 식별자·크기·수정 시각을 비교하고,
+descriptor 전후에는 변경 시각까지 계속 확인하도록 수정했습니다.
+
+[Windows 자동검사](https://github.com/dropboxqfml-code/codex/actions/runs/43634792507)는
+총 137개 중 135개 통과·2개 건너뜀, failure/error 0으로 완료됐습니다. 실제 CMD에서 한글·공백·
+앰퍼샌드가 있는 uv 위치와 새로 등록된 사용자 PATH 검색을 시험했습니다. 해당 레지스트리
+fixture는 명시적으로 허용된 GitHub Windows 러너에서만 잠시 설정 후 원래 값으로 복원하며,
+일반 사용자 시험과 실제 실행기는 레지스트리를 수정하지 않습니다.
+이 결과는 경로 검색·단위 테스트의 Windows 호환성을 확인한 것이며 브라우저 저장 UI를
+성공으로 검증한 결과는 아닙니다.

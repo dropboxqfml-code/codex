@@ -69,6 +69,7 @@ class WindowsUI:
             ctypes.POINTER(wintypes.DWORD),
         ]
         self.user32.IsWindow.argtypes = [wintypes.HWND]
+        self.user32.IsWindowVisible.argtypes = [wintypes.HWND]
         self.user32.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
         self.user32.GetWindow.restype = wintypes.HWND
         self.user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
@@ -483,15 +484,27 @@ class WindowsUI:
         self.stage = "save_dialog"
 
         def lookup():
-            dialogs = [
-                window
-                for window in self.owned_windows()
-                if window.class_name() == "#32770"
-                and normalize_label(window.window_text()) in {"Save As", "다른 이름으로 저장"}
-            ]
-            if not dialogs:
+            # Edge's out-of-process file picker can be a child in the browser's
+            # UIA tree rather than a direct desktop child. Bind the actual owned
+            # foreground HWND; desktop UIA enumeration can omit this dialog.
+            self.assert_ready()
+            native_hwnd = self.user32.GetForegroundWindow()
+            if not native_hwnd or not self.user32.IsWindow(native_hwnd):
                 return None
-            return choose_unique(dialogs, lambda dialog: dialog.is_visible(), "Save As dialog")
+            native_pid = self._window_pid(native_hwnd)
+            if native_pid not in self.process_ids() or not self.belongs_to_target(native_hwnd):
+                raise NativeUIError("Foreground save window is outside the owned window chain")
+            if (
+                not self.user32.IsWindowVisible(native_hwnd)
+                or self._class_name(native_hwnd) != "#32770"
+                or normalize_label(self._window_text(native_hwnd))
+                not in {"Save As", "다른 이름으로 저장"}
+            ):
+                return None
+            dialog = self.desktop.window(handle=native_hwnd).wrapper_object()
+            if dialog.handle != native_hwnd or dialog.process_id() != native_pid:
+                raise NativeUIError("Save dialog provider does not match its native window")
+            return dialog if dialog.is_visible() else None
 
         dialog = self.wait_for(lookup)
         filename = choose_unique(
@@ -522,7 +535,8 @@ class WindowsUI:
         self.wait_for(
             lambda: (
                 True
-                if all(window.handle != dialog_handle for window in self.owned_windows())
+                if not self.user32.IsWindow(dialog_handle)
+                or not self.user32.IsWindowVisible(dialog_handle)
                 else None
             )
         )

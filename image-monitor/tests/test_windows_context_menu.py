@@ -6,6 +6,7 @@ Never use a personal profile, unidentified menu entry, direct download or screen
 """
 
 import json
+import logging
 import os
 import platform
 import subprocess
@@ -136,6 +137,58 @@ def safe_control_guard_trace(ui, control, window):
     return trace
 
 
+def safe_owned_dialog_snapshot(ui):
+    """Inspect only the bound browser's native foreground file dialog, without values."""
+    result = {"focus": ui.focus_snapshot(), "dialogs": []}
+    try:
+        hwnd = ui.user32.GetForegroundWindow()
+        if (
+            not hwnd
+            or not ui.user32.IsWindow(hwnd)
+            or ui._class_name(hwnd) != "#32770"
+            or ui._window_pid(hwnd) not in ui.process_ids()
+            or not ui.belongs_to_target(hwnd)
+        ):
+            return result
+        window = ui.desktop.window(handle=hwnd).wrapper_object()
+        dialog = {
+            "hwnd": hwnd,
+            "pid": ui._window_pid(hwnd),
+            "class": ui._class_name(hwnd),
+            "native_owner_hwnd": ui.user32.GetWindow(hwnd, 4),
+            "belongs_to_target": True,
+            "uia_role": window.element_info.control_type,
+            "uia_pid": window.process_id(),
+            "controls": [],
+        }
+        result["dialogs"].append(dialog)
+        pids = ui.process_ids()
+        controls = []
+        for role in ("Edit", "Button", "ComboBox"):
+            nodes = window.descendants(control_type=role)
+            dialog[f"{role}_count"] = len(nodes)
+            for control in nodes:
+                if control.process_id() in pids:
+                    controls.append(
+                        {
+                            "role": role,
+                            "automation_id": str(control.element_info.automation_id),
+                            "hwnd": control.handle,
+                            "pid": control.process_id(),
+                            "visible": control.is_visible(),
+                            "enabled": control.is_enabled(),
+                        }
+                    )
+        priority = {"1001", "1", "2", "1148", "FileNameControlHost"}
+        controls.sort(key=lambda entry: entry["automation_id"] not in priority)
+        dialog["controls"] = controls[:24]
+        if len(controls) > 24:
+            dialog["controls_truncated"] = True
+    except Exception as error:
+        result["diagnostic_error_type"] = type(error).__name__
+    return result
+
+
 def bind_owned_window(process, title, timeout=15):
     deadline = time.monotonic() + timeout
     last_error = None
@@ -175,6 +228,17 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
     from playwright.sync_api import sync_playwright
     from pywinauto.controls.uia_controls import MenuItemWrapper
     from pywinauto.controls.uiawrapper import UIAWrapper
+
+    # pywinauto keeps an import-time StreamHandler and flushes it after Invoke,
+    # even when INFO is disabled. A previous parametrized test's capsys stream
+    # is already closed; retain real logging but bind it to the stable process
+    # stderr during this test. Do not change production logging or UI behavior.
+    assert sys.__stderr__ is not None and not sys.__stderr__.closed
+    for handler in logging.getLogger("pywinauto").handlers:
+        if isinstance(handler, logging.StreamHandler) and not isinstance(
+            handler, logging.FileHandler
+        ):
+            monkeypatch.setattr(handler, "stream", sys.__stderr__)
 
     html, expected_hash = create_fixture(tmp_path / "fixture")
     staging = tmp_path / "_staging"
@@ -287,6 +351,7 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
                 "native_save_stage": native_save_stage,
                 "native_save_error_type": type(error).__name__,
                 "native_save_error": str(error)[:800],
+                "owned_dialog_snapshot": safe_owned_dialog_snapshot(ui),
                 "selection_error_type": type(error).__name__,
                 "selection_error": str(error)[:800],
                 "control_guard_trace": control_guard_traces,

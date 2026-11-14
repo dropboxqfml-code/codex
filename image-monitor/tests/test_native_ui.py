@@ -165,6 +165,19 @@ def test_save_dialog_records_suggestion_and_requires_exact_path(retains_path):
     dialog.window_text.return_value = "다른 이름으로 저장"
     dialog.is_visible.return_value = True
     dialog.handle = 123
+    dialog.process_id.return_value = 10
+    ui.user32 = MagicMock()
+    ui.user32.GetForegroundWindow.return_value = 123
+    ui.user32.IsWindow.side_effect = [True, False]
+    ui.user32.IsWindowVisible.return_value = True
+    ui.process_ids = lambda: {10}
+    ui.belongs_to_target = lambda hwnd: hwnd == 123
+    ui._window_pid = lambda _hwnd: 10
+    ui._class_name = lambda _hwnd: "#32770"
+    ui._window_text = lambda _hwnd: "다른 이름으로 저장"
+    ui.desktop = SimpleNamespace(
+        window=lambda **_kwargs: SimpleNamespace(wrapper_object=lambda: dialog)
+    )
     target = "C:\\IMProbe\\job\\_staging\\native-image.png"
     edit.element_info.automation_id = "1001"
     edit.is_visible.return_value = True
@@ -175,7 +188,7 @@ def test_save_dialog_records_suggestion_and_requires_exact_path(retains_path):
     dialog.descendants.side_effect = lambda control_type: [
         edit if control_type == "Edit" else button
     ]
-    ui.owned_windows = MagicMock(side_effect=[[dialog], []])
+    ui.owned_windows = MagicMock(side_effect=AssertionError("UIA desktop can omit the dialog"))
     ui.wait_for = lambda lookup: lookup()
     if retains_path:
         assert ui.save_dialog(target) == "브라우저 기본.png"

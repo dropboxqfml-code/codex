@@ -4,6 +4,7 @@ chcp 65001 >nul
 set "PYTHONUTF8=1"
 cd /d "%~dp0"
 if errorlevel 1 exit /b 1
+if /i "%~1"=="--find-uv" goto lookup_only
 
 :new_log
 set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
@@ -28,7 +29,7 @@ set "INSTALL_CODE=%ERRORLEVEL%"
 if not "%INSTALL_CODE%"=="0" goto failed
 call :find_uv
 if defined UV_EXE goto uv_ready
->>"%LOG_FILE%" echo uv was not found after installation. Send this result file for help.
+>>"%LOG_FILE%" echo uv was not found on the process PATH, persistent Windows PATH, or known installation paths.
 goto failed
 
 :uv_ready
@@ -76,9 +77,19 @@ echo Could not create the result TXT. Extract the ZIP into a writable folder suc
 pause
 exit /b 1
 
+:lookup_only
+call :find_uv
+if not defined UV_EXE exit /b 1
+echo "%UV_EXE%"
+exit /b 0
+
 :find_uv
 set "UV_EXE="
-for /f "delims=" %%U in ('where uv.exe 2^>nul') do if not defined UV_EXE set "UV_EXE=%%U"
+for /f "delims=" %%U in ('where uv.exe 2^>nul') do if not defined UV_EXE if exist "%%~fU" set "UV_EXE=%%~fU"
+if defined UV_EXE exit /b 0
+rem WinGet updates persistent PATH, not this already-running CMD process.
+rem Read and expand Machine/User PATH in a child only; never modify registry or policy.
+for /f "usebackq delims=" %%U in (`call "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = [Console]::OutputEncoding; $found = @(Get-Command uv.exe -CommandType Application -ErrorAction SilentlyContinue)[0]; if (-not $found) { $env:Path = [Environment]::ExpandEnvironmentVariables([Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')); $found = @(Get-Command uv.exe -CommandType Application -ErrorAction SilentlyContinue)[0] }; if ($found) { [Console]::WriteLine($found.Source) }" 2^>nul`) do if not defined UV_EXE if exist "%%~fU" set "UV_EXE=%%~fU"
 if defined UV_EXE exit /b 0
 if exist "%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe" set "UV_EXE=%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe"
 if defined UV_EXE exit /b 0

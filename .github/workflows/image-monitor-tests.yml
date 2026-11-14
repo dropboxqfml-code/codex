@@ -1,0 +1,56 @@
+name: Image Monitor Windows checks
+
+on:
+  push:
+    branches: [artifacts/image-monitor-native-probe-20261114]
+    paths:
+      - image-monitor/**
+      - .github/workflows/image-monitor-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: image-monitor-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-tests:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      IMAGE_MONITOR_ALLOW_PATH_TESTS: '1'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: image-monitor
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.13.8'
+          enable-cache: true
+          cache-dependency-glob: image-monitor/uv.lock
+      - name: Prepare managed Python and locked Windows dependencies
+        run: |
+          uv python install 3.12.14
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          uv sync --locked --extra windows --python 3.12.14 --managed-python
+      - name: Lint and format
+        run: |
+          .venv/Scripts/ruff.exe check .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .venv/Scripts/ruff.exe format --check .
+      - name: Run unit tests and real CMD lookup regression checks
+        run: .venv/Scripts/python.exe -m pytest -q --junitxml=reports/windows-pytest.xml
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ImageMonitor-Windows-test-results-${{ github.run_number }}
+          path: image-monitor/reports/windows-pytest.xml
+          if-no-files-found: warn
+          retention-days: 14

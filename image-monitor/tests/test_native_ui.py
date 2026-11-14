@@ -181,7 +181,11 @@ def test_save_dialog_records_suggestion_and_requires_exact_path(retains_path):
     target = "C:\\IMProbe\\job\\_staging\\native-image.png"
     edit.element_info.automation_id = "1001"
     edit.is_visible.return_value = True
-    edit.get_value.side_effect = ["브라우저 기본.png", target if retains_path else "other.png"]
+    edit.get_value.side_effect = [
+        "브라우저 기본.png",
+        target if retains_path else "other.png",
+        target,
+    ]
     button.element_info.automation_id = "1"
     button.window_text.return_value = "저장(&S)"
     button.is_enabled.return_value = True

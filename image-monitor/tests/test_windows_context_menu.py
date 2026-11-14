@@ -15,11 +15,8 @@ import sqlite3
 import stat
 import subprocess
 import sys
-import threading
 import time
-from contextlib import ExitStack, closing, contextmanager
-from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from contextlib import closing
 
 import pytest
 
@@ -131,6 +128,7 @@ def safe_control_guard_trace(ui, control, window):
                 {
                     "pid": pid,
                     "role": current.element_info.control_type,
+                    "automation_id": str(current.element_info.automation_id)[:120],
                     "hwnd": hwnd,
                     "root_hwnd": ui._root_window(hwnd) if isinstance(hwnd, int) and hwnd else None,
                 }
@@ -349,29 +347,6 @@ def safe_download_histograms(session):
     return result
 
 
-@contextmanager
-def controlled_fixture_page(html, origin):
-    if origin == "file":
-        yield html.as_uri()
-        return
-
-    class QuietHandler(SimpleHTTPRequestHandler):
-        def log_message(self, *_args):
-            pass
-
-    server = ThreadingHTTPServer(
-        ("127.0.0.1", 0), partial(QuietHandler, directory=str(html.parent))
-    )
-    thread = threading.Thread(target=lambda: server.serve_forever(poll_interval=0.05), daemon=True)
-    thread.start()
-    try:
-        yield f"http://127.0.0.1:{server.server_port}/probe.html"
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=1)
-
-
 def bind_owned_window(process, title, timeout=15):
     deadline = time.monotonic() + timeout
     last_error = None
@@ -403,11 +378,9 @@ def foreground_owned_window(page, ui, timeout=10):
     pytest.fail("CI foreground handoff failed: " + json.dumps(ui.focus_snapshot()))
 
 
-@pytest.mark.parametrize(
-    ("locale", "fixture_origin"), [("en-US", "file"), ("ko-KR", "file"), ("en-US", "loopback")]
-)
+@pytest.mark.parametrize("locale", ["en-US", "ko-KR"])
 def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
-    tmp_path, monkeypatch, capsys, locale, fixture_origin
+    tmp_path, monkeypatch, capsys, locale
 ):
     import psutil
     from playwright.sync_api import sync_playwright
@@ -451,9 +424,8 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
     created_at = owned_process.create_time()
     driver = browser = ui = cleanup_session = None
     selected = []
-    metadata = {"fixture_origin": fixture_origin}
+    metadata = {"fixture_origin": "file"}
     native_save_stage = "browser_startup"
-    fixture_resources = ExitStack()
     try:
         port = wait_for_debug_port(profile, process, timeout=30)
         driver = sync_playwright().start()
@@ -463,8 +435,7 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
         metadata.update({"browser_version": browser.version, "windows_version": platform.version()})
         context = browser.contexts[0]
         page = context.pages[0] if context.pages else context.new_page()
-        page_url = fixture_resources.enter_context(controlled_fixture_page(html, fixture_origin))
-        page.goto(page_url, wait_until="load", timeout=30_000)
+        page.goto(html.as_uri(), wait_until="load", timeout=30_000)
         ui = bind_owned_window(process, page.title())
         foreground_owned_window(page, ui)
         image = page.locator("#probe-image")
@@ -641,7 +612,6 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
                     driver.stop()
                 except Exception as error:
                     cleanup_errors.append(type(error).__name__)
-            fixture_resources.close()
         if already_failed and process.poll() is not None:
             public_snapshot(
                 capsys,

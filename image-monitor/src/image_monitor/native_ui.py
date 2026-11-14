@@ -524,11 +524,29 @@ class WindowsUI:
             ),
             "Save button with automation ID 1",
         )
-        self.assert_control_ready(filename, dialog)
+
+        def focus_dialog_control(control):
+            self.assert_control_ready(control, dialog)
+            # Use only this identified element inside the already foreground
+            # dialog. The wrapper's set_focus can restore a window; do not use
+            # window activation, global keys or mouse coordinates here.
+            control.element_info.element.SetFocus()
+            self.assert_control_ready(control, dialog)
+            if not control.has_keyboard_focus():
+                raise NativeUIError("Save dialog control did not acquire keyboard focus")
+
+        focus_dialog_control(filename)
         filename.set_edit_text(target)
         self.assert_control_ready(filename, dialog)
         if filename.get_value() != target:
             raise NativeUIError("Save dialog did not retain the exact staging path")
+        # The shell filename Edit can expose the new ValuePattern text while
+        # retaining the old filename internally. Moving focus off the edited
+        # control commits it before the button's InvokePattern is executed.
+        focus_dialog_control(save)
+        self.assert_control_ready(filename, dialog)
+        if filename.get_value() != target:
+            raise NativeUIError("Save dialog did not commit the exact staging path")
         self.assert_control_ready(save, dialog)
         save.invoke()
         dialog_handle = dialog.handle

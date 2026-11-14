@@ -157,10 +157,13 @@ def test_unknown_menu_never_uses_another_action():
 
 @pytest.mark.parametrize("retains_path", [True, False])
 def test_save_dialog_records_suggestion_and_requires_exact_path(retains_path):
+    import ctypes
+
     ui = WindowsUI.__new__(WindowsUI)
+    ui.ctypes = ctypes
     ui.assert_ready = MagicMock()
     ui.assert_control_ready = MagicMock()
-    dialog, edit, button = MagicMock(), MagicMock(), MagicMock()
+    dialog, edit, button, host = MagicMock(), MagicMock(), MagicMock(), MagicMock()
     dialog.class_name.return_value = "#32770"
     dialog.window_text.return_value = "다른 이름으로 저장"
     dialog.is_visible.return_value = True
@@ -168,18 +171,24 @@ def test_save_dialog_records_suggestion_and_requires_exact_path(retains_path):
     dialog.process_id.return_value = 10
     ui.user32 = MagicMock()
     ui.user32.GetForegroundWindow.return_value = 123
-    ui.user32.IsWindow.side_effect = [True, False]
+    ui.user32.IsWindow.side_effect = lambda hwnd: hwnd != 123 or not button.invoke.called
     ui.user32.IsWindowVisible.return_value = True
+    ui.user32.SendMessageTimeoutW.return_value = 1
+    ui.user32.GetParent.return_value = 125
     ui.process_ids = lambda: {10}
-    ui.belongs_to_target = lambda hwnd: hwnd == 123
+    ui.belongs_to_target = lambda hwnd: hwnd in {123, 124, 125}
     ui._window_pid = lambda _hwnd: 10
-    ui._class_name = lambda _hwnd: "#32770"
+    ui._class_name = lambda hwnd: "Edit" if hwnd == 124 else "#32770"
+    ui._root_window = lambda _hwnd: 123
     ui._window_text = lambda _hwnd: "다른 이름으로 저장"
     ui.desktop = SimpleNamespace(
         window=lambda **_kwargs: SimpleNamespace(wrapper_object=lambda: dialog)
     )
     target = "C:\\IMProbe\\job\\_staging\\native-image.png"
     edit.element_info.automation_id = "1001"
+    edit.handle = edit.element_info.handle = 124
+    edit.process_id.return_value = 10
+    edit.parent.return_value = host
     edit.is_visible.return_value = True
     edit.get_value.side_effect = [
         "브라우저 기본.png",
@@ -189,8 +198,14 @@ def test_save_dialog_records_suggestion_and_requires_exact_path(retains_path):
     button.element_info.automation_id = "1"
     button.window_text.return_value = "저장(&S)"
     button.is_enabled.return_value = True
+    host.element_info.automation_id = "FileNameControlHost"
+    host.element_info.control_type = "ComboBox"
+    host.handle = host.element_info.handle = 125
+    host.process_id.return_value = 10
+    host.is_visible.return_value = True
+    host.children.return_value = [edit]
     dialog.descendants.side_effect = lambda control_type: [
-        edit if control_type == "Edit" else button
+        host if control_type == "ComboBox" else button
     ]
     ui.owned_windows = MagicMock(side_effect=AssertionError("UIA desktop can omit the dialog"))
     ui.wait_for = lambda lookup: lookup()
@@ -202,7 +217,7 @@ def test_save_dialog_records_suggestion_and_requires_exact_path(retains_path):
             ui.save_dialog(target)
         button.invoke.assert_not_called()
     assert ui.browser_suggested_filename == "브라우저 기본.png"
-    edit.set_edit_text.assert_called_once_with(target)
+    edit.set_edit_text.assert_not_called()
 
 
 def test_same_process_other_window_focus_is_rejected():

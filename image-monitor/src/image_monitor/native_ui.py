@@ -72,11 +72,23 @@ class WindowsUI:
         self.user32.IsWindowVisible.argtypes = [wintypes.HWND]
         self.user32.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
         self.user32.GetWindow.restype = wintypes.HWND
+        self.user32.GetParent.argtypes = [wintypes.HWND]
+        self.user32.GetParent.restype = wintypes.HWND
         self.user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
         self.user32.GetAncestor.restype = wintypes.HWND
         self.user32.GetWindowTextLengthW.argtypes = [wintypes.HWND]
         self.user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
         self.user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+        self.user32.SendMessageTimeoutW.argtypes = [
+            wintypes.HWND,
+            wintypes.UINT,
+            ctypes.c_size_t,
+            ctypes.c_ssize_t,
+            wintypes.UINT,
+            wintypes.UINT,
+            ctypes.POINTER(ctypes.c_size_t),
+        ]
+        self.user32.SendMessageTimeoutW.restype = ctypes.c_ssize_t
         self.wintypes = wintypes
         self.target_hwnd = choose_unique(
             self._target_candidates(),
@@ -480,6 +492,58 @@ class WindowsUI:
         # UIA Invoke targets the identified element, not an arbitrary screen coordinate.
         item.invoke()
 
+    def _replace_filename_text(self, filename, filename_host, dialog, target: str) -> None:
+        """Replace only the identified native filename Edit, preserving edit notifications."""
+        hwnd = filename.handle
+
+        def assert_filename():
+            self.assert_control_ready(filename_host, dialog)
+            self.assert_control_ready(filename, dialog)
+            native_pid = self._window_pid(hwnd) if type(hwnd) is int and hwnd > 0 else 0
+            if (
+                type(hwnd) is not int
+                or hwnd <= 0
+                or filename.handle != hwnd
+                or filename.element_info.handle != hwnd
+                or not self.user32.IsWindow(hwnd)
+                or not self.user32.IsWindowVisible(hwnd)
+                or self._class_name(hwnd) != "Edit"
+                or native_pid != filename.process_id()
+                or native_pid not in self.process_ids()
+                or self._root_window(hwnd) != dialog.handle
+                or filename.parent().element_info != filename_host.element_info
+                or filename_host.element_info.automation_id != "FileNameControlHost"
+                or filename_host.element_info.control_type != "ComboBox"
+                or type(filename_host.handle) is not int
+                or filename_host.handle <= 0
+                or self.user32.GetParent(hwnd) != filename_host.handle
+                or self._window_pid(filename_host.handle) != native_pid
+                or filename_host.process_id() != native_pid
+                or not self.belongs_to_target(hwnd)
+                or not self.belongs_to_target(dialog.handle)
+            ):
+                raise NativeUIError("Filename Edit does not match its owned native dialog")
+
+        # WM_SETTEXT/ValuePattern.SetValue can change the combo's displayed text
+        # without delivering the edit-change notifications the shell consumes.
+        # EM_REPLACESEL is the native edit operation used by pywinauto's Win32
+        # EditWrapper, and these messages are scoped to this verified child HWND.
+        text = self.ctypes.create_unicode_buffer(target, len(target.encode("utf-16-le")) // 2 + 1)
+        messages = (
+            (0x00B1, 0, -1),  # EM_SETSEL: select all text in this edit only.
+            (0x00C2, 1, self.ctypes.cast(text, self.ctypes.c_void_p).value),  # EM_REPLACESEL
+        )
+        for message, wparam, lparam in messages:
+            assert_filename()
+            result = self.ctypes.c_size_t()
+            if not self.user32.SendMessageTimeoutW(
+                hwnd, message, wparam, lparam, 0x22, 2_000, self.ctypes.byref(result)
+            ):  # SMTO_ABORTIFHUNG | SMTO_ERRORONEXIT; never retry uncertain input.
+                raise NativeUIError("Filename Edit message did not complete safely")
+        assert_filename()
+        if filename.get_value() != target:
+            raise NativeUIError("Save dialog did not retain the exact staging path")
+
     def save_dialog(self, target: str) -> str | None:
         self.stage = "save_dialog"
 
@@ -507,8 +571,16 @@ class WindowsUI:
             return dialog if dialog.is_visible() else None
 
         dialog = self.wait_for(lookup)
+        filename_host = choose_unique(
+            dialog.descendants(control_type="ComboBox"),
+            lambda combo: (
+                combo.element_info.automation_id == "FileNameControlHost" and combo.is_visible()
+            ),
+            "filename ComboBox with automation ID FileNameControlHost",
+        )
+        self.assert_control_ready(filename_host, dialog)
         filename = choose_unique(
-            dialog.descendants(control_type="Edit"),
+            filename_host.children(control_type="Edit"),
             lambda edit: edit.element_info.automation_id == "1001" and edit.is_visible(),
             "filename Edit with automation ID 1001",
         )
@@ -536,13 +608,9 @@ class WindowsUI:
                 raise NativeUIError("Save dialog control did not acquire keyboard focus")
 
         focus_dialog_control(filename)
-        filename.set_edit_text(target)
-        self.assert_control_ready(filename, dialog)
-        if filename.get_value() != target:
-            raise NativeUIError("Save dialog did not retain the exact staging path")
-        # The shell filename Edit can expose the new ValuePattern text while
-        # retaining the old filename internally. Moving focus off the edited
-        # control commits it before the button's InvokePattern is executed.
+        self._replace_filename_text(filename, filename_host, dialog, target)
+        # Confirm the exact path again after moving focus within the dialog,
+        # immediately before the button's InvokePattern is executed.
         focus_dialog_control(save)
         self.assert_control_ready(filename, dialog)
         if filename.get_value() != target:

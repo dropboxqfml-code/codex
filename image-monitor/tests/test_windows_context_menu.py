@@ -144,6 +144,56 @@ def safe_control_guard_trace(ui, control, window):
     return trace
 
 
+def safe_filename_control_probe(ui, control, target, sequence):
+    """Compare controlled staging text without emitting any control value or path."""
+    probe = {"guard_sequence": sequence, "parent_chain": []}
+    try:
+        probe["role"] = control.element_info.control_type
+        probe["automation_id"] = str(control.element_info.automation_id)[:64]
+        probe["has_keyboard_focus"] = bool(control.has_keyboard_focus())
+        pids = ui.process_ids()
+        current = control
+        for _index in range(12):
+            if current is None or current.process_id() not in pids:
+                break
+            probe["parent_chain"].append(
+                {
+                    "role": str(current.element_info.control_type)[:32],
+                    "automation_id": str(current.element_info.automation_id)[:64],
+                    "hwnd": current.handle,
+                    "pid": current.process_id(),
+                }
+            )
+            current = current.parent()
+        if probe["role"] == "Edit":
+            for field, read in (
+                ("value_equals_target", control.get_value),
+                ("window_text_equals_target", control.window_text),
+            ):
+                try:
+                    probe[field] = read() == str(target)
+                except Exception as error:
+                    probe[field + "_error_type"] = type(error).__name__
+            hwnd = control.handle
+            if (
+                isinstance(hwnd, int)
+                and hwnd
+                and ui.user32.IsWindow(hwnd)
+                and ui._window_pid(hwnd) in pids
+                and ui.belongs_to_target(hwnd)
+            ):
+                probe["native_window_text_equals_target"] = ui._window_text(hwnd) == str(target)
+            else:
+                probe["native_window_text_available"] = False
+    except Exception as error:
+        probe["diagnostic_error_type"] = type(error).__name__
+    # Leave space for the public notice envelope, even with unusual provider IDs.
+    while len(json.dumps(probe, ensure_ascii=False)) > 2_700 and probe["parent_chain"]:
+        probe["parent_chain"].pop()
+        probe["parent_chain_truncated"] = True
+    return probe
+
+
 def safe_owned_dialog_snapshot(ui):
     """Inspect only the bound browser's native foreground file dialog, without values."""
     result = {"focus": ui.focus_snapshot(), "dialogs": []}
@@ -257,6 +307,21 @@ def safe_profile_downloads_snapshot(profile, expected_target):
     history = profile / "Default" / "History"
     result = {"history_exists": False, "downloads": []}
     expected = os.path.normcase(os.path.abspath(expected_target))
+    locations = {
+        "fixture": expected_target.parent.parent / "fixture",
+        "staging": expected_target.parent,
+        "known_downloads": os.path.expanduser("~/Downloads"),
+    }
+
+    def inside(path, directory):
+        if not path:
+            return False
+        try:
+            parent = os.path.normcase(os.path.abspath(directory))
+            return os.path.commonpath([os.path.normcase(os.path.abspath(path)), parent]) == parent
+        except (OSError, ValueError):
+            return False
+
     fields = (
         "state",
         "danger_type",
@@ -304,6 +369,8 @@ def safe_profile_downloads_snapshot(profile, expected_target):
                         item[prefix + "_equals_expected"] = bool(
                             path and os.path.normcase(os.path.abspath(path)) == expected
                         )
+                        for location, directory in locations.items():
+                            item[prefix + "_inside_" + location] = inside(path, directory)
                     else:
                         item[field] = value[:100] if isinstance(value, str) else value
                 result["downloads"].append(item)
@@ -460,6 +527,7 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
 
         original_guard = ui.assert_control_ready
         control_guard_traces = []
+        reported_control_events = set()
 
         def traced_control_guard(control, window):
             trace = safe_control_guard_trace(ui, control, window)
@@ -472,6 +540,29 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
                 raise
             else:
                 trace["guard_passed"] = True
+                role = control.element_info.control_type
+                automation_id = str(control.element_info.automation_id)
+                if role == "Edit" or (role == "Button" and automation_id == "1"):
+                    probe = safe_filename_control_probe(
+                        ui, control, target, len(control_guard_traces)
+                    )
+                    events = []
+                    if role == "Edit":
+                        events.append("first_edit_guard")
+                        if probe.get("value_equals_target") is True:
+                            events.append("edit_target_value_retained")
+                    else:
+                        events.append("first_save_button_guard")
+                        if probe.get("has_keyboard_focus") is True:
+                            events.append("save_button_has_focus")
+                    fresh = [event for event in events if event not in reported_control_events]
+                    if fresh:
+                        reported_control_events.update(fresh)
+                        public_snapshot(
+                            capsys,
+                            locale,
+                            {"control_events": fresh, "filename_control_probe": probe},
+                        )
                 return result
 
         monkeypatch.setattr(ui, "assert_control_ready", traced_control_guard)

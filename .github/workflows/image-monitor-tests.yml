@@ -45,12 +45,42 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           .venv/Scripts/ruff.exe format --check .
       - name: Run unit tests and real CMD lookup regression checks
-        run: .venv/Scripts/python.exe -m pytest -q --junitxml=reports/windows-pytest.xml
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          New-Item -ItemType Directory -Force reports | Out-Null
+          .venv/Scripts/python.exe -m pytest -q --junitxml=reports/windows-pytest.xml *> reports/pytest-output.txt
+          $pytestExit = $LASTEXITCODE
+          Get-Content -LiteralPath reports/pytest-output.txt
+          $annotations = 0
+          try {
+            if (Test-Path -LiteralPath reports/windows-pytest.xml) {
+              [xml]$junit = Get-Content -Raw -LiteralPath reports/windows-pytest.xml
+              foreach ($testcase in $junit.SelectNodes('//testcase[failure or error]')) {
+                foreach ($detail in $testcase.SelectNodes('failure | error')) {
+                  $name = $testcase.GetAttribute('classname') + '.' + $testcase.GetAttribute('name')
+                  $message = $name + "`n" + $detail.InnerText
+                  $escaped = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+                  Write-Host "::error title=Windows test failure::$escaped"
+                  $annotations += 1
+                }
+              }
+            }
+          } catch {
+            Write-Host '::warning::Could not parse the current JUnit report; see captured pytest output.'
+          }
+          if ($pytestExit -ne 0 -and $annotations -eq 0) {
+            $message = Get-Content -Raw -LiteralPath reports/pytest-output.txt
+            $escaped = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Host "::error title=Windows test failure::$escaped"
+          }
+          exit $pytestExit
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: ImageMonitor-Windows-test-results-${{ github.run_number }}
-          path: image-monitor/reports/windows-pytest.xml
+          path: |
+            image-monitor/reports/windows-pytest.xml
+            image-monitor/reports/pytest-output.txt
           if-no-files-found: warn
           retention-days: 14

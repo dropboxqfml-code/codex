@@ -265,3 +265,77 @@ def test_save_dialog_control_accepts_only_its_foreground_window():
     control.is_visible.return_value = False
     with pytest.raises(NativeUIError, match="no longer visible"):
         ui.assert_control_ready(control, wrapper(300))
+
+
+def test_focus_snapshot_identifies_unrelated_window_without_titles_or_input():
+    ui = desktop_guard(foreground_hwnd=999)
+    ui.assert_ready = MagicMock(side_effect=AssertionError("Snapshot must not use an input guard"))
+
+    assert ui.focus_snapshot() == {
+        "target_hwnd": 100,
+        "foreground_hwnd": 999,
+        "foreground_pid": 999,
+        "foreground_class": "Chrome_WidgetWin_1",
+        "target_exists": True,
+        "belongs_to_target": False,
+        "target_foreground": False,
+    }
+
+    ui.assert_ready.assert_not_called()
+    ui.user32.GetWindowTextLengthW.assert_not_called()
+    ui.user32.GetWindowTextW.assert_not_called()
+    ui.user32.SetForegroundWindow.assert_not_called()
+
+
+def test_focus_snapshot_distinguishes_owned_dialog_from_page_foreground():
+    ui = desktop_guard(foreground_hwnd=300)
+    result = ui.focus_snapshot()
+    assert result["foreground_class"] == "#32770"
+    assert result["belongs_to_target"] is True
+    assert result["target_foreground"] is False
+    assert "diagnostic_error_type" not in result
+
+
+def test_focus_snapshot_keeps_partial_diagnostics_when_browser_process_disappears():
+    ui = desktop_guard(foreground_hwnd=999)
+    ui.process_ids = MagicMock(side_effect=NativeUIError("Private failure message must not leak"))
+
+    result = ui.focus_snapshot()
+
+    assert result["foreground_hwnd"] == 999
+    assert result["foreground_pid"] == 999
+    assert result["foreground_class"] == "Chrome_WidgetWin_1"
+    assert result["target_exists"] is None
+    assert result["belongs_to_target"] is None
+    assert result["target_foreground"] is None
+    assert result["diagnostic_error_type"] == "NativeUIError"
+    assert "Private failure" not in str(result)
+    ui.user32.GetWindowTextW.assert_not_called()
+
+
+def test_focus_snapshot_handles_closed_or_replaced_target_window():
+    ui = desktop_guard(foreground_hwnd=999)
+    del ui.window_graph[100]
+    result = ui.focus_snapshot()
+    assert result["target_exists"] is False
+    assert result["belongs_to_target"] is False
+    assert result["target_foreground"] is False
+
+    ui = desktop_guard(foreground_hwnd=100)
+    ui.window_graph[100] = (999, 0, 100, "Chrome_WidgetWin_1", "Private unrelated title")
+    result = ui.focus_snapshot()
+    assert result["target_exists"] is False
+    assert result["belongs_to_target"] is False
+    assert result["target_foreground"] is False
+    assert "Private unrelated title" not in str(result)
+
+
+def test_focus_snapshot_contains_no_input_when_foreground_inspection_fails():
+    ui = desktop_guard()
+    ui.user32.GetForegroundWindow.side_effect = RuntimeError("Private error detail")
+    result = ui.focus_snapshot()
+    assert result["foreground_hwnd"] is None
+    assert result["diagnostic_error_type"] == "RuntimeError"
+    assert "Private error" not in str(result)
+    ui.user32.GetWindowTextW.assert_not_called()
+    ui.user32.SetForegroundWindow.assert_not_called()

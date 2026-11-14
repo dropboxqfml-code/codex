@@ -44,6 +44,16 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+rem Recovery is only enabled by the dedicated, user-initiated retry launcher.
+if /i not "%~1"=="--recover-closed" goto start_probe
+echo Checking that the previous test browser is closed...
+>>"%LOG_FILE%" echo STAGE: recover_previous_probe
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor native-recover --confirm-browser-closed >>"%LOG_FILE%" 2>&1
+set "RECOVERY_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Explicit recovery exit code: %RECOVERY_CODE%
+if not "%RECOVERY_CODE%"=="0" goto failed
+
+:start_probe
 echo Starting the dedicated test browser. Keep that browser in front until the test ends.
 >>"%LOG_FILE%" echo STAGE: native_probe
 "%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor native-probe --work-root "%LOCALAPPDATA%\ImageMonitorProbe" --browser edge >>"%LOG_FILE%" 2>&1
@@ -66,7 +76,7 @@ goto failed
 >>"%LOG_FILE%" echo uv is not installed and WinGet is unavailable. Send this file for help.
 goto failed
 :failed
->>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry or recovery was performed.
+>>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
 >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
 echo Test stopped. Opening the result file; please send that TXT file for help.
 start "" notepad.exe "%LOG_FILE%"

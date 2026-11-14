@@ -150,6 +150,54 @@ class WindowsUI:
             current = self._root_window(owner) if owner else 0
         return False
 
+    def focus_snapshot(self) -> dict:
+        """Read safe focus diagnostics without validating or changing foreground focus.
+
+        Window titles, process names, command lines and paths are deliberately not
+        collected. This best-effort snapshot must not replace the original failure
+        if the browser or a window disappears while it is being inspected.
+        ``target_exists`` confirms a live HWND in the owned process tree only;
+        the normal input guards still enforce the unique title binding.
+        """
+        target = getattr(self, "target_hwnd", None)
+        if not isinstance(target, int) or target <= 0:
+            target = None
+        snapshot = {
+            "target_hwnd": target,
+            "foreground_hwnd": None,
+            "foreground_pid": None,
+            "foreground_class": None,
+            "target_exists": None,
+            "belongs_to_target": None,
+            "target_foreground": None,
+        }
+        try:
+            foreground = self.user32.GetForegroundWindow()
+            if isinstance(foreground, int) and foreground > 0:
+                snapshot["foreground_hwnd"] = foreground
+                if self.user32.IsWindow(foreground):
+                    snapshot["foreground_pid"] = self._window_pid(foreground) or None
+                    snapshot["foreground_class"] = self._class_name(foreground) or None
+            else:
+                foreground = None
+            pids = self.process_ids()
+            exists = bool(
+                target and self.user32.IsWindow(target) and self._window_pid(target) in pids
+            )
+            snapshot["target_exists"] = exists
+            if not exists:
+                snapshot["belongs_to_target"] = False
+                snapshot["target_foreground"] = False
+            elif foreground is not None:
+                snapshot["belongs_to_target"] = self.belongs_to_target(foreground)
+                snapshot["target_foreground"] = self._root_window(foreground) == target
+            else:
+                snapshot["belongs_to_target"] = False
+                snapshot["target_foreground"] = False
+        except Exception as error:
+            snapshot["diagnostic_error_type"] = type(error).__name__
+        return snapshot
+
     def assert_ready(self) -> None:
         handle = self.user32.OpenInputDesktop(0, False, 0x0001)  # DESKTOP_READOBJECTS
         if not handle:

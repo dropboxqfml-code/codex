@@ -48,14 +48,48 @@ def create_fixture(directory: Path) -> tuple[Path, str]:
     page = directory / "probe.html"
     title = f"Image Monitor probe {uuid.uuid4().hex}"
     page.write_text(
-        '<!doctype html><html lang="en"><meta charset="utf-8">'
+        '<!doctype html><html lang="ko"><meta charset="utf-8">'
         f"<title>{title}</title><body>"
-        "<h1>Image Monitor — synthetic native-save probe</h1>"
+        "<h1>이미지 저장 시험</h1>"
+        "<p>준비되면 아래 버튼을 한 번 누르고, 시험이 끝날 때까지 이 창을 그대로 두세요.</p>"
+        '<button id="start-test" style="font-size:24px;padding:16px" '
+        'onclick="window.imageMonitorStartRequested=true;this.disabled=true;'
+        "document.getElementById('probe-status').textContent="
+        "'시험 준비 중입니다. 이 창을 그대로 두세요.';"
+        '">시험 시작</button>'
+        '<p id="probe-status">버튼을 누르기 전에는 마우스 자동 조작을 시작하지 않습니다.</p>'
         '<img id="probe-image" src="fixture-original.png" alt="Synthetic test image">'
         "</body></html>",
         encoding="utf-8",
     )
     return page, hashlib.sha256(image_path.read_bytes()).hexdigest()
+
+
+def wait_for_user_start(page, ui, timeout: float = 300) -> None:
+    """Passively wait for an explicit local-page click and foreground ownership.
+
+    No native input or focus activation is attempted here. Once native automation
+    starts, the existing immediate-stop guards still apply to any focus loss.
+    """
+    ui.stage = "waiting_for_user_start"
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        requested = page.evaluate("window.imageMonitorStartRequested === true")
+        if requested:
+            try:
+                ui.assert_target_ready()
+            except NativeUIError:
+                pass
+            else:
+                page.evaluate(
+                    "document.getElementById('probe-status').textContent = "
+                    "'시험 진행 중입니다. 마우스와 다른 창을 조작하지 말고 기다려 주세요.'"
+                )
+                return
+        time.sleep(0.1)
+    raise NativeUIError(
+        "Start was not confirmed in the foreground probe window within the waiting period"
+    )
 
 
 def save_one_image(page, ui, target: Path) -> str | None:
@@ -64,6 +98,7 @@ def save_one_image(page, ui, target: Path) -> str | None:
     image = body.locator("img#probe-image")
     if body.count() != 1 or image.count() != 1:
         raise NativeUIError("Synthetic body image is missing or ambiguous")
+    ui.stage = "image_load"
     ui.assert_target_ready()
     image.scroll_into_view_if_needed(timeout=15_000)
     image.evaluate(
@@ -75,6 +110,7 @@ def save_one_image(page, ui, target: Path) -> str | None:
         timeout=15_000,
     )
     ui.assert_target_ready()
+    ui.stage = "right_click"
     image.click(button="right", timeout=15_000)
     ui.click_save_image_menu()
     return ui.save_dialog(str(target))
@@ -253,10 +289,12 @@ def run_probe(work_root: Path, browser: str) -> dict:
             page = context.pages[0] if context.pages else context.new_page()
             report["last_stage"] = "local_page_load"
             page.goto(html.as_uri(), wait_until="load", timeout=30_000)
+            report["last_stage"] = "window_binding"
             ui = WindowsUI(process.pid, page.title())
             report["target_hwnd"] = ui.target_hwnd
             report["environment"] = environment_info(ui)
-            print("Keep the dedicated probe browser in front. Ctrl+C stops further automation.")
+            print("Click the Start test button in the dedicated browser when ready.", flush=True)
+            wait_for_user_start(page, ui)
             report["browser_suggested_filename"] = save_one_image(page, ui, target)
             ui.stage = "file_verification"
             report["last_stage"] = ui.stage
@@ -277,6 +315,7 @@ def run_probe(work_root: Path, browser: str) -> dict:
             report["status"] = "manual_review"
             if ui is not None:
                 report["last_stage"] = ui.stage
+                report["focus_at_failure"] = ui.focus_snapshot()
             report["error_type"] = type(error).__name__
             report["reason"] = "Probe stopped; inspect its browser and staging before retrying"
             if isinstance(error, KeyboardInterrupt):
@@ -296,7 +335,20 @@ def run_probe(work_root: Path, browser: str) -> dict:
                 raise
             finally:
                 write_report(report_path, report)
-                print(f"Probe report: {report_path}")
+                print(f"Probe report: {report_path}", flush=True)
+                print(
+                    "Probe summary: "
+                    + json.dumps(
+                        {
+                            "status": report["status"],
+                            "last_stage": report["last_stage"],
+                            "error_type": report.get("error_type"),
+                            "focus_at_failure": report.get("focus_at_failure"),
+                        },
+                        ensure_ascii=False,
+                    ),
+                    flush=True,
+                )
                 if report["status"] == "probe_passed":
                     state.finish(pending)
         return report

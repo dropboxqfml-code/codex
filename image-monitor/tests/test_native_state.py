@@ -183,7 +183,7 @@ def test_initial_fsync_failure_keeps_durable_state_blocked(tmp_path, monkeypatch
         state.assert_clear()
 
 
-def test_native_ui_failure_blocks_launch_from_another_work_root(tmp_path, monkeypatch):
+def test_native_ui_failure_blocks_launch_from_another_work_root(tmp_path, monkeypatch, capsys):
     marker = tmp_path / "app-state" / "pending.json"
     driver = MagicMock()
     monkeypatch.setitem(sys.modules, "playwright", ModuleType("playwright"))
@@ -209,9 +209,15 @@ def test_native_ui_failure_blocks_launch_from_another_work_root(tmp_path, monkey
     browser = MagicMock()
     browser.version = "test-browser"
     monkeypatch.setattr(native_probe, "connect_owned_browser", lambda *_args: browser)
-    ui = SimpleNamespace(stage="save_dialog", target_hwnd=123, browser_suggested_filename=None)
+    ui = SimpleNamespace(
+        stage="save_dialog",
+        target_hwnd=123,
+        browser_suggested_filename=None,
+        focus_snapshot=lambda: {"foreground_class": "ConsoleWindowClass"},
+    )
     monkeypatch.setattr(native_probe, "WindowsUI", lambda *_args: ui)
     monkeypatch.setattr(native_probe, "environment_info", lambda _ui: {})
+    monkeypatch.setattr(native_probe, "wait_for_user_start", lambda *_args: None)
 
     def fail_save(*_args):
         raise NativeUIError("Unrecognized native menu")
@@ -224,6 +230,14 @@ def test_native_ui_failure_blocks_launch_from_another_work_root(tmp_path, monkey
     report = json.loads((Path(pending["run_directory"]) / "report.json").read_text())
     assert report["status"] == "manual_review"
     assert report["last_stage"] == "save_dialog"
+    assert report["focus_at_failure"]["foreground_class"] == "ConsoleWindowClass"
+    summary_line = next(
+        line for line in capsys.readouterr().out.splitlines() if line.startswith("Probe summary: ")
+    )
+    summary = json.loads(summary_line.removeprefix("Probe summary: "))
+    assert summary["last_stage"] == "save_dialog"
+    assert summary["error_type"] == "NativeUIError"
+    assert summary["focus_at_failure"] == report["focus_at_failure"]
     with pytest.raises(NativeUIError, match="unresolved"):
         native_probe.run_probe(tmp_path / "root-b", "edge")
     launch.assert_called_once()

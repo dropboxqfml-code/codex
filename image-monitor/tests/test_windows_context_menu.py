@@ -11,10 +11,12 @@ import json
 import logging
 import os
 import platform
+import sqlite3
 import stat
 import subprocess
 import sys
 import time
+from contextlib import closing
 
 import pytest
 
@@ -249,6 +251,66 @@ def safe_fixture_staging_snapshot(target, original, expected_hash):
     return result
 
 
+def safe_profile_downloads_snapshot(profile, expected_target):
+    """Read a few download records from this disposable profile, never URLs/full paths."""
+    history = profile / "Default" / "History"
+    result = {"history_exists": False, "downloads": []}
+    expected = os.path.normcase(os.path.abspath(expected_target))
+    fields = (
+        "state",
+        "danger_type",
+        "interrupt_reason",
+        "received_bytes",
+        "total_bytes",
+        "mime_type",
+        "current_path",
+        "target_path",
+    )
+    try:
+        if not history.is_file():
+            return result
+        result["history_exists"] = True
+        with closing(
+            sqlite3.connect(history.resolve().as_uri() + "?mode=ro", uri=True, timeout=0.2)
+        ) as db:
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            db.execute("PRAGMA trusted_schema=OFF")
+            present = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='downloads'"
+            ).fetchone()
+            result["downloads_table_present"] = present is not None
+            if present is None:
+                return result
+            available = {row["name"] for row in db.execute("PRAGMA table_info(downloads)")}
+            selected = [field for field in fields if field in available]
+            result["missing_fields"] = [field for field in fields if field not in available]
+            if not selected:
+                return result
+            # All SQL identifiers come from the fixed allowlist above.
+            order = "id" if "id" in available else "rowid"
+            query = (
+                "SELECT " + ",".join(selected) + f" FROM downloads ORDER BY {order} DESC LIMIT 3"
+            )
+            for row in db.execute(query):
+                item = {}
+                for field in selected:
+                    value = row[field]
+                    if field in {"current_path", "target_path"}:
+                        path = value if isinstance(value, str) else ""
+                        prefix = field.removesuffix("_path")
+                        item[prefix + "_name"] = os.path.basename(path)[:160] if path else None
+                        item[prefix + "_equals_expected"] = bool(
+                            path and os.path.normcase(os.path.abspath(path)) == expected
+                        )
+                    else:
+                        item[field] = value[:100] if isinstance(value, str) else value
+                result["downloads"].append(item)
+    except Exception as error:
+        result["diagnostic_error_type"] = type(error).__name__
+    return result
+
+
 def bind_owned_window(process, title, timeout=15):
     deadline = time.monotonic() + timeout
     last_error = None
@@ -407,10 +469,21 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
             )
         except Exception as error:
             # Put the reason/trace first: GitHub truncates large public notices.
+            profile_downloads = safe_profile_downloads_snapshot(profile, target)
+            public_snapshot(
+                capsys,
+                locale,
+                {
+                    "native_save_stage": native_save_stage,
+                    "profile_downloads": profile_downloads,
+                    **metadata,
+                },
+            )
             after = {
                 "native_save_stage": native_save_stage,
                 "native_save_error_type": type(error).__name__,
                 "native_save_error": str(error)[:800],
+                "profile_downloads": profile_downloads,
                 "fixture_staging": safe_fixture_staging_snapshot(
                     target, html.parent / "fixture-original.png", expected_hash
                 ),

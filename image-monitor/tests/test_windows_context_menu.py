@@ -1,7 +1,8 @@
-"""Read a real owned Edge context menu in an explicitly enabled Windows CI session.
+"""Save a controlled PNG through real owned Edge UI in opted-in Windows CI.
 
-The identified UIA Invoke is intercepted: this check never opens Save As, writes an
-image, uses a personal profile, or interacts with an unidentified menu entry.
+First intercept identified menu execution to inspect the unchanged guards. Then
+restore Invoke and use the actual native Save As dialog for this disposable fixture.
+Never use a personal profile, unidentified menu entry, direct download or screenshot.
 """
 
 import json
@@ -19,6 +20,7 @@ from image_monitor.native_probe import (
     connect_owned_browser,
     create_fixture,
     wait_for_debug_port,
+    wait_for_fixture,
 )
 from image_monitor.native_ui import NativeUIError, WindowsUI, normalize_label
 
@@ -166,7 +168,7 @@ def foreground_owned_window(page, ui, timeout=10):
 
 
 @pytest.mark.parametrize("locale", ["en-US", "ko-KR"])
-def test_owned_headed_edge_context_menu_is_identified_without_executing_it(
+def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
     tmp_path, monkeypatch, capsys, locale
 ):
     import psutil
@@ -174,7 +176,10 @@ def test_owned_headed_edge_context_menu_is_identified_without_executing_it(
     from pywinauto.controls.uia_controls import MenuItemWrapper
     from pywinauto.controls.uiawrapper import UIAWrapper
 
-    html, _hash = create_fixture(tmp_path / "fixture")
+    html, expected_hash = create_fixture(tmp_path / "fixture")
+    staging = tmp_path / "_staging"
+    staging.mkdir()
+    target = staging / "native-image.png"
     profile = tmp_path / "browser-profile"
     profile.mkdir()
     process = subprocess.Popen(
@@ -195,12 +200,14 @@ def test_owned_headed_edge_context_menu_is_identified_without_executing_it(
     )
     owned_process = psutil.Process(process.pid)
     created_at = owned_process.create_time()
-    driver = browser = ui = None
+    driver = browser = ui = cleanup_session = None
     selected = []
     try:
         port = wait_for_debug_port(profile, process, timeout=30)
         driver = sync_playwright().start()
         browser = connect_owned_browser(driver, port)
+        # Create this before native menus/dialogs can enter a modal message loop.
+        cleanup_session = browser.new_browser_cdp_session()
         metadata = {"browser_version": browser.version, "windows_version": platform.version()}
         context = browser.contexts[0]
         page = context.pages[0] if context.pages else context.new_page()
@@ -227,8 +234,6 @@ def test_owned_headed_edge_context_menu_is_identified_without_executing_it(
             selected.append(control.window_text())
             return control
 
-        monkeypatch.setattr(UIAWrapper, "invoke", identified_invoke)
-        monkeypatch.setattr(MenuItemWrapper, "invoke", identified_invoke)
         original_guard = ui.assert_control_ready
         control_guard_traces = []
 
@@ -246,11 +251,42 @@ def test_owned_headed_edge_context_menu_is_identified_without_executing_it(
                 return result
 
         monkeypatch.setattr(ui, "assert_control_ready", traced_control_guard)
+        native_save_stage = "context_menu_identification"
         try:
+            with monkeypatch.context() as invoke_interception:
+                invoke_interception.setattr(UIAWrapper, "invoke", identified_invoke)
+                invoke_interception.setattr(MenuItemWrapper, "invoke", identified_invoke)
+                ui.click_save_image_menu()
+            assert len(selected) == 1
+            # Invoke is now real again. The identified menu is still open because
+            # the interception above performed no UI action.
+            native_save_stage = "context_menu_invoke"
             ui.click_save_image_menu()
+            native_save_stage = "save_dialog"
+            ui.save_dialog(str(target))
+            native_save_stage = "file_verification"
+            verified = wait_for_fixture(target, expected_hash, ui, timeout=30)
+            assert verified["detected_format"] == "PNG"
+            assert verified["sha256"] == expected_hash
+            assert target.read_bytes() == (html.parent / "fixture-original.png").read_bytes()
+            public_snapshot(
+                capsys,
+                locale,
+                {
+                    "native_save_verified": True,
+                    "menu_name": selected[0],
+                    **metadata,
+                    "detected_format": verified["detected_format"],
+                    "sha256": verified["sha256"],
+                    "file_size": verified["file_size"],
+                },
+            )
         except Exception as error:
             # Put the reason/trace first: GitHub truncates large public notices.
             after = {
+                "native_save_stage": native_save_stage,
+                "native_save_error_type": type(error).__name__,
+                "native_save_error": str(error)[:800],
                 "selection_error_type": type(error).__name__,
                 "selection_error": str(error)[:800],
                 "control_guard_trace": control_guard_traces,
@@ -259,7 +295,7 @@ def test_owned_headed_edge_context_menu_is_identified_without_executing_it(
             }
             public_snapshot(capsys, locale, after)
             pytest.fail(
-                "Owned native context menu was not identified safely: "
+                "Owned native image save did not complete safely: "
                 + json.dumps(
                     {
                         "error_type": type(error).__name__,
@@ -270,7 +306,6 @@ def test_owned_headed_edge_context_menu_is_identified_without_executing_it(
                     ensure_ascii=False,
                 )
             )
-        assert len(selected) == 1
     finally:
         already_failed = sys.exc_info()[0] is not None
         cleanup_errors = []
@@ -300,12 +335,21 @@ def test_owned_headed_edge_context_menu_is_identified_without_executing_it(
                     cleanup_errors.append(type(error).__name__)
             if browser is not None:
                 try:
-                    close_probe_browser(browser, process)
+                    if cleanup_session is not None:
+                        try:
+                            cleanup_session.send("Browser.close", timeout=5_000)
+                        except Exception:
+                            # Normal browser exit can disconnect before its reply.
+                            pass
+                        process.wait(timeout=10)
+                    else:
+                        close_probe_browser(browser, process)
                 except Exception as error:
                     cleanup_errors.append(type(error).__name__)
             if process.poll() is None:
-                # This CI check cannot have a file save in flight. A failed close
-                # may terminate only the exact fresh process created by this test.
+                # Only this disposable synthetic fixture can be in flight. A failed
+                # normal close may terminate this exact CI process, never a user's
+                # browser. Production retains uncertain saves for manual inspection.
                 if owned_process.is_running() and owned_process.create_time() == created_at:
                     owned_process.terminate()
                     process.wait(timeout=10)

@@ -1,5 +1,6 @@
 import ctypes
 from ctypes import wintypes
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -55,6 +56,9 @@ def desktop_guard(name="Default", foreground_pid=10, available=True, foreground_
     ui.process_ids = lambda: {10}
     ui.desktop = MagicMock()
     ui.desktop.windows.return_value = [wrapper(100)]
+    ui.desktop.window.side_effect = lambda *, handle: SimpleNamespace(
+        wrapper_object=lambda: wrapper(handle)
+    )
     return ui
 
 
@@ -62,6 +66,7 @@ def wrapper(hwnd):
     window = MagicMock()
     window.handle = hwnd
     window.process_id.return_value = 999 if hwnd == 999 else 10
+    window.element_info = SimpleNamespace(control_type="Window", identity=hwnd)
     return window
 
 

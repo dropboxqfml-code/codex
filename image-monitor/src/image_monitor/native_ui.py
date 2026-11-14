@@ -369,32 +369,73 @@ class WindowsUI:
 
     def assert_control_ready(self, control, window) -> None:
         self.assert_ready()
+        native_hwnd = window.handle
         if (
-            not self.belongs_to_target(window.handle)
+            type(native_hwnd) is not int
+            or native_hwnd <= 0
+            or not self.belongs_to_target(native_hwnd)
             or control.process_id() not in self.process_ids()
         ):
             raise NativeUIError("UI control is outside the bound probe window owner chain")
+        if not window.is_visible() or not control.is_visible() or not control.is_enabled():
+            raise NativeUIError("Identified native control is no longer visible and enabled")
+
+        # Chromium may expose an intermediate Pane with its own HWND before the
+        # real browser Window ancestor. A first-positive-HWND test mistakes that
+        # Pane for the root. Rebind the trusted native window via ElementFromHandle
+        # and require the fresh UIA parent chain to reach that exact element.
+        # UIAElementInfo equality calls IUIAutomation.CompareElements; wrapper
+        # handles and top_level_parent() caches are not identity proof.
+        try:
+            fresh_root = self.desktop.window(handle=native_hwnd).wrapper_object()
+            if fresh_root.process_id() not in self.process_ids():
+                raise NativeUIError("Native window provider is outside the owned process tree")
+            expected = fresh_root.element_info
+            current = control
+            visited = []
+            matched = False
+            for _ in range(32):
+                if current is None:
+                    break
+                pid = current.process_id()
+                if pid and pid not in self.process_ids():
+                    break
+                info = current.element_info
+                if any(info == previous for previous in visited):
+                    break
+                visited.append(info)
+                role = info.control_type
+                if role == "Document":
+                    raise NativeUIError("Document content is not an identified native UI control")
+                if info == expected:
+                    matched = True
+                    break
+                if role == "Window":
+                    break
+                current = current.parent()
+        except NativeUIError:
+            raise
+        except Exception as error:
+            raise NativeUIError("Cannot verify the current native UI parent chain") from error
+        if not matched:
+            raise NativeUIError("UI control no longer belongs to the identified native window")
+
+        # Recheck native ownership and focus after provider traversal, immediately
+        # before the caller acts. A same-PID element alone is never sufficient.
+        self.assert_ready()
+        if (
+            not self.user32.IsWindow(native_hwnd)
+            or self._window_pid(native_hwnd) not in self.process_ids()
+            or not self.belongs_to_target(native_hwnd)
+        ):
+            raise NativeUIError("Identified native window changed during UI verification")
         if not control.is_visible() or not control.is_enabled():
             raise NativeUIError("Identified native control is no longer visible and enabled")
-        # top_level_parent() caches its result in pywinauto. Walk current parents
-        # until a native HWND is found so a reparented/stale virtual element fails closed.
-        current = control
-        control_root = 0
-        for _ in range(32):
-            if current is None or current.process_id() not in self.process_ids():
-                break
-            hwnd = current.handle
-            if isinstance(hwnd, int) and hwnd:
-                control_root = self._root_window(hwnd)
-                break
-            current = current.parent()
-        window_root = self._root_window(window.handle)
-        if not self.belongs_to_target(control_root) or control_root != window_root:
-            raise NativeUIError("UI control no longer belongs to the identified native window")
+        window_root = self._root_window(native_hwnd)
         foreground = self._root_window(self.user32.GetForegroundWindow())
         allowed_foreground = (
             {window_root}
-            if self._class_name(window.handle) == "#32770"
+            if self._class_name(native_hwnd) == "#32770"
             else {self.target_hwnd, window_root}
         )
         if foreground not in allowed_foreground:

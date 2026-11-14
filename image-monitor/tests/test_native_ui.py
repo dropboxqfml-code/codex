@@ -127,6 +127,13 @@ def test_menu_only_invokes_identified_save_image_action():
     items[2].invoke.assert_called_once()
 
 
+def test_edge_korean_image_save_name_is_recognized_without_selecting_page_save():
+    ui, items = menu_ui(["다른 이름으로 페이지 저장", "다른 이름으로 사진 저장(V)"])
+    ui.click_save_image_menu()
+    items[0].invoke.assert_not_called()
+    items[1].invoke.assert_called_once()
+
+
 def test_ambiguous_menu_never_invokes_either_match():
     ui, items = menu_ui(["Save image as...", "Save image as..."])
     with pytest.raises(NativeUIError, match="found 2"):

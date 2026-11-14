@@ -418,7 +418,7 @@ class WindowsUI:
 
     def click_save_image_menu(self) -> None:
         self.stage = "context_menu"
-        labels = {"Save image as", "이미지를 다른 이름으로 저장"}
+        labels = {"Save image as", "이미지를 다른 이름으로 저장", "다른 이름으로 사진 저장"}
 
         def lookup():
             items = [

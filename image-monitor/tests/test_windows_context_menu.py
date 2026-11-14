@@ -97,6 +97,43 @@ def public_snapshot(capsys, locale, snapshot):
         print(f"\n::notice title=Owned Edge menu snapshot::{escaped}", flush=True)
 
 
+def safe_control_guard_trace(ui, control, window):
+    """Read native parent identities only, with no names or UI actions."""
+    trace = {"window": {}, "control_parent_chain": []}
+    try:
+        window_handle = window.handle
+        trace["window"] = {
+            "hwnd": window_handle,
+            "pid": window.process_id(),
+            "root_hwnd": ui._root_window(window_handle),
+        }
+        pids = ui.process_ids()
+        current = control
+        for _index in range(32):
+            if current is None:
+                trace["end"] = "parent_none"
+                break
+            pid = current.process_id()
+            hwnd = current.handle
+            trace["control_parent_chain"].append(
+                {
+                    "pid": pid,
+                    "role": current.element_info.control_type,
+                    "hwnd": hwnd,
+                    "root_hwnd": ui._root_window(hwnd) if isinstance(hwnd, int) and hwnd else None,
+                }
+            )
+            if pid not in pids:
+                trace["end"] = "outside_owned_processes"
+                break
+            current = current.parent()
+        else:
+            trace["end"] = "bounded_at_32"
+    except Exception as error:
+        trace["diagnostic_error_type"] = type(error).__name__
+    return trace
+
+
 def bind_owned_window(process, title, timeout=15):
     deadline = time.monotonic() + timeout
     last_error = None
@@ -185,16 +222,41 @@ def test_owned_headed_edge_context_menu_is_identified_without_executing_it(
             assert normalize_label(control.window_text()) in {
                 "Save image as",
                 "이미지를 다른 이름으로 저장",
+                "다른 이름으로 사진 저장",
             }
             selected.append(control.window_text())
             return control
 
         monkeypatch.setattr(UIAWrapper, "invoke", identified_invoke)
         monkeypatch.setattr(MenuItemWrapper, "invoke", identified_invoke)
+        original_guard = ui.assert_control_ready
+        control_guard_traces = []
+
+        def traced_control_guard(control, window):
+            trace = safe_control_guard_trace(ui, control, window)
+            control_guard_traces.append(trace)
+            try:
+                result = original_guard(control, window)
+            except Exception as error:
+                trace["guard_error_type"] = type(error).__name__
+                trace["guard_error"] = str(error)[:800]
+                raise
+            else:
+                trace["guard_passed"] = True
+                return result
+
+        monkeypatch.setattr(ui, "assert_control_ready", traced_control_guard)
         try:
             ui.click_save_image_menu()
         except Exception as error:
-            after = safe_owned_menu_snapshot(ui) | metadata
+            # Put the reason/trace first: GitHub truncates large public notices.
+            after = {
+                "selection_error_type": type(error).__name__,
+                "selection_error": str(error)[:800],
+                "control_guard_trace": control_guard_traces,
+                **metadata,
+                **safe_owned_menu_snapshot(ui),
+            }
             public_snapshot(capsys, locale, after)
             pytest.fail(
                 "Owned native context menu was not identified safely: "

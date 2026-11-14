@@ -1,5 +1,20 @@
 # Image Monitor Windows 시험판
 
+[준비 버튼·재시험 지원 v4 다운로드](image-monitor-windows-test-v4.zip)
+
+[사용자용 짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)
+
+uv·Python·의존성 설치를 마친 뒤 전경 조건 검사에서 중단된 시험을 위한 버전입니다.
+이전 시험 브라우저를 닫은 뒤 재시험 CMD를 실행하고, 새 페이지의 `시험 시작` 버튼으로
+준비를 알릴 수 있습니다. 사용자 작업은 TXT에 3단계로 정리했습니다.
+중단 단계와 안전한 포커스 진단도 결과 TXT 하나에 함께 남깁니다.
+
+Linux 및 Windows 자동검사: 각각 145개 통과·2개 건너뜀.
+[Windows 검사](https://github.com/dropboxqfml-code/codex/actions/runs/43640188829)
+브라우저 시작 버튼의 동작과 모의 전경 판정을 검사했으며, 실제 저장 UI 성공은 아직 미확인입니다.
+
+## 이전 시험판 v3
+
 [수정 시험판 v3 다운로드](image-monitor-windows-test-v3.zip)
 
 [사용자용 짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)

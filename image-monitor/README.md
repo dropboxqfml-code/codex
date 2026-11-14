@@ -13,6 +13,8 @@ Windows 전용 [이미지 1장 네이티브 저장 시험](docs/native-probe.md)
 Windows 사용자는 [짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)를 읽고
 `RUN_WINDOWS_TEST.cmd`를 더블클릭하면 됩니다. uv가 없으면 공식 WinGet으로 설치하고,
 관리형 Python·의존성을 준비한 뒤 시험 결과 TXT를 메모장으로 엽니다.
+이전 시험 뒤 재시험은 전용 시험 브라우저를 닫고 `RETRY_WINDOWS_TEST.cmd`를 사용합니다.
+새 페이지의 `시험 시작` 버튼을 누른 뒤 전경 조건이 확인되어야 자동 조작을 시작합니다.
 
 ## 현재 구현
 

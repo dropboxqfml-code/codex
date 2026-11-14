@@ -237,6 +237,8 @@ def test_native_ui_failure_blocks_launch_from_another_work_root(tmp_path, monkey
     summary = json.loads(summary_line.removeprefix("Probe summary: "))
     assert summary["last_stage"] == "save_dialog"
     assert summary["error_type"] == "NativeUIError"
+    assert summary["browser_version"] == "test-browser"
+    assert summary["environment"] == {}
     assert summary["focus_at_failure"] == report["focus_at_failure"]
     with pytest.raises(NativeUIError, match="unresolved"):
         native_probe.run_probe(tmp_path / "root-b", "edge")

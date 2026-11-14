@@ -5,8 +5,8 @@
 | 검사 | 결과 |
 | --- | --- |
 | `uv sync --locked` 반복 설치 | 성공 |
-| 새 프로젝트 Linux `pytest -q` | 135 passed, 2 skipped (Windows CMD 전용 테스트 건너뜀) |
-| Windows CI `pytest -q` | 135 passed, 2 skipped (총 137개, failure/error 0) |
+| 새 프로젝트 Linux `pytest -q` | 145 passed, 2 skipped (Windows CMD 전용 테스트 건너뜀) |
+| Windows CI `pytest -q` | 145 passed, 2 skipped (총 147개, failure/error 0) |
 | 새 프로젝트 Ruff lint / format | 통과 |
 | `image-monitor plan` 실제 CLI 실행 | 날짜 fallback과 경로 JSON 확인 |
 | `image-monitor verify` 실제 CLI 실행 | 생성한 WebP의 형식·24×16 크기·SHA-256 확인 |
@@ -109,3 +109,23 @@ fixture는 명시적으로 허용된 GitHub Windows 러너에서만 잠시 설�
 일반 사용자 시험과 실제 실행기는 레지스트리를 수정하지 않습니다.
 이 결과는 경로 검색·단위 테스트의 Windows 호환성을 확인한 것이며 브라우저 저장 UI를
 성공으로 검증한 결과는 아닙니다.
+
+## 전경 창 보호 중단 이후 개선
+
+후속 사용자 TXT에서 uv·Python 3.12.14·의존성 17개 설치와 브라우저 연결 이후 전경 창
+보호 검사로 중단된 것을 확인했습니다. 원래 TXT에 마지막 조작 단계가 없어 시작 대기,
+메뉴, 저장 창, 파일 검증 중 어디서 중단됐는지는 단정하지 않습니다.
+
+시험 페이지에 `시험 시작` 버튼을 추가했습니다. 클릭과 전경 조건을 입력 없이 기다리고,
+실제 조작 이후에는 기존의 즉시 중단 검사를 그대로 유지합니다. 별도 재시험 CMD는 사용자가
+이전 시험 브라우저를 닫은 뒤 명시적으로 실행하며, 기존 프로세스/프로필 종료 검사에 실패하면
+새 시험을 시작하지 않습니다. 실패 뒤 자동 복구나 반복 실행은 없습니다.
+
+결과 TXT에 마지막 단계·브라우저 버전·환경과 안전한 포커스 진단을 함께 보존합니다.
+다른 창의 제목·내용·명령줄은 수집하지 않습니다. Linux Chromium과 Windows Edge의
+실제 로컬 시험 페이지에서 버튼 클릭/미클릭 상태를 검사했습니다. Linux 파일 URL 정책은
+바꾸지 않고, 브라우저 시험에 한해 임시 합성 파일만 루프백 HTTP로 제공했습니다.
+해당 브라우저 시험에서 OS 전경 판정은 모의 객체이며 실제 Windows 저장 UI 검증과 구분합니다.
+
+[개선 후 Windows 검사](https://github.com/dropboxqfml-code/codex/actions/runs/43640188829)는
+145개 통과·2개 건너뜀으로 완료됐습니다. 실제 사용자 PC의 네이티브 저장 성공은 아직 미확인입니다.

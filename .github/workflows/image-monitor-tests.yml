@@ -55,6 +55,13 @@ jobs:
           try {
             if (Test-Path -LiteralPath reports/windows-pytest.xml) {
               [xml]$junit = Get-Content -Raw -LiteralPath reports/windows-pytest.xml
+              $totals = @{ tests = 0; failures = 0; errors = 0; skipped = 0 }
+              foreach ($suite in $junit.SelectNodes('//testsuite')) {
+                foreach ($key in @('tests', 'failures', 'errors', 'skipped')) {
+                  $totals[$key] += [int]$suite.GetAttribute($key)
+                }
+              }
+              Write-Host "::notice title=Windows test summary::tests=$($totals.tests), failures=$($totals.failures), errors=$($totals.errors), skipped=$($totals.skipped)"
               foreach ($testcase in $junit.SelectNodes('//testcase[failure or error]')) {
                 foreach ($detail in $testcase.SelectNodes('failure | error')) {
                   $name = $testcase.GetAttribute('classname') + '.' + $testcase.GetAttribute('name')

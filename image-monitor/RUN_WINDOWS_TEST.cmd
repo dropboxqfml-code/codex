@@ -17,7 +17,7 @@ if not exist "uv.lock" goto missing_project
 if not defined LOCALAPPDATA goto missing_appdata
 
 echo Preparing the test. Please wait; first setup can take several minutes.
-call :find_uv
+call :find_uv 2>>"%LOG_FILE%"
 if defined UV_EXE goto uv_ready
 echo Installing uv from the official WinGet package...
 >>"%LOG_FILE%" echo STAGE: install_uv
@@ -27,7 +27,7 @@ winget.exe install --id astral-sh.uv --exact --source winget --accept-source-agr
 set "INSTALL_CODE=%ERRORLEVEL%"
 >>"%LOG_FILE%" echo WinGet exit code: %INSTALL_CODE%
 if not "%INSTALL_CODE%"=="0" goto failed
-call :find_uv
+call :find_uv 2>>"%LOG_FILE%"
 if defined UV_EXE goto uv_ready
 >>"%LOG_FILE%" echo uv was not found on the process PATH, persistent Windows PATH, or known installation paths.
 goto failed
@@ -89,7 +89,7 @@ for /f "delims=" %%U in ('where uv.exe 2^>nul') do if not defined UV_EXE if exis
 if defined UV_EXE exit /b 0
 rem WinGet updates persistent PATH, not this already-running CMD process.
 rem Read and expand Machine/User PATH in a child only; never modify registry or policy.
-for /f "usebackq delims=" %%U in (`call "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = [Console]::OutputEncoding; $found = @(Get-Command uv.exe -CommandType Application -ErrorAction SilentlyContinue)[0]; if (-not $found) { $env:Path = [Environment]::ExpandEnvironmentVariables([Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')); $found = @(Get-Command uv.exe -CommandType Application -ErrorAction SilentlyContinue)[0] }; if ($found) { [Console]::WriteLine($found.Source) }" 2^>nul`) do if not defined UV_EXE if exist "%%~fU" set "UV_EXE=%%~fU"
+for /f "usebackq delims=" %%U in (`call "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = [Console]::OutputEncoding; $found = @(Get-Command uv.exe -CommandType Application -ErrorAction SilentlyContinue)[0]; if (-not $found) { $env:Path = [Environment]::ExpandEnvironmentVariables([Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')); $found = @(Get-Command uv.exe -CommandType Application -ErrorAction SilentlyContinue)[0] }; if ($found) { [Console]::WriteLine($found.Source) }"`) do if not defined UV_EXE if exist "%%~fU" set "UV_EXE=%%~fU"
 if defined UV_EXE exit /b 0
 if exist "%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe" set "UV_EXE=%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe"
 if defined UV_EXE exit /b 0

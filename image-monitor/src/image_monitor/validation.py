@@ -43,15 +43,24 @@ class VerifiedImage:
 
 
 def _file_state(info: os.stat_result) -> tuple[int, ...]:
-    """Bind metadata to the opened file, excluding atime changed by our own reads."""
+    """Metadata whose meaning is shared by path stat and descriptor stat.
+
+    On CPython 3.12 Windows, path stat retains creation time in st_ctime, while
+    descriptor stat can expose metadata change time. Never compare those across
+    APIs. atime is also excluded because our own reads can change it.
+    """
     return (
         info.st_dev,
         info.st_ino,
         info.st_mode,
         info.st_size,
         info.st_mtime_ns,
-        info.st_ctime_ns,
     )
+
+
+def _descriptor_state(info: os.stat_result) -> tuple[int, ...]:
+    """Retain change-time checks when comparing two stats of the same descriptor."""
+    return (*_file_state(info), info.st_ctime_ns)
 
 
 def verify_image(
@@ -115,9 +124,9 @@ def verify_image(
                 digest.update(block)
             after = os.fstat(stream.fileno())
             final_path = path.lstat()
-            if _file_state(before) != _file_state(after) or _file_state(after) != _file_state(
-                final_path
-            ):
+            if _descriptor_state(before) != _descriptor_state(after) or _file_state(
+                after
+            ) != _file_state(final_path):
                 raise VerificationIncomplete("File changed during verification")
             return VerifiedImage(
                 fmt, EXTENSIONS[fmt], after.st_size, digest.hexdigest(), width, height, frames

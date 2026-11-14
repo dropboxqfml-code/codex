@@ -22,7 +22,8 @@ def run_lookup(*, path: str) -> str:
     environment = os.environ.copy()
     environment["PATH"] = path
     environment["PYTHONUTF8"] = "1"
-    command_processor = Path(environment["SystemRoot"]) / "System32" / "cmd.exe"
+    # os.environ is case-insensitive on Windows, but its copied dict is not.
+    command_processor = Path(environment["SYSTEMROOT"]) / "System32" / "cmd.exe"
     # /s /c needs one surrounding quote pair in addition to the executable's pair.
     command = f'"{command_processor}" /d /s /c ""{LAUNCHER}" --find-uv"'
     existing_logs = set(LAUNCHER.parent.glob("WINDOWS_TEST_RESULT-*.txt"))

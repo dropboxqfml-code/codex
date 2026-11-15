@@ -9,13 +9,13 @@ v9 사용자 환경에서 WEBP 한 개의 실제 저장·검증·확정을 확�
 v10 사용자 결과로 기존 파일을 보존한 입력 전 재개와 해당 게시글의 전체 4개 저장 인수를
 완료했습니다. 사용자 v12 결과에서는 한 검색 범위의 목록 구조와 두 페이지 이동을 확인했습니다.
 다른 게시글의 본문·다른 검색 범위·목록 후보의 이미지 자동 저장은 아직 검증하지 않았습니다.
-Linux 자동화 수치는 v13 변경을 검사한 결과입니다. Windows v13 검사는 진행 중이며 아래 이전 검증과 구분합니다.
+아래 Linux·Windows 자동화 수치는 v13 변경을 검사한 결과입니다. 사용자 실사이트 시험과 구분합니다.
 
 | 검사 | 결과 |
 | --- | --- |
 | Linux / CPython 3.12.14 `pytest -q` | 1229 passed, 96 skipped; Windows 전용·경로 대소문자 시험 건너뜀 |
 | Ruff lint / format | 통과 |
-| [Windows CI #31](https://github.com/dropboxqfml-code/codex/actions/runs/43725237417) · Ruff / pytest | 1122 passed, 4 skipped; 목록 구조 선택·URL 진단·최대 두 페이지 관찰과 기존 실제 저장/재개 |
+| [Windows CI #33](https://github.com/dropboxqfml-code/codex/actions/runs/43729241383) · Ruff / pytest | 1321 passed, 4 skipped; 실제 Chrome의 한정 감시 연결 fixture·OS 잠금·CMD와 기존 실제 저장/재개 |
 | 관리형 Python / Windows 의존성 잠금 설치 | Windows CI와 사용자 TXT에서 성공 확인 |
 | 실제 Windows CMD의 uv 검색 | 한글·공백·앰퍼샌드 경로와 새 사용자 PATH 검색 통과 |
 | 기존 Image Duplicate Finder 테스트 | 57 passed, 1 skipped; 기존 앱 수정 없음 |
@@ -356,8 +356,14 @@ Linux 자동 검사에서 1,229개 통과·96개 건너뜀을 확인했습니다
 가상 시계의 60초 대기와 최신→최신→인접 페이지 이동, 새 후보 2개·게시글/이미지 작업 0개,
 브라우저 실제 종료를 확인했습니다. 단위/통합 검사에는 취소 후 재실행 대기·손상된 제어 기록 거부,
 429/503 대기와 접근 차단·부분 스캔·후보 갱신·OS 잠금·CLI/공유 보고서도 포함합니다.
-Windows의 새 자동화 검증과 사용자 실사이트 한정 감시는 아직 결과 확인 전이며,
-기존 v10 게시글 4개 저장 인수와 v12 목록 관찰을 이 시험의 성공으로 확대하지 않습니다.
+[Windows CI #33](https://github.com/dropboxqfml-code/codex/actions/runs/43729241383)에서
+전체 1,325개 중 1,321개 통과·4개 건너뜀으로 완료됐습니다. 실제 시스템 Chrome의 합성
+목록을 이용한 두 주기 연결·브라우저 종료, Windows 프로세스 간 잠금과 대소문자 경로,
+실제 CMD의 새 모드 분기·상충 인자·인용 경로 전달도 통과했습니다. 기존 영어·한국어
+Edge/Chrome 기본 저장과 Chrome의 연속 PNG/JPEG/GIF 확정·중복 방지·전경 이탈 재개도
+회귀 검사를 통과했습니다. 검증한 소스 커밋은 `c8e5ec8cfa56c5c4d53255ee4bb575b344a10770`입니다.
+사용자 실사이트 한정 감시는 새 결과로 확인해야 하며, 기존 v10 게시글 4개 저장 인수와
+v12 목록 관찰을 이 시험의 성공으로 확대하지 않습니다.
 
 ## 남은 작업
 

@@ -4,6 +4,7 @@ This module only performs native saving. The caller must independently confirm
 browser completion and validate the resulting file before recording success.
 """
 
+from collections.abc import Callable
 from pathlib import Path, PureWindowsPath
 from urllib.parse import urlsplit
 
@@ -88,8 +89,21 @@ def _stage_target(directory: Path, suggested: str | None, *, native_extension=No
     return str(target)
 
 
-def save_body_image(page, ui, *, post_url: str, image: dict, staging_directory: Path) -> dict:
-    """Save the exact currentSrc from one inspected, eligible post body occurrence."""
+def save_body_image(
+    page,
+    ui,
+    *,
+    post_url: str,
+    image: dict,
+    staging_directory: Path,
+    before_native_input: Callable[[], None] | None = None,
+) -> dict:
+    """Save an inspected image, arming durable state before the first page interaction."""
+    ui.browser_suggested_filename = None
+    ui.browser_suggested_extension = None
+    ui.browser_suggested_file_type = None
+    if before_native_input is not None and not callable(before_native_input):
+        raise NativeUIError("The native input boundary callback must be callable")
     try:
         expected_post = dcinside.validate_post_url(post_url)["canonical_url"]
     except (TypeError, ValueError) as error:
@@ -198,12 +212,6 @@ def save_body_image(page, ui, *, post_url: str, image: dict, staging_directory: 
         if any((item["width"], item["height"]) != (width, height) for _, item in matches):
             raise NativeUIError("Exact image occurrences disagree with inspected dimensions")
         selected = matches[0][0]
-        ui.stage = "image_load"
-        ui.assert_target_ready()
-        selected.scroll_into_view_if_needed(timeout=_LOAD_TIMEOUT_MS)
-        same_post()
-        if not selected.evaluate(_DECODE_JS, _LOAD_TIMEOUT_MS):
-            raise NativeUIError("Exact body image did not decode within the native save budget")
 
         def same_image():
             same_post()
@@ -217,6 +225,18 @@ def save_body_image(page, ui, *, post_url: str, image: dict, staging_directory: 
             ):
                 raise NativeUIError("Exact body image changed before native saving finished")
 
+        ui.stage = "image_load"
+        ui.assert_target_ready()
+        if before_native_input is not None:
+            before_native_input()
+            # Persistence may take time. Recheck ownership and the pinned image
+            # before scrolling; the callback itself must perform no page input.
+            ui.assert_target_ready()
+            same_image()
+        selected.scroll_into_view_if_needed(timeout=_LOAD_TIMEOUT_MS)
+        same_post()
+        if not selected.evaluate(_DECODE_JS, _LOAD_TIMEOUT_MS):
+            raise NativeUIError("Exact body image did not decode within the native save budget")
         same_image()
         ui.stage = "right_click"
         ui.assert_target_ready()

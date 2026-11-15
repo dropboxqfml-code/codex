@@ -25,7 +25,7 @@ from pathlib import Path, PureWindowsPath
 import pytest
 from PIL import Image
 
-from image_monitor import native_body
+from image_monitor import native_body, post_worker
 from image_monitor.artifact_files import finalize_saved_image, recover_finalizations
 from image_monitor.browser_completion import BrowserCompletion
 from image_monitor.dcinside import LOAD_JS, RAW_JS, parse_snapshot
@@ -35,7 +35,7 @@ from image_monitor.native_probe import (
     exclusive_digest,
     wait_for_debug_port,
 )
-from image_monitor.native_ui import NativeSaveLock, NativeUIError, WindowsUI
+from image_monitor.native_ui import NativeFocusError, NativeSaveLock, NativeUIError, WindowsUI
 from image_monitor.post_pipeline import enqueue_snapshot
 from image_monitor.queue import QueueStore
 from image_monitor.validation import verify_image
@@ -161,7 +161,7 @@ def serve_fixtures(assets):
         assert not thread.is_alive(), "Owned fixture server did not stop"
 
 
-def inspect_fixture(page, observed_at):
+def inspect_fixture(page, observed_at, *, before_interaction=None):
     """Use the real DOM observer scripts, explicitly trusting only this fixture."""
     root = page.locator(".write_div").element_handle()
     assert root is not None
@@ -171,6 +171,9 @@ def inspect_fixture(page, observed_at):
         handles = root.query_selector_all("img")
         for entry, image in zip(raw["images"], handles, strict=True):
             if not entry["excluded_reason"]:
+                if before_interaction is not None:
+                    before_interaction()
+                image.scroll_into_view_if_needed(timeout=15_000)
                 entry.update(image.evaluate(LOAD_JS, 15_000))
         return parse_snapshot(
             raw,
@@ -185,8 +188,6 @@ def inspect_fixture(page, observed_at):
 
 def bind_and_foreground_ci_window(process, page):
     """Activate only this test's unique window, using normal Windows activation."""
-    from ctypes import wintypes
-
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
         try:
@@ -196,6 +197,14 @@ def bind_and_foreground_ci_window(process, page):
             time.sleep(0.1)
     else:
         pytest.fail("The owned fixture browser could not be bound")
+    foreground_ci_window(page, ui)
+    return ui
+
+
+def foreground_ci_window(page, ui):
+    """Normal activation of an already bound owned browser, only in opted-in CI."""
+    from ctypes import wintypes
+
     page.bring_to_front()
     ui.user32.ShowWindow.argtypes = [wintypes.HWND, ui.ctypes.c_int]
     ui.user32.SetForegroundWindow.argtypes = [wintypes.HWND]
@@ -205,10 +214,170 @@ def bind_and_foreground_ci_window(process, page):
     while time.monotonic() < deadline:
         try:
             ui.assert_target_ready()
-            return ui
+            return
         except NativeUIError:
             time.sleep(0.1)
     pytest.fail("The owned fixture browser did not receive CI foreground")
+
+
+@contextmanager
+def owned_ci_focus_distractor(ui):
+    """Pause behind this test's own native MessageBox, never another application."""
+    from ctypes import wintypes
+
+    import psutil
+
+    title = "Image Monitor owned focus pause " + uuid.uuid4().hex
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import ctypes,sys; ctypes.windll.user32.MessageBoxW("
+            "None, 'Owned synthetic focus pause', sys.argv[1], 0)",
+            title,
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
+    owned_process = psutil.Process(process.pid)
+    created_at = owned_process.create_time()
+    hwnd = None
+    user32 = ui.user32
+    user32.FindWindowW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
+    user32.FindWindowW.restype = wintypes.HWND
+    user32.SendMessageTimeoutW.argtypes = [
+        wintypes.HWND,
+        wintypes.UINT,
+        wintypes.WPARAM,
+        wintypes.LPARAM,
+        wintypes.UINT,
+        wintypes.UINT,
+        ui.ctypes.POINTER(ui.ctypes.c_size_t),
+    ]
+    user32.SendMessageTimeoutW.restype = ui.ctypes.c_ssize_t
+
+    def assert_owned_dialog():
+        assert process.poll() is None
+        assert owned_process.is_running() and owned_process.create_time() == created_at
+        assert hwnd and user32.IsWindow(hwnd)
+        assert ui._window_pid(hwnd) == process.pid
+        assert ui._class_name(hwnd) == "#32770"
+        assert ui._window_text(hwnd) == title
+
+    def close():
+        if process.poll() is not None:
+            return
+        if hwnd is not None:
+            assert_owned_dialog()
+            result = ui.ctypes.c_size_t()
+            user32.SendMessageTimeoutW(
+                hwnd, 0x0010, 0, 0, 0x0022, 2_000, ui.ctypes.byref(result)
+            )  # WM_CLOSE to this exact owned MessageBox only.
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+        if process.poll() is None:
+            # Disposable fixture cleanup only, guarded by exact PID and birth time.
+            assert owned_process.is_running() and owned_process.create_time() == created_at
+            owned_process.terminate()
+            process.wait(timeout=5)
+
+    try:
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            assert process.poll() is None, "Owned focus fixture exited before opening its dialog"
+            candidate = user32.FindWindowW("#32770", title)
+            if candidate and ui._window_pid(candidate) == process.pid:
+                hwnd = candidate
+                break
+            time.sleep(0.1)
+        assert_owned_dialog()
+        user32.ShowWindow(hwnd, 9)
+        user32.SetForegroundWindow(hwnd)
+        deadline = time.monotonic() + 10
+        while user32.GetForegroundWindow() != hwnd and time.monotonic() < deadline:
+            assert_owned_dialog()
+            time.sleep(0.1)
+        assert_owned_dialog()
+        assert user32.GetForegroundWindow() == hwnd, "Owned focus fixture was not foreground"
+        yield {"hwnd": hwnd, "close": close}
+    finally:
+        close()
+
+
+def exercise_between_image_focus_pause(
+    monkeypatch, page, actual_page, ui, store, snapshot, save_root, root, artifact, native_calls
+):
+    """Lose real foreground between images and require the production resume panel."""
+    from types import SimpleNamespace
+
+    first_job = artifact["job_id"]
+    journal_before = store.get_artifact(first_job)
+    first_file = Path(artifact["final_path"])
+    first_bytes = first_file.read_bytes()
+    metadata_file = Path(artifact["metadata_path"])
+    metadata_before = metadata_file.read_bytes()
+    previous_approval = page.evaluate("window.__imageMonitorApproval")
+    assert previous_approval["approved"] is True
+    original_wait = post_worker.wait_for_approval
+    job_ids = [job["job_id"] for job in store.list_jobs()]
+    report = {"job_counts": post_worker._job_counts(store, job_ids)}
+    report_path = root / "focus-pause.json"
+
+    def inspect_resumed(inspected_page, url, *, before_interaction=None):
+        assert inspected_page is page and url == POST_URL
+        assert before_interaction is not None
+        return inspect_fixture(
+            inspected_page, datetime.now(UTC), before_interaction=before_interaction
+        )
+
+    runtime = SimpleNamespace(inspect=inspect_resumed)
+
+    with owned_ci_focus_distractor(ui) as distractor:
+        with pytest.raises(NativeFocusError):
+            ui.assert_target_ready()
+
+        def user_resumes(approved_page, approved_ui, nonce, timeout=300):
+            assert approved_page is page and approved_ui is ui
+            assert ui.user32.GetForegroundWindow() == distractor["hwnd"]
+            assert page.evaluate("document.hasFocus()") is False
+            approval = page.evaluate("window.__imageMonitorApproval")
+            assert approval["nonce"] == nonce and nonce != previous_approval["nonce"]
+            assert approval["title"] == previous_approval["title"] == ui.expected_window_title
+            assert approval["approved"] is False
+            assert page.get_by_role("button", name="계속 저장", exact=True).is_enabled()
+            rows = store.list_jobs()
+            assert [job["status"] for job in rows] == ["completed", "queued", "queued"]
+            assert all(job["lease_token"] is None for job in rows)
+            assert len(native_calls) == 1
+            assert store.get_artifact(first_job) == journal_before
+            assert first_file.read_bytes() == first_bytes
+            assert metadata_file.read_bytes() == metadata_before
+            persisted = json.loads(report_path.read_text(encoding="utf-8"))
+            assert persisted["last_stage"] == "waiting_for_user_resume"
+            assert persisted["focus_pauses"] == 1
+            assert persisted["job_counts"] == {"observed": 3, "completed": 1, "unresolved": 2}
+            distractor["close"]()
+            foreground_ci_window(actual_page, ui)
+            # Real Playwright input creates a trusted click; do not set approval in JS.
+            page.get_by_role("button", name="계속 저장", exact=True).click()
+            original_wait(page, ui, nonce, timeout=min(timeout, 10))
+
+        with monkeypatch.context() as approval_test:
+            approval_test.setattr(post_worker, "wait_for_approval", user_resumes)
+            post_worker._wait_for_next_image(
+                runtime, page, ui, snapshot, save_root, report, report_path
+            )
+    assert report["focus_pauses"] == 1
+    assert page.title() == previous_approval["title"]
+    assert page.evaluate("window.__imageMonitorApproval.approved") is True
+    assert store.get_artifact(first_job) == journal_before
+    assert first_file.read_bytes() == first_bytes
+    assert metadata_file.read_bytes() == metadata_before
+    ui.assert_target_ready()
+    return True
 
 
 def wait_for_exclusive_saved_file(path, page, ui, timeout=15):
@@ -381,6 +550,7 @@ def test_owned_chrome_pipeline_finalizes_three_unique_images_and_never_resaves(
         created_at = owned_process.create_time()
         driver = cleanup_session = ui = None
         stage, artifacts, native_calls, native_names = "browser_startup", [], [], {}
+        focus_pause_resume_confirmed = False
         try:
             port = wait_for_debug_port(profile, process, timeout=30)
             driver = sync_playwright().start()
@@ -403,7 +573,12 @@ def test_owned_chrome_pipeline_finalizes_three_unique_images_and_never_resaves(
             }
             assert snapshot["images"][0]["occurrences"] == [1, 4]
             assert snapshot["excluded_images"][0]["reason"] == "body_dccon"
+            approval_nonce, approval_title = post_worker.install_approval(page, snapshot, save_root)
+            assert page.title() == approval_title
+            assert page.evaluate("window.__imageMonitorApproval.approved") is False
             ui = bind_and_foreground_ci_window(process, actual_page)
+            page.get_by_role("button", name="저장 시작", exact=True).click()
+            post_worker.wait_for_approval(page, ui, approval_nonce, timeout=10)
             original_save = native_body.save_body_image
 
             def counted_native_save(*args, **kwargs):
@@ -434,7 +609,11 @@ def test_owned_chrome_pipeline_finalizes_three_unique_images_and_never_resaves(
                             save_root / "_staging" / job["job_id"] / uuid.uuid4().hex
                         )
                         staging_directory.mkdir(parents=True)
-                        store.transition(job["job_id"], job["lease_token"], "saving")
+
+                        def arm_native_input(claim=job):
+                            assert store.get_job(claim["job_id"])["status"] == "loading"
+                            store.transition(claim["job_id"], claim["lease_token"], "saving")
+
                         stage = "native_body_save"
                         saved = native_body.save_body_image(
                             page,
@@ -442,7 +621,9 @@ def test_owned_chrome_pipeline_finalizes_three_unique_images_and_never_resaves(
                             post_url=POST_URL,
                             image=image,
                             staging_directory=staging_directory,
+                            before_native_input=arm_native_input,
                         )
+                        assert store.get_job(job["job_id"])["status"] == "saving"
                         native_names[image["stable_key"]] = saved["browser_suggested_filename"]
                         store.transition(job["job_id"], job["lease_token"], "verifying")
                         staging_file = Path(saved["staging_path"])
@@ -480,6 +661,20 @@ def test_owned_chrome_pipeline_finalizes_three_unique_images_and_never_resaves(
                         assert final_file.read_bytes() == expected_bytes
                         assert verification["sha256"] == hashlib.sha256(expected_bytes).hexdigest()
                         artifacts.append(artifact)
+                        if locale == "en-US" and len(artifacts) == 1:
+                            stage = "between_image_focus_pause"
+                            focus_pause_resume_confirmed = exercise_between_image_focus_pause(
+                                monkeypatch,
+                                page,
+                                actual_page,
+                                ui,
+                                store,
+                                snapshot,
+                                save_root,
+                                root,
+                                artifact,
+                                native_calls,
+                            )
                 assert len(artifacts) == len(native_calls) == 3
                 assert len(set(native_calls)) == 3
                 assert {job["status"] for job in store.list_jobs()} == {"completed"}
@@ -584,6 +779,7 @@ def test_owned_chrome_pipeline_finalizes_three_unique_images_and_never_resaves(
                     ),
                     "formats": formats,
                     "recovery_no_gui": True,
+                    "focus_pause_resume_confirmed": focus_pause_resume_confirmed,
                 },
             )
         except Exception as error:

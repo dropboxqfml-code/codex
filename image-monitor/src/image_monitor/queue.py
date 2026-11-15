@@ -1107,6 +1107,99 @@ class QueueStore:
             )
             return self.get_job(job_id)
 
+    def release_unstarted_claim(
+        self,
+        job_id: str,
+        token: str,
+        *,
+        now: datetime,
+        reason: str = "pre_input_focus_pause",
+    ) -> dict:
+        """Release a loading claim only when the caller proves no native input occurred.
+
+        This queue operation cannot inspect GUI state. The worker must durably
+        record the pre-input boundary and stop before any right-click/save action.
+        """
+        _text(reason, "reason")
+        at = _time(now)
+        with self._write():
+            job = self._claimed(job_id, token)
+            if job["status"] != "loading" or self.get_artifact(job_id) is not None:
+                raise QueueError(
+                    "Only an unstarted loading claim without an artifact may be released"
+                )
+            self.connection.execute(
+                "UPDATE jobs SET status='queued',worker_id=NULL,lease_token=NULL,last_error=NULL "
+                "WHERE job_id=?",
+                (job_id,),
+            )
+            self.connection.execute(
+                "INSERT INTO attempts(job_id,at,kind,reason,attempt_count,resulting_status) "
+                "VALUES (?,?,'ui_pause',?,?,'queued')",
+                (job_id, at, reason, job["attempt_count"]),
+            )
+            return self.get_job(job_id)
+
+    def resume_preinput_failure(
+        self,
+        job_id: str,
+        *,
+        observation_id: str,
+        expected_history_id: int,
+        now: datetime,
+        confirm_workers_stopped: bool = False,
+        confirmed_no_input: bool = False,
+    ) -> dict:
+        """Resume one precisely identified UI failure after external no-input proof.
+
+        Both confirmations are assertions by the recovery controller, which must
+        validate its private attempt report, stopped worker and empty staging.
+        They do not make arbitrary paused or interrupted jobs safe to reset.
+        """
+        if confirm_workers_stopped is not True or confirmed_no_input is not True:
+            raise QueueError("Confirm stopped workers and verified absence of native input")
+        _text(observation_id, "observation_id")
+        if type(expected_history_id) is not int or not 0 < expected_history_id < 2**63:
+            raise QueueError("A valid expected failure history ID is required")
+        at = _time(now)
+        with self._write():
+            job = self.get_job(job_id)
+            if (
+                job is None
+                or job["status"] != "paused_ui"
+                or job["last_error"] != "NativeUIError"
+                or job["worker_id"] is not None
+                or job["lease_token"] is not None
+                or self.get_artifact(job_id) is not None
+            ):
+                raise QueueError("Image job is not an eligible pre-input UI failure")
+            latest = self.connection.execute(
+                "SELECT * FROM attempts WHERE job_id=? ORDER BY history_id DESC LIMIT 1", (job_id,)
+            ).fetchone()
+            if (
+                latest is None
+                or latest["history_id"] != expected_history_id
+                or latest["kind"] != "ui"
+                or latest["reason"] != "NativeUIError"
+                or latest["resulting_status"] != "paused_ui"
+            ):
+                raise QueueError("The expected UI failure is not the latest job history")
+            if self._job_source(job, observation_id) is None:
+                raise QueueError(
+                    "The pre-input observation does not match the current image source"
+                )
+            self.connection.execute(
+                "UPDATE jobs SET status='queued',worker_id=NULL,lease_token=NULL,last_error=NULL "
+                "WHERE job_id=?",
+                (job_id,),
+            )
+            self.connection.execute(
+                "INSERT INTO attempts(job_id,at,kind,reason,attempt_count,resulting_status) "
+                "VALUES (?,?,'pre_input_resume','verified_no_input',?,'queued')",
+                (job_id, at, job["attempt_count"]),
+            )
+            return self.get_job(job_id)
+
     def _defer_service(self, scope: str, not_before: str) -> None:
         self.connection.execute(
             "INSERT INTO service_limits VALUES (?,?) ON CONFLICT(scope) DO UPDATE SET "

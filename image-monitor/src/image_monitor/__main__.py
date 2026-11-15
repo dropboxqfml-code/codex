@@ -54,15 +54,25 @@ def main() -> int:
     save_post.add_argument("--work-root", type=Path, required=True)
     save_post.add_argument("--browser", choices=("chrome",), default="chrome")
     save_post.add_argument(
+        "--resume-preinput",
+        action="store_true",
+        help="Resume only a verified previous failure before native input began",
+    )
+    save_post.add_argument(
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
     if args.command == "save-post":
+        from image_monitor.native_ui import NativeUIError
         from image_monitor.post_worker import run_post_save, share_worker_report
 
         try:
             options = {"url": args.post_url} if args.post_url else {}
+            if args.resume_preinput:
+                options["resume_preinput"] = True
             output = run_post_save(args.work_root, args.browser, **options)
+        except NativeUIError as error:
+            parser.exit(2, f"{error}\n")
         except KeyboardInterrupt:
             parser.exit(130, "Post saving cancelled. Inspect the dedicated browser and report.\n")
         except Exception as error:

@@ -84,6 +84,10 @@ def guarded_launcher(directory):
         ("--find-uv", "--save-post", "--recover-closed"),
         ("--site-inspect", "--save-post", "--find-uv"),
         ("--save-post", "--site-inspect", "--recover-closed", "--find-uv"),
+        ("--resume-preinput", "--find-uv"),
+        ("--find-uv", "--save-post", "--resume-preinput", "--chrome"),
+        ("--resume-preinput", "--recover-closed", "--find-uv"),
+        ("--site-inspect", "--resume-preinput", "--find-uv"),
     ],
 )
 def test_check_flags_preserve_read_only_lookup(tmp_path, arguments):
@@ -114,7 +118,7 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
         ("RETRY_CHROME_TEST.cmd", "--chrome --recover-closed"),
         ("RUN_SITE_INSPECTION.cmd", "--site-inspect --chrome"),
         ("RUN_POST_SAVE_TEST.cmd", "--save-post --chrome"),
-        ("RETRY_POST_SAVE_TEST.cmd", "--save-post --chrome --recover-closed"),
+        ("RETRY_POST_SAVE_TEST.cmd", "--save-post --chrome --resume-preinput"),
     ],
 )
 def test_supplied_wrappers_forward_explicit_options_and_exit_status(
@@ -170,6 +174,27 @@ def test_post_save_rejects_read_only_inspection_before_setup(tmp_path, arguments
 
 
 @pytest.mark.parametrize(
+    "arguments",
+    [
+        ("--resume-preinput",),
+        ("--chrome", "--resume-preinput"),
+        ("--save-post", "--resume-preinput", "--recover-closed"),
+        ("--recover-closed", "--resume-preinput", "--save-post"),
+        ("--site-inspect", "--resume-preinput"),
+        ("--save-post", "--resume-preinput", "--site-inspect"),
+    ],
+)
+def test_preinput_resume_rejects_incompatible_modes_before_setup(tmp_path, arguments):
+    launcher = guarded_launcher(tmp_path / "guarded preinput resume")
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 2
+    assert "Pre-input resume requires post saving" in result.stderr
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
     "browser_flags,expected_browser", [((), "edge"), (("--chrome",), "chrome")]
 )
 def test_site_inspection_routes_after_dependencies_without_native_input(
@@ -219,6 +244,7 @@ def test_site_inspection_routes_after_dependencies_without_native_input(
             True,
         ),
         (("--save-post",), "edge", "save-post", 93, False),
+        (("--save-post", "--resume-preinput", "--chrome"), "chrome", "save-post", 93, False),
         ((), "edge", "native-probe", 92, False),
         (("--chrome",), "chrome", "native-probe", 92, False),
         (("--recover-closed",), "edge", "native-probe", 92, True),
@@ -269,6 +295,50 @@ def test_post_save_and_native_probe_routes_with_only_explicit_recovery(
     if recovers:
         expected_lines.insert(0, "RECOVERY=native-recover")
     assert result.stdout.strip().splitlines() == expected_lines
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize("resume", [False, True])
+def test_post_save_command_forwards_resume_without_generic_recovery(tmp_path, resume):
+    # Reach the actual save-post command with inert setup/native/UI guards.
+    # Its substituted command prints only its CLI arguments, then exits.
+    text = LAUNCHER.read_text(encoding="ascii")
+    text = text.replace(
+        "\n:new_log\n", '\n:new_log\nset "LOG_FILE=NUL"\ngoto after_dependencies\n', 1
+    )
+    marker = 'if "%READ_ONLY_INSPECTION%"=="1" goto start_site_inspection'
+    assert marker in text
+    text = text.replace(marker, ":after_dependencies\n" + marker, 1)
+    save_commands = 0
+    lines = []
+    for line in text.splitlines():
+        if line.startswith('"%UV_EXE%"') and " image-monitor save-post " in line:
+            assert line.endswith(' %POST_SAVE_RESUME_ARGUMENT% >>"%LOG_FILE%" 2>&1')
+            command = line.split(" image-monitor ", 1)[1].split(' >>"%LOG_FILE%"', 1)[0]
+            lines.extend([f"echo COMMAND={command}", "exit /b 94"])
+            save_commands += 1
+        elif line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')):
+            lines.append("exit /b 77")
+        else:
+            lines.append(line)
+    assert save_commands == 1
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    arguments = ["--save-post", "--chrome"]
+    if resume:
+        arguments.append("--resume-preinput")
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 94, result.stderr
+    output = result.stdout.strip().splitlines()
+    expected = (
+        f'COMMAND=save-post --work-root "{os.environ["LOCALAPPDATA"]}\\ImageMonitorPostSave" '
+        '--browser "chrome"'
+    )
+    if resume:
+        expected += " --resume-preinput"
+    assert output[-1].rstrip() == expected
     assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
 
 

@@ -1,5 +1,5 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-rem Run only after manually closing the previous dedicated browser.
-call "%~dp0RUN_WINDOWS_TEST.cmd" --save-post --chrome --recover-closed
+rem Resume only the verified pre-input failure after closing its dedicated browser.
+call "%~dp0RUN_WINDOWS_TEST.cmd" --save-post --chrome --resume-preinput
 exit /b %ERRORLEVEL%

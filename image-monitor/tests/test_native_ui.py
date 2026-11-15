@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from image_monitor.native_ui import NativeUIError, WindowsUI
+from image_monitor.native_ui import NativeFocusError, NativeUIError, WindowsUI
 
 
 def desktop_guard(name="Default", foreground_pid=10, available=True, foreground_hwnd=None):
@@ -72,23 +72,26 @@ def wrapper(hwnd):
 
 def test_locked_desktop_stops_before_foreground_inspection():
     ui = desktop_guard(available=False)
-    with pytest.raises(NativeUIError, match="desktop unavailable"):
+    with pytest.raises(NativeUIError, match="desktop unavailable") as caught:
         ui.assert_ready()
+    assert not isinstance(caught.value, NativeFocusError)
     ui.user32.GetForegroundWindow.assert_not_called()
 
 
 def test_secure_desktop_is_rejected_and_handle_closed():
     ui = desktop_guard(name="Winlogon")
-    with pytest.raises(NativeUIError, match="not active"):
+    with pytest.raises(NativeUIError, match="not active") as caught:
         ui.assert_ready()
+    assert not isinstance(caught.value, NativeFocusError)
     ui.user32.CloseDesktop.assert_called_once_with(1)
     ui.user32.GetForegroundWindow.assert_not_called()
 
 
 def test_other_app_focus_is_rejected():
     ui = desktop_guard(foreground_pid=999)
-    with pytest.raises(NativeUIError, match="outside"):
+    with pytest.raises(NativeFocusError, match="outside") as caught:
         ui.assert_ready()
+    assert isinstance(caught.value, NativeUIError)
 
 
 def test_owned_windows_exclude_foreign_browser_and_dialog():
@@ -229,8 +232,9 @@ def test_same_process_other_window_focus_is_rejected():
 def test_target_owned_dialog_is_allowed_but_page_input_is_not():
     ui = desktop_guard(foreground_hwnd=300)
     ui.assert_ready()
-    with pytest.raises(NativeUIError, match="page itself"):
+    with pytest.raises(NativeFocusError, match="page itself") as caught:
         ui.assert_target_ready()
+    assert isinstance(caught.value, NativeUIError)
 
 
 def test_same_process_other_dialog_owner_is_rejected():
@@ -256,13 +260,15 @@ def test_owner_chain_cycle_does_not_pass_target_binding():
 def test_target_title_change_or_duplicate_aborts_before_input():
     ui = desktop_guard()
     ui.window_graph[100] = (10, 0, 100, "Chrome_WidgetWin_1", "Other page - Edge")
-    with pytest.raises(NativeUIError, match="bound probe window"):
+    with pytest.raises(NativeUIError, match="bound probe window") as caught:
         ui.assert_target_ready()
+    assert not isinstance(caught.value, NativeFocusError)
     ui = desktop_guard()
     ui.window_graph[200] = (10, 0, 200, "Chrome_WidgetWin_1", "Unique probe 123 - Edge")
     ui.desktop.windows.return_value = [wrapper(100), wrapper(200)]
-    with pytest.raises(NativeUIError, match="ambiguous"):
+    with pytest.raises(NativeUIError, match="ambiguous") as caught:
         ui.assert_ready()
+    assert not isinstance(caught.value, NativeFocusError)
 
 
 def test_control_from_same_process_wrong_window_is_rejected():

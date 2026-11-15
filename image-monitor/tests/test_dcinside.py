@@ -716,3 +716,62 @@ def test_reviewed_resource_reordering_and_url_rotation_are_queue_idempotent(tmp_
         assert len(after) == 2
         assert {job["stable_key"]: (job["job_id"], job["file_slot"]) for job in after} == prior
         assert all("id=fresh" in job["display_url"] for job in after)
+
+
+def test_noncallable_interaction_guard_is_rejected_before_observing_page():
+    from unittest.mock import MagicMock
+
+    unused_page = MagicMock()
+    with pytest.raises(DCSnapshotError, match="Invalid inspection options"):
+        inspect_post(unused_page, expected_url=URL, observed_at=NOW, before_interaction=123)
+    unused_page.evaluate.assert_not_called()
+    unused_page.locator.assert_not_called()
+
+
+def test_real_browser_guard_failure_after_first_scroll_preserves_typed_error_and_stops(
+    page, monkeypatch
+):
+    from playwright.sync_api import ElementHandle
+
+    from image_monitor.dcinside import LOAD_JS
+
+    class FocusPaused(RuntimeError):
+        pass
+
+    paused = FocusPaused("Synthetic foreground guard stopped inspection")
+    guard_calls, scrolls, loads = [], [], []
+    real_scroll = ElementHandle.scroll_into_view_if_needed
+    real_evaluate = ElementHandle.evaluate
+
+    def observed_scroll(handle, **options):
+        scrolls.append(handle.get_attribute("id"))
+        return real_scroll(handle, **options)
+
+    def observed_evaluate(handle, expression, arg=None):
+        if expression == LOAD_JS:
+            loads.append(handle.get_attribute("id"))
+        return real_evaluate(handle, expression, arg)
+
+    def guard():
+        guard_calls.append(len(guard_calls) + 1)
+        if len(guard_calls) == 2:
+            raise paused
+
+    monkeypatch.setattr(ElementHandle, "scroll_into_view_if_needed", observed_scroll)
+    monkeypatch.setattr(ElementHandle, "evaluate", observed_evaluate)
+    current = page(
+        HEADER
+        + """<div class="write_div">
+      <img id="first" src="https://fixture.invalid/first.png">
+      <span class="dccon"><img id="excluded" src="https://fixture.invalid/dccon.png"></span>
+      <img id="second" src="https://fixture.invalid/second.png">
+      <img id="third" src="https://fixture.invalid/third.png"></div>"""
+    )
+    with pytest.raises(FocusPaused) as caught:
+        inspect_post(
+            current, expected_url=URL, observed_at=NOW, before_interaction=guard, timeout_ms=1500
+        )
+    assert caught.value is paused
+    assert guard_calls == [1, 2]
+    assert scrolls == ["first"]
+    assert loads == ["first"]

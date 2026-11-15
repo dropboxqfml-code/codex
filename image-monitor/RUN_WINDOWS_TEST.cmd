@@ -9,6 +9,8 @@ set "RECOVER_CLOSED=0"
 set "UV_LOOKUP_ONLY=0"
 set "READ_ONLY_INSPECTION=0"
 set "SAVE_POST=0"
+set "RESUME_PREINPUT=0"
+set "POST_SAVE_RESUME_ARGUMENT="
 set "CHECK_LABEL=Windows native-save test"
 
 :parse_arguments
@@ -18,6 +20,7 @@ if /i "%~1"=="--recover-closed" goto option_recover
 if /i "%~1"=="--find-uv" goto option_lookup
 if /i "%~1"=="--site-inspect" goto option_site_inspection
 if /i "%~1"=="--save-post" goto option_save_post
+if /i "%~1"=="--resume-preinput" goto option_resume_preinput
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
 exit /b 2
 
@@ -48,8 +51,17 @@ set "CHECK_LABEL=single-post native-save test"
 shift
 goto parse_arguments
 
+:option_resume_preinput
+set "RESUME_PREINPUT=1"
+set "POST_SAVE_RESUME_ARGUMENT=--resume-preinput"
+shift
+goto parse_arguments
+
 :arguments_ready
 if "%UV_LOOKUP_ONLY%"=="1" goto lookup_only
+if "%RESUME_PREINPUT%"=="1" if "%SAVE_POST%"=="0" goto incompatible_resume
+if "%RESUME_PREINPUT%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_resume
+if "%RESUME_PREINPUT%"=="1" if "%READ_ONLY_INSPECTION%"=="1" goto incompatible_resume
 if "%READ_ONLY_INSPECTION%"=="1" if "%SAVE_POST%"=="1" goto incompatible_post_modes
 if "%READ_ONLY_INSPECTION%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_options
 goto new_log
@@ -62,6 +74,10 @@ exit /b 2
 >&2 echo Read-only site inspection cannot be combined with post saving.
 exit /b 2
 
+:incompatible_resume
+>&2 echo Pre-input resume requires post saving without site inspection or generic recovery.
+exit /b 2
+
 :new_log
 set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
@@ -69,6 +85,7 @@ if exist "%LOG_FILE%" goto new_log
 if errorlevel 1 goto log_unavailable
 if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Single-post native image saving requires review in the dedicated Chrome app window.
+if "%RESUME_PREINPUT%"=="1" >>"%LOG_FILE%" echo Verified pre-input resume was explicitly requested. Generic native recovery will not run.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public-page DOM inspection. No image saving is attempted.
 >>"%LOG_FILE%" echo Selected browser: %TEST_BROWSER%
 if not exist "pyproject.toml" goto missing_project
@@ -134,7 +151,7 @@ exit /b 0
 echo Starting a dedicated %TEST_BROWSER% session for one public post.
 echo Review the Chrome app window, then click its save-start button to begin.
 >>"%LOG_FILE%" echo STAGE: post_save
-"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor save-post --work-root "%LOCALAPPDATA%\ImageMonitorPostSave" --browser "%TEST_BROWSER%" >>"%LOG_FILE%" 2>&1
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor save-post --work-root "%LOCALAPPDATA%\ImageMonitorPostSave" --browser "%TEST_BROWSER%" %POST_SAVE_RESUME_ARGUMENT% >>"%LOG_FILE%" 2>&1
 set "POST_SAVE_CODE=%ERRORLEVEL%"
 >>"%LOG_FILE%" echo Single-post save exit code: %POST_SAVE_CODE%
 if not "%POST_SAVE_CODE%"=="0" goto failed

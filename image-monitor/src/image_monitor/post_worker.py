@@ -7,7 +7,12 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path, PureWindowsPath
 
-from image_monitor.artifact_files import ArtifactError, finalize_saved_image, recover_finalizations
+from image_monitor.artifact_files import (
+    ArtifactError,
+    _plain_path,
+    finalize_saved_image,
+    recover_finalizations,
+)
 from image_monitor.browser_completion import BrowserCompletion
 from image_monitor.dcinside import DCSnapshotError, inspect_post, validate_post_url
 from image_monitor.native_body import save_body_image
@@ -25,8 +30,15 @@ from image_monitor.native_state import (
     session_id,
     shared_state_path,
 )
-from image_monitor.native_ui import NativeSaveLock, NativeUIError, WindowsUI, require_windows
+from image_monitor.native_ui import (
+    NativeFocusError,
+    NativeSaveLock,
+    NativeUIError,
+    WindowsUI,
+    require_windows,
+)
 from image_monitor.post_pipeline import PostPipelineError, enqueue_snapshot
+from image_monitor.post_resume import resume_preinput_failure
 from image_monitor.queue import ACTIVE, QueueError, QueueStore
 from image_monitor.site_inspection import DEFAULT_POST_URL
 from image_monitor.validation import VerificationError, verify_image
@@ -72,9 +84,13 @@ class NativeRuntime:
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         return self.page
 
-    def inspect(self, page, url):
+    def inspect(self, page, url, *, before_interaction=None):
         return inspect_post(
-            page, expected_url=url, observed_at=datetime.now(UTC), timeout_ms=20_000
+            page,
+            expected_url=url,
+            observed_at=datetime.now(UTC),
+            timeout_ms=20_000,
+            before_interaction=before_interaction,
         )
 
     def bind(self, process, title):
@@ -95,30 +111,49 @@ class NativeRuntime:
             driver.stop()
 
 
-def install_approval(page, snapshot: dict, save_root: Path) -> tuple[str, str]:
+def install_approval(
+    page, snapshot: dict, save_root: Path, *, resume=False, title=None, progress=None
+) -> tuple[str, str]:
     nonce = uuid.uuid4().hex
-    title = f"Image Monitor save {nonce}"
+    title = title or f"Image Monitor save {nonce}"
     page.evaluate(
-        """({nonce,title,postTitle,postUrl,count,root}) => {
-          if(document.getElementById('image-monitor-save-panel'))
-            throw new Error('Existing approval panel');
+        """({nonce,title,postTitle,postUrl,count,root,resume,progress}) => {
+          let panel=document.getElementById('image-monitor-save-panel');
+          if(resume){
+            if(!panel || document.title!==title ||
+               window.__imageMonitorApproval?.title!==title ||
+               window.__imageMonitorApproval?.panel!==panel)
+              throw new Error('The original save panel changed');
+            panel.replaceChildren();
+          }else{
+            if(panel)throw new Error('Existing approval panel');
+            panel=document.createElement('section');panel.id='image-monitor-save-panel';
+            document.body.append(panel);
+          }
           document.title=title;
-          window.__imageMonitorApproval={nonce,approved:false};
-          const panel=document.createElement('section');panel.id='image-monitor-save-panel';
+          window.__imageMonitorApproval={nonce,title,panel,approved:false};
           panel.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483647;'+
             'background:white;color:black;padding:12px;border:3px solid #1769aa;'+
             'font:16px sans-serif';
+          if(progress){
+            const notice=document.createElement('div');
+            notice.textContent=`${progress.completed}/${progress.observed}개 저장 완료. `+
+              (resume?'잠시 멈췄습니다. 이 창에서 계속 저장을 눌러주세요.':
+                      '완료한 파일을 유지하고 남은 이미지만 저장합니다.');
+            panel.append(notice);
+          }
           for(const text of [postTitle,postUrl,`${count}개 이미지 저장 위치: ${root}`]){
             const row=document.createElement('div');row.textContent=text;panel.append(row);
           }
-          const button=document.createElement('button');button.textContent='저장 시작';
+          const button=document.createElement('button');
+          button.textContent=resume?'계속 저장':'저장 시작';
           button.style.cssText='font-size:20px;padding:8px 24px';
           button.addEventListener('click',event=>{
             if(event.isTrusted && document.hasFocus()){
               window.__imageMonitorApproval.approved=true;button.disabled=true;
               panel.textContent='저장 중입니다. 이 창을 그대로 두세요.';
             }
-          });panel.append(button);document.body.append(panel);
+          });panel.append(button);
         }""",
         {
             "nonce": nonce,
@@ -127,6 +162,8 @@ def install_approval(page, snapshot: dict, save_root: Path) -> tuple[str, str]:
             "postUrl": snapshot["post_url"],
             "count": len(snapshot["images"]),
             "root": str(save_root),
+            "resume": resume,
+            "progress": progress,
         },
     )
     return nonce, title
@@ -144,12 +181,55 @@ def wait_for_approval(page, ui, nonce: str, timeout=300):
         if approved:
             try:
                 ui.assert_target_ready()
-            except NativeUIError:
+            except NativeFocusError:
                 pass
             else:
                 return
         page.wait_for_timeout(100)
     raise NativeUIError("Saving was not approved in the foreground dedicated browser")
+
+
+def _job_counts(store, job_ids) -> dict:
+    rows = [store.get_job(job_id) for job_id in job_ids]
+    return {
+        "observed": len(rows),
+        "completed": sum(row["status"] == "completed" for row in rows),
+        "unresolved": sum(row["status"] != "completed" for row in rows),
+    }
+
+
+def _wait_for_next_image(
+    runtime, page, ui, snapshot, save_root, report, report_path, *, force_resume=False
+):
+    report["last_stage"] = "pre_input_check"
+    if not force_resume:
+        try:
+            ui.assert_target_ready()
+            return
+        except NativeFocusError:
+            pass
+    report["focus_pauses"] = report.get("focus_pauses", 0) + 1
+    report["focus_at_pause"] = ui.focus_snapshot()
+    report["last_stage"] = "waiting_for_user_resume"
+    nonce, _title = install_approval(
+        page,
+        snapshot,
+        save_root,
+        resume=True,
+        title=ui.expected_window_title,
+        progress=report["job_counts"],
+    )
+    write_report(report_path, report)
+    wait_for_approval(page, ui, nonce)
+    fresh = runtime.inspect(page, snapshot["post_url"], before_interaction=ui.assert_target_ready)
+    if {image["stable_key"] for image in fresh["images"]} != {
+        image["stable_key"] for image in snapshot["images"]
+    } or any(
+        fresh[key] != snapshot[key]
+        for key in ("title", "nickname", "published_at_raw", "ip_display")
+    ):
+        raise NativeUIError("The approved post changed while waiting to resume")
+    ui.assert_target_ready()
 
 
 def _verify_completed_file(target: Path, evidence: dict, result: dict, ui) -> tuple[dict, dict]:
@@ -228,11 +308,21 @@ def share_worker_report(report: dict) -> dict:
         "native_stage",
         "native_file_type",
         "native_suggested_suffix",
+        "focus_at_failure",
+        "focus_at_pause",
+        "focus_pauses",
+        "preinput_recovery",
     )
     return {key: report[key] for key in keys if key in report}
 
 
-def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_POST_URL) -> dict:
+def run_post_save(
+    work_root: Path,
+    browser: str = "chrome",
+    url: str = DEFAULT_POST_URL,
+    *,
+    resume_preinput: bool = False,
+) -> dict:
     require_windows()
     if browser != "chrome":
         raise NativeUIError("Integrated completion is currently verified for Chrome only")
@@ -247,11 +337,25 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
     save_root = base / "images"
     with NativeSaveLock():
         state = PendingSave(shared_state_path())
+        resumed = None
+        if resume_preinput and state.read() is not None:
+            try:
+                previous_database = _plain_path(base / "queue.sqlite")
+            except ArtifactError as error:
+                raise NativeUIError(
+                    "The previous queue path changed; files were preserved"
+                ) from error
+            if not previous_database.is_file():
+                raise NativeUIError("The previous post-save queue is missing; files were preserved")
+            with QueueStore(previous_database) as previous_store:
+                resumed = resume_preinput_failure(
+                    previous_store, state, base=base, now=datetime.now(UTC)
+                )
         state.assert_clear()
         run_directory.mkdir(parents=True)
         save_root.mkdir(parents=True, exist_ok=True)
         report = {
-            "schema_version": 1,
+            "schema_version": 2,
             "mode": "single_post_native_context_menu",
             "status": "manual_review",
             "browser": browser,
@@ -261,10 +365,12 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
             "shared_pending_retained": False,
             "saved_files": [],
             "output_directory": str(save_root),
+            "preinput_recovery": resumed,
         }
         runtime = NativeRuntime()
         process = pending = job = ui = None
         uncertain_save = False
+        ids = []
         try:
             with QueueStore(base / "queue.sqlite") as store:
                 store.recover_interrupted(confirm_workers_stopped=True)
@@ -290,12 +396,9 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
                 queued = enqueue_snapshot(
                     store, snapshot, watch_name="게시글 저장 시험", keyword="manual"
                 )
+                ids = [item["job_id"] for item in queued["jobs"]]
                 approved_keys = {image["stable_key"] for image in snapshot["images"]}
-                report["job_counts"] = {
-                    "observed": len(queued["jobs"]),
-                    "completed": sum(item["status"] == "completed" for item in queued["jobs"]),
-                    "unresolved": sum(item["status"] != "completed" for item in queued["jobs"]),
-                }
+                report["job_counts"] = _job_counts(store, ids)
                 pending_jobs = [item for item in queued["jobs"] if item["status"] != "completed"]
                 if any(
                     item["status"] not in {"queued", "retry_wait", "deferred"}
@@ -303,23 +406,48 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
                 ):
                     raise NativeUIError("Some image jobs require review before another save")
                 if pending_jobs:
-                    nonce, title = install_approval(page, snapshot, save_root)
+                    nonce, title = install_approval(
+                        page, snapshot, save_root, progress=report["job_counts"]
+                    )
                     ui = runtime.bind(process, title)
                     report["last_stage"] = "waiting_for_user_start"
                     wait_for_approval(page, ui, nonce)
                     report["last_stage"] = "post_recheck"
-                    fresh = runtime.inspect(page, target["canonical_url"])
+                    fresh = runtime.inspect(
+                        page,
+                        target["canonical_url"],
+                        before_interaction=ui.assert_target_ready,
+                    )
                     if {image["stable_key"] for image in fresh["images"]} != approved_keys:
                         raise NativeUIError("The post's image set changed after approval")
                     queued = enqueue_snapshot(
                         store, fresh, watch_name="게시글 저장 시험", keyword="manual"
                     )
+                    snapshot = fresh
                     ids = [item["job_id"] for item in queued["jobs"]]
                     report["last_stage"] = "completion_setup"
                     with BrowserCompletion(
                         runtime.browser, runtime.context, page, browser, ui=ui
                     ) as completion:
+                        force_resume = False
                         while True:
+                            report["job_counts"] = _job_counts(store, ids)
+                            if not report["job_counts"]["unresolved"]:
+                                break
+                            ui.browser_suggested_filename = None
+                            ui.browser_suggested_extension = None
+                            ui.browser_suggested_file_type = None
+                            _wait_for_next_image(
+                                runtime,
+                                page,
+                                ui,
+                                snapshot,
+                                save_root,
+                                report,
+                                run_directory / "report.json",
+                                force_resume=force_resume,
+                            )
+                            force_resume = False
                             job = store.claim_next(uuid.uuid4().hex, datetime.now(UTC), job_ids=ids)
                             if job is None:
                                 break
@@ -332,6 +460,8 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
                                 "job_id": job["job_id"],
                                 "observation_id": source["observation_id"],
                                 "staging_directory": str(stage_dir),
+                                "lease_token": job["lease_token"],
+                                "phase": "preparing_no_input",
                             }
                             write_report(run_directory / "report.json", report)
                             if shutil.disk_usage(save_root).free < MIN_FREE_BYTES:
@@ -347,16 +477,40 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
                                     )
                                 }
                             }
-                            store.transition(job["job_id"], job["lease_token"], "saving")
-                            report["last_stage"] = "native_saving"
-                            uncertain_save = True
-                            result = save_body_image(
-                                page,
-                                ui,
-                                post_url=snapshot["post_url"],
-                                image=image,
-                                staging_directory=stage_dir,
-                            )
+                            report["last_stage"] = "image_preparation"
+
+                            def arm_input(claim=job):
+                                nonlocal uncertain_save
+                                # Persist uncertainty before any page/native interaction.
+                                # A failed write/transition cannot authorize input.
+                                uncertain_save = True
+                                report["active_attempt"]["phase"] = "input_armed"
+                                report["last_stage"] = "native_saving"
+                                write_report(run_directory / "report.json", report)
+                                store.transition(claim["job_id"], claim["lease_token"], "saving")
+
+                            try:
+                                result = save_body_image(
+                                    page,
+                                    ui,
+                                    post_url=snapshot["post_url"],
+                                    image=image,
+                                    staging_directory=stage_dir,
+                                    before_native_input=arm_input,
+                                )
+                            except NativeFocusError:
+                                if uncertain_save:
+                                    raise
+                                store.release_unstarted_claim(
+                                    job["job_id"], job["lease_token"], now=datetime.now(UTC)
+                                )
+                                report["active_attempt"]["phase"] = "released_no_input"
+                                report["last_preinput_attempt"] = report.pop("active_attempt")
+                                report["job_counts"] = _job_counts(store, ids)
+                                job = None
+                                write_report(run_directory / "report.json", report)
+                                force_resume = True
+                                continue
                             store.transition(job["job_id"], job["lease_token"], "verifying")
                             report["last_stage"] = "download_completion"
                             path = Path(result["staging_path"])
@@ -367,7 +521,10 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
                             verified, evidence = _verify_completed_file(path, evidence, result, ui)
                             uncertain_save = False
                             report["active_attempt"].update(
-                                completion=evidence, verification=verified, staging_path=str(path)
+                                phase="writer_verified",
+                                completion=evidence,
+                                verification=verified,
+                                staging_path=str(path),
                             )
                             write_report(run_directory / "report.json", report)
                             report["last_stage"] = "artifact_publication"
@@ -391,13 +548,10 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
                                 }
                             )
                             report.pop("active_attempt", None)
+                            report["job_counts"] = _job_counts(store, ids)
+                            write_report(run_directory / "report.json", report)
                             job = None
-                rows = [store.get_job(item["job_id"]) for item in queued["jobs"]]
-                report["job_counts"] = {
-                    "observed": len(rows),
-                    "completed": sum(row["status"] == "completed" for row in rows),
-                    "unresolved": sum(row["status"] != "completed" for row in rows),
-                }
+                report["job_counts"] = _job_counts(store, ids)
                 if report["job_counts"]["unresolved"]:
                     raise NativeUIError("Some image jobs require review before another save")
                 report["last_stage"] = "browser_shutdown"
@@ -447,6 +601,12 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
                             )
                 except Exception as recording_error:
                     report["queue_error_type"] = type(recording_error).__name__
+            if ids:
+                try:
+                    with QueueStore(base / "queue.sqlite", read_only=True) as summary_store:
+                        report["job_counts"] = _job_counts(summary_store, ids)
+                except Exception as summary_error:
+                    report["summary_error_type"] = type(summary_error).__name__
             # A stopped UI operation is never retried or closed while its writer
             # is uncertain. With no active writer, closing our browser is safe.
             if process is not None and not uncertain_save and runtime.browser is not None:

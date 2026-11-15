@@ -24,6 +24,10 @@ class NativeUIError(RuntimeError):
     """Stop the probe for manual inspection; never automatically retry UI input."""
 
 
+class NativeFocusError(NativeUIError):
+    """The bound browser exists, but the required foreground window lost focus."""
+
+
 def require_windows() -> None:
     if sys.platform != "win32":
         raise NativeUIError("Native saving requires a logged-in interactive Windows desktop")
@@ -445,13 +449,15 @@ class WindowsUI:
         self._assert_target_exists()
         hwnd = self.user32.GetForegroundWindow()
         if not hwnd or not self.belongs_to_target(hwnd):
-            raise NativeUIError("Foreground focus is outside the bound probe window; input stopped")
+            raise NativeFocusError(
+                "Foreground focus is outside the bound probe window; input stopped"
+            )
 
     def assert_target_ready(self) -> None:
         """Before Playwright input, the main page window itself must have focus."""
         self.assert_ready()
         if self._root_window(self.user32.GetForegroundWindow()) != self.target_hwnd:
-            raise NativeUIError("The probe page itself is not in the foreground")
+            raise NativeFocusError("The probe page itself is not in the foreground")
 
     def assert_control_ready(self, control, window) -> None:
         self.assert_ready()

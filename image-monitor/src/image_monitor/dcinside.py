@@ -7,6 +7,7 @@ The fixture-validated mapping function is deliberately separate from live inspec
 import hashlib
 import re
 import time
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
 from urllib.parse import parse_qsl, urlencode, urlsplit
@@ -582,12 +583,23 @@ LOAD_JS = """async (img, budget) => {
 
 
 def inspect_post(
-    page, *, expected_url: str, observed_at: datetime, include_dccon=False, timeout_ms=15000
+    page,
+    *,
+    expected_url: str,
+    observed_at: datetime,
+    include_dccon=False,
+    timeout_ms=15000,
+    before_interaction: Callable[[], None] | None = None,
 ) -> dict:
     """Observe one already-open post, using no clicks, URL requests or byte extraction."""
     target = validate_post_url(expected_url)
     aware(observed_at)
-    if type(timeout_ms) is not int or timeout_ms < 1 or type(include_dccon) is not bool:
+    if (
+        type(timeout_ms) is not int
+        or timeout_ms < 1
+        or type(include_dccon) is not bool
+        or (before_interaction is not None and not callable(before_interaction))
+    ):
         raise DCSnapshotError("Invalid inspection options")
     deadline = time.monotonic() + timeout_ms / 1000
 
@@ -599,6 +611,7 @@ def inspect_post(
     identity()
     diagnostics = page.evaluate(DIAGNOSTICS_JS)
     body = page.locator(".write_div")
+    guard_failure = None
     try:
         if body.count() == 0:
             body.first.wait_for(
@@ -629,6 +642,14 @@ def inspect_post(
             if remaining < 1:
                 entry["loading_reason"] = "inspection_budget_exhausted"
                 continue
+            if before_interaction is not None:
+                try:
+                    before_interaction()
+                except Exception as error:
+                    # Runtime focus/pause errors must leave this inspector with
+                    # their exact type and identity, not become loading errors.
+                    guard_failure = error
+                    raise
             try:
                 image.scroll_into_view_if_needed(timeout=remaining)
                 if not image.evaluate(
@@ -660,4 +681,6 @@ def inspect_post(
     except DCSnapshotError:
         raise
     except Exception as error:
+        if error is guard_failure:
+            raise
         raise DCSnapshotError("Post body inspection failed", diagnostics=diagnostics) from error

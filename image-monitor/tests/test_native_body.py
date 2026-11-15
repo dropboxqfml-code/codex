@@ -2,13 +2,14 @@ import shutil
 import sys
 from io import BytesIO
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from PIL import Image
 
 from image_monitor import dcinside, native_body
 from image_monitor.native_body import save_body_image
-from image_monitor.native_ui import NativeUIError
+from image_monitor.native_ui import NativeFocusError, NativeUIError
 
 URL = "https://gall.dcinside.com/board/view/?id=comic_new6&no=7036949"
 SOURCE = "https://dcimg3.dcinside.co.kr/viewimage.php?id=body-token&no=image-token"
@@ -71,12 +72,22 @@ def page(browser):
 
 
 class NativeUI:
-    def __init__(self, page, *, suggested="original.PNG", guard=None, menu=None, saved=None):
+    def __init__(
+        self,
+        page,
+        *,
+        suggested="original.PNG",
+        native_extension=None,
+        guard=None,
+        menu=None,
+        saved=None,
+    ):
         self.page = page
         self.suggested = suggested
         self.guard = guard
         self.menu = menu
         self.saved = saved
+        self.native_extension = native_extension
         self.calls = []
         self.target = None
 
@@ -93,6 +104,7 @@ class NativeUI:
 
     def save_dialog(self, target):
         self.calls.append("dialog")
+        self.browser_suggested_extension = self.native_extension
         self.target = target(self.suggested)
         if self.saved:
             self.saved()
@@ -148,8 +160,7 @@ def test_exact_image_uses_native_suggestion_extension_and_preserves_source_metad
 
 def test_extensionless_suggestion_can_use_a_proven_native_file_type_extension(page, tmp_path):
     current = page()
-    ui = NativeUI(current, suggested="render-first")
-    ui.browser_suggested_extension = ".png"
+    ui = NativeUI(current, suggested="render-first", native_extension=".png")
     result = save(current, ui, tmp_path)
     assert result["browser_suggested_filename"] == "render-first"
     assert result["staging_path"] == str(tmp_path / "native-image.png")
@@ -157,11 +168,131 @@ def test_extensionless_suggestion_can_use_a_proven_native_file_type_extension(pa
 
 def test_proven_file_type_cannot_replace_an_explicit_unsupported_filename_suffix(page, tmp_path):
     current = page()
-    ui = NativeUI(current, suggested="render-first.exe")
-    ui.browser_suggested_extension = ".png"
+    ui = NativeUI(current, suggested="render-first.exe", native_extension=".png")
     with pytest.raises(NativeUIError, match="supported image extension"):
         save(current, ui, tmp_path)
     assert ui.target is None
+
+
+def test_input_boundary_runs_once_after_foreground_guard_before_first_scroll(
+    page, tmp_path, monkeypatch
+):
+    from playwright.sync_api import ElementHandle
+
+    current = page()
+    events = []
+    ui = NativeUI(current, guard=lambda _count: events.append("guard"))
+    original_scroll = ElementHandle.scroll_into_view_if_needed
+
+    def scroll(handle, **options):
+        events.append("scroll")
+        return original_scroll(handle, **options)
+
+    monkeypatch.setattr(ElementHandle, "scroll_into_view_if_needed", scroll)
+
+    def arm():
+        assert ui.stage == "image_load"
+        assert ui.calls == ["guard"]
+        assert current.evaluate("window.rightClicks") == []
+        events.append("armed")
+
+    save_body_image(
+        current,
+        ui,
+        post_url=URL,
+        image=observed(),
+        staging_directory=tmp_path,
+        before_native_input=arm,
+    )
+    assert events[:4] == ["guard", "armed", "guard", "scroll"]
+    assert events.count("armed") == 1
+    assert current.evaluate("window.rightClicks") == ["selected"]
+
+
+def test_failed_input_boundary_prevents_scrolling_and_native_input(page, tmp_path, monkeypatch):
+    from playwright.sync_api import ElementHandle
+
+    current = page()
+    ui = NativeUI(current)
+    scroll = MagicMock()
+    monkeypatch.setattr(ElementHandle, "scroll_into_view_if_needed", scroll)
+    error = NativeUIError("Durable marker could not be written")
+
+    def fail():
+        raise error
+
+    with pytest.raises(NativeUIError, match="Durable marker") as caught:
+        save_body_image(
+            current,
+            ui,
+            post_url=URL,
+            image=observed(),
+            staging_directory=tmp_path,
+            before_native_input=fail,
+        )
+    assert caught.value is error
+    scroll.assert_not_called()
+    no_click(current, ui)
+
+
+@pytest.mark.parametrize("when", ["initial_guard", "after_callback"])
+def test_focus_loss_before_scroll_has_an_explicit_boundary_and_clears_stale_suggestions(
+    page, tmp_path, monkeypatch, when
+):
+    from playwright.sync_api import ElementHandle
+
+    current = page()
+    boundary = MagicMock()
+    scroll = MagicMock()
+    monkeypatch.setattr(ElementHandle, "scroll_into_view_if_needed", scroll)
+
+    def guard(count):
+        if count == (1 if when == "initial_guard" else 2):
+            raise NativeFocusError("Foreground focus changed")
+
+    ui = NativeUI(current, guard=guard)
+    ui.browser_suggested_filename = "previous.webp"
+    ui.browser_suggested_extension = ".webp"
+    ui.browser_suggested_file_type = "Previous image type"
+    with pytest.raises(NativeFocusError):
+        save_body_image(
+            current,
+            ui,
+            post_url=URL,
+            image=observed(),
+            staging_directory=tmp_path,
+            before_native_input=boundary,
+        )
+    assert boundary.call_count == (0 if when == "initial_guard" else 1)
+    assert ui.browser_suggested_filename is None
+    assert ui.browser_suggested_extension is None
+    assert ui.browser_suggested_file_type is None
+    scroll.assert_not_called()
+    no_click(current, ui)
+
+
+def test_identity_is_rechecked_after_durable_boundary_before_scrolling(page, tmp_path, monkeypatch):
+    from playwright.sync_api import ElementHandle
+
+    current = page()
+    ui = NativeUI(current)
+    scroll = MagicMock()
+    monkeypatch.setattr(ElementHandle, "scroll_into_view_if_needed", scroll)
+
+    def arm():
+        current.evaluate("history.replaceState(null,'',location.href.replace('7036949','999'))")
+
+    with pytest.raises(NativeUIError, match="Post identity changed"):
+        save_body_image(
+            current,
+            ui,
+            post_url=URL,
+            image=observed(),
+            staging_directory=tmp_path,
+            before_native_input=arm,
+        )
+    scroll.assert_not_called()
+    no_click(current, ui)
 
 
 def test_post_navigation_parameters_do_not_change_the_verified_identity(page, tmp_path):

@@ -11,7 +11,7 @@ Chrome 단일 게시글 작업자와 확정 저널·메타데이터 복구를 �
 | --- | --- |
 | Linux / CPython 3.12.14 `pytest -q` | 607 passed, 39 skipped; Windows 전용 시험만 건너뜀 |
 | Ruff lint / format | 통과 |
-| [Windows CI #22](https://github.com/dropboxqfml-code/codex/actions/runs/43670951194) · Ruff / pytest | 375 passed, 2 skipped; 관측 구조·식별자·압축 구조와 Edge/Chrome 실제 저장 |
+| [Windows CI #26](https://github.com/dropboxqfml-code/codex/actions/runs/43678523305) · Ruff / pytest | 642 passed, 4 skipped; Chrome 3형식 연속 저장·완료 판독·확정과 Edge/Chrome 기본 저장 |
 | 관리형 Python / Windows 의존성 잠금 설치 | Windows CI와 사용자 TXT에서 성공 확인 |
 | 실제 Windows CMD의 uv 검색 | 한글·공백·앰퍼샌드 경로와 새 사용자 PATH 검색 통과 |
 | 기존 Image Duplicate Finder 테스트 | 57 passed, 1 skipped; 기존 앱 수정 없음 |
@@ -176,6 +176,18 @@ HKCR 확장자→ProgID→기본 형식 설명 연결로 한 가지 이미지 �
 모호한 형식·알 수 없는 이름·레지스트리 조회 오류는 입력 전에 중단합니다.
 URL이나 첨부명을 이용한 확장자 추측은 하지 않습니다.
 최종 확장자는 실제 저장 파일의 검증된 형식을 따릅니다.
+
+[Windows CI #26](https://github.com/dropboxqfml-code/codex/actions/runs/43678523305)는
+전체 646개 중 642개 통과·4개 건너뜀으로 완료됐습니다. Windows build 26100,
+Chrome 156.0.8078.80의 영어·한국어 메뉴에서 각 PNG·progressive JPEG·2프레임 GIF를
+실제 우클릭과 네이티브 저장 창으로 연속 저장했습니다. 여섯 저장 모두 제안명에 확장자가
+없었고, 현재 PC의 정확한 파일 형식 연결 근거로 staging 확장자를 정해 처리했습니다.
+정확한 원본 URL·목표 경로의 완료 판독, 모든 프레임·실제 형식 검증과 fixture 원본 바이트 일치,
+DB 완료·최종 파일·원본/제안/최종 파일명·메타데이터를 확인했습니다.
+DB를 다시 열고 같은 관찰을 등록한 뒤에도 작업 3개·파일 슬롯이 유지되고 네이티브 저장이
+반복되지 않았습니다. 두 경우 모두 로컬 복구가 GUI 없이 완료된 저널을 건너뛰었습니다.
+실제 사이트 탐색은 test-only 페이지 대역으로 분리했으므로 이 결과를 사용자 PC의
+실사이트 저장 성공으로 해석하지 않습니다.
 
 SQLite v3의 확정 저널은 발행 전 `prepared`, DB 완료 후 `metadata_pending`,
 메타데이터 기록 후 `finalized`를 보존합니다. 로컬 시험에서 v1/v2 마이그레이션과 롤백,

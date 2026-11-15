@@ -38,7 +38,38 @@ def main() -> int:
     status.add_argument("--db", type=Path, required=True)
     demo = commands.add_parser("queue-demo", help="Create a new synthetic queue; no collection")
     demo.add_argument("--db", type=Path, required=True, help="New database path; never overwritten")
+    post_demo_parser = commands.add_parser(
+        "post-demo", help="Inspect a synthetic post and persist its image jobs; no collection"
+    )
+    post_demo_parser.add_argument("--db", type=Path, required=True)
+    site = commands.add_parser(
+        "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
+    )
+    site.add_argument("--work-root", type=Path, required=True)
+    site.add_argument("--browser", choices=("edge", "chrome"), default="chrome")
+    site.add_argument("--post-url", help="Public DCInside post URL; defaults to the design example")
     args = parser.parse_args()
+    if args.command == "post-demo":
+        from image_monitor.post_commands import post_demo
+
+        try:
+            output = post_demo(args.db)
+        except Exception as error:
+            parser.exit(2, f"Synthetic post inspection failed ({type(error).__name__}).\n")
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "site-inspect":
+        from image_monitor.site_inspection import run_site_inspection, share_report
+
+        try:
+            options = {"url": args.post_url} if args.post_url else {}
+            output = run_site_inspection(args.work_root, args.browser, **options)
+        except KeyboardInterrupt:
+            parser.exit(130, "Read-only inspection cancelled.\n")
+        except Exception as error:
+            parser.exit(2, f"Read-only inspection stopped ({type(error).__name__}).\n")
+        print(json.dumps(share_report(output), ensure_ascii=False, indent=2))
+        return 2 if output.get("status") == "inspection_failed" else 0
     if args.command in {"queue-status", "queue-demo"}:
         from image_monitor.queue_commands import queue_demo, queue_status
 

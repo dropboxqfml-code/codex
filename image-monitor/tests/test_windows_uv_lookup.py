@@ -77,9 +77,12 @@ def guarded_launcher(directory):
         ("--chrome", "--find-uv"),
         ("--find-uv", "--chrome", "--recover-closed"),
         ("--recover-closed", "--chrome", "--find-uv"),
+        ("--site-inspect", "--chrome", "--find-uv"),
+        ("--find-uv", "--site-inspect", "--recover-closed"),
+        ("--recover-closed", "--site-inspect", "--chrome", "--find-uv"),
     ],
 )
-def test_browser_and_recovery_flags_preserve_read_only_lookup(tmp_path, arguments):
+def test_check_flags_preserve_read_only_lookup(tmp_path, arguments):
     launcher = guarded_launcher(tmp_path / "launcher 한글 & space")
     executable = fake_uv(tmp_path / "uv 한글 & space")
     system32 = Path(os.environ["SystemRoot"]) / "System32"
@@ -105,9 +108,10 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
     [
         ("RUN_CHROME_TEST.cmd", "--chrome"),
         ("RETRY_CHROME_TEST.cmd", "--chrome --recover-closed"),
+        ("RUN_SITE_INSPECTION.cmd", "--site-inspect --chrome"),
     ],
 )
-def test_chrome_wrappers_forward_explicit_options_and_exit_status(
+def test_supplied_wrappers_forward_explicit_options_and_exit_status(
     tmp_path, filename, expected_arguments
 ):
     folder = tmp_path / "Chrome 한글 & space"
@@ -121,6 +125,61 @@ def test_chrome_wrappers_forward_explicit_options_and_exit_status(
     result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
     assert result.returncode == 19, result.stderr
     assert result.stdout.strip() == expected_arguments
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ("--site-inspect", "--recover-closed"),
+        ("--recover-closed", "--site-inspect"),
+        ("--chrome", "--site-inspect", "--recover-closed"),
+    ],
+)
+def test_site_inspection_rejects_native_recovery_before_setup(tmp_path, arguments):
+    launcher = guarded_launcher(tmp_path / "guarded inspection")
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 2
+    assert "cannot recover native-save state" in result.stderr
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
+    "browser_flags,expected_browser", [((), "edge"), (("--chrome",), "chrome")]
+)
+def test_site_inspection_routes_after_dependencies_without_native_input(
+    tmp_path, browser_flags, expected_browser
+):
+    # Skip setup only in this copied launcher and replace all potentially active
+    # commands with an exit guard. Exercise the actual post-dependency branch.
+    text = LAUNCHER.read_text(encoding="ascii")
+    text = text.replace("\n:new_log\n", "\n:new_log\ngoto after_dependencies\n", 1)
+    marker = 'if "%READ_ONLY_INSPECTION%"=="1" goto start_site_inspection'
+    assert marker in text
+    text = text.replace(marker, ":after_dependencies\n" + marker, 1)
+    for label, mode, code in [
+        ("start_probe", "native-probe", 92),
+        ("start_site_inspection", "site-inspect", 91),
+    ]:
+        text = text.replace(
+            f"\n:{label}\n",
+            f"\n:{label}\necho MODE={mode} BROWSER=%TEST_BROWSER%\nexit /b {code}\n",
+            1,
+        )
+    lines = [
+        "exit /b 77" if line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')) else line
+        for line in text.splitlines()
+    ]
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    arguments = ("--site-inspect", *browser_flags)
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 91, result.stderr
+    assert result.stdout.strip() == f"MODE=site-inspect BROWSER={expected_browser}"
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
 
 
 @contextmanager

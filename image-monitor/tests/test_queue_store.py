@@ -5,7 +5,13 @@ from threading import Barrier
 
 import pytest
 
-from image_monitor.queue import ImageDiscovery, PostDiscovery, QueueError, QueueStore
+from image_monitor.queue import (
+    SCHEMA_VERSION,
+    ImageDiscovery,
+    PostDiscovery,
+    QueueError,
+    QueueStore,
+)
 
 NOW = datetime(2026, 11, 14, 14, 59, tzinfo=UTC)
 
@@ -312,7 +318,7 @@ def test_unknown_and_newer_schemas_are_left_unchanged(tmp_path):
     assert path.read_bytes() == original
     path = tmp_path / "newer.db"
     with QueueStore(path) as store:
-        store.connection.execute("PRAGMA user_version=2")
+        store.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION + 1}")
     original = path.read_bytes()
     with pytest.raises(QueueError, match="schema"):
         QueueStore(path)

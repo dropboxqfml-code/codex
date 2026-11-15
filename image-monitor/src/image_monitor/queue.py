@@ -18,7 +18,7 @@ from image_monitor.paths import aware, plan_folder
 from image_monitor.retry import retry_after, schedule_retry
 
 APPLICATION_ID = 0x494D5131
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 ACTIVE = ("loading", "saving", "verifying")
 
 
@@ -65,7 +65,7 @@ def _gallery(value: str) -> str:
     return value
 
 
-SCHEMA = """
+BASE_SCHEMA = """
 CREATE TABLE posts (
     gallery_type TEXT NOT NULL, gallery_id TEXT NOT NULL, post_id TEXT NOT NULL,
     watch_name TEXT NOT NULL, nickname TEXT NOT NULL, ip_display TEXT,
@@ -112,6 +112,44 @@ CREATE INDEX jobs_due ON jobs(status,next_retry_at);
 """
 
 
+OBSERVATION_STATEMENTS = (
+    """CREATE TABLE post_observations (
+        observation_id TEXT PRIMARY KEY, gallery_type TEXT NOT NULL,
+        gallery_id TEXT NOT NULL, post_id TEXT NOT NULL, observed_at TEXT NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        FOREIGN KEY(gallery_type,gallery_id,post_id) REFERENCES posts
+    )""",
+    """CREATE TABLE observation_jobs (
+        observation_id TEXT NOT NULL REFERENCES post_observations,
+        job_id TEXT NOT NULL REFERENCES jobs, body_order INTEGER NOT NULL,
+        PRIMARY KEY(observation_id,job_id)
+    )""",
+    """CREATE INDEX observations_post_time ON post_observations
+        (gallery_type,gallery_id,post_id,observed_at)""",
+)
+SCHEMA = BASE_SCHEMA + ";\n".join(OBSERVATION_STATEMENTS) + ";"
+
+
+def _schema_objects(connection: sqlite3.Connection) -> set[tuple]:
+    return {
+        (row[0], row[1], row[2], " ".join((row[3] or "").split()))
+        for row in connection.execute(
+            "SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT GLOB 'sqlite_*'"
+        )
+    }
+
+
+def _matches_schema(connection: sqlite3.Connection, schema: str) -> bool:
+    # An application_id/version pair is not enough evidence to mutate an existing
+    # file. Compare the known object definitions before the additive migration.
+    reference = sqlite3.connect(":memory:")
+    try:
+        reference.executescript(schema)
+        return _schema_objects(connection) == _schema_objects(reference)
+    finally:
+        reference.close()
+
+
 class QueueStore:
     def __init__(self, path: Path | str, *, read_only: bool = False):
         if sqlite3.sqlite_version_info < (3, 50, 2):
@@ -136,13 +174,7 @@ class QueueStore:
                 self.connection.execute("PRAGMA query_only=ON")
             application = self.connection.execute("PRAGMA application_id").fetchone()[0]
             version = self.connection.execute("PRAGMA user_version").fetchone()[0]
-            objects = {
-                (row[0], row[1])
-                for row in self.connection.execute(
-                    "SELECT type,name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
-                )
-            }
-            tables = {name for kind, name in objects if kind == "table"}
+            objects = _schema_objects(self.connection)
             if application == 0 and version == 0 and not objects and not read_only:
                 self.connection.executescript(
                     "BEGIN IMMEDIATE;"
@@ -151,22 +183,34 @@ class QueueStore:
                     + f"PRAGMA user_version={SCHEMA_VERSION};"
                     + "COMMIT;"
                 )
+                version = SCHEMA_VERSION
+            elif application == APPLICATION_ID and version == 1:
+                if read_only:
+                    if not _matches_schema(self.connection, BASE_SCHEMA):
+                        raise QueueError("Unknown queue database schema; migration refused")
+                else:
+                    with self._write():
+                        # A second process can have completed migration while this
+                        # connection waited for BEGIN IMMEDIATE. Recheck under lock.
+                        current = self.connection.execute("PRAGMA user_version").fetchone()[0]
+                        if current == 1 and _matches_schema(self.connection, BASE_SCHEMA):
+                            for statement in OBSERVATION_STATEMENTS:
+                                self.connection.execute(statement)
+                            self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                        elif current != SCHEMA_VERSION or not _matches_schema(
+                            self.connection, SCHEMA
+                        ):
+                            raise QueueError("Unknown queue database schema; migration refused")
+                    version = SCHEMA_VERSION
             elif (
                 application != APPLICATION_ID
                 or version != SCHEMA_VERSION
-                or not {
-                    "posts",
-                    "matches",
-                    "checkpoints",
-                    "gaps",
-                    "jobs",
-                    "attempts",
-                    "service_limits",
-                }.issubset(tables)
+                or not _matches_schema(self.connection, SCHEMA)
             ):
                 raise QueueError(
                     "Unknown or unsupported queue database schema; no migration attempted"
                 )
+            self.schema_version = version
             if not read_only:
                 self.connection.execute("PRAGMA journal_mode=WAL")
                 self.connection.execute("PRAGMA synchronous=FULL")
@@ -203,6 +247,72 @@ class QueueStore:
         if "folder_plan" in result:
             result["folder_plan"] = json.loads(result["folder_plan"])
         return result
+
+    def _upsert_post_match(
+        self,
+        *,
+        watch_name,
+        gallery_type,
+        gallery_id,
+        keyword,
+        search_type,
+        post,
+        checked,
+        folder_date_basis,
+    ) -> tuple[int, int]:
+        folder = plan_folder(
+            watch_name=watch_name,
+            gallery_id=gallery_id,
+            post_id=post.post_id,
+            nickname=post.nickname,
+            ip_display=post.ip_display,
+            first_seen_at=post.first_seen_at,
+            published_at=post.published_at,
+            basis=folder_date_basis,
+        )
+        first = _time(post.first_seen_at)
+        if first > checked:
+            raise QueueError("Discovery time is later than the scan observation")
+        published = _time(post.published_at) if post.published_at is not None else None
+        key = (gallery_type, gallery_id, post.post_id)
+        existing = self.get_post(*key)
+        added = 0
+        if existing is None:
+            self.connection.execute(
+                "INSERT INTO posts VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    *key,
+                    watch_name,
+                    post.nickname,
+                    post.ip_display,
+                    first,
+                    checked,
+                    published,
+                    post.title,
+                    post.post_url,
+                    json.dumps(folder.to_dict()),
+                ),
+            )
+            added = 1
+        else:
+            self.connection.execute(
+                "UPDATE posts SET last_seen_at=MAX(last_seen_at,?), "
+                "published_at=COALESCE(?,published_at),title=COALESCE(?,title),"
+                "post_url=COALESCE(?,post_url) WHERE gallery_type=? "
+                "AND gallery_id=? AND post_id=?",
+                (checked, published, post.title, post.post_url, *key),
+            )
+        matched = self.connection.execute(
+            "INSERT OR IGNORE INTO matches VALUES (?,?,?,?,?,?,?,?)",
+            (watch_name, *key, keyword, search_type, first, checked),
+        ).rowcount
+        self.connection.execute(
+            "UPDATE matches SET last_seen_at=MAX(last_seen_at,?) WHERE watch_name=? "
+            "AND gallery_type=? AND gallery_id=? AND post_id=? "
+            "AND keyword=? AND search_type=?",
+            (checked, watch_name, *key, keyword, search_type),
+        )
+        return added, matched
 
     def discover_batch(
         self,
@@ -247,58 +357,18 @@ class QueueStore:
             if previous is not None and previous["checked_at"] > checked:
                 raise QueueError("A stale scan cannot move its checkpoint backwards")
             for post in posts:
-                folder = plan_folder(
+                post_added, match_added = self._upsert_post_match(
                     watch_name=watch_name,
+                    gallery_type=gallery_type,
                     gallery_id=gallery_id,
-                    post_id=post.post_id,
-                    nickname=post.nickname,
-                    ip_display=post.ip_display,
-                    first_seen_at=post.first_seen_at,
-                    published_at=post.published_at,
-                    basis=folder_date_basis,
+                    keyword=keyword,
+                    search_type=search_type,
+                    post=post,
+                    checked=checked,
+                    folder_date_basis=folder_date_basis,
                 )
-                first = _time(post.first_seen_at)
-                if first > checked:
-                    raise QueueError("Discovery time is later than the scan observation")
-                published = _time(post.published_at) if post.published_at is not None else None
-                key = (gallery_type, gallery_id, post.post_id)
-                existing = self.get_post(*key)
-                if existing is None:
-                    self.connection.execute(
-                        "INSERT INTO posts VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (
-                            *key,
-                            watch_name,
-                            post.nickname,
-                            post.ip_display,
-                            first,
-                            checked,
-                            published,
-                            post.title,
-                            post.post_url,
-                            json.dumps(folder.to_dict()),
-                        ),
-                    )
-                    added += 1
-                else:
-                    self.connection.execute(
-                        "UPDATE posts SET last_seen_at=MAX(last_seen_at,?), "
-                        "published_at=COALESCE(?,published_at),title=COALESCE(?,title),"
-                        "post_url=COALESCE(?,post_url) WHERE gallery_type=? "
-                        "AND gallery_id=? AND post_id=?",
-                        (checked, published, post.title, post.post_url, *key),
-                    )
-                count = self.connection.execute(
-                    "INSERT OR IGNORE INTO matches VALUES (?,?,?,?,?,?,?,?)",
-                    (watch_name, *key, keyword, search_type, first, checked),
-                ).rowcount
-                matched += count
-                self.connection.execute(
-                    "UPDATE matches SET last_seen_at=MAX(last_seen_at,?) WHERE watch_name=? "
-                    "AND gallery_type=? AND gallery_id=? AND post_id=? "
-                    "AND keyword=? AND search_type=?",
-                    (checked, watch_name, *key, keyword, search_type),
-                )
+                added += post_added
+                matched += match_added
             self.connection.execute(
                 "INSERT INTO checkpoints VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT "
                 "(watch_name,gallery_type,gallery_id,keyword,search_type) DO UPDATE SET "
@@ -313,6 +383,62 @@ class QueueStore:
                 )
         return {"posts_added": added, "matches_added": matched}
 
+    def _queue_images(
+        self, key: tuple[str, str, str], images: Sequence[ImageDiscovery]
+    ) -> list[str]:
+        identifiers = []
+        if self.get_post(*key) is None:
+            raise QueueError("Post must be durably discovered before its images")
+        for image in images:
+            _text(image.stable_key, "stable_key")
+            _text(image.display_url, "display_url")
+            _text(image.service_scope, "service_scope")
+            if type(image.body_order) is not int or image.body_order < 1:
+                raise QueueError("body_order must be a positive integer")
+            existing = self.connection.execute(
+                "SELECT * FROM jobs WHERE gallery_type=? AND gallery_id=? AND post_id=? "
+                "AND stable_key=?",
+                (*key, image.stable_key),
+            ).fetchone()
+            if existing is not None:
+                if existing["service_scope"] != image.service_scope:
+                    raise QueueError("An existing image's service scope must not change")
+                # Updating display order never changes a job's permanent file slot.
+                # An active worker retains the URL it claimed until its operation ends.
+                if existing["status"] in ACTIVE:
+                    self.connection.execute(
+                        "UPDATE jobs SET body_order=? WHERE job_id=?",
+                        (image.body_order, existing["job_id"]),
+                    )
+                else:
+                    self.connection.execute(
+                        "UPDATE jobs SET body_order=?,display_url=? WHERE job_id=?",
+                        (image.body_order, image.display_url, existing["job_id"]),
+                    )
+                identifiers.append(existing["job_id"])
+                continue
+            slot = self.connection.execute(
+                "SELECT COALESCE(MAX(file_slot),0)+1 FROM jobs "
+                "WHERE gallery_type=? AND gallery_id=? AND post_id=?",
+                key,
+            ).fetchone()[0]
+            job_id = uuid.uuid4().hex
+            self.connection.execute(
+                "INSERT INTO jobs(job_id,gallery_type,gallery_id,post_id,stable_key,body_order,"
+                "file_slot,display_url,service_scope) VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    job_id,
+                    *key,
+                    image.stable_key,
+                    image.body_order,
+                    slot,
+                    image.display_url,
+                    image.service_scope,
+                ),
+            )
+            identifiers.append(job_id)
+        return identifiers
+
     def queue_images(
         self,
         *,
@@ -322,61 +448,129 @@ class QueueStore:
         images: Sequence[ImageDiscovery],
     ) -> list[dict]:
         key = (gallery_type, gallery_id, post_id)
-        identifiers = []
         if len({image.stable_key for image in images}) != len(images):
             raise QueueError("A batch must not contain duplicate image stable keys")
         with self._write():
-            if self.get_post(*key) is None:
-                raise QueueError("Post must be durably discovered before its images")
-            for image in images:
-                _text(image.stable_key, "stable_key")
-                _text(image.display_url, "display_url")
-                _text(image.service_scope, "service_scope")
-                if type(image.body_order) is not int or image.body_order < 1:
-                    raise QueueError("body_order must be a positive integer")
-                existing = self.connection.execute(
-                    "SELECT * FROM jobs WHERE gallery_type=? AND gallery_id=? AND post_id=? "
-                    "AND stable_key=?",
-                    (*key, image.stable_key),
-                ).fetchone()
-                if existing is not None:
-                    if existing["service_scope"] != image.service_scope:
-                        raise QueueError("An existing image's service scope must not change")
-                    # Updating display order never changes a job's permanent file slot.
-                    # An active worker retains the URL it claimed until its operation ends.
-                    if existing["status"] in ACTIVE:
-                        self.connection.execute(
-                            "UPDATE jobs SET body_order=? WHERE job_id=?",
-                            (image.body_order, existing["job_id"]),
-                        )
-                    else:
-                        self.connection.execute(
-                            "UPDATE jobs SET body_order=?,display_url=? WHERE job_id=?",
-                            (image.body_order, image.display_url, existing["job_id"]),
-                        )
-                    identifiers.append(existing["job_id"])
-                    continue
-                slot = self.connection.execute(
-                    "SELECT COALESCE(MAX(file_slot),0)+1 FROM jobs "
-                    "WHERE gallery_type=? AND gallery_id=? AND post_id=?",
-                    key,
-                ).fetchone()[0]
-                job_id = uuid.uuid4().hex
-                self.connection.execute(
-                    "INSERT INTO jobs(job_id,gallery_type,gallery_id,post_id,stable_key,body_order,"
-                    "file_slot,display_url,service_scope) VALUES (?,?,?,?,?,?,?,?,?)",
-                    (
-                        job_id,
-                        *key,
-                        image.stable_key,
-                        image.body_order,
-                        slot,
-                        image.display_url,
-                        image.service_scope,
-                    ),
-                )
-                identifiers.append(job_id)
+            identifiers = self._queue_images(key, images)
         return [self.get_job(job_id) for job_id in identifiers]
+
+    def persist_post_snapshot(
+        self,
+        *,
+        watch_name: str,
+        gallery_type: str,
+        gallery_id: str,
+        keyword: str,
+        search_type: str,
+        post: PostDiscovery,
+        images: Sequence[ImageDiscovery],
+        snapshot: dict,
+        observed_at: datetime,
+        folder_date_basis: str = "published_at",
+    ) -> dict:
+        """Atomically enqueue an inspected post without moving a list checkpoint.
+
+        Snapshot image entries may include repeated body occurrences of one stable
+        key; the image job's body_order must identify one of those occurrences.
+        Every entry and queued job must agree on the display URL for that key.
+        """
+        _text(watch_name, "watch_name")
+        _gallery(gallery_type)
+        _text(keyword, "keyword")
+        _text(search_type, "search_type")
+        observed = _time(observed_at)
+        key = (gallery_type, gallery_id, post.post_id)
+        if not isinstance(snapshot, dict) or any(
+            snapshot.get(name) != value
+            for name, value in zip(("gallery_type", "gallery_id", "post_id"), key, strict=True)
+        ):
+            raise QueueError("Snapshot identity does not match the inspected post")
+        entries = snapshot.get("images")
+        if not isinstance(entries, list) or any(not isinstance(entry, dict) for entry in entries):
+            raise QueueError("Snapshot images must be a list of image records")
+        if len({image.stable_key for image in images}) != len(images):
+            raise QueueError("A batch must not contain duplicate image stable keys")
+        by_key = {image.stable_key: image for image in images}
+        occurrences = {name: set() for name in by_key}
+        orders = set()
+        for entry in entries:
+            stable_key = entry.get("stable_key")
+            order = entry.get("body_order")
+            if (
+                not isinstance(stable_key, str)
+                or stable_key not in by_key
+                or type(order) is not int
+                or order < 1
+                or order in orders
+                or entry.get("display_url") != by_key[stable_key].display_url
+            ):
+                raise QueueError("Snapshot image records do not match the queued images")
+            occurrences[stable_key].add(order)
+            orders.add(order)
+        if any(image.body_order not in occurrences[image.stable_key] for image in images):
+            raise QueueError("Snapshot image records do not match the queued images")
+        try:
+            payload = json.dumps(snapshot, ensure_ascii=False, allow_nan=False)
+        except (TypeError, ValueError, RecursionError) as error:
+            raise QueueError("Snapshot must contain finite JSON data") from error
+        observation_id = uuid.uuid4().hex
+        with self._write():
+            latest = self.connection.execute(
+                "SELECT MAX(observed_at) FROM post_observations WHERE gallery_type=? "
+                "AND gallery_id=? AND post_id=?",
+                key,
+            ).fetchone()[0]
+            if latest is not None and latest > observed:
+                raise QueueError("A stale observation cannot replace a newer post snapshot")
+            self._upsert_post_match(
+                watch_name=watch_name,
+                gallery_type=gallery_type,
+                gallery_id=gallery_id,
+                keyword=keyword,
+                search_type=search_type,
+                post=post,
+                checked=observed,
+                folder_date_basis=folder_date_basis,
+            )
+            identifiers = self._queue_images(key, images)
+            self.connection.execute(
+                "INSERT INTO post_observations VALUES (?,?,?,?,?,?)",
+                (observation_id, *key, observed, payload),
+            )
+            self.connection.executemany(
+                "INSERT INTO observation_jobs VALUES (?,?,?)",
+                [
+                    (observation_id, job_id, image.body_order)
+                    for job_id, image in zip(identifiers, images, strict=True)
+                ],
+            )
+        return {
+            "observation_id": observation_id,
+            "jobs": [self.get_job(job) for job in identifiers],
+        }
+
+    def list_post_snapshots(self, gallery_type: str, gallery_id: str, post_id: str) -> list[dict]:
+        """Return immutable observations newest first, with their frozen job associations."""
+        if self.schema_version == 1:
+            return []
+        records = []
+        for row in self.connection.execute(
+            "SELECT * FROM post_observations WHERE gallery_type=? AND gallery_id=? AND post_id=? "
+            "ORDER BY observed_at DESC,rowid DESC",
+            (gallery_type, gallery_id, post_id),
+        ):
+            record = dict(row)
+            record["snapshot"] = json.loads(record.pop("snapshot_json"))
+            record["jobs"] = [
+                dict(job)
+                for job in self.connection.execute(
+                    "SELECT o.job_id,o.body_order,j.stable_key,j.file_slot FROM observation_jobs o "
+                    "JOIN jobs j USING(job_id) WHERE o.observation_id=? ORDER BY o.body_order",
+                    (record["observation_id"],),
+                )
+            ]
+            records.append(record)
+        return records
 
     def get_post(self, gallery_type: str, gallery_id: str, post_id: str) -> dict | None:
         return self._record(
@@ -553,7 +747,7 @@ class QueueStore:
     def summary(self) -> dict:
         counts = dict(self.connection.execute("SELECT status,COUNT(*) FROM jobs GROUP BY status"))
         return {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": self.schema_version,
             "posts": self.connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0],
             "jobs": sum(counts.values()),
             "statuses": counts,

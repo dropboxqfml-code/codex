@@ -7,12 +7,15 @@ if errorlevel 1 exit /b 1
 set "TEST_BROWSER=edge"
 set "RECOVER_CLOSED=0"
 set "UV_LOOKUP_ONLY=0"
+set "READ_ONLY_INSPECTION=0"
+set "CHECK_LABEL=Windows native-save test"
 
 :parse_arguments
 if "%~1"=="" goto arguments_ready
 if /i "%~1"=="--chrome" goto option_chrome
 if /i "%~1"=="--recover-closed" goto option_recover
 if /i "%~1"=="--find-uv" goto option_lookup
+if /i "%~1"=="--site-inspect" goto option_site_inspection
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
 exit /b 2
 
@@ -31,15 +34,28 @@ set "UV_LOOKUP_ONLY=1"
 shift
 goto parse_arguments
 
+:option_site_inspection
+set "READ_ONLY_INSPECTION=1"
+set "CHECK_LABEL=read-only site inspection"
+shift
+goto parse_arguments
+
 :arguments_ready
 if "%UV_LOOKUP_ONLY%"=="1" goto lookup_only
+if "%READ_ONLY_INSPECTION%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_options
+goto new_log
+
+:incompatible_options
+>&2 echo Read-only site inspection cannot recover native-save state.
+exit /b 2
 
 :new_log
 set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
->"%LOG_FILE%" echo Image Monitor - Windows native-save test
+>"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
->>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
+if "%READ_ONLY_INSPECTION%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
+if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public-page DOM inspection. No image saving is attempted.
 >>"%LOG_FILE%" echo Selected browser: %TEST_BROWSER%
 if not exist "pyproject.toml" goto missing_project
 if not exist "uv.lock" goto missing_project
@@ -73,6 +89,7 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+if "%READ_ONLY_INSPECTION%"=="1" goto start_site_inspection
 rem Recovery is only enabled by the dedicated, user-initiated retry launcher.
 if "%RECOVER_CLOSED%"=="0" goto start_probe
 echo Checking that the previous test browser is closed...
@@ -95,6 +112,19 @@ echo Test passed. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
+:start_site_inspection
+echo Inspecting the public page in a dedicated %TEST_BROWSER% session. Please wait.
+>>"%LOG_FILE%" echo STAGE: site_inspection
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor site-inspect --work-root "%LOCALAPPDATA%\ImageMonitorInspection" --browser "%TEST_BROWSER%" >>"%LOG_FILE%" 2>&1
+set "INSPECTION_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Read-only inspection exit code: %INSPECTION_CODE%
+if not "%INSPECTION_CODE%"=="0" goto failed
+>>"%LOG_FILE%" echo RESULT: SUCCESS - READ_ONLY_SITE_INSPECTION
+>>"%LOG_FILE%" echo A read-only DOM report was created. No images were saved or monitored.
+echo Site inspection finished. Opening the result file.
+start "" notepad.exe "%LOG_FILE%"
+exit /b 0
+
 :missing_project
 >>"%LOG_FILE%" echo Setup stopped: pyproject.toml or uv.lock is missing. Fully extract the ZIP first.
 goto failed
@@ -105,8 +135,10 @@ goto failed
 >>"%LOG_FILE%" echo uv is not installed and WinGet is unavailable. Send this file for help.
 goto failed
 :failed
->>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
->>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
+if "%READ_ONLY_INSPECTION%"=="0" >>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
+if "%READ_ONLY_INSPECTION%"=="0" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
+if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo RESULT: FAILED - READ_ONLY_SITE_INSPECTION. No image saving was attempted.
+if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
 echo Test stopped. Opening the result file; please send that TXT file for help.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 1

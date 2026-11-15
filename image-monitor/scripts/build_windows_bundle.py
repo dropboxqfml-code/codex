@@ -22,6 +22,7 @@ def main():
         "RETRY_WINDOWS_TEST.cmd",
         "RUN_CHROME_TEST.cmd",
         "RETRY_CHROME_TEST.cmd",
+        "RUN_SITE_INSPECTION.cmd",
         "WINDOWS_TEST_GUIDE.txt",
         "pyproject.toml",
         "uv.lock",

@@ -179,7 +179,12 @@ def test_public_shown_metadata_has_exact_ids_raw_dates_and_never_queue_permissio
         (row(is_pinned=True), "pinned"),
         (row(is_ad=True), "ad"),
         (row("공지"), "non_numeric"),
-        (row("0"), "non_numeric"),
+        (row("0"), "invalid_post_number"),
+        (row("1" * 21), "invalid_post_number"),
+        (row(None), "missing_post_number"),
+        (row(""), "missing_post_number"),
+        (row(None, field_counts={"number": 0, "author": 1, "date": 1}), "ambiguous_row_fields"),
+        (row(None, field_counts={"number": 2, "author": 1, "date": 1}), "ambiguous_row_fields"),
         (row("7"), "post_number_mismatch"),
         (row(field_counts={"number": 2, "author": 1, "date": 1}), "ambiguous_row_fields"),
         (
@@ -199,6 +204,48 @@ def test_nonordinary_or_uncertain_rows_have_bounded_reason_only(entry, reason):
     assert snapshot["rows"] == []
     assert snapshot["excluded_rows"] == [{"row_order": 1, "reason": reason}]
     assert snapshot["status"] == "observed"
+
+
+@pytest.mark.parametrize("number_count", [0, 2])
+def test_missing_or_duplicate_number_cells_cannot_advance_fixture_planner(number_count):
+    from image_monitor.watch_planner import plan_scan
+    from image_monitor.watch_store import WatchScope
+
+    scope = WatchScope("fixture", "normal", "comic_new6", "ai", "search_subject_memo")
+
+    def ordinary(number):
+        return row(
+            str(number),
+            links=[{"href": POST.replace("7036949", str(number)), "text_raw": f"ai {number}"}],
+        )
+
+    baseline_page = parse(raw_snapshot([ordinary(100)]), layout_status="fixture_validated")
+    empty = {"generation": 0, "baseline": None, "checkpoint": None, "latest_scan": None}
+    baseline = plan_scan(scope, empty, [baseline_page], NOW, synthetic_fixture=True)
+    state = empty | {
+        "generation": 1,
+        "baseline": baseline["baseline"],
+        "checkpoint": baseline["checkpoint"],
+    }
+    unresolved = ordinary(103) | {
+        "number_raw": None,
+        "field_counts": {"number": number_count, "author": 1, "date": 1},
+    }
+    ambiguous_page = parse(
+        raw_snapshot([ordinary(104), unresolved, ordinary(100)], fixture_end_of_results=True),
+        layout_status="fixture_validated",
+    )
+    assert ambiguous_page["excluded_rows"] == [{"row_order": 2, "reason": "ambiguous_row_fields"}]
+    result = plan_scan(scope, state, [ambiguous_page], NOW, synthetic_fixture=True)
+    assert not result["complete"]
+    assert result["gap_reason"] == "excluded_rows_unverified"
+    repaired_page = parse(
+        raw_snapshot([ordinary(104), ordinary(103), ordinary(100)], fixture_end_of_results=True),
+        layout_status="fixture_validated",
+    )
+    repaired = plan_scan(scope, state, [repaired_page], NOW, synthetic_fixture=True)
+    assert repaired["complete"]
+    assert [item["post_id"] for item in repaired["candidates"]] == ["104", "103"]
 
 
 def test_ambiguous_links_duplicate_ids_and_numeric_cell_mismatch_are_not_post_identity():

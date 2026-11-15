@@ -300,7 +300,7 @@ def test_list_inspection_command_expands_quoted_work_root_and_selected_browser(t
     launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
     environment = os.environ.copy()
     environment["LOCALAPPDATA"] = str(tmp_path / "local 한글 & space")
-    command_processor = Path(environment["SystemRoot"]) / "System32" / "cmd.exe"
+    command_processor = Path(environment["SYSTEMROOT"]) / "System32" / "cmd.exe"
     arguments = ["--list-inspect"]
     if chrome:
         arguments.append("--chrome")

@@ -349,6 +349,7 @@ def test_new_rows_cannot_increase_across_page_boundaries():
         "missing_title",
         "duplicate_post_id",
         "mixed_gallery_identity",
+        "non_numeric",
         "unknown_reason",
     ],
 )
@@ -369,7 +370,7 @@ def test_unresolved_excluded_rows_block_baseline_and_terminal_checkpoint_advance
     )
 
 
-@pytest.mark.parametrize("reason", ["ad", "pinned", "non_numeric", "wrong_gallery"])
+@pytest.mark.parametrize("reason", ["ad", "pinned", "wrong_gallery"])
 def test_explicit_safe_exclusions_do_not_block_coverage(reason):
     page = snapshot([104, 100], terminal=True, excluded_rows=[{"row_order": 2, "reason": reason}])
     assert plan([page])["complete"] is True
@@ -401,16 +402,29 @@ def test_unresolved_exclusions_on_required_overlap_page_keep_the_scan_partial():
     assert [row["post_id"] for row in result["candidates"]] == ["104"]
 
 
-def test_parser_ambiguity_does_not_permanently_skip_a_later_repaired_post(tmp_path):
+@pytest.mark.parametrize(
+    "number_raw,number_count,author_count",
+    [
+        ("103", 1, 2),
+        (None, 0, 1),
+        (None, 2, 1),
+        ("unknown", 1, 1),
+        ("0", 1, 1),
+        ("103*", 1, 1),
+    ],
+)
+def test_parser_ambiguity_does_not_permanently_skip_a_later_repaired_post(
+    tmp_path, number_raw, number_count, author_count
+):
     def parsed(when, ambiguous):
         rows = [
             {
-                "number_raw": str(post_id),
+                "number_raw": number_raw if ambiguous and post_id == 103 else str(post_id),
                 "is_ad": False,
                 "is_pinned": False,
                 "field_counts": {
-                    "number": 1,
-                    "author": 2 if ambiguous and post_id == 103 else 1,
+                    "number": number_count if ambiguous and post_id == 103 else 1,
+                    "author": author_count if ambiguous and post_id == 103 else 1,
                     "date": 1,
                 },
                 "link_total": 1,

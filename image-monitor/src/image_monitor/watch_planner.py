@@ -14,7 +14,7 @@ from image_monitor.search_list import validate_list_url
 from image_monitor.watch_store import WatchScope
 
 _SCOPE_FIELDS = ("gallery_type", "gallery_id", "search_type", "keyword")
-_SAFE_EXCLUSIONS = {"ad", "pinned", "non_numeric", "wrong_gallery"}
+_SAFE_EXCLUSIONS = {"ad", "pinned", "wrong_gallery"}
 
 
 class WatchPlanError(ValueError):

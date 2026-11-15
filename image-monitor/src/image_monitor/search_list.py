@@ -274,13 +274,21 @@ def _ordinary_row(raw, target, row_order):
         return None, "ad"
     if raw["is_pinned"]:
         return None, "pinned"
-    number = _public_text(raw.get("number_raw"), 100)
-    if number is None or not re.fullmatch(r"[0-9]{1,20}", number) or int(number) < 1:
-        return None, "non_numeric"
     fields = raw.get("field_counts")
-    if not isinstance(fields, dict) or any(
-        type(fields.get(key)) is not int or fields[key] != 1 for key in ("number", "author", "date")
+    if (
+        not isinstance(fields, dict)
+        or type(fields.get("number")) is not int
+        or fields["number"] != 1
     ):
+        return None, "ambiguous_row_fields"
+    number = _public_text(raw.get("number_raw"), 100)
+    if number is None:
+        return None, "missing_post_number"
+    if not re.fullmatch(r"[0-9]+", number):
+        return None, "non_numeric"
+    if len(number) > 20 or int(number) < 1:
+        return None, "invalid_post_number"
+    if any(type(fields.get(key)) is not int or fields[key] != 1 for key in ("author", "date")):
         return None, "ambiguous_row_fields"
     links = raw.get("links")
     if not isinstance(links, list) or len(links) > MAX_LINKS_PER_ROW:

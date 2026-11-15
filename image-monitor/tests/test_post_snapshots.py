@@ -1,6 +1,6 @@
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
 from threading import Barrier
@@ -71,7 +71,7 @@ def make_legacy_database(path):
         job = store.queue_images(
             gallery_type="normal", gallery_id="comic_new6", post_id="123", images=[IMAGE]
         )[0]
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute("DROP TABLE observation_jobs")
         db.execute("DROP TABLE post_observations")
         db.execute("PRAGMA user_version=1")
@@ -303,7 +303,7 @@ def test_exact_v1_migration_preserves_jobs_checkpoints_and_frozen_folder(tmp_pat
         persist(store)
         assert list(store.connection.execute("SELECT * FROM checkpoints")) == before
         assert len(snapshots(store)) == 1
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute("PRAGMA application_id").fetchone()[0] == APPLICATION_ID
         assert db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
 
@@ -319,7 +319,7 @@ def test_readonly_v1_status_never_migrates_or_writes_the_file(tmp_path):
         with pytest.raises(QueueError, match="read-only"):
             persist(store)
     assert path.read_bytes() == before
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute("PRAGMA user_version").fetchone()[0] == 1
         assert (
             db.execute(
@@ -329,10 +329,37 @@ def test_readonly_v1_status_never_migrates_or_writes_the_file(tmp_path):
         )
 
 
+def committed_database_state(path):
+    # A WAL checkpoint can change main-file bytes without changing committed
+    # content. Snapshot the transactional contract, and close the reader so it
+    # cannot retain WAL resources or influence the migration under test.
+    with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
+        schema = db.execute(
+            "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+        ).fetchall()
+        rows = {}
+        for kind, name, _table, _sql in schema:
+            if kind == "table":
+                identifier = '"' + name.replace('"', '""') + '"'
+                rows[name] = db.execute(f"SELECT * FROM {identifier} ORDER BY rowid").fetchall()
+        return {
+            "schema": schema,
+            "rows": rows,
+            "application_id": db.execute("PRAGMA application_id").fetchone()[0],
+            "user_version": db.execute("PRAGMA user_version").fetchone()[0],
+            "journal_mode": db.execute("PRAGMA journal_mode").fetchone()[0],
+            "integrity": db.execute("PRAGMA integrity_check").fetchall(),
+            "foreign_keys": db.execute("PRAGMA foreign_key_check").fetchall(),
+        }
+
+
 def test_migration_failure_rolls_back_all_new_objects_and_version(tmp_path, monkeypatch):
     path = tmp_path / "legacy.db"
     legacy = make_legacy_database(path)
-    before = path.read_bytes()
+    before = committed_database_state(path)
+    assert before["user_version"] == 1
+    assert before["integrity"] == [("ok",)]
+    assert before["foreign_keys"] == []
     monkeypatch.setattr(
         queue_module,
         "OBSERVATION_STATEMENTS",
@@ -340,7 +367,7 @@ def test_migration_failure_rolls_back_all_new_objects_and_version(tmp_path, monk
     )
     with pytest.raises(sqlite3.OperationalError, match="nonexistent_function"):
         QueueStore(path)
-    assert path.read_bytes() == before
+    assert committed_database_state(path) == before
     with QueueStore(path, read_only=True) as store:
         assert store.summary()["schema_version"] == 1
         assert store.get_job(legacy["job_id"]) == legacy
@@ -350,7 +377,7 @@ def test_migration_failure_rolls_back_all_new_objects_and_version(tmp_path, monk
 def test_declared_v1_with_unrecognized_object_is_not_modified(tmp_path):
     path = tmp_path / "modified-v1.db"
     make_legacy_database(path)
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute("CREATE TABLE foreign_data(value TEXT)")
     before = path.read_bytes()
     with pytest.raises(QueueError, match="migration refused"):
@@ -383,7 +410,7 @@ def test_two_connections_can_open_a_legacy_queue_during_the_same_migration(tmp_p
 
 def test_sqlitex_user_table_is_not_mistaken_for_an_empty_database(tmp_path):
     path = tmp_path / "unrelated.db"
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute("CREATE TABLE sqlitex_user_data(value TEXT)")
         db.execute("INSERT INTO sqlitex_user_data VALUES ('preserve')")
     before = path.read_bytes()
@@ -391,7 +418,7 @@ def test_sqlitex_user_table_is_not_mistaken_for_an_empty_database(tmp_path):
         QueueStore(path)
     assert path.read_bytes() == before
     assert not path.with_name(path.name + "-wal").exists()
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute("SELECT * FROM sqlitex_user_data").fetchall() == [("preserve",)]
         assert db.execute("PRAGMA application_id").fetchone()[0] == 0
         assert db.execute("PRAGMA user_version").fetchone()[0] == 0
@@ -403,14 +430,14 @@ def test_sqlitex_user_table_is_not_mistaken_for_an_empty_database(tmp_path):
 def test_sqlitex_object_in_declared_v1_prevents_migration_without_changes(tmp_path):
     path = tmp_path / "unrecognized-v1.db"
     legacy = make_legacy_database(path)
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute("CREATE TABLE sqlitex_user_data(value TEXT)")
         db.execute("INSERT INTO sqlitex_user_data VALUES ('preserve')")
     before = path.read_bytes()
     with pytest.raises(QueueError, match="migration refused"):
         QueueStore(path)
     assert path.read_bytes() == before
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute("SELECT * FROM sqlitex_user_data").fetchall() == [("preserve",)]
         assert db.execute("SELECT job_id FROM jobs").fetchall() == [(legacy["job_id"],)]
         assert db.execute("PRAGMA user_version").fetchone()[0] == 1

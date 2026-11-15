@@ -7,7 +7,7 @@
 
 | 검사 | 결과 |
 | --- | --- |
-| Linux / CPython 3.12.14 `pytest -q` | 317 passed, 22 skipped; Windows 전용 시험만 건너뜀 |
+| Linux / CPython 3.12.14 `pytest -q` | 355 passed, 22 skipped; Windows 전용 시험만 건너뜀 |
 | Ruff lint / format | 통과 |
 | [Windows CI #20](https://github.com/dropboxqfml-code/codex/actions/runs/43663407825) · Ruff / pytest | 337 passed, 2 skipped; 본문 분석·대기열·CMD와 Edge/Chrome 실제 저장 |
 | 관리형 Python / Windows 의존성 잠금 설치 | Windows CI와 사용자 TXT에서 성공 확인 |

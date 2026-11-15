@@ -8,6 +8,7 @@ import re
 import sys
 import time
 from collections.abc import Callable
+from pathlib import PureWindowsPath
 
 
 class NativeUIError(RuntimeError):
@@ -23,6 +24,28 @@ def normalize_label(label: str) -> str:
     label = label.replace("&", "").replace("...", "…").strip()
     label = re.sub(r"\s*\([A-Za-z]\)(?=…?$)", "", label)
     return label.removesuffix("…").strip()
+
+
+def image_filter_extension(label: str) -> str | None:
+    """Recognize only an explicit single-format native file-type filter."""
+    if not isinstance(label, str):
+        return None
+    match = re.fullmatch(
+        r"[^()\x00]{1,200}\(\s*(\*\.[a-zA-Z0-9]+(?:\s*;\s*\*\.[a-zA-Z0-9]+)*)\s*\)",
+        label.strip(),
+    )
+    if match is None:
+        return None
+    extensions = {part.strip()[1:].lower() for part in match[1].split(";")}
+    families = (
+        ({".png"}, ".png"),
+        ({".jpg", ".jpeg"}, ".jpg"),
+        ({".webp"}, ".webp"),
+        ({".gif"}, ".gif"),
+        ({".bmp"}, ".bmp"),
+        ({".tif", ".tiff"}, ".tiff"),
+    )
+    return next((suffix for family, suffix in families if extensions <= family), None)
 
 
 def choose_unique(elements: list, predicate: Callable, description: str):
@@ -51,6 +74,8 @@ class WindowsUI:
         self.root_process = psutil.Process(browser_pid)
         self.root_created = self.root_process.create_time()
         self.browser_suggested_filename = None
+        self.browser_suggested_extension = None
+        self.browser_suggested_file_type = None
         self.stage = "desktop_guard"
         self.user32 = ctypes.WinDLL("user32", use_last_error=True)
         self.user32.OpenInputDesktop.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
@@ -546,6 +571,8 @@ class WindowsUI:
 
     def save_dialog(self, target: str | Callable[[str | None], str]) -> str | None:
         self.stage = "save_dialog"
+        self.browser_suggested_extension = None
+        self.browser_suggested_file_type = None
 
         def lookup():
             # Edge's out-of-process file picker can be a child in the browser's
@@ -587,6 +614,31 @@ class WindowsUI:
         self.assert_control_ready(filename, dialog)
         suggested = filename.get_value() or None
         self.browser_suggested_filename = suggested
+        type_control = None
+        if (
+            callable(target)
+            and isinstance(suggested, str)
+            and suggested
+            and not PureWindowsPath(suggested).suffix
+        ):
+            type_control = choose_unique(
+                dialog.descendants(control_type="ComboBox"),
+                lambda combo: (
+                    combo.element_info.automation_id == "FileTypeControlHost" and combo.is_visible()
+                ),
+                "native file type ComboBox with automation ID FileTypeControlHost",
+            )
+            self.assert_control_ready(type_control, dialog)
+            try:
+                file_type = type_control.selected_text()
+            except Exception as error:
+                raise NativeUIError("Cannot read the selected native image file type") from error
+            self.assert_control_ready(type_control, dialog)
+            extension = image_filter_extension(file_type)
+            if extension is None:
+                raise NativeUIError("Native image file type is unsupported or ambiguous")
+            self.browser_suggested_extension = extension
+            self.browser_suggested_file_type = file_type
         if callable(target):
             target = target(suggested)
         if not isinstance(target, str) or not target or "\0" in target:
@@ -602,6 +654,10 @@ class WindowsUI:
         )
 
         self.assert_control_ready(filename, dialog)
+        if type_control is not None:
+            self.assert_control_ready(type_control, dialog)
+            if type_control.selected_text() != self.browser_suggested_file_type:
+                raise NativeUIError("Selected native image file type changed before input")
         if not filename.has_keyboard_focus():
             self.assert_control_ready(filename, dialog)
             # Use only this identified element inside the already foreground

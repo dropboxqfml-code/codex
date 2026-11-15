@@ -434,6 +434,29 @@ def test_metadata_symlink_never_changes_target(tmp_path):
         assert unrelated.read_text() == "preserve"
 
 
+def test_colliding_metadata_temporary_file_is_preserved_during_failure_and_recovery(
+    tmp_path, monkeypatch
+):
+    with QueueStore(tmp_path / "queue.db") as store:
+        options = prepared(store, tmp_path / "images")
+        target = final_path(options)
+        target.parent.mkdir(parents=True)
+        fixed_uuid = uuid.UUID(int=1234)
+        unrelated = target.with_name(f".metadata-{fixed_uuid.hex}.tmp")
+        unrelated.write_bytes(b"unowned temporary data")
+        with monkeypatch.context() as patch:
+            patch.setattr(artifact_files.uuid, "uuid4", lambda: fixed_uuid)
+            with pytest.raises(FileExistsError):
+                finalize_saved_image(**options)
+        assert unrelated.read_bytes() == b"unowned temporary data"
+        assert target.exists()
+        assert store.get_artifact(options["job_id"])["phase"] == "metadata_pending"
+        assert store.claim_next("must-not-repeat-native-save", NOW) is None
+        assert recover_finalizations(store, confirm_workers_stopped=True)["manual_review"] == []
+        assert store.get_artifact(options["job_id"])["phase"] == "finalized"
+        assert unrelated.read_bytes() == b"unowned temporary data"
+
+
 def test_artifact_source_stays_frozen_after_completed_url_changes(tmp_path):
     with QueueStore(tmp_path / "queue.db") as store:
         options = prepared(store, tmp_path / "images")

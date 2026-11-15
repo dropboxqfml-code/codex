@@ -48,7 +48,29 @@ def main() -> int:
     site.add_argument("--work-root", type=Path, required=True)
     site.add_argument("--browser", choices=("edge", "chrome"), default="chrome")
     site.add_argument("--post-url", help="Public DCInside post URL; defaults to the design example")
+    save_post = commands.add_parser(
+        "save-post", help="Review and natively save images from one public post in Chrome"
+    )
+    save_post.add_argument("--work-root", type=Path, required=True)
+    save_post.add_argument("--browser", choices=("chrome",), default="chrome")
+    save_post.add_argument(
+        "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
+    )
     args = parser.parse_args()
+    if args.command == "save-post":
+        from image_monitor.post_worker import run_post_save, share_worker_report
+
+        try:
+            options = {"url": args.post_url} if args.post_url else {}
+            output = run_post_save(args.work_root, args.browser, **options)
+        except KeyboardInterrupt:
+            parser.exit(130, "Post saving cancelled. Inspect the dedicated browser and report.\n")
+        except Exception as error:
+            parser.exit(2, f"Post saving stopped ({type(error).__name__}); inspect the report.\n")
+        print(json.dumps(share_worker_report(output), ensure_ascii=False, indent=2))
+        if output.get("error_type") == "KeyboardInterrupt":
+            return 130
+        return 0 if output.get("status") == "post_completed" else 2
     if args.command == "post-demo":
         from image_monitor.post_commands import post_demo
 

@@ -269,6 +269,65 @@ def public_pipeline_notice(capsys, payload):
         print(f"\n::notice title=Owned native post pipeline::{escaped}", flush=True)
 
 
+def safe_fixture_save_dialog_snapshot(ui):
+    """Read bounded type evidence only from this owned synthetic save dialog."""
+    result = {"file_type_controls": []}
+    if ui is None:
+        return result
+    suggested = ui.browser_suggested_filename
+    result["suggested_is_text"] = isinstance(suggested, str)
+    if isinstance(suggested, str):
+        # This test has only generated loopback assets in a disposable profile.
+        # Never report a directory even if the shell unexpectedly supplies one.
+        result["suggested_basename"] = PureWindowsPath(suggested).name[:100]
+        result["suggested_suffix"] = PureWindowsPath(suggested).suffix[:32]
+        result["suggested_length"] = len(suggested)
+    try:
+        ui.assert_ready()
+        hwnd = ui.user32.GetForegroundWindow()
+        if (
+            not hwnd
+            or not ui.user32.IsWindow(hwnd)
+            or ui._class_name(hwnd) != "#32770"
+            or ui._window_pid(hwnd) not in ui.process_ids()
+            or not ui.belongs_to_target(hwnd)
+        ):
+            result["owned_dialog_present"] = False
+            return result
+        result["owned_dialog_present"] = True
+        dialog = ui.desktop.window(handle=hwnd).wrapper_object()
+        combos = dialog.descendants(control_type="ComboBox")
+        result["combo_automation_ids"] = [
+            str(combo.element_info.automation_id)[:60] for combo in combos[:8]
+        ]
+        for combo in combos:
+            automation_id = str(combo.element_info.automation_id)
+            if automation_id not in {"FileTypeControlHost", "1136"}:
+                continue
+            if len(result["file_type_controls"]) >= 2:
+                break
+            ui.assert_control_ready(combo, dialog)
+            entry = {
+                "automation_id": automation_id,
+                "role": combo.element_info.control_type,
+                "class": combo.class_name()[:60],
+                "window_text": combo.window_text()[:120],
+            }
+            result["file_type_controls"].append(entry)
+            for name, read in (
+                ("selected_text", combo.selected_text),
+                ("value", lambda combo=combo: combo.iface_value.CurrentValue),
+            ):
+                try:
+                    value = read()
+                    entry[name] = value[:120] if isinstance(value, str) else None
+                except Exception as error:
+                    entry[name + "_error_type"] = type(error).__name__
+    except Exception as error:
+        result["diagnostic_error_type"] = type(error).__name__
+    return result
+
+
 def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(monkeypatch, capsys):
     import psutil
     import pywinauto  # noqa: F401
@@ -313,7 +372,7 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
         owned_process = psutil.Process(process.pid)
         created_at = owned_process.create_time()
         driver = cleanup_session = ui = None
-        stage, artifacts, native_calls = "browser_startup", [], []
+        stage, artifacts, native_calls, native_names = "browser_startup", [], [], {}
         try:
             port = wait_for_debug_port(profile, process, timeout=30)
             driver = sync_playwright().start()
@@ -376,6 +435,7 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                             image=image,
                             staging_directory=staging_directory,
                         )
+                        native_names[image["stable_key"]] = saved["browser_suggested_filename"]
                         store.transition(job["job_id"], job["lease_token"], "verifying")
                         staging_file = Path(saved["staging_path"])
                         stage = "browser_completion"
@@ -429,20 +489,26 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                     assert artifact["completion"]["source_confirmed"] is True
                     assert artifact["completion"]["destination_confirmed"] is True
                     assert artifact["original_filename_match_status"] == "matched"
+                    assert (
+                        artifact["browser_suggested_filename"]
+                        == native_names[artifact["stable_key"]]
+                    )
                     if artifact["verification"]["detected_format"] == "PNG":
                         assert artifact["original_attachment_filename"] == "declared-first.png"
-                        assert PureWindowsPath(artifact["browser_suggested_filename"]).name == (
-                            "render-first.png"
-                        )
+                        assert PureWindowsPath(artifact["browser_suggested_filename"]).name in {
+                            "render-first",
+                            "render-first.png",
+                        }
                         assert artifact["saved_filename"] == "001.png"
                         assert artifact["occurrences"] == [1, 3]
                         assert artifact["verification"]["frames"] == 1
                     else:
                         assert artifact["verification"]["detected_format"] == "GIF"
                         assert artifact["original_attachment_filename"] == "declared-animation.gif"
-                        assert PureWindowsPath(artifact["browser_suggested_filename"]).name == (
-                            "render-animation.gif"
-                        )
+                        assert PureWindowsPath(artifact["browser_suggested_filename"]).name in {
+                            "render-animation",
+                            "render-animation.gif",
+                        }
                         assert artifact["saved_filename"] == "002.gif"
                         assert artifact["verification"]["frames"] == 2
                     formats.append(
@@ -495,6 +561,9 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                     "source_correspondence": True,
                     "native_method": "native_context_menu_save_image_as",
                     "three_filenames_preserved": True,
+                    "native_extensionless_suggestions_count": sum(
+                        not PureWindowsPath(name).suffix for name in native_names.values()
+                    ),
                     "formats": formats,
                     "recovery_no_gui": True,
                 },
@@ -508,6 +577,7 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                     "error_type": type(error).__name__,
                     "native_calls": len(native_calls),
                     "finalized_count": len(artifacts),
+                    "synthetic_save_dialog": safe_fixture_save_dialog_snapshot(ui),
                 },
             )
             raise

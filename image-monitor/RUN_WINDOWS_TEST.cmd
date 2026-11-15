@@ -8,6 +8,7 @@ set "TEST_BROWSER=edge"
 set "RECOVER_CLOSED=0"
 set "UV_LOOKUP_ONLY=0"
 set "READ_ONLY_INSPECTION=0"
+set "SAVE_POST=0"
 set "CHECK_LABEL=Windows native-save test"
 
 :parse_arguments
@@ -16,6 +17,7 @@ if /i "%~1"=="--chrome" goto option_chrome
 if /i "%~1"=="--recover-closed" goto option_recover
 if /i "%~1"=="--find-uv" goto option_lookup
 if /i "%~1"=="--site-inspect" goto option_site_inspection
+if /i "%~1"=="--save-post" goto option_save_post
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
 exit /b 2
 
@@ -40,8 +42,15 @@ set "CHECK_LABEL=read-only site inspection"
 shift
 goto parse_arguments
 
+:option_save_post
+set "SAVE_POST=1"
+set "CHECK_LABEL=single-post native-save test"
+shift
+goto parse_arguments
+
 :arguments_ready
 if "%UV_LOOKUP_ONLY%"=="1" goto lookup_only
+if "%READ_ONLY_INSPECTION%"=="1" if "%SAVE_POST%"=="1" goto incompatible_post_modes
 if "%READ_ONLY_INSPECTION%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_options
 goto new_log
 
@@ -49,12 +58,17 @@ goto new_log
 >&2 echo Read-only site inspection cannot recover native-save state.
 exit /b 2
 
+:incompatible_post_modes
+>&2 echo Read-only site inspection cannot be combined with post saving.
+exit /b 2
+
 :new_log
 set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
-if "%READ_ONLY_INSPECTION%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
+if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
+if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Single-post native image saving requires review in the dedicated Chrome app window.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public-page DOM inspection. No image saving is attempted.
 >>"%LOG_FILE%" echo Selected browser: %TEST_BROWSER%
 if not exist "pyproject.toml" goto missing_project
@@ -91,13 +105,17 @@ echo Installing locked project dependencies...
 if errorlevel 1 goto failed
 if "%READ_ONLY_INSPECTION%"=="1" goto start_site_inspection
 rem Recovery is only enabled by the dedicated, user-initiated retry launcher.
-if "%RECOVER_CLOSED%"=="0" goto start_probe
+if "%RECOVER_CLOSED%"=="0" goto recovery_finished
 echo Checking that the previous test browser is closed...
 >>"%LOG_FILE%" echo STAGE: recover_previous_probe
 "%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor native-recover --confirm-browser-closed >>"%LOG_FILE%" 2>&1
 set "RECOVERY_CODE=%ERRORLEVEL%"
 >>"%LOG_FILE%" echo Explicit recovery exit code: %RECOVERY_CODE%
 if not "%RECOVERY_CODE%"=="0" goto failed
+
+:recovery_finished
+if "%SAVE_POST%"=="1" goto start_post_save
+goto start_probe
 
 :start_probe
 echo Starting the dedicated %TEST_BROWSER% test browser. Keep that browser in front until the test ends.
@@ -109,6 +127,20 @@ if not "%PROBE_CODE%"=="0" goto failed
 >>"%LOG_FILE%" echo RESULT: SUCCESS
 >>"%LOG_FILE%" echo The synthetic-image native-save test passed. Site monitoring was not started.
 echo Test passed. Opening the result file.
+start "" notepad.exe "%LOG_FILE%"
+exit /b 0
+
+:start_post_save
+echo Starting a dedicated %TEST_BROWSER% session for one public post.
+echo Review the Chrome app window, then click its save-start button to begin.
+>>"%LOG_FILE%" echo STAGE: post_save
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor save-post --work-root "%LOCALAPPDATA%\ImageMonitorPostSave" --browser "%TEST_BROWSER%" >>"%LOG_FILE%" 2>&1
+set "POST_SAVE_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Single-post save exit code: %POST_SAVE_CODE%
+if not "%POST_SAVE_CODE%"=="0" goto failed
+>>"%LOG_FILE%" echo RESULT: SUCCESS - SINGLE_POST_NATIVE_SAVE
+>>"%LOG_FILE%" echo The reviewed post's image jobs completed. Continuous monitoring was not started.
+echo Post saving finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
@@ -135,8 +167,10 @@ goto failed
 >>"%LOG_FILE%" echo uv is not installed and WinGet is unavailable. Send this file for help.
 goto failed
 :failed
-if "%READ_ONLY_INSPECTION%"=="0" >>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
-if "%READ_ONLY_INSPECTION%"=="0" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
+if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - SINGLE_POST_NATIVE_SAVE. No automatic retry was performed.
+if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending browser unchanged for inspection.
+if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
+if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo RESULT: FAILED - READ_ONLY_SITE_INSPECTION. No image saving was attempted.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
 echo Test stopped. Opening the result file; please send that TXT file for help.

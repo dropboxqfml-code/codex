@@ -204,7 +204,14 @@ def run_site_inspection(
                     snapshot = _report_copy(snapshot, public=False)
                     if len(json.dumps(snapshot).encode("utf-8")) > MAX_SNAPSHOT_BYTES:
                         raise ValueError("Inspection metadata exceeds report limit")
-                    report.update(status="inspected_unverified", snapshot=snapshot)
+                    report.update(
+                        status=(
+                            "inspected_verified"
+                            if snapshot.get("layout_status") == "site_verified"
+                            else "inspected_unverified"
+                        ),
+                        snapshot=snapshot,
+                    )
             except Exception as error:
                 _failure(report, error)
             finally:
@@ -224,7 +231,7 @@ def run_site_inspection(
         else:
             report["cleanup_error_type"] = type(error).__name__
         report["status"] = "inspection_failed"
-    if report["status"] == "inspected_unverified":
+    if report["status"] in {"inspected_unverified", "inspected_verified"}:
         report["last_stage"] = "complete"
     _write_report(Path(report["report_path"]), report)
     return report

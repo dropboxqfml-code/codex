@@ -53,10 +53,12 @@ def test_invalid_post_url_is_rejected_before_launch_or_report_directory(tmp_path
     browser_session[1].chromium.launch.assert_not_called()
 
 
+@pytest.mark.parametrize("verified", [False, True])
 def test_owned_headless_inspection_reports_private_snapshot_and_closes_browser(
-    tmp_path, browser_session
+    tmp_path, browser_session, verified
 ):
     manager, driver, browser, page, response, inspect = browser_session
+    inspect.return_value["layout_status"] = "site_verified" if verified else "unverified"
     report = inspection.run_site_inspection(tmp_path, url=inspection.DEFAULT_POST_URL + "&page=2")
     driver.chromium.launch.assert_called_once_with(
         executable_path="chrome.exe",
@@ -71,7 +73,7 @@ def test_owned_headless_inspection_reports_private_snapshot_and_closes_browser(
     response.header_value.assert_called_once_with("retry-after")
     assert inspect.call_args.kwargs["timeout_ms"] == 20_000
     assert inspect.call_args.kwargs["observed_at"].utcoffset().total_seconds() == 0
-    assert report["status"] == "inspected_unverified"
+    assert report["status"] == ("inspected_verified" if verified else "inspected_unverified")
     assert report["last_stage"] == "complete"
     assert report["error_code"] is None
     assert report["images_saved"] is False

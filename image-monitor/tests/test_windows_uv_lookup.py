@@ -80,6 +80,10 @@ def guarded_launcher(directory):
         ("--site-inspect", "--chrome", "--find-uv"),
         ("--find-uv", "--site-inspect", "--recover-closed"),
         ("--recover-closed", "--site-inspect", "--chrome", "--find-uv"),
+        ("--save-post", "--chrome", "--find-uv"),
+        ("--find-uv", "--save-post", "--recover-closed"),
+        ("--site-inspect", "--save-post", "--find-uv"),
+        ("--save-post", "--site-inspect", "--recover-closed", "--find-uv"),
     ],
 )
 def test_check_flags_preserve_read_only_lookup(tmp_path, arguments):
@@ -109,6 +113,8 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
         ("RUN_CHROME_TEST.cmd", "--chrome"),
         ("RETRY_CHROME_TEST.cmd", "--chrome --recover-closed"),
         ("RUN_SITE_INSPECTION.cmd", "--site-inspect --chrome"),
+        ("RUN_POST_SAVE_TEST.cmd", "--save-post --chrome"),
+        ("RETRY_POST_SAVE_TEST.cmd", "--save-post --chrome --recover-closed"),
     ],
 )
 def test_supplied_wrappers_forward_explicit_options_and_exit_status(
@@ -146,6 +152,24 @@ def test_site_inspection_rejects_native_recovery_before_setup(tmp_path, argument
 
 
 @pytest.mark.parametrize(
+    "arguments",
+    [
+        ("--site-inspect", "--save-post"),
+        ("--save-post", "--site-inspect"),
+        ("--save-post", "--chrome", "--recover-closed", "--site-inspect"),
+    ],
+)
+def test_post_save_rejects_read_only_inspection_before_setup(tmp_path, arguments):
+    launcher = guarded_launcher(tmp_path / "guarded post save")
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 2
+    assert "cannot be combined with post saving" in result.stderr
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
     "browser_flags,expected_browser", [((), "edge"), (("--chrome",), "chrome")]
 )
 def test_site_inspection_routes_after_dependencies_without_native_input(
@@ -161,6 +185,7 @@ def test_site_inspection_routes_after_dependencies_without_native_input(
     for label, mode, code in [
         ("start_probe", "native-probe", 92),
         ("start_site_inspection", "site-inspect", 91),
+        ("start_post_save", "save-post", 93),
     ]:
         text = text.replace(
             f"\n:{label}\n",
@@ -179,6 +204,71 @@ def test_site_inspection_routes_after_dependencies_without_native_input(
     result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
     assert result.returncode == 91, result.stderr
     assert result.stdout.strip() == f"MODE=site-inspect BROWSER={expected_browser}"
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
+    "arguments,expected_browser,expected_mode,expected_code,recovers",
+    [
+        (("--save-post", "--chrome"), "chrome", "save-post", 93, False),
+        (
+            ("--save-post", "--chrome", "--recover-closed"),
+            "chrome",
+            "save-post",
+            93,
+            True,
+        ),
+        (("--save-post",), "edge", "save-post", 93, False),
+        ((), "edge", "native-probe", 92, False),
+        (("--chrome",), "chrome", "native-probe", 92, False),
+        (("--recover-closed",), "edge", "native-probe", 92, True),
+    ],
+)
+def test_post_save_and_native_probe_routes_with_only_explicit_recovery(
+    tmp_path, arguments, expected_browser, expected_mode, expected_code, recovers
+):
+    # Exercise the real decision after dependency setup, while every external
+    # command and mode body is replaced with an inert guard in this copy.
+    text = LAUNCHER.read_text(encoding="ascii")
+    text = text.replace(
+        "\n:new_log\n", '\n:new_log\nset "LOG_FILE=NUL"\ngoto after_dependencies\n', 1
+    )
+    marker = 'if "%READ_ONLY_INSPECTION%"=="1" goto start_site_inspection'
+    assert marker in text
+    text = text.replace(marker, ":after_dependencies\n" + marker, 1)
+    for label, mode, code in [
+        ("start_probe", "native-probe", 92),
+        ("start_site_inspection", "site-inspect", 91),
+        ("start_post_save", "save-post", 93),
+    ]:
+        text = text.replace(
+            f"\n:{label}\n",
+            f"\n:{label}\necho MODE={mode} BROWSER=%TEST_BROWSER%\nexit /b {code}\n",
+            1,
+        )
+    recovery_calls = 0
+    lines = []
+    for line in text.splitlines():
+        if line.startswith('"%UV_EXE%"') and " image-monitor native-recover " in line:
+            recovery_calls += 1
+            lines.extend(["echo RECOVERY=native-recover", "cmd.exe /d /c exit /b 0"])
+        elif line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')):
+            lines.append("exit /b 77")
+        elif line.startswith("echo Checking that the previous test browser is closed"):
+            continue
+        else:
+            lines.append(line)
+    assert recovery_calls == 1
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == expected_code, result.stderr
+    expected_lines = [f"MODE={expected_mode} BROWSER={expected_browser}"]
+    if recovers:
+        expected_lines.insert(0, "RECOVERY=native-recover")
+    assert result.stdout.strip().splitlines() == expected_lines
     assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
 
 

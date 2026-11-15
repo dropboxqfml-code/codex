@@ -219,8 +219,10 @@ def _write_metadata(store, job: dict, root: Path) -> Path:
     payload = _metadata(store, job)
     _owned_metadata(path, payload)
     temporary = path.with_name(f".metadata-{uuid.uuid4().hex}.tmp")
+    created = False
     try:
         with temporary.open("x", encoding="utf-8", newline="\n") as stream:
+            created = True
             json.dump(payload, stream, ensure_ascii=False, allow_nan=False, indent=2)
             stream.write("\n")
             stream.flush()
@@ -238,7 +240,7 @@ def _write_metadata(store, job: dict, root: Path) -> Path:
             os.replace(temporary, path)
         _sync_directory(directory)
     finally:
-        if temporary.exists():
+        if created and temporary.exists():
             temporary.unlink()  # Only this invocation's exclusive temporary file.
     return path
 

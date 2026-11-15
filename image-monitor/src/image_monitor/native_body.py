@@ -71,11 +71,13 @@ _DECODE_JS = """async (img, budget) => {
 }"""
 
 
-def _stage_target(directory: Path, suggested: str | None) -> str:
-    """Use only the native suggestion's supported extension, never its path/name."""
+def _stage_target(directory: Path, suggested: str | None, *, native_extension=None) -> str:
+    """Use the native suggestion's suffix or a proven native image-type filter."""
     if not isinstance(suggested, str) or not suggested or "\0" in suggested:
         raise NativeUIError("Native save dialog did not suggest a supported image extension")
     suffix = PureWindowsPath(suggested).suffix.lower()
+    if not suffix and native_extension in _SUPPORTED_SUFFIXES:
+        suffix = native_extension
     if suffix not in _SUPPORTED_SUFFIXES:
         raise NativeUIError("Native save dialog did not suggest a supported image extension")
     if directory.is_symlink() or not directory.is_dir():
@@ -225,7 +227,11 @@ def save_body_image(page, ui, *, post_url: str, image: dict, staging_directory: 
 
         def target_factory(suggested):
             nonlocal target
-            target = _stage_target(staging_directory, suggested)
+            target = _stage_target(
+                staging_directory,
+                suggested,
+                native_extension=getattr(ui, "browser_suggested_extension", None),
+            )
             return target
 
         suggested = ui.save_dialog(target_factory)

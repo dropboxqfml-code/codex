@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from image_monitor.native_ui import NativeUIError, WindowsUI
+from image_monitor.native_ui import NativeUIError, WindowsUI, image_filter_extension
 
 
 def dialog_ui(*, native_pid=11, provider_pid=11, provider_hwnd=300, owned=True):
@@ -114,6 +114,84 @@ def test_target_factory_failure_preserves_the_untouched_native_dialog():
 
     with pytest.raises(NativeUIError, match="Unsupported suggested extension"):
         ui.save_dialog(reject)
+    edit.element_info.element.SetFocus.assert_not_called()
+    ui.user32.SendMessageTimeoutW.assert_not_called()
+    save.invoke.assert_not_called()
+
+
+def file_type_control(ui, edit, save, label):
+    combo = MagicMock()
+    combo.element_info.automation_id = "FileTypeControlHost"
+    combo.is_visible.return_value = True
+    combo.selected_text.return_value = label
+    dialog = ui.desktop.window().wrapper_object()
+    dialog.descendants.side_effect = lambda control_type: (
+        [edit.parent(), combo] if control_type == "ComboBox" else [save]
+    )
+    return combo
+
+
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [
+        ("PNG Image (*.png)", ".png"),
+        ("JPEG Image (*.jpg;*.jpeg)", ".jpg"),
+        ("TIFF Image (*.tif; *.tiff)", ".tiff"),
+        ("GIF 이미지 (*.GIF)", ".gif"),
+        ("WebP Image (*.webp)", ".webp"),
+        ("Bitmap (*.bmp)", ".bmp"),
+        ("PNG Image", None),
+        ("All files (*.*)", None),
+        ("Image files (*.png;*.jpg)", None),
+        ("Unrecognized (*.jpe)", None),
+        ("PNG Image (*.png) extra", None),
+        ("PNG Image (*.png)\0", None),
+    ],
+)
+def test_image_filter_requires_an_explicit_single_supported_format_family(label, expected):
+    assert image_filter_extension(label) == expected
+
+
+def test_extensionless_native_name_uses_verified_selected_file_type_before_input():
+    ui, state, edit, save = dialog_ui()
+    edit.get_value.side_effect = ["render-first", "C:\\staging\\image.png"]
+    combo = file_type_control(ui, edit, save, "PNG Image (*.png)")
+    save.invoke.side_effect = lambda: state.update(exists=False)
+
+    def target(suggested):
+        assert suggested == "render-first"
+        assert ui.browser_suggested_file_type == "PNG Image (*.png)"
+        assert ui.browser_suggested_extension == ".png"
+        ui.user32.SendMessageTimeoutW.assert_not_called()
+        edit.element_info.element.SetFocus.assert_not_called()
+        return "C:\\staging\\image.png"
+
+    assert ui.save_dialog(target) == "render-first"
+    assert combo.selected_text.call_count >= 2
+    save.invoke.assert_called_once()
+
+
+@pytest.mark.parametrize("label", ["PNG Image", "All files (*.*)", "Images (*.png;*.jpg)"])
+def test_extensionless_native_name_without_explicit_unambiguous_type_stops_input(label):
+    ui, _state, edit, save = dialog_ui()
+    edit.get_value.side_effect = ["render-first"]
+    file_type_control(ui, edit, save, label)
+    target = MagicMock()
+    with pytest.raises(NativeUIError, match="unsupported or ambiguous"):
+        ui.save_dialog(target)
+    target.assert_not_called()
+    edit.element_info.element.SetFocus.assert_not_called()
+    ui.user32.SendMessageTimeoutW.assert_not_called()
+    save.invoke.assert_not_called()
+
+
+def test_changed_selected_file_type_stops_before_native_filename_input():
+    ui, _state, edit, save = dialog_ui()
+    edit.get_value.side_effect = ["render-first"]
+    combo = file_type_control(ui, edit, save, "PNG Image (*.png)")
+    combo.selected_text.side_effect = ["PNG Image (*.png)", "GIF Image (*.gif)"]
+    with pytest.raises(NativeUIError, match="file type changed"):
+        ui.save_dialog(lambda _name: "C:\\staging\\image.png")
     edit.element_info.element.SetFocus.assert_not_called()
     ui.user32.SendMessageTimeoutW.assert_not_called()
     save.invoke.assert_not_called()

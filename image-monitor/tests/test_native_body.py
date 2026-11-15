@@ -146,6 +146,24 @@ def test_exact_image_uses_native_suggestion_extension_and_preserves_source_metad
     assert not Path(result["staging_path"]).exists()  # No completion claim or file synthesis.
 
 
+def test_extensionless_suggestion_can_use_a_proven_native_file_type_extension(page, tmp_path):
+    current = page()
+    ui = NativeUI(current, suggested="render-first")
+    ui.browser_suggested_extension = ".png"
+    result = save(current, ui, tmp_path)
+    assert result["browser_suggested_filename"] == "render-first"
+    assert result["staging_path"] == str(tmp_path / "native-image.png")
+
+
+def test_proven_file_type_cannot_replace_an_explicit_unsupported_filename_suffix(page, tmp_path):
+    current = page()
+    ui = NativeUI(current, suggested="render-first.exe")
+    ui.browser_suggested_extension = ".png"
+    with pytest.raises(NativeUIError, match="supported image extension"):
+        save(current, ui, tmp_path)
+    assert ui.target is None
+
+
 def test_post_navigation_parameters_do_not_change_the_verified_identity(page, tmp_path):
     current = page()
     current.evaluate("history.replaceState(null,'',location.href+'&page=2')")

@@ -46,6 +46,11 @@ def main() -> int:
         "watch-demo", help="Create a local synthetic watch demo; no network or native UI"
     )
     watch_demo_parser.add_argument("--db", type=Path, required=True)
+    watch_test = commands.add_parser(
+        "watch-test", help="Run a bounded public-list discovery trial; never save images"
+    )
+    watch_test.add_argument("--work-root", type=Path, required=True)
+    watch_test.add_argument("--browser", choices=("chrome", "edge"), default="chrome")
     site = commands.add_parser(
         "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
     )
@@ -74,6 +79,27 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "watch-test":
+        try:
+            from image_monitor.watch_runtime import run_watch_trial, share_watch_report
+
+            output = run_watch_trial(args.work_root, args.browser)
+            public_report = share_watch_report(output)
+        except KeyboardInterrupt:
+            parser.exit(130, "Bounded list-watch trial cancelled.\n")
+        except Exception as error:
+            parser.exit(2, f"Bounded list-watch trial stopped ({type(error).__name__}).\n")
+        print(json.dumps(public_report, ensure_ascii=False, indent=2))
+        if (
+            output.get("error_type") == "KeyboardInterrupt"
+            or output.get("status") == "watch_test_cancelled"
+        ):
+            return 130
+        return (
+            0
+            if output.get("status") in {"watch_test_completed", "watch_waiting", "watch_busy"}
+            else 2
+        )
     if args.command == "watch-demo":
         try:
             from image_monitor.watch_commands import watch_demo

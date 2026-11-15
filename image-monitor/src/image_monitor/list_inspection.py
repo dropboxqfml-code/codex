@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from image_monitor.dcinside import DCSnapshotError
+from image_monitor.list_links import LIST_LINK_VALUE_CATEGORIES
 from image_monitor.native_probe import browser_executable
 from image_monitor.native_ui import require_windows
 from image_monitor.search_list import build_list_url, inspect_list, validate_list_url
@@ -26,6 +27,15 @@ DEFAULT_LIST_URL = build_list_url("normal", "comic_new6", "ai")
 MAX_REPORT_BYTES = MAX_SNAPSHOT_BYTES
 _REPORT_RESERVE_BYTES = 1024
 _SCOPE_KEYS = ("gallery_type", "gallery_id", "search_type", "keyword", "navigation")
+_DIAGNOSTIC_QUERY_KEYS = {
+    "id",
+    "s_type",
+    "s_keyword",
+    "page",
+    "search_pos",
+    "search_head",
+    "exception_mode",
+}
 _RELATIVE_LIST_URL = re.compile(
     r"(?<![\w/:])/(?:mgallery/|mini/)?board/lists/?\?[^\s<>\"']+", re.IGNORECASE
 )
@@ -77,8 +87,21 @@ def share_report(report: dict) -> dict:
         replacements[token] = safe_url
         return token
 
-    def prepare(value):
+    def prepare(value, path=()):
         if isinstance(value, dict):
+            if (
+                len(path) >= 4
+                and path[-4:-2] == ("diagnostics", "pagination_samples")
+                and type(path[-2]) is int
+                and path[-1] == "query_value_categories"
+            ):
+                return {
+                    key: child
+                    for key, child in value.items()
+                    if key in _DIAGNOSTIC_QUERY_KEYS
+                    and isinstance(child, str)
+                    and child in LIST_LINK_VALUE_CATEGORIES
+                }
             copied = {}
             for key, child in value.items():
                 if key.lower() == "search_pos":
@@ -86,10 +109,10 @@ def share_report(report: dict) -> dict:
                         child if isinstance(child, str) else None
                     )
                 else:
-                    copied[key] = prepare(child)
+                    copied[key] = prepare(child, (*path, key))
             return copied
         if isinstance(value, (list, tuple)):
-            return [prepare(child) for child in value]
+            return [prepare(child, (*path, index)) for index, child in enumerate(value)]
         if isinstance(value, str):
             return _RELATIVE_LIST_URL.sub(protect_url, _URL.sub(protect_url, value))
         return value

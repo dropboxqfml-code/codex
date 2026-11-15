@@ -93,7 +93,14 @@ def guarded_launcher(directory):
         ("--save-post", "--list-inspect", "--find-uv"),
         ("--list-inspect", "--recover-closed", "--find-uv"),
         ("--resume-preinput", "--find-uv", "--list-inspect"),
+        ("--watch-test", "--chrome", "--find-uv"),
+        ("--find-uv", "--watch-test", "--site-inspect"),
+        ("--list-inspect", "--watch-test", "--find-uv"),
+        ("--save-post", "--watch-test", "--find-uv"),
+        ("--watch-test", "--recover-closed", "--find-uv"),
+        ("--resume-preinput", "--find-uv", "--watch-test"),
         (
+            "--watch-test",
             "--list-inspect",
             "--site-inspect",
             "--save-post",
@@ -131,6 +138,7 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
         ("RETRY_CHROME_TEST.cmd", "--chrome --recover-closed"),
         ("RUN_SITE_INSPECTION.cmd", "--site-inspect --chrome"),
         ("RUN_LIST_INSPECTION.cmd", "--list-inspect --chrome"),
+        ("RUN_WATCH_TEST.cmd", "--watch-test --chrome"),
         ("RUN_POST_SAVE_TEST.cmd", "--save-post --chrome"),
         ("RETRY_POST_SAVE_TEST.cmd", "--save-post --chrome --resume-preinput"),
     ],
@@ -230,6 +238,115 @@ def test_list_inspection_rejects_incompatible_modes_before_setup(tmp_path, argum
     assert result.returncode == 2
     assert "Read-only list inspection cannot be combined" in result.stderr
     assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
+    "conflict",
+    ["--site-inspect", "--list-inspect", "--save-post", "--recover-closed", "--resume-preinput"],
+)
+@pytest.mark.parametrize("watch_first", [False, True])
+def test_watch_trial_rejects_incompatible_modes_before_setup(tmp_path, conflict, watch_first):
+    launcher = guarded_launcher(tmp_path / "guarded watch trial")
+    arguments = ["--watch-test", conflict] if watch_first else [conflict, "--watch-test"]
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 2
+    assert "Bounded list-watch trial cannot be combined" in result.stderr
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+def inert_watch_launcher_text():
+    """Bypass setup in a copy, guarding every external command before running CMD."""
+    text = LAUNCHER.read_text(encoding="ascii")
+    text = text.replace(
+        "\n:new_log\n", '\n:new_log\nset "LOG_FILE=NUL"\ngoto after_dependencies\n', 1
+    )
+    marker = 'if "%WATCH_TEST%"=="1" goto start_watch_test'
+    assert text.count(marker) == 1
+    return text.replace(marker, ":after_dependencies\n" + marker, 1)
+
+
+@pytest.mark.parametrize(
+    ("arguments", "expected_browser"),
+    [
+        (("--watch-test",), "edge"),
+        (("--watch-test", "--chrome"), "chrome"),
+        (("--chrome", "--watch-test"), "chrome"),
+    ],
+)
+def test_watch_trial_routes_before_recovery_and_all_native_modes(
+    tmp_path, arguments, expected_browser
+):
+    text = inert_watch_launcher_text()
+    for label, mode, code in [
+        ("start_probe", "native-probe", 92),
+        ("start_site_inspection", "site-inspect", 91),
+        ("start_post_save", "save-post", 93),
+        ("start_list_inspection", "list-inspect", 95),
+        ("start_watch_test", "watch-test", 96),
+    ]:
+        text = text.replace(
+            f"\n:{label}\n",
+            f"\n:{label}\necho MODE={mode} BROWSER=%TEST_BROWSER%\nexit /b {code}\n",
+            1,
+        )
+    lines = [
+        "exit /b 77" if line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')) else line
+        for line in text.splitlines()
+    ]
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 96, result.stderr
+    assert result.stdout.strip() == f"MODE=watch-test BROWSER={expected_browser}"
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize("chrome", [False, True])
+def test_watch_trial_command_expands_quoted_work_root_and_selected_browser(tmp_path, chrome):
+    text = inert_watch_launcher_text()
+    watch_commands = 0
+    lines = []
+    for line in text.splitlines():
+        if line.startswith('"%UV_EXE%"') and " image-monitor watch-test " in line:
+            command = line.split(" image-monitor ", 1)[1].split(' >>"%LOG_FILE%"', 1)[0]
+            lines.extend([f"echo COMMAND={command}", "exit /b 96"])
+            watch_commands += 1
+        elif line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')):
+            lines.append("exit /b 77")
+        else:
+            lines.append(line)
+    assert watch_commands == 1
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    environment = os.environ.copy()
+    environment["LOCALAPPDATA"] = str(tmp_path / "local 한글 & space")
+    command_processor = Path(environment["SYSTEMROOT"]) / "System32" / "cmd.exe"
+    arguments = ["--watch-test"]
+    if chrome:
+        arguments.append("--chrome")
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(
+        command,
+        env=environment,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 96, result.stderr
+    browser = "chrome" if chrome else "edge"
+    expected = (
+        f'COMMAND=watch-test --work-root "{environment["LOCALAPPDATA"]}'
+        f'\\ImageMonitorWatch" --browser "{browser}"'
+    )
+    assert result.stdout.strip().splitlines()[-1] == expected
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+    assert not Path(environment["LOCALAPPDATA"]).exists()
 
 
 @pytest.mark.parametrize(

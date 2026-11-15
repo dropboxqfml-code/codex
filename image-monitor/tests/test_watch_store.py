@@ -134,6 +134,48 @@ def test_first_partial_has_no_coverage_and_repeated_candidates_keep_first_seen(t
         assert len(watch.list_candidates(SCOPE)) == 1
 
 
+@pytest.mark.parametrize("role", ["baseline", "excluded_rows_unverified", "order_unverified", None])
+def test_unverified_and_baseline_observations_never_refresh_existing_candidates(tmp_path, role):
+    with QueueStore(tmp_path / "queue.db") as queue:
+        watch = WatchStore(queue)
+        persist(watch, candidates=[candidate()])
+        original = watch.list_candidates(SCOPE)[0]
+        persist(
+            watch,
+            expected_generation=1,
+            observed_at=NOW + timedelta(minutes=1),
+            scan_result={
+                "observations": [candidate(title="unverified changed title") | {"role": role}]
+            },
+        )
+        assert watch.list_candidates(SCOPE) == [original]
+
+
+def test_refreshes_roll_back_with_the_rest_of_a_failed_scan(tmp_path):
+    with QueueStore(tmp_path / "queue.db") as queue:
+        watch = WatchStore(queue)
+        persist(watch, candidates=[candidate()])
+        state = watch.get_state(SCOPE)
+        original = watch.list_candidates(SCOPE)[0]
+        queue.connection.execute(
+            "CREATE TEMP TRIGGER reject_refresh_gap BEFORE INSERT ON watch_gaps "
+            "BEGIN SELECT RAISE(ABORT, 'synthetic refresh failure'); END"
+        )
+        with pytest.raises(sqlite3.IntegrityError, match="synthetic refresh failure"):
+            persist(
+                watch,
+                expected_generation=1,
+                observed_at=NOW + timedelta(minutes=1),
+                scan_result={
+                    "observations": [candidate(title="changed title") | {"role": "anchor"}]
+                },
+                complete=False,
+                gap_reason="page_limit",
+            )
+        assert watch.get_state(SCOPE) == state
+        assert watch.list_candidates(SCOPE) == [original]
+
+
 def test_stale_generation_observation_and_changed_baseline_leave_everything_unchanged(tmp_path):
     with QueueStore(tmp_path / "queue.db") as queue:
         watch = WatchStore(queue)
@@ -247,6 +289,8 @@ def test_every_scope_dimension_is_independent_and_queries_are_bounded(tmp_path):
         {"complete": False},
         {"gap_reason": "unexpected gap"},
         {"scan_result": {"invalid": float("nan")}},
+        {"scan_result": {"observations": "not a sequence of records"}},
+        {"scan_result": {"observations": [candidate("001") | {"role": "anchor"}]}},
         {"checkpoint": []},
         {"baseline": []},
         {"candidates": [candidate("001")]},

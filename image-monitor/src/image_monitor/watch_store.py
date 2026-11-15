@@ -90,6 +90,29 @@ def _candidate(value: dict) -> tuple[str, str | None, str | None, str]:
     return post_id, post_url, title, metadata
 
 
+def _observed_candidates(result: dict) -> list[tuple[str, str | None, str | None, str]]:
+    """Validate refreshes from rows whose planner role retains safe list evidence."""
+    observations = result.get("observations", [])
+    if isinstance(observations, (str, bytes)) or not isinstance(observations, Sequence):
+        raise QueueError("Scan observations must be a sequence")
+    rows = []
+    for observation in observations:
+        if not isinstance(observation, dict):
+            raise QueueError("Scan observations must be dictionaries")
+        role = observation.get("role")
+        if not isinstance(role, str) or role not in {"candidate", "anchor", "overlap_recheck"}:
+            continue
+        rows.append(
+            _candidate(
+                {
+                    key: observation.get(key)
+                    for key in ("post_id", "post_url", "title", "shown_metadata")
+                }
+            )
+        )
+    return rows
+
+
 class WatchStore:
     """A bounded facade using the queue's connection and atomic write discipline."""
 
@@ -174,6 +197,8 @@ class WatchStore:
         anchor identities. ``checkpoint`` on every scan supports pending resume;
         only a complete scan replaces the state's coverage checkpoint. A stale
         generation or observation rejects the entire candidate/scan/gap batch.
+        Safe anchor and overlap observations refresh existing candidates without
+        creating candidates for baseline posts or changing their first-seen data.
         """
         key = _scope(scope)
         observed = _time(observed_at)
@@ -191,6 +216,8 @@ class WatchStore:
         rows = [_candidate(candidate) for candidate in candidates]
         if len({row[0] for row in rows}) != len(rows):
             raise QueueError("A scan must not contain duplicate candidate post IDs")
+        refreshes = {row[0]: row for row in rows}
+        refreshes.update({row[0]: row for row in _observed_candidates(scan_result)})
         scan_id = uuid.uuid4().hex
         generation = expected_generation + 1
         added = 0
@@ -243,6 +270,7 @@ class WatchStore:
                         scan_id,
                     ),
                 ).rowcount
+            for post_id, post_url, title, metadata in refreshes.values():
                 self.store.connection.execute(
                     "UPDATE watch_candidates SET post_url=COALESCE(?,post_url),"
                     "title=COALESCE(?,title),shown_metadata_json=?,last_seen_at=?,latest_scan_id=? "

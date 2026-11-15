@@ -1,4 +1,4 @@
-"""Deterministic, fixture-only list scan plans; no browser or polling loop.
+"""Deterministic list scan plans; no browser or polling loop.
 
 A plan records list evidence and possible detail-inspection candidates. It never
 asserts a publication time, creates post folders, or authorizes an image save.
@@ -15,6 +15,12 @@ from image_monitor.watch_store import WatchScope
 
 _SCOPE_FIELDS = ("gallery_type", "gallery_id", "search_type", "keyword")
 _SAFE_EXCLUSIONS = {"ad", "pinned", "wrong_gallery"}
+_REVIEWED_LIVE_SCOPE = {
+    "gallery_type": "normal",
+    "gallery_id": "comic_new6",
+    "search_type": "search_subject_memo",
+    "keyword": "ai",
+}
 
 
 class WatchPlanError(ValueError):
@@ -94,14 +100,75 @@ def _checkpoint(record, expected, observed_at, name):
     return anchors, stamp
 
 
-def _page(value, expected, observed_at):
+def _exclusion_evidence(value):
+    """Keep bounded structural evidence, without excluded-row text or links."""
+    evidence = {}
+    if "number_kind" in value:
+        if not isinstance(value["number_kind"], str) or value["number_kind"] not in {
+            "survey_label",
+            "notice_label",
+            "ad_label",
+            "numeric",
+            "missing",
+            "other",
+        }:
+            raise WatchPlanError("Invalid excluded row number evidence")
+        evidence["number_kind"] = value["number_kind"]
+    for name in ("link_schemes", "field_counts"):
+        if name not in value:
+            continue
+        counts = value[name]
+        allowed = (
+            {"https", "http", "javascript", "relative", "other", "missing"}
+            if name == "link_schemes"
+            else {"number", "author", "date", "title_links"}
+        )
+        if (
+            not isinstance(counts, Mapping)
+            or set(counts) - allowed
+            or any(type(count) is not int or count < 0 for count in counts.values())
+        ):
+            raise WatchPlanError("Invalid excluded row count evidence")
+        evidence[name] = dict(counts)
+    if "role_flags" in value:
+        flags = value["role_flags"]
+        if (
+            not isinstance(flags, Mapping)
+            or set(flags) != {"is_ad", "is_pinned"}
+            or any(type(flag) is not bool for flag in flags.values())
+        ):
+            raise WatchPlanError("Invalid excluded row role evidence")
+        evidence["role_flags"] = dict(flags)
+    return evidence
+
+
+def _safe_exclusion(value, layout_status):
+    if value["reason"] in _SAFE_EXCLUSIONS:
+        if layout_status == "site_verified" and value["reason"] in {"ad", "pinned"}:
+            flag = "is_ad" if value["reason"] == "ad" else "is_pinned"
+            return value.get("role_flags", {}).get(flag) is True
+        return True
+    # The label alone cannot prove a nonnumeric row is a survey. The parser
+    # requires the exact label and its sole title link to use javascript:.
+    fields = value.get("field_counts", {})
+    return (
+        value["reason"] == "survey"
+        and value.get("number_kind") == "survey_label"
+        and value.get("link_schemes") == {"javascript": 1}
+        and fields.get("number") == 1
+        and fields.get("title_links") == 1
+        and (
+            layout_status != "site_verified"
+            or value.get("role_flags") == {"is_ad": False, "is_pinned": False}
+        )
+    )
+
+
+def _page(value, expected, observed_at, layout_status):
     if not isinstance(value, Mapping):
         raise WatchPlanError("Each page must be a list snapshot")
-    if (
-        value.get("layout_status") != "fixture_validated"
-        or value.get("queue_eligible") is not False
-    ):
-        raise WatchPlanError("Only fixture-validated, non-queueable snapshots are supported")
+    if value.get("layout_status") != layout_status or value.get("queue_eligible") is not False:
+        raise WatchPlanError(f"Expected {layout_status.replace('_', '-')}, non-queueable snapshots")
     target = _list_url(value.get("url"), expected)
     scope = value.get("scope")
     if (
@@ -114,10 +181,19 @@ def _page(value, expected, observed_at):
         or value.get("search_pos") != target["search_pos"]
     ):
         raise WatchPlanError("Snapshot identity does not match its URL and exact watch scope")
-    if (
-        "observed_at" in value
-        and _stored_time(value["observed_at"], "page observed_at") != observed_at
-    ):
+    page_time = (
+        _stored_time(value["observed_at"], "page observed_at") if "observed_at" in value else None
+    )
+    if layout_status == "site_verified" and page_time is None:
+        raise WatchPlanError("Verified live snapshots require a page observed_at")
+    if "scan_observed_at" in value:
+        if _stored_time(value["scan_observed_at"], "page scan_observed_at") != observed_at:
+            raise WatchPlanError("Snapshot scan observation date differs from the scan")
+        if page_time is None or not observed_at <= page_time <= observed_at + timedelta(
+            seconds=120
+        ):
+            raise WatchPlanError("Snapshot observation is outside the scan observation window")
+    elif page_time is not None and page_time != observed_at:
         raise WatchPlanError("Snapshot observation date differs from the scan")
     if value.get("status") not in {"observed", "empty"}:
         raise WatchPlanError("Missing, ambiguous, or unrecognized list evidence")
@@ -173,7 +249,7 @@ def _page(value, expected, observed_at):
         ):
             raise WatchPlanError("Invalid or conflicting excluded row evidence")
         row_orders.add(order)
-        excluded.append({"row_order": order, "reason": reason})
+        excluded.append({"row_order": order, "reason": reason} | _exclusion_evidence(exclusion))
     if (value["status"] == "empty" and (rows or excluded)) or (
         value["status"] == "observed" and not (rows or excluded)
     ):
@@ -192,7 +268,11 @@ def _page(value, expected, observed_at):
         cursor = {key: parsed[key] for key in ("canonical_url", "page", "search_pos")}
         if cursor not in links:
             links.append(cursor)
-    terminal = value.get("end_of_results") is True and value.get("pagination_complete") is True
+    terminal = (
+        layout_status == "fixture_validated"
+        and value.get("end_of_results") is True
+        and value.get("pagination_complete") is True
+    )
     if terminal and links:
         raise WatchPlanError("Terminal evidence conflicts with pagination candidates")
     return {
@@ -201,7 +281,7 @@ def _page(value, expected, observed_at):
         "search_pos": target["search_pos"],
         "rows": rows,
         "excluded_rows": excluded,
-        "rows_complete": all(item["reason"] in _SAFE_EXCLUSIONS for item in excluded),
+        "rows_complete": all(_safe_exclusion(item, layout_status) for item in excluded),
         "links": links,
         "end_of_results": terminal,
     }
@@ -224,6 +304,7 @@ def plan_scan(
     overlap_pages: int = 1,
     max_pages: int = 5,
     synthetic_fixture: bool = False,
+    allow_verified_live: bool = False,
 ) -> dict:
     """Return keyword arguments for ``WatchStore.persist_scan(scope, **plan)``.
 
@@ -232,10 +313,21 @@ def plan_scan(
     Explicit fixture terminal evidence can establish full coverage without an
     anchor. Missing links or snapshots never establish end-of-results. Unknown
     ordinary rows block coverage; historical cursor relationships are unverified.
+    Live evidence requires a separate opt-in for the exact reviewed scope and
+    cannot establish terminal coverage. Neither mode approves a detail or image save.
     """
-    if synthetic_fixture is not True:
-        raise WatchPlanError("Scan planning currently requires synthetic_fixture=True")
+    if type(synthetic_fixture) is not bool or type(allow_verified_live) is not bool:
+        raise WatchPlanError("synthetic_fixture and allow_verified_live must be booleans")
+    if synthetic_fixture and allow_verified_live:
+        raise WatchPlanError("synthetic_fixture and allow_verified_live are mutually exclusive")
+    if not synthetic_fixture and not allow_verified_live:
+        raise WatchPlanError(
+            "Scan planning requires synthetic_fixture=True or allow_verified_live=True"
+        )
     expected = _scope(scope)
+    if allow_verified_live and expected != _REVIEWED_LIVE_SCOPE:
+        raise WatchPlanError("Live scan planning requires the exact reviewed watch scope")
+    layout_status = "fixture_validated" if synthetic_fixture else "site_verified"
     observed_at = _time(observed_at, "observed_at")
     if type(overlap_pages) is not int or overlap_pages < 1:
         raise WatchPlanError("overlap_pages must be an integer of at least 1")
@@ -278,9 +370,10 @@ def plan_scan(
     result = {
         "mode": "baseline" if baseline is None else "scan",
         "scope": expected,
-        "layout_status": "fixture_validated",
-        "synthetic_fixture": True,
+        "layout_status": layout_status,
+        "synthetic_fixture": synthetic_fixture,
         "queue_eligible": False,
+        "save_approved": False,
         "observed_at": stamp,
         "coverage_anchor_ids": list(anchor_ids),
         "observations": [],
@@ -295,7 +388,7 @@ def plan_scan(
     last_unique_id = None
     first_anchor_page = None
     visited = set()
-    first = _page(pages[0], expected, observed_at)
+    first = _page(pages[0], expected, observed_at, layout_status)
     if first["page"] != 1 or first["search_pos"] is not None:
         raise WatchPlanError("Every cycle must start at latest page 1 without search_pos")
     new_checkpoint = {
@@ -309,7 +402,7 @@ def plan_scan(
     current = first
     for index in range(min(len(pages), max_pages)):
         if index:
-            current = _page(pages[index], expected, observed_at)
+            current = _page(pages[index], expected, observed_at, layout_status)
         visited.add(current["url"])
         result["last_cursor"] = _cursor(current)
         result["follow_up"] = None
@@ -419,7 +512,7 @@ def plan_scan(
                 else "anchor_not_reached"
             )
             break
-        following = _page(pages[index + 1], expected, observed_at)
+        following = _page(pages[index + 1], expected, observed_at, layout_status)
         if following["url"] in visited:
             gap_reason = "pagination_cycle"
             break

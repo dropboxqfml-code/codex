@@ -1,7 +1,7 @@
-"""Read-only search-list observations; no live list layout has been verified.
+"""Read-only search-list observations with one narrowly reviewed DOM structure.
 
-The selectors below are hypotheses. Synthetic fixtures establish parser behavior,
-never permission to queue posts or a claim that a real search is complete.
+The reviewed title/body search structure never grants permission to queue posts
+or establishes pagination completeness. Other scopes remain unverified.
 """
 
 import re
@@ -42,6 +42,8 @@ SELECTORS = {
 MAX_LIST_CANDIDATES = 12
 MAX_PAGINATION_SAMPLES = 12
 NAVIGATION_KINDS = {"number", "next", "previous", "first", "last", "other", "unavailable"}
+LINK_SCHEMES = {"https", "http", "javascript", "relative", "other", "missing"}
+SAFE_EXCLUSIONS = {"ad", "pinned", "survey"}
 
 
 def _control(char):
@@ -117,14 +119,14 @@ def _safe_diagnostics(raw):
             for key in ("has_id", "qualifies", "selected"):
                 if type(entry.get(key)) is bool:
                     candidate[key] = entry[key]
+            if entry.get("root_ownership") == "direct_tbody_rows":
+                candidate["root_ownership"] = "direct_tbody_rows"
             schemes = entry.get("title_link_schemes")
             if isinstance(schemes, dict):
                 candidate["title_link_schemes"] = {
                     key: value
                     for key, value in schemes.items()
-                    if key in {"https", "http", "javascript", "relative", "other", "missing"}
-                    and type(value) is int
-                    and 0 <= value <= 1_000_000
+                    if key in LINK_SCHEMES and type(value) is int and 0 <= value <= 1_000_000
                 }
             inventory.append(candidate)
         result["list_candidates"] = inventory
@@ -194,6 +196,72 @@ def _absolute_link(value, base):
     return urljoin(base, value)
 
 
+def _link_scheme(value):
+    if value is None or value == "":
+        return "missing"
+    if not isinstance(value, str):
+        return "other"
+    match = re.match(r"^([a-z][a-z0-9+.-]*):", value, flags=re.IGNORECASE)
+    if not match:
+        return "relative"
+    scheme = match[1].lower()
+    return scheme if scheme in {"https", "http", "javascript"} else "other"
+
+
+def _row_evidence(raw, row_order, reason):
+    """Retain categories and counts, never excluded-row text or URL values."""
+    number = _public_text(raw.get("number_raw"), 100)
+    if number == "설문":
+        number_kind = "survey_label"
+    elif number == "공지":
+        number_kind = "notice_label"
+    elif number is not None and re.fullmatch(r"AD|광고", number, flags=re.IGNORECASE):
+        number_kind = "ad_label"
+    elif number is not None and re.fullmatch(r"[0-9]+", number):
+        number_kind = "numeric"
+    else:
+        number_kind = "missing" if number is None else "other"
+    fields = raw.get("field_counts")
+    counts = {}
+    if isinstance(fields, dict):
+        counts = {
+            key: fields[key]
+            for key in ("number", "author", "date")
+            if type(fields.get(key)) is int and 0 <= fields[key] <= 1_000_000
+        }
+    links = raw.get("links")
+    if not isinstance(links, list) or len(links) > MAX_LINKS_PER_ROW:
+        raise DCSnapshotError("Observed row links exceed inspection limit")
+    total = _count(raw, "link_total")
+    if total != len(links):
+        raise DCSnapshotError("Observed row links exceed inspection limit")
+    counts["title_links"] = total
+    # Extra owned anchors, including reply links, are relevant to whether an
+    # excluded row could still identify an actual post.
+    if "all_links" in raw:
+        links = raw["all_links"]
+        if (
+            not isinstance(links, list)
+            or len(links) > MAX_LINKS_PER_ROW
+            or _count(raw, "all_link_total") != len(links)
+        ):
+            raise DCSnapshotError("Observed row links exceed inspection limit")
+    schemes = {}
+    for link in links:
+        if not isinstance(link, dict):
+            raise DCSnapshotError("Invalid observed row link")
+        scheme = _link_scheme(link.get("href"))
+        schemes[scheme] = schemes.get(scheme, 0) + 1
+    return {
+        "row_order": row_order,
+        "reason": reason,
+        "number_kind": number_kind,
+        "link_schemes": schemes,
+        "field_counts": counts,
+        "role_flags": {key: raw[key] for key in ("is_ad", "is_pinned")},
+    }
+
+
 def _ordinary_row(raw, target, row_order):
     if not isinstance(raw, dict):
         raise DCSnapshotError("Invalid observed row")
@@ -215,6 +283,26 @@ def _ordinary_row(raw, target, row_order):
     if number is None:
         return None, "missing_post_number"
     if not re.fullmatch(r"[0-9]+", number):
+        # This recognizes the rendered survey label and an action-only title
+        # cell; it never executes the action or infers meaning from its code.
+        links = raw.get("links")
+        all_links = raw.get("all_links")
+        if (
+            number == "설문"
+            and isinstance(links, list)
+            and len(links) == 1
+            and type(raw.get("link_total")) is int
+            and raw["link_total"] == 1
+            and isinstance(links[0], dict)
+            and _link_scheme(links[0].get("href")) == "javascript"
+            and isinstance(all_links, list)
+            and len(all_links) == 1
+            and type(raw.get("all_link_total")) is int
+            and raw["all_link_total"] == 1
+            and isinstance(all_links[0], dict)
+            and all_links[0].get("href") == links[0].get("href")
+        ):
+            return None, "survey"
         return None, "non_numeric"
     if len(number) > 20 or int(number) < 1:
         return None, "invalid_post_number"
@@ -265,10 +353,84 @@ def _ordinary_row(raw, target, row_order):
     }, None
 
 
+def _reviewed_structure(target, diagnostics, rows, rows_raw, row_total, container_count, status):
+    """Match the reviewed main/secondary shape without fixing live row counts."""
+    if (
+        target["gallery_type"] != "normal"
+        or target["gallery_id"] != "comic_new6"
+        or target["search_type"] != SEARCH_TYPE
+        or target["keyword"] != "ai"
+        or target["navigation"]
+        or status != "observed"
+        or not rows
+        or any(not row[key] for row in rows for key in ("title", "author_raw", "published_at_raw"))
+        or any(
+            not isinstance(raw.get("field_counts"), dict)
+            or any(
+                type(raw["field_counts"].get(key)) is not int or raw["field_counts"][key] != 1
+                for key in ("number", "author", "date")
+            )
+            or type(raw.get("link_total")) is not int
+            or raw["link_total"] != 1
+            for raw in rows_raw
+        )
+        or diagnostics.get("list_candidate_total") != 1
+        or diagnostics.get("list_candidates_truncated") is not False
+    ):
+        return False
+    candidates = diagnostics.get("list_candidates", [])
+    if len(candidates) != container_count or container_count != 2:
+        return False
+    selected = [candidate for candidate in candidates if candidate.get("selected") is True]
+    if len(selected) != 1:
+        return False
+    main = selected[0]
+    if (
+        main.get("tag") != "TABLE"
+        or main.get("classes") != ["gall_list"]
+        or main.get("has_id") is not False
+        or main.get("qualifies") is not True
+        or main.get("root_ownership") != "direct_tbody_rows"
+        or main.get("empty_marker_count") != 0
+        or main.get("visible_empty_marker_count") != 0
+        or any(
+            main.get(key) != row_total
+            for key in (
+                "table_row_count",
+                "ordinary_row_count",
+                "number_field_count",
+                "writer_field_count",
+                "date_field_count",
+                "title_link_count",
+            )
+        )
+    ):
+        return False
+    secondary = next(candidate for candidate in candidates if candidate is not main)
+    return (
+        secondary.get("tag") == "TABLE"
+        and secondary.get("classes") == ["gall_list"]
+        and secondary.get("root_ownership") == "direct_tbody_rows"
+        and secondary.get("has_id") is True
+        and secondary.get("qualifies") is False
+        and secondary.get("selected") is False
+        and secondary.get("ordinary_row_count") == 0
+        and secondary.get("writer_field_count") == 0
+        and secondary.get("empty_marker_count") == 0
+        and secondary.get("visible_empty_marker_count") == 0
+        and type(secondary.get("table_row_count")) is int
+        and 0 < secondary["table_row_count"] <= MAX_ROWS
+        and all(
+            secondary.get(key) == secondary.get("table_row_count")
+            for key in ("number_field_count", "date_field_count", "title_link_count")
+        )
+    )
+
+
 def parse_list_snapshot(
     raw: dict, *, expected_url: str, observed_at: datetime, layout_status: str = "unverified"
 ) -> dict:
-    """Map bounded public DOM metadata; even fixture validation never enables a queue."""
+    """Map bounded public DOM metadata; structural review never enables a queue."""
     target = validate_list_url(expected_url)
     aware(observed_at)
     if layout_status not in {"unverified", "fixture_validated"} or not isinstance(raw, dict):
@@ -306,7 +468,7 @@ def parse_list_snapshot(
             if row is not None and row["post_id"] in seen:
                 row, reason = None, "duplicate_post_id"
             if row is None:
-                excluded.append({"row_order": index, "reason": reason})
+                excluded.append(_row_evidence(entry, index, reason))
             else:
                 seen.add(row["post_id"])
                 rows.append(row)
@@ -376,6 +538,16 @@ def parse_list_snapshot(
         status = "empty"
     else:
         status = "unrecognized_empty"
+    site_verified = layout_status == "unverified" and _reviewed_structure(
+        target, diagnostics, rows, rows_raw, row_total, container_count, status
+    )
+    if site_verified:
+        layout_status = "site_verified"
+    rows_complete = (
+        list_count == 1
+        and status in {"observed", "empty"}
+        and all(exclusion["reason"] in SAFE_EXCLUSIONS for exclusion in excluded)
+    )
     fixture_terminal = (
         layout_status == "fixture_validated"
         and raw.get("fixture_end_of_results") is True
@@ -397,6 +569,7 @@ def parse_list_snapshot(
         "queue_eligible": False,
         "rows": rows,
         "excluded_rows": excluded,
+        "rows_complete": rows_complete,
         "pagination_candidates": pagination,
         "end_of_results": fixture_terminal,
         "pagination_complete": fixture_terminal,
@@ -416,7 +589,10 @@ def parse_list_snapshot(
         },
         "selector_evidence": {
             "status": layout_status,
-            "live_layout_verified": False,
+            "live_layout_verified": site_verified,
+            "source": "user_list_probe_v12" if site_verified else None,
+            "verification_scope": "reviewed_search_structure" if site_verified else None,
+            "rows_complete": rows_complete,
             "selectors": dict(SELECTORS),
             "scope": {"gallery_type": target["gallery_type"], "gallery_id": target["gallery_id"]},
         },
@@ -501,6 +677,7 @@ LIST_DOM_JS = r"""(options) => {
   for(const link of links){const kind=scheme(link.getAttribute('href'));
    schemes[kind]=(schemes[kind]||0)+1;}
   return {tag:table.tagName,classes:[...table.classList].slice(0,10),
+   root_ownership:'direct_tbody_rows',
    has_id:table.hasAttribute('id'),
    table_row_count:candidate.tableRows.length,ordinary_row_count:candidate.rows.length,
    number_field_count:owned(table,selectors.number).length,
@@ -522,7 +699,9 @@ LIST_DOM_JS = r"""(options) => {
   if(/^(끝|마지막|마지막 페이지|last|last page)$/.test(label))return 'last';
   return 'other';
  };
- const unique=(row,selector)=>{const nodes=row.querySelectorAll(selector);
+ const rowOwned=(row,selector)=>[...row.querySelectorAll(selector)]
+  .filter(node=>node.closest('tr')===row&&node.closest('table')===root);
+ const unique=(row,selector)=>{const nodes=rowOwned(row,selector);
   return {count:nodes.length,node:nodes.length===1?nodes[0]:null};};
  return {document_url:document.URL,list_count:qualified.length,
   list_container_count:containers.length,row_total:allRows.length,
@@ -531,13 +710,16 @@ LIST_DOM_JS = r"""(options) => {
    budget();
    const number=unique(row,selectors.number),author=unique(row,selectors.author);
    const date=unique(row,selectors.date),numberText=text(number.node,100);
-   const links=[...row.querySelectorAll(selectors.title_links)];
+   const links=rowOwned(row,selectors.title_links);
+   const allLinks=rowOwned(row,'a');
    return {number_raw:numberText,
     is_ad:row.matches('.ad,.ad-row,.ad_row,.ub-ad,.gall_ad,[data-ad]')||
      /^(AD|광고)$/i.test(numberText||''),
     is_pinned:row.matches('.notice,.ub-notice,.notice_row')||numberText==='공지',
     field_counts:{number:number.count,author:author.count,date:date.count},
     author_raw:text(author.node,500),published_at_raw:text(date.node,100),
+    all_link_total:allLinks.length,all_links:allLinks.slice(0,options.maxLinks).map(link=>({
+     href:link.getAttribute('href')})),
     link_total:links.length,links:links.slice(0,options.maxLinks).map(link=>({
      href:link.getAttribute('href'),text_raw:text(link,1000)}))};
   }),

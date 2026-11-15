@@ -34,7 +34,10 @@ def row(number="7036949", **changes):
         "author_raw": "공개 필명 (123.45)",
         "published_at_raw": "10:23",
     }
-    return result | changes
+    result.update(changes)
+    result.setdefault("all_links", [{"href": link.get("href")} for link in result["links"]])
+    result.setdefault("all_link_total", result["link_total"])
+    return result
 
 
 def raw_snapshot(rows=None, **changes):
@@ -53,6 +56,199 @@ def raw_snapshot(rows=None, **changes):
 
 def parse(raw, **options):
     return parse_list_snapshot(raw, expected_url=URL, observed_at=NOW, **options)
+
+
+def exclusion_pairs(snapshot):
+    return [
+        {key: entry[key] for key in ("row_order", "reason")} for entry in snapshot["excluded_rows"]
+    ]
+
+
+def profile_row(number):
+    return row(
+        str(number),
+        links=[{"href": f"/board/view/?id=comic_new6&no={number}", "text_raw": "fixture ai"}],
+    )
+
+
+def reviewed_raw(rows=None):
+    rows = [profile_row(101)] if rows is None else rows
+    main = {
+        "tag": "TABLE",
+        "classes": ["gall_list"],
+        "root_ownership": "direct_tbody_rows",
+        "has_id": False,
+        "qualifies": True,
+        "selected": True,
+        "table_row_count": len(rows),
+        "ordinary_row_count": len(rows),
+        "number_field_count": len(rows),
+        "writer_field_count": len(rows),
+        "date_field_count": len(rows),
+        "title_link_count": sum(entry["link_total"] for entry in rows),
+        "empty_marker_count": 0,
+        "visible_empty_marker_count": 0,
+    }
+    secondary = main | {
+        "has_id": True,
+        "qualifies": False,
+        "selected": False,
+        "table_row_count": 3,
+        "ordinary_row_count": 0,
+        "number_field_count": 3,
+        "writer_field_count": 0,
+        "date_field_count": 3,
+        "title_link_count": 3,
+    }
+    return raw_snapshot(
+        rows,
+        list_container_count=2,
+        diagnostics={
+            "list_candidates": [main, secondary],
+            "list_candidate_total": 1,
+            "list_candidates_truncated": False,
+        },
+    )
+
+
+@pytest.mark.parametrize("ordinary_count", [1, 7, 31])
+def test_reviewed_structure_supports_bounded_dynamic_row_counts_without_queue_approval(
+    ordinary_count,
+):
+    snapshot = parse(
+        reviewed_raw([profile_row(number) for number in range(100, 100 + ordinary_count)])
+    )
+    assert snapshot["layout_status"] == "site_verified"
+    assert snapshot["selector_evidence"]["verification_scope"] == "reviewed_search_structure"
+    assert snapshot["selector_evidence"]["source"] == "user_list_probe_v12"
+    assert snapshot["selector_evidence"]["live_layout_verified"]
+    assert snapshot["rows_complete"]
+    assert not snapshot["queue_eligible"]
+    assert not snapshot["end_of_results"]
+    assert not snapshot["pagination_complete"]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        build_list_url("normal", "another", "ai"),
+        build_list_url("minor", "comic_new6", "ai"),
+        build_list_url("mini", "comic_new6", "ai"),
+        build_list_url("normal", "comic_new6", "AI"),
+        URL + "&search_head=7",
+    ],
+)
+def test_reviewed_structure_does_not_promote_other_galleries_searches_or_filters(url):
+    snapshot = parse_list_snapshot(
+        reviewed_raw() | {"document_url": url}, expected_url=url, observed_at=NOW
+    )
+    assert snapshot["layout_status"] == "unverified"
+    assert not snapshot["selector_evidence"]["live_layout_verified"]
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"has_id": True},
+        {"root_ownership": "descendant_rows"},
+        {"number_field_count": 2},
+        {"writer_field_count": 0},
+        {"date_field_count": 0},
+        {"title_link_count": 2},
+        {"table_row_count": 2},
+    ],
+)
+def test_reviewed_structure_requires_exact_main_root_and_owned_fields(changes):
+    raw = reviewed_raw()
+    raw["diagnostics"]["list_candidates"][0].update(changes)
+    assert parse(raw)["layout_status"] == "unverified"
+
+
+@pytest.mark.parametrize("missing", ["title", "author", "date"])
+def test_reviewed_structure_requires_visible_ordinary_metadata(missing):
+    entry = profile_row(101)
+    if missing == "title":
+        entry["links"][0]["text_raw"] = None
+    else:
+        entry[{"author": "author_raw", "date": "published_at_raw"}[missing]] = None
+    assert parse(reviewed_raw([entry]))["layout_status"] == "unverified"
+
+
+def test_unknown_non_numeric_exclusion_preserves_structure_and_blocks_row_completeness():
+    unknown = row(
+        "unreviewed label", links=[{"href": "javascript:fixtureAction()", "text_raw": "secret"}]
+    )
+    snapshot = parse(reviewed_raw([unknown, profile_row(101)]))
+    assert snapshot["layout_status"] == "site_verified"
+    assert not snapshot["rows_complete"]
+    assert snapshot["excluded_rows"] == [
+        {
+            "row_order": 1,
+            "reason": "non_numeric",
+            "number_kind": "other",
+            "link_schemes": {"javascript": 1},
+            "field_counts": {"number": 1, "author": 1, "date": 1, "title_links": 1},
+            "role_flags": {"is_ad": False, "is_pinned": False},
+        }
+    ]
+    assert "unreviewed label" not in json.dumps(snapshot)
+    assert "fixtureAction" not in json.dumps(snapshot)
+    assert "secret" not in json.dumps(snapshot)
+
+
+def test_exact_rendered_survey_label_and_one_action_only_link_are_safe_exclusion_evidence():
+    survey = row(
+        "설문", links=[{"href": "javascript:fixtureSurvey()", "text_raw": "private title"}]
+    )
+    snapshot = parse(reviewed_raw([survey, profile_row(101)]))
+    assert snapshot["excluded_rows"][0] == {
+        "row_order": 1,
+        "reason": "survey",
+        "number_kind": "survey_label",
+        "link_schemes": {"javascript": 1},
+        "field_counts": {"number": 1, "author": 1, "date": 1, "title_links": 1},
+        "role_flags": {"is_ad": False, "is_pinned": False},
+    }
+    assert snapshot["rows_complete"]
+    assert snapshot["layout_status"] == "site_verified"
+    assert "fixtureSurvey" not in json.dumps(snapshot)
+    assert "private title" not in json.dumps(snapshot)
+
+
+@pytest.mark.parametrize(
+    "number,links",
+    [
+        ("설문 ", [{"href": "javascript:fixtureSurvey()"}]),
+        ("other", [{"href": "javascript:fixtureSurvey()"}]),
+        ("설문", [{"href": "/board/view/?id=comic_new6&no=101"}]),
+        (
+            "설문",
+            [{"href": "javascript:fixtureSurvey()"}, {"href": "/board/view/?id=comic_new6&no=101"}],
+        ),
+        ("설문", [{"href": "javascript:first()"}, {"href": "javascript:second()"}]),
+    ],
+)
+def test_unresolved_labels_and_mixed_post_links_never_become_safe_surveys(number, links):
+    snapshot = parse(raw_snapshot([row(number, links=links, link_total=len(links))]))
+    assert snapshot["excluded_rows"][0]["reason"] == "non_numeric"
+    assert not snapshot["rows_complete"]
+
+
+def test_survey_requires_all_owned_anchors_to_exclude_an_actual_post_identity():
+    action = {"href": "javascript:fixtureSurvey()"}
+    entry = row(
+        "설문",
+        links=[action],
+        all_link_total=2,
+        all_links=[action, {"href": "/board/view/?id=comic_new6&no=101"}],
+    )
+    snapshot = parse(raw_snapshot([entry]))
+    assert snapshot["excluded_rows"][0]["reason"] == "non_numeric"
+    assert snapshot["excluded_rows"][0]["link_schemes"] == {"javascript": 1, "relative": 1}
+    assert not snapshot["rows_complete"]
+    entry.pop("all_links")
+    entry.pop("all_link_total")
+    assert parse(raw_snapshot([entry]))["excluded_rows"][0]["reason"] == "non_numeric"
 
 
 @pytest.mark.parametrize(
@@ -225,10 +421,10 @@ def test_public_shown_metadata_has_exact_ids_raw_dates_and_never_queue_permissio
         (row(links=[{"href": POST, "text_raw": None}]), "missing_title"),
     ],
 )
-def test_nonordinary_or_uncertain_rows_have_bounded_reason_only(entry, reason):
+def test_nonordinary_or_uncertain_rows_have_bounded_evidence(entry, reason):
     snapshot = parse(raw_snapshot([entry]))
     assert snapshot["rows"] == []
-    assert snapshot["excluded_rows"] == [{"row_order": 1, "reason": reason}]
+    assert exclusion_pairs(snapshot) == [{"row_order": 1, "reason": reason}]
     assert snapshot["status"] == "observed"
 
 
@@ -261,7 +457,7 @@ def test_missing_or_duplicate_number_cells_cannot_advance_fixture_planner(number
         raw_snapshot([ordinary(104), unresolved, ordinary(100)], fixture_end_of_results=True),
         layout_status="fixture_validated",
     )
-    assert ambiguous_page["excluded_rows"] == [{"row_order": 2, "reason": "ambiguous_row_fields"}]
+    assert exclusion_pairs(ambiguous_page) == [{"row_order": 2, "reason": "ambiguous_row_fields"}]
     result = plan_scan(scope, state, [ambiguous_page], NOW, synthetic_fixture=True)
     assert not result["complete"]
     assert result["gap_reason"] == "excluded_rows_unverified"
@@ -287,7 +483,7 @@ def test_ambiguous_links_duplicate_ids_and_numeric_cell_mismatch_are_not_post_id
     )
     duplicate = parse(raw_snapshot([row(), row()]))
     assert len(duplicate["rows"]) == 1
-    assert duplicate["excluded_rows"] == [{"row_order": 2, "reason": "duplicate_post_id"}]
+    assert exclusion_pairs(duplicate) == [{"row_order": 2, "reason": "duplicate_post_id"}]
 
 
 @pytest.mark.parametrize("own_link", [POST, "javascript:unknownPost()"])
@@ -301,7 +497,7 @@ def test_mixed_foreign_and_own_or_unresolved_links_are_never_safely_ignored(own_
     )
     snapshot = parse(raw_snapshot([mixed]))
     assert snapshot["rows"] == []
-    assert snapshot["excluded_rows"] == [{"row_order": 1, "reason": "mixed_gallery_identity"}]
+    assert exclusion_pairs(snapshot) == [{"row_order": 1, "reason": "mixed_gallery_identity"}]
 
 
 @pytest.mark.parametrize(
@@ -689,7 +885,61 @@ def test_browser_fixture_selects_owned_main_template_among_two_visible_tables(
     assert secondary["has_id"]
     assert requests == [URL]
     assert not snapshot["queue_eligible"]
-    assert not snapshot["selector_evidence"]["live_layout_verified"]
+    assert snapshot["selector_evidence"]["live_layout_verified"]
+    assert snapshot["layout_status"] == "site_verified"
+
+
+@pytest.mark.parametrize("mixed_post", [False, True])
+def test_browser_fixture_reads_survey_label_without_executing_its_action(local_page, mixed_post):
+    load, requests = local_page
+    main = fixture_table().replace(
+        "<tbody>",
+        """<tbody><tr class="ub-content"><td class="gall_num">설문</td>
+        <td class="gall_tit"><a href="javascript:window.fixtureSurveyExecuted=true"
+         onclick="window.fixtureOnclickExecuted=true">excluded fixture title</a></td>
+        <td class="gall_writer">excluded fixture author</td><td class="gall_date">10:23</td>
+        </tr><tr class="ub-content"><td class="gall_num">공지</td>
+        <td class="gall_tit"><a href="http://example.invalid/notice">excluded notice</a></td>
+        <td class="gall_writer">excluded notice author</td><td class="gall_date">10:23</td></tr>""",
+    )
+    if mixed_post:
+        main = main.replace(
+            ">excluded fixture title</a>",
+            '>excluded fixture title</a><a class="reply_numbox" '
+            'href="/board/view/?id=comic_new6&amp;no=101">[1]</a>',
+        )
+    page = load(main + fixture_table(ordinary=False, count=3, table_id="fixture_recommend"))
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["layout_status"] == "site_verified"
+    assert snapshot["rows_complete"] is not mixed_post
+    assert [entry["reason"] for entry in snapshot["excluded_rows"]] == [
+        "non_numeric" if mixed_post else "survey",
+        "pinned",
+    ]
+    assert snapshot["excluded_rows"][0]["number_kind"] == "survey_label"
+    assert snapshot["excluded_rows"][0]["link_schemes"] == (
+        {"javascript": 1, "relative": 1} if mixed_post else {"javascript": 1}
+    )
+    assert snapshot["excluded_rows"][1]["role_flags"]["is_pinned"] is True
+    assert "excluded fixture" not in json.dumps(snapshot)
+    assert "fixtureSurveyExecuted" not in json.dumps(snapshot)
+    assert (
+        page.evaluate("window.fixtureSurveyExecuted || window.fixtureOnclickExecuted || null")
+        is None
+    )
+    assert requests == [URL]
+
+
+def test_browser_fixture_nested_fields_do_not_belong_to_the_ordinary_row(local_page):
+    load, _requests = local_page
+    nested = fixture_table(start=200).replace('class="gall_list"', "")
+    main = fixture_table().replace("</tr>", f"<td>{nested}</td></tr>")
+    page = load(main + fixture_table(ordinary=False, count=3, table_id="fixture_recommend"))
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["layout_status"] == "site_verified"
+    assert [entry["post_id"] for entry in snapshot["rows"]] == ["100"]
+    assert snapshot["excluded_rows"] == []
+    assert snapshot["diagnostics"]["list_candidates"][0]["writer_field_count"] == 1
 
 
 @pytest.mark.parametrize("decoy_style", ["", "display:none", "visibility:hidden"])

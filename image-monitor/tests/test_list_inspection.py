@@ -283,6 +283,75 @@ def test_share_report_preserves_each_url_in_a_long_pagination_inventory():
     assert [candidate["url"] for candidate in shared["pagination_candidates"]] == urls
 
 
+def test_share_report_preserves_registered_diagnostic_categories_and_hashes_actual_cursors():
+    cursor = "-1200000"
+    url = build_list_url("normal", "comic_new6", "ai", page=2, search_pos=cursor)
+    categories = {"search_pos": "empty", "page": "positive_integer", "id": "scope_match"}
+    diagnostics = {"pagination_samples": [{"query_value_categories": categories}]}
+    report = {
+        "diagnostics": diagnostics,
+        "snapshot": {"diagnostics": diagnostics, "search_pos": "empty", "source_url": url},
+        "follow_up": {
+            "snapshot": {"diagnostics": diagnostics, "search_pos": cursor, "source_url": url}
+        },
+        "query_value_categories": {"search_pos": "empty"},
+    }
+
+    shared = inspection.share_report(report)
+
+    for observed in (
+        shared["diagnostics"],
+        shared["snapshot"]["diagnostics"],
+        shared["follow_up"]["snapshot"]["diagnostics"],
+    ):
+        assert observed["pagination_samples"][0]["query_value_categories"] == categories
+    empty_digest = hashlib.sha256(b"empty").hexdigest()
+    cursor_digest = hashlib.sha256(cursor.encode()).hexdigest()
+    assert shared["snapshot"]["search_pos_sha256"] == empty_digest
+    assert shared["query_value_categories"] == {"search_pos_sha256": empty_digest}
+    assert shared["follow_up"]["snapshot"]["search_pos_sha256"] == cursor_digest
+    assert "search_pos_sha256=" + cursor_digest in shared["snapshot"]["source_url"]
+    assert cursor not in json.dumps(shared)
+    assert report["snapshot"]["search_pos"] == "empty"
+    assert categories["search_pos"] == "empty"
+
+
+def test_share_report_diagnostic_categories_drop_unregistered_keys_values_and_nested_data():
+    cursor = "-987654321"
+    url = build_list_url("normal", "comic_new6", "ai", page=2, search_pos=cursor)
+    shared = inspection.share_report(
+        {
+            "snapshot": {
+                "source_url": url,
+                "diagnostics": {
+                    "pagination_samples": [
+                        {
+                            "query_value_categories": {
+                                "search_pos": cursor,
+                                "page": "empty",
+                                "id": "scope_match",
+                                "s_keyword": url,
+                                "search_head": {"search_pos": cursor},
+                                "exception_mode": [cursor],
+                                "private-query-key": "valid",
+                                "source_url": url,
+                            }
+                        }
+                    ]
+                },
+            }
+        }
+    )
+
+    categories = shared["snapshot"]["diagnostics"]["pagination_samples"][0][
+        "query_value_categories"
+    ]
+    assert categories == {"page": "empty", "id": "scope_match"}
+    assert cursor not in json.dumps(shared)
+    assert "private-query-key" not in json.dumps(shared)
+    assert "search_pos_sha256=" in shared["snapshot"]["source_url"]
+
+
 @pytest.mark.parametrize("scheme", ["data", "blob", "file"])
 def test_private_snapshot_omits_inline_or_local_url_bytes(tmp_path, browser_session, scheme):
     browser_session[5].return_value = {"rows": [{"canonical_url": scheme + ":private-payload"}]}

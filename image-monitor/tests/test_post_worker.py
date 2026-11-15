@@ -269,3 +269,22 @@ def test_runtime_disconnect_is_idempotent():
     runtime.disconnect()
     runtime.disconnect()
     assert stopped == [True]
+
+
+def test_shared_summary_omits_private_source_and_active_attempt_details():
+    public = worker.share_worker_report(
+        {
+            "status": "manual_review",
+            "native_stage": "save_dialog",
+            "native_file_type": "PNG Image",
+            "native_suggested_suffix": "",
+            "active_attempt": {"source_url": "private-token", "staging_path": "private-path"},
+            "snapshot": {"nickname": "private-name", "title": "private-title"},
+        }
+    )
+    assert public == {
+        "status": "manual_review",
+        "native_stage": "save_dialog",
+        "native_file_type": "PNG Image",
+        "native_suggested_suffix": "",
+    }

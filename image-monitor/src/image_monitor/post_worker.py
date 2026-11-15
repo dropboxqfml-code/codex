@@ -5,7 +5,7 @@ import subprocess
 import time
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from image_monitor.artifact_files import ArtifactError, finalize_saved_image, recover_finalizations
 from image_monitor.browser_completion import BrowserCompletion
@@ -225,6 +225,9 @@ def share_worker_report(report: dict) -> dict:
         "saved_files",
         "recovery",
         "output_directory",
+        "native_stage",
+        "native_file_type",
+        "native_suggested_suffix",
     )
     return {key: report[key] for key in keys if key in report}
 
@@ -412,6 +415,12 @@ def run_post_save(work_root: Path, browser: str = "chrome", url: str = DEFAULT_P
             if ui is not None:
                 report["focus_at_failure"] = ui.focus_snapshot()
                 report["native_stage"] = ui.stage
+                file_type = getattr(ui, "browser_suggested_file_type", None)
+                if isinstance(file_type, str):
+                    report["native_file_type"] = file_type[:160]
+                suggestion = getattr(ui, "browser_suggested_filename", None)
+                if isinstance(suggestion, str):
+                    report["native_suggested_suffix"] = PureWindowsPath(suggestion).suffix[:16]
             if job is not None:
                 try:
                     with QueueStore(base / "queue.sqlite") as failed_store:

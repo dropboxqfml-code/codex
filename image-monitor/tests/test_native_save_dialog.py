@@ -4,7 +4,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from image_monitor.native_ui import NativeUIError, WindowsUI, image_filter_extension
+from image_monitor.native_ui import (
+    NativeUIError,
+    WindowsUI,
+    image_filter_extension,
+    registry_image_extension,
+)
 
 
 def dialog_ui(*, native_pid=11, provider_pid=11, provider_hwnd=300, owned=True):
@@ -152,6 +157,68 @@ def test_image_filter_requires_an_explicit_single_supported_format_family(label,
     assert image_filter_extension(label) == expected
 
 
+@pytest.mark.parametrize(
+    ("label", "associations", "expected"),
+    [
+        ("PNG Image", {".png": "PNG Image"}, ".png"),
+        ("GIF Image", {".gif": "GIF Image"}, ".gif"),
+        ("WebP Image", {".webp": "WebP Image"}, ".webp"),
+        ("JPEG Image", {".jpg": "JPEG Image", ".jpeg": "JPEG Image"}, ".jpg"),
+        ("PNG 이미지", {".png": "PNG 이미지"}, ".png"),
+        ("JPEG 그림", {".jpg": "JPEG 그림", ".jpeg": "JPEG 그림"}, ".jpg"),
+        ("TIFF 이미지", {".tif": "TIFF 이미지", ".tiff": "TIFF 이미지"}, ".tiff"),
+        ("Image", {".png": "Image", ".gif": "Image"}, None),
+        ("알 수 없는 형식", {}, None),
+        ("png image", {".png": "PNG Image"}, None),
+        (" PNG Image", {".png": "PNG Image"}, None),
+        ("All Files", {".png": "All Files"}, None),
+        ("Images (*.*)", {".png": "Images (*.*)"}, None),
+        ("Images (*.png;*.jpg)", {".png": "Images (*.png;*.jpg)"}, None),
+    ],
+)
+def test_bare_type_requires_exact_registry_label_for_only_one_image_format(
+    label, associations, expected
+):
+    inspected = []
+
+    def read(extension):
+        inspected.append(extension)
+        return associations.get(extension)
+
+    assert registry_image_extension(label, read) == expected
+    assert set(inspected) <= {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff"}
+
+
+def test_registry_failure_cannot_hide_a_second_possible_image_format():
+    def read(extension):
+        if extension == ".png":
+            return "Image"
+        raise PermissionError("Registry association is unavailable")
+
+    assert registry_image_extension("Image", read) is None
+
+
+def test_observed_bare_png_type_uses_exact_read_only_registry_proof(monkeypatch):
+    monkeypatch.setattr(
+        "image_monitor.native_ui._registry_file_type_description",
+        lambda extension: "PNG Image" if extension == ".png" else None,
+    )
+    ui, state, edit, save = dialog_ui()
+    edit.get_value.side_effect = ["render-first", "C:\\staging\\image.png"]
+    file_type_control(ui, edit, save, "PNG Image")
+    save.invoke.side_effect = lambda: state.update(exists=False)
+
+    def target(suggested):
+        assert suggested == "render-first"
+        assert ui.browser_suggested_file_type == "PNG Image"
+        assert ui.browser_suggested_extension == ".png"
+        ui.user32.SendMessageTimeoutW.assert_not_called()
+        return "C:\\staging\\image.png"
+
+    assert ui.save_dialog(target) == "render-first"
+    save.invoke.assert_called_once()
+
+
 def test_extensionless_native_name_uses_verified_selected_file_type_before_input():
     ui, state, edit, save = dialog_ui()
     edit.get_value.side_effect = ["render-first", "C:\\staging\\image.png"]
@@ -172,7 +239,10 @@ def test_extensionless_native_name_uses_verified_selected_file_type_before_input
 
 
 @pytest.mark.parametrize("label", ["PNG Image", "All files (*.*)", "Images (*.png;*.jpg)"])
-def test_extensionless_native_name_without_explicit_unambiguous_type_stops_input(label):
+def test_extensionless_native_name_without_unambiguous_type_proof_stops_input(monkeypatch, label):
+    monkeypatch.setattr(
+        "image_monitor.native_ui._registry_file_type_description", lambda _ext: None
+    )
     ui, _state, edit, save = dialog_ui()
     edit.get_value.side_effect = ["render-first"]
     file_type_control(ui, edit, save, label)
@@ -180,6 +250,7 @@ def test_extensionless_native_name_without_explicit_unambiguous_type_stops_input
     with pytest.raises(NativeUIError, match="unsupported or ambiguous"):
         ui.save_dialog(target)
     target.assert_not_called()
+    assert ui.browser_suggested_file_type == label
     edit.element_info.element.SetFocus.assert_not_called()
     ui.user32.SendMessageTimeoutW.assert_not_called()
     save.invoke.assert_not_called()

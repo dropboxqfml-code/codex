@@ -10,6 +10,15 @@ import time
 from collections.abc import Callable
 from pathlib import PureWindowsPath
 
+_IMAGE_EXTENSION_FAMILIES = (
+    ({".png"}, ".png"),
+    ({".jpg", ".jpeg"}, ".jpg"),
+    ({".webp"}, ".webp"),
+    ({".gif"}, ".gif"),
+    ({".bmp"}, ".bmp"),
+    ({".tif", ".tiff"}, ".tiff"),
+)
+
 
 class NativeUIError(RuntimeError):
     """Stop the probe for manual inspection; never automatically retry UI input."""
@@ -37,15 +46,54 @@ def image_filter_extension(label: str) -> str | None:
     if match is None:
         return None
     extensions = {part.strip()[1:].lower() for part in match[1].split(";")}
-    families = (
-        ({".png"}, ".png"),
-        ({".jpg", ".jpeg"}, ".jpg"),
-        ({".webp"}, ".webp"),
-        ({".gif"}, ".gif"),
-        ({".bmp"}, ".bmp"),
-        ({".tif", ".tiff"}, ".tiff"),
+    return next(
+        (suffix for family, suffix in _IMAGE_EXTENSION_FAMILIES if extensions <= family), None
     )
-    return next((suffix for family, suffix in families if extensions <= family), None)
+
+
+def registry_image_extension(
+    label: str, read_description: Callable[[str], str | None]
+) -> str | None:
+    """Prove an exact bare native type label using fixed image associations only.
+
+    Chromium's Windows picker uses this same read-only .extension -> ProgID ->
+    default-description relation, including localized Windows associations:
+    https://source.chromium.org/chromium/chromium/src/+/main:ui/shell_dialogs/select_file_dialog_win.cc
+    """
+    if (
+        not isinstance(label, str)
+        or not label
+        or len(label) > 200
+        or any(char in label for char in "\0*?")
+        or label in {"All Files", "All files", "모든 파일"}
+    ):
+        return None
+    matches = set()
+    try:
+        for family, _suffix in _IMAGE_EXTENSION_FAMILIES:
+            for extension in sorted(family):
+                if read_description(extension) == label:
+                    matches.add(extension)
+    except (OSError, ImportError):
+        return None
+    if not matches:
+        return None
+    return next((suffix for family, suffix in _IMAGE_EXTENSION_FAMILIES if matches <= family), None)
+
+
+def _registry_file_type_description(extension: str) -> str | None:
+    import winreg
+
+    def default_value(path):
+        with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, path, 0, winreg.KEY_READ) as key:
+            value, kind = winreg.QueryValueEx(key, "")
+            return value if kind == winreg.REG_SZ and isinstance(value, str) and value else None
+
+    try:
+        prog_id = default_value(extension)
+        return default_value(prog_id) if prog_id and "\0" not in prog_id else None
+    except FileNotFoundError:
+        return None
 
 
 def choose_unique(elements: list, predicate: Callable, description: str):
@@ -634,11 +682,13 @@ class WindowsUI:
             except Exception as error:
                 raise NativeUIError("Cannot read the selected native image file type") from error
             self.assert_control_ready(type_control, dialog)
+            self.browser_suggested_file_type = file_type if isinstance(file_type, str) else None
             extension = image_filter_extension(file_type)
+            if extension is None:
+                extension = registry_image_extension(file_type, _registry_file_type_description)
             if extension is None:
                 raise NativeUIError("Native image file type is unsupported or ambiguous")
             self.browser_suggested_extension = extension
-            self.browser_suggested_file_type = file_type
         if callable(target):
             target = target(suggested)
         if not isinstance(target, str) or not target or "\0" in target:

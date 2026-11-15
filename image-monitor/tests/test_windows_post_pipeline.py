@@ -78,6 +78,8 @@ class PageView:
 def fixture_assets(title):
     png = BytesIO()
     Image.new("RGB", (4, 3), "navy").save(png, format="PNG")
+    jpeg = BytesIO()
+    Image.new("RGB", (8, 5), "olive").save(jpeg, format="JPEG", quality=89, progressive=True)
     gif = BytesIO()
     first = Image.new("RGB", (6, 4), "red")
     second = Image.new("RGB", (6, 4), "blue")
@@ -102,9 +104,11 @@ def fixture_assets(title):
         f"{POST_HEADER['published_at_raw']}</span></div>"
         '<div class="appending_file">'
         '<a id="owned-png" href="#" data-original-name="declared-first.png">PNG</a>'
+        '<a id="owned-jpeg" href="#" data-original-name="declared-photo.jpeg">JPEG</a>'
         '<a id="owned-gif" href="#" data-original-name="declared-animation.gif">GIF</a>'
         '</div><div class="write_div">'
         '<img src="/render-first.png" data-attachment-key="owned-png" alt="Owned PNG">'
+        '<img src="/render-photo.jpg" data-attachment-key="owned-jpeg" alt="Owned JPEG">'
         '<img src="/render-animation.gif" data-attachment-key="owned-gif" alt="Owned GIF">'
         '<img src="/render-first.png" data-attachment-key="owned-png" alt="Duplicate PNG">'
         '<span class="written_dccon"><img src="/render-first.png" '
@@ -113,6 +117,7 @@ def fixture_assets(title):
     return {
         "/post": ("text/html; charset=utf-8", html),
         "/render-first.png": ("image/png", png.getvalue()),
+        "/render-photo.jpg": ("image/jpeg", jpeg.getvalue()),
         "/render-animation.gif": ("image/gif", gif.getvalue()),
     }
 
@@ -328,7 +333,10 @@ def safe_fixture_save_dialog_snapshot(ui):
     return result
 
 
-def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(monkeypatch, capsys):
+@pytest.mark.parametrize("locale", ["en-US", "ko-KR"])
+def test_owned_chrome_pipeline_finalizes_three_unique_images_and_never_resaves(
+    monkeypatch, capsys, locale
+):
     import psutil
     import pywinauto  # noqa: F401
     from playwright.sync_api import sync_playwright
@@ -363,7 +371,7 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                 "--no-default-browser-check",
                 "--disable-background-networking",
                 "--force-renderer-accessibility",
-                "--lang=en-US",
+                f"--lang={locale}",
                 "about:blank",
             ],
             stdout=subprocess.DEVNULL,
@@ -388,12 +396,12 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
             snapshot = inspect_fixture(page, now)
             assert snapshot["queue_eligible"] is True
             assert snapshot["image_counts"] == {
-                "body_occurrences": 4,
-                "included_unique": 2,
+                "body_occurrences": 5,
+                "included_unique": 3,
                 "excluded": 1,
                 "pending": 0,
             }
-            assert snapshot["images"][0]["occurrences"] == [1, 3]
+            assert snapshot["images"][0]["occurrences"] == [1, 4]
             assert snapshot["excluded_images"][0]["reason"] == "body_dccon"
             ui = bind_and_foreground_ci_window(process, actual_page)
             original_save = native_body.save_body_image
@@ -411,7 +419,7 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                     keyword="synthetic",
                     synthetic_fixture=True,
                 )
-                assert len(store.list_jobs()) == 2
+                assert len(store.list_jobs()) == 3
                 stage = "completion_reader_setup"
                 # This production reader opens its owned background tab BEFORE
                 # native input and must preserve source foreground throughout.
@@ -472,14 +480,14 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                         assert final_file.read_bytes() == expected_bytes
                         assert verification["sha256"] == hashlib.sha256(expected_bytes).hexdigest()
                         artifacts.append(artifact)
-                assert len(artifacts) == len(native_calls) == 2
-                assert len(set(native_calls)) == 2
+                assert len(artifacts) == len(native_calls) == 3
+                assert len(set(native_calls)) == 3
                 assert {job["status"] for job in store.list_jobs()} == {"completed"}
                 assert store.claim_next("second-worker", datetime.now(UTC)) is None
                 metadata_file = Path(artifacts[0]["metadata_path"])
                 assert {artifact["metadata_path"] for artifact in artifacts} == {str(metadata_file)}
                 metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
-                assert [image["status"] for image in metadata["images"]] == ["completed"] * 2
+                assert [image["status"] for image in metadata["images"]] == ["completed"] * 3
                 assert metadata["post_metadata"]["title"] == POST_HEADER["title"]
                 formats = []
                 for entry in metadata["images"]:
@@ -500,7 +508,16 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                             "render-first.png",
                         }
                         assert artifact["saved_filename"] == "001.png"
-                        assert artifact["occurrences"] == [1, 3]
+                        assert artifact["occurrences"] == [1, 4]
+                        assert artifact["verification"]["frames"] == 1
+                    elif artifact["verification"]["detected_format"] == "JPEG":
+                        assert artifact["original_attachment_filename"] == "declared-photo.jpeg"
+                        assert PureWindowsPath(artifact["browser_suggested_filename"]).name in {
+                            "render-photo",
+                            "render-photo.jpg",
+                            "render-photo.jpeg",
+                        }
+                        assert artifact["saved_filename"] == "002.jpg"
                         assert artifact["verification"]["frames"] == 1
                     else:
                         assert artifact["verification"]["detected_format"] == "GIF"
@@ -509,7 +526,7 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                             "render-animation",
                             "render-animation.gif",
                         }
-                        assert artifact["saved_filename"] == "002.gif"
+                        assert artifact["saved_filename"] == "003.gif"
                         assert artifact["verification"]["frames"] == 2
                     formats.append(
                         {
@@ -541,21 +558,22 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                 assert recover_finalizations(store, confirm_workers_stopped=True) == {
                     "recovered": 0,
                     "metadata_written": 0,
-                    "skipped": 2,
+                    "skipped": 3,
                     "manual_review": [],
                 }
-                assert len(store.list_jobs()) == 2
+                assert len(store.list_jobs()) == 3
                 assert {job["status"] for job in store.list_jobs()} == {"completed"}
                 assert metadata_file.read_bytes() == metadata_before
-                assert len(native_calls) == 2
+                assert len(native_calls) == 3
             assert set(requested) <= {*assets, "/favicon.ico"}
             public_pipeline_notice(
                 capsys,
                 {
                     "browser_kind": "chrome",
+                    "requested_locale": locale,
                     "fixture_origin": "loopback_generated_only",
-                    "completed_count": 2,
-                    "body_occurrences": 4,
+                    "completed_count": 3,
+                    "body_occurrences": 5,
                     "excluded_dccon_count": 1,
                     "duplicate_image_coalesced": True,
                     "source_correspondence": True,
@@ -573,6 +591,7 @@ def test_owned_chrome_pipeline_finalizes_two_unique_images_and_never_resaves(mon
                 capsys,
                 {
                     "browser_kind": "chrome",
+                    "requested_locale": locale,
                     "stage": stage,
                     "error_type": type(error).__name__,
                     "native_calls": len(native_calls),

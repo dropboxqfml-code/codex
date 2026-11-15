@@ -228,12 +228,20 @@ def owned_ci_focus_distractor(ui):
     import psutil
 
     title = "Image Monitor owned focus pause " + uuid.uuid4().hex
+    # On Windows, a venv python.exe is a redirector. Its base-interpreter child
+    # owns the MessageBox, so launching that redirector would defeat exact-PID
+    # binding. Launch the real interpreter directly and retain the same guards.
+    interpreter = Path(sys._base_executable).resolve()
+    assert interpreter.is_file(), "The actual owned fixture interpreter is unavailable"
     process = subprocess.Popen(
         [
-            sys.executable,
+            str(interpreter),
             "-c",
-            "import ctypes,sys; ctypes.windll.user32.MessageBoxW("
-            "None, 'Owned synthetic focus pause', sys.argv[1], 0)",
+            "import ctypes,sys; from ctypes import wintypes; "
+            "box=ctypes.WinDLL('user32',use_last_error=True).MessageBoxW; "
+            "box.argtypes=[wintypes.HWND,wintypes.LPCWSTR,wintypes.LPCWSTR,wintypes.UINT]; "
+            "box.restype=ctypes.c_int; "
+            "sys.exit(0 if box(None,'Owned synthetic focus pause',sys.argv[1],0) else 1)",
             title,
         ],
         stdout=subprocess.DEVNULL,
@@ -286,13 +294,23 @@ def owned_ci_focus_distractor(ui):
 
     try:
         deadline = time.monotonic() + 15
+        candidate_pid = None
         while time.monotonic() < deadline:
             assert process.poll() is None, "Owned focus fixture exited before opening its dialog"
             candidate = user32.FindWindowW("#32770", title)
-            if candidate and ui._window_pid(candidate) == process.pid:
-                hwnd = candidate
-                break
+            if candidate:
+                candidate_pid = ui._window_pid(candidate)
+                if candidate_pid == process.pid:
+                    hwnd = candidate
+                    break
             time.sleep(0.1)
+        assert hwnd, "Owned MessageBox was not found: " + json.dumps(
+            {
+                "launched_pid": process.pid,
+                "candidate_pid": candidate_pid,
+                "owned_child_count": len(owned_process.children(recursive=True)),
+            }
+        )
         assert_owned_dialog()
         user32.ShowWindow(hwnd, 9)
         user32.SetForegroundWindow(hwnd)

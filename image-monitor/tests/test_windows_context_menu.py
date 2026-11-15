@@ -1,4 +1,4 @@
-"""Save a controlled PNG through real owned Edge UI in opted-in Windows CI.
+"""Save a controlled PNG through real owned browser UI in opted-in Windows CI.
 
 First intercept identified menu execution to inspect the unchanged guards. Then
 restore Invoke and use the actual native Save As dialog for this disposable fixture.
@@ -103,7 +103,7 @@ def public_snapshot(capsys, locale, snapshot):
     message = json.dumps({"requested_locale": locale, **snapshot}, ensure_ascii=False)
     escaped = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
     with capsys.disabled():
-        print(f"\n::notice title=Owned Edge menu snapshot::{escaped}", flush=True)
+        print(f"\n::notice title=Owned browser snapshot::{escaped}", flush=True)
 
 
 def safe_control_guard_trace(ui, control, window):
@@ -446,8 +446,9 @@ def foreground_owned_window(page, ui, timeout=10):
 
 
 @pytest.mark.parametrize("locale", ["en-US", "ko-KR"])
-def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
-    tmp_path, monkeypatch, capsys, locale
+@pytest.mark.parametrize("browser_kind", ["edge", "chrome"])
+def test_owned_headed_browser_context_menu_saves_the_synthetic_fixture(
+    tmp_path, monkeypatch, capsys, locale, browser_kind
 ):
     import psutil
     from playwright.sync_api import sync_playwright
@@ -473,7 +474,7 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
     profile.mkdir()
     process = subprocess.Popen(
         [
-            str(browser_executable("edge")),
+            str(browser_executable(browser_kind)),
             f"--user-data-dir={profile}",
             "--remote-debugging-port=0",
             "--remote-debugging-address=127.0.0.1",
@@ -491,7 +492,7 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
     created_at = owned_process.create_time()
     driver = browser = ui = cleanup_session = None
     selected = []
-    metadata = {"fixture_origin": "file"}
+    metadata = {"browser_kind": browser_kind, "fixture_origin": "file"}
     native_save_stage = "browser_startup"
     try:
         port = wait_for_debug_port(profile, process, timeout=30)
@@ -512,7 +513,6 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
         image.click(button="right", timeout=15_000)
         time.sleep(0.5)
         before = safe_owned_menu_snapshot(ui) | metadata
-        public_snapshot(capsys, locale, before)
 
         def identified_invoke(control):
             # Guard identification, but do not actually invoke any UIA action.
@@ -528,6 +528,7 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
         original_guard = ui.assert_control_ready
         control_guard_traces = []
         reported_control_events = set()
+        control_probes = []
 
         def traced_control_guard(control, window):
             trace = safe_control_guard_trace(ui, control, window)
@@ -558,10 +559,8 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
                     fresh = [event for event in events if event not in reported_control_events]
                     if fresh:
                         reported_control_events.update(fresh)
-                        public_snapshot(
-                            capsys,
-                            locale,
-                            {"control_events": fresh, "filename_control_probe": probe},
+                        control_probes.append(
+                            {"control_events": fresh, "filename_control_probe": probe, **metadata}
                         )
                 return result
 
@@ -598,6 +597,9 @@ def test_owned_headed_edge_context_menu_saves_the_synthetic_fixture(
             )
         except Exception as error:
             # Put the reason/trace first: GitHub truncates large public notices.
+            public_snapshot(capsys, locale, before)
+            for probe in control_probes:
+                public_snapshot(capsys, locale, probe)
             profile_downloads = safe_profile_downloads_snapshot(profile, target)
             public_snapshot(
                 capsys,

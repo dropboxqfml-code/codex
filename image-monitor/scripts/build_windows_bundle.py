@@ -1,4 +1,4 @@
-"""Build a versioned Windows ZIP with the user TXT visible at its root."""
+"""Build a versioned Windows ZIP with one user TXT inside the project folder."""
 
 import argparse
 import re
@@ -61,17 +61,17 @@ def main():
     destination = repo / "downloads" / f"image-monitor-windows-test-{args.version}.zip"
     destination.parent.mkdir(exist_ok=True)
     with ZipFile(destination, "x", ZIP_DEFLATED, compresslevel=9) as archive:
-        archive.writestr("WINDOWS_TEST_GUIDE.txt", guide)
         for source, name in sorted(sources):
             archive.write(source, name)
     with ZipFile(destination) as archive:
         if archive.testzip() is not None:
             raise ValueError("ZIP verification failed")
-        if archive.read("WINDOWS_TEST_GUIDE.txt") != archive.read(
-            "image-monitor/WINDOWS_TEST_GUIDE.txt"
-        ):
-            raise ValueError("The root guide must match the project guide")
-    (destination.parent / "WINDOWS_TEST_GUIDE.txt").write_bytes(guide)
+        guide_name = f"{project.name}/WINDOWS_TEST_GUIDE.txt"
+        guides = [
+            name for name in archive.namelist() if Path(name).name == "WINDOWS_TEST_GUIDE.txt"
+        ]
+        if guides != [guide_name] or archive.read(guide_name) != guide:
+            raise ValueError("The ZIP must contain one matching guide inside the project folder")
     print(destination)
 
 

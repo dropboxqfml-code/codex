@@ -193,7 +193,9 @@ def page(browser):
 
     def load(html):
         def route(request):
-            if request.request.url.startswith("https://fixture.invalid/"):
+            if request.request.url.startswith(
+                ("https://fixture.invalid/", "https://dcimg3.dcinside.co.kr/")
+            ):
                 if request.request.url.endswith("broken.png"):
                     request.fulfill(status=200, content_type="image/png", body=b"broken image")
                 else:
@@ -211,7 +213,7 @@ def page(browser):
     context.close()
 
 
-HEADER = """<div class="view_head"><span class="title_subject">본문 제목</span>
+HEADER = """<div class="gallview_head"><span class="title_subject">본문 제목</span>
  <span class="gall_writer" data-nick="ㅇㅇ" data-ip="123.45.67.89">
  <span class="ip">(123.45)</span></span>
  <span class="gall_date" title="2026.11.15 00:00:00"></span></div>"""
@@ -309,6 +311,7 @@ def test_repeated_image_conflicting_dom_references_preserve_both_evidence_and_na
     image = parse_fixture(raw, expected_url=URL, observed_at=NOW)["images"][0]
     assert image["original_filename_match_status"] == "ambiguous"
     assert image["original_attachment_filename"] is None
+    assert image["original_filename_source"] is None
     assert image["original_filename_match_evidence"]["candidate_keys"] == ["file-a", "file-b"]
     assert len(image["occurrence_attachment_matches"]) == 2
     assert {item["filename"] for item in image["candidates"]} == {"../원본.png", "다른 원본.png"}
@@ -390,9 +393,176 @@ def test_reference_evidence_hashes_query_and_id_values_without_claiming_a_match(
 )
 def test_real_browser_ip_display_never_falls_back_to_full_data_attribute(page, rendered_ip):
     html = (
-        '<div class="view_head"><span class="gall_writer" data-nick="ㅇㅇ" '
+        '<div class="gallview_head"><span class="gall_writer" data-nick="ㅇㅇ" '
         'data-ip="123.45.67.89">' + rendered_ip + '</span></div><div class="write_div"></div>'
     )
     snapshot = inspect_post(page(html), expected_url=URL, observed_at=NOW, timeout_ms=300)
     assert snapshot["ip_display"] is None
     assert "123.45.67.89" not in json.dumps(snapshot)
+
+
+def resource_snapshot():
+    raw = raw_snapshot()
+    raw["images"][0]["display_url"] = (
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=fixture-a"
+    )
+    raw["images"][0]["identity"] = "wrong-attribute-identity"
+    raw["images"][0]["id_attributes"] = {"data-fileno": "irrelevant-identifier"}
+    raw["attachments"][0]["reference_url"] = (
+        "https://image.dcinside.com/download.php?no=fixture-a&f_no=other-number"
+    )
+    raw["attachments"][0]["identity"] = "different-attribute-identity"
+    return raw
+
+
+def test_observed_resource_pair_matches_literal_no_without_order_or_other_attribute_inference():
+    raw = resource_snapshot()
+    raw["attachments"].insert(
+        0,
+        {
+            "key": "unrelated",
+            "filename": "unrelated.png",
+            "filename_complete": True,
+            "reference_url": "https://image.dcinside.com/download.php?no=fixture-b&f_no=irrelevant-identifier",
+        },
+    )
+    snapshot = parse_snapshot(raw, expected_url=URL, observed_at=NOW)
+    image = snapshot["images"][0]
+    assert image["original_attachment_filename"] == "../원본.png"
+    assert image["original_filename_match_status"] == "matched"
+    assert image["original_filename_match_method"] == "shared_file_identifier"
+    assert image["original_filename_source"] == "attachment_list_dom"
+    assert image["resource_identity_source"] == "verified_shared_query_no"
+    assert (
+        image["original_filename_match_evidence"]["identifier_source"] == "verified_shared_query_no"
+    )
+    assert snapshot["attachment_inventory"][1]["identity"].startswith("dcinside-shared-no-sha256:")
+    assert "fixture-a" not in snapshot["attachment_inventory"][1]["identity"]
+    assert snapshot["layout_status"] == "unverified"
+    assert "attachment_matching_scope_limited_to_observed_endpoints" in snapshot["warnings"]
+    assert "attachment_evidence_unverified" not in snapshot["warnings"]
+    assert not snapshot["queue_eligible"]
+
+
+@pytest.mark.parametrize(
+    "body_url",
+    [
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=fixture-a&no=fixture-a",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=%20",
+        "https://dcimg3.dcinside.co.kr.evil.example/viewimage.php?id=synthetic&no=fixture-a",
+        "https://dcimg4.dcinside.co.kr/viewimage.php?id=synthetic&no=fixture-a",
+        "https://dcimg3.dcinside.co.kr/other.php?no=fixture-a",
+        "https://dcimg3.dcinside.co.kr:443/viewimage.php?id=synthetic&no=fixture-a",
+        "https://user@dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=fixture-a",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=fixture-a#fragment",
+        "http://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=fixture-a",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=fixture-a&unknown=1",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=%FF",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&no=%QZ",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?no=fixture-a",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=&no=fixture-a",
+        "https://dcimg3.dcinside.co.kr/viewimage.php?id=%20&no=fixture-a",
+    ],
+)
+def test_body_resource_rule_rejects_unobserved_or_ambiguous_endpoints(body_url):
+    raw = resource_snapshot()
+    raw["images"][0]["display_url"] = body_url
+    snapshot = parse_snapshot(raw, expected_url=URL, observed_at=NOW)
+    assert all(image["original_attachment_filename"] is None for image in snapshot["images"])
+    assert not snapshot["queue_eligible"]
+
+
+@pytest.mark.parametrize(
+    "reference_url",
+    [
+        "https://image.dcinside.com/download.php?no=fixture-a&no=fixture-a&f_no=companion",
+        "https://image.dcinside.com/download.php?f_no=fixture-a",
+        "https://image.dcinside.com/download.php?no=&f_no=companion",
+        "https://image.dcinside.com.evil.example/download.php?no=fixture-a&f_no=companion",
+        "https://image.dcinside.com/other.php?no=fixture-a",
+        "https://image.dcinside.com:443/download.php?no=fixture-a&f_no=companion",
+        "https://user@image.dcinside.com/download.php?no=fixture-a&f_no=companion",
+        "http://image.dcinside.com/download.php?no=fixture-a&f_no=companion",
+        "https://image.dcinside.com/download.php?no=%FF&f_no=companion",
+        "https://image.dcinside.com/download.php?no=%QZ&f_no=companion",
+        "https://image.dcinside.com/download.php?no=fixture-a",
+        "https://image.dcinside.com/download.php?no=fixture-a&f_no=",
+        "https://image.dcinside.com/download.php?no=fixture-a&f_no=%20",
+    ],
+)
+def test_inventory_resource_rule_rejects_unobserved_or_ambiguous_endpoints(reference_url):
+    raw = resource_snapshot()
+    raw["attachments"][0]["reference_url"] = reference_url
+    image = parse_snapshot(raw, expected_url=URL, observed_at=NOW)["images"][0]
+    assert image["original_attachment_filename"] is None
+
+
+def test_duplicate_inventory_shared_no_is_ambiguous_even_when_names_match():
+    raw = resource_snapshot()
+    raw["attachments"].append(raw["attachments"][0] | {"key": "file-b"})
+    image = parse_snapshot(raw, expected_url=URL, observed_at=NOW)["images"][0]
+    assert image["original_filename_match_status"] == "ambiguous"
+    assert image["original_attachment_filename"] is None
+    assert image["original_filename_match_reason"] == "duplicate_shared_identifier"
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "https://gall.dcinside.com/board/view/?id=another_gallery&no=1",
+        "https://gall.dcinside.com/mgallery/board/view/?id=comic_new6&no=1",
+        "https://gall.dcinside.com/mini/board/view/?id=comic_new6&no=1",
+    ],
+)
+def test_observed_resource_relation_does_not_promote_other_gallery_profiles(target):
+    image = parse_snapshot(resource_snapshot(), expected_url=target, observed_at=NOW)["images"][0]
+    assert image["original_attachment_filename"] is None
+    assert image["resource_identity_source"] is None
+
+
+def test_real_browser_observed_structural_profile_reads_header_and_reordered_inventory(page):
+    sources = ["fixture-a", "fixture-b", "fixture-c", "fixture-d"]
+    images = "".join(
+        '<img src="https://dcimg3.dcinside.co.kr/viewimage.php?id=synthetic&amp;no='
+        + key
+        + '" data-fileno="different-'
+        + str(index)
+        + '">'
+        for index, key in enumerate(sources)
+    )
+    anchors = "".join(
+        '<a id="attachment-' + str(index) + '" title="synthetic-' + key + '.png" '
+        'href="https://image.dcinside.com/download.php?no='
+        + key
+        + "&amp;f_no=unrelated-"
+        + str(index)
+        + '">'
+        "synthetic…</a>"
+        for index, key in enumerate(reversed(sources))
+    )
+    html = HEADER + '<div class="write_div">' + images + '<span class="dccon">'
+    html += '<img src="https://fixture.invalid/dccon.png"></span></div>'
+    html += '<div class="appending_file">' + anchors + "</div>"
+    snapshot = inspect_post(page(html), expected_url=URL, observed_at=NOW, timeout_ms=1000)
+    assert snapshot["title"] == "본문 제목"
+    assert snapshot["nickname"] == "ㅇㅇ"
+    assert snapshot["ip_display"] == "123.45"
+    assert snapshot["published_at"] == "2026-11-15T00:00:00+09:00"
+    assert len(snapshot["images"]) == 4 and len(snapshot["excluded_images"]) == 1
+    assert [image["original_attachment_filename"] for image in snapshot["images"]] == [
+        "synthetic-" + key + ".png" for key in sources
+    ]
+    assert snapshot["layout_status"] == "unverified"
+    assert not snapshot["queue_eligible"]
+
+
+def test_real_browser_ambiguous_header_is_not_arbitrarily_selected(page):
+    with pytest.raises(DCSnapshotError, match="exactly one post header"):
+        inspect_post(
+            page(HEADER + HEADER + '<div class="write_div"></div>'),
+            expected_url=URL,
+            observed_at=NOW,
+            timeout_ms=300,
+        )

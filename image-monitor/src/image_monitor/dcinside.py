@@ -19,6 +19,7 @@ HOST = "gall.dcinside.com"
 PATHS = {"/board/view": "normal", "/mgallery/board/view": "minor", "/mini/board/view": "mini"}
 EXTRA_QUERY_KEYS = {"page", "search_pos", "s_type", "s_keyword", "search_head", "exception_mode"}
 SEOUL = ZoneInfo("Asia/Seoul")
+RESOURCE_PROFILE_SCOPE = ("normal", "comic_new6")
 
 
 class DCSnapshotError(ValueError):
@@ -96,7 +97,7 @@ def _reference_evidence(value):
             or parsed.password
         ):
             return None
-        pairs = parse_qsl(parsed.query, keep_blank_values=True, max_num_fields=50)
+        pairs = parse_qsl(parsed.query, keep_blank_values=True, max_num_fields=50, errors="strict")
         return {
             "scheme": parsed.scheme,
             "host": parsed.hostname,
@@ -135,6 +136,51 @@ def _attribute_evidence(attributes):
     return result
 
 
+def _shared_no_identity(value, *, body):
+    """Apply only the resource-pair relation observed in the reviewed normal-gallery post.
+
+    A URL query identifier is used only after exact endpoint-shape validation.
+    Only no is hashed: companion id/f_no fields must be present but are never
+    compared as identities. DOM data-fileno, names and order are not used.
+    """
+    if not isinstance(value, str) or not value or "#" in value:
+        return None
+    endpoint = (
+        ("dcimg3.dcinside.co.kr", "/viewimage.php", {"id", "no"})
+        if body
+        else ("image.dcinside.com", "/download.php", {"no", "f_no"})
+    )
+    try:
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "https"
+            or parsed.netloc.lower() != endpoint[0]
+            or parsed.path != endpoint[1]
+            or any(ord(char) <= 32 for char in value)
+            or re.search(r"%(?![0-9a-fA-F]{2})", parsed.query)
+        ):
+            return None
+        values = {}
+        for key, query_value in parse_qsl(
+            parsed.query,
+            keep_blank_values=True,
+            strict_parsing=True,
+            max_num_fields=10,
+            errors="strict",
+        ):
+            if key not in endpoint[2] or key in values:
+                return None
+            values[key] = query_value
+        if set(values) != endpoint[2] or any(not item.strip() for item in values.values()):
+            return None
+        identifier = values.get("no")
+        if not identifier or not identifier.strip():
+            return None
+        return "dcinside-shared-no-sha256:" + hashlib.sha256(identifier.encode()).hexdigest()
+    except ValueError:
+        return None
+
+
 def parse_snapshot(
     raw: dict, *, expected_url: str, observed_at: datetime, layout_status: str = "unverified"
 ) -> dict:
@@ -145,6 +191,10 @@ def parse_snapshot(
         raise DCSnapshotError("Unsupported layout validation status")
     if raw.get("body_count") != 1:
         raise DCSnapshotError("Expected exactly one post body", diagnostics=raw.get("diagnostics"))
+    if "header_count" in raw and raw["header_count"] != 1:
+        raise DCSnapshotError(
+            "Expected exactly one post header", diagnostics=raw.get("diagnostics")
+        )
     if len(raw.get("attachments", [])) > 200 or raw.get("inventory_total", 0) > len(
         raw.get("attachments", [])
     ):
@@ -152,7 +202,17 @@ def parse_snapshot(
     if len(raw.get("images", [])) > 500:
         raise DCSnapshotError("Body image collection exceeds inspection limit")
     trusted = layout_status == "fixture_validated"
-    warnings = [] if trusted else ["live_dom_profile_unverified", "attachment_evidence_unverified"]
+    resource_profile = (target["gallery_type"], target["gallery_id"]) == RESOURCE_PROFILE_SCOPE
+    warnings = (
+        []
+        if trusted
+        else [
+            "live_dom_profile_unverified",
+            "attachment_matching_scope_limited_to_observed_endpoints"
+            if resource_profile
+            else "attachment_evidence_unverified",
+        ]
+    )
     inventory = []
     for index, entry in enumerate(raw.get("attachments", []), 1):
         inventory.append(
@@ -160,7 +220,13 @@ def parse_snapshot(
                 key=entry.get("key") or f"inventory-{index}",
                 filename=entry.get("filename"),
                 filename_complete=entry.get("filename_complete") is True,
-                identity=entry.get("identity") if trusted else None,
+                identity=entry.get("identity")
+                if trusted
+                else (
+                    _shared_no_identity(entry.get("reference_url"), body=False)
+                    if resource_profile
+                    else None
+                ),
             )
         )
     published, date_reason = _published(raw.get("published_at_raw"))
@@ -214,12 +280,22 @@ def parse_snapshot(
             pending.append(basic | {"reason": entry.get("loading_reason") or "image_not_loaded"})
             continue
         stable = "urlsha256:" + hashlib.sha256(source.encode("utf-8")).hexdigest()
+        resource_identity = _shared_no_identity(source, body=True) if resource_profile else None
         reference = BodyReference(
-            identity=entry.get("identity") if trusted else None,
+            identity=entry.get("identity") if trusted else resource_identity,
             attachment_key=entry.get("attachment_key") if trusted else None,
             external=entry.get("external") is True if trusted else False,
         )
         matched = match_attachment(reference, inventory)
+        matched["original_filename_source"] = (
+            "attachment_list_dom"
+            if matched["original_filename_match_status"] == "matched"
+            else None
+        )
+        if resource_identity and not trusted:
+            matched["original_filename_match_evidence"]["identifier_source"] = (
+                "verified_shared_query_no"
+            )
         if stable in grouped:
             image = grouped[stable]
             image["occurrences"].append(order)
@@ -248,6 +324,7 @@ def parse_snapshot(
                         },
                         "candidates": combined_candidates,
                         "original_attachment_filename": None,
+                        "original_filename_source": None,
                         "original_filename_match_status": "ambiguous",
                         "original_filename_match_method": None,
                         "original_filename_match_reason": "repeated_image_reference_conflict",
@@ -259,6 +336,9 @@ def parse_snapshot(
             | {
                 "stable_key": stable,
                 "stable_key_source": "exact_display_url_hash",
+                "resource_identity_source": "verified_shared_query_no"
+                if resource_identity and not trusted
+                else None,
                 "occurrences": [order],
                 "occurrence_attachment_matches": [{"body_order": order, **matched}],
                 "natural_width": entry["natural_width"],
@@ -293,10 +373,25 @@ def parse_snapshot(
             | {
                 "source_reference": _reference_evidence(raw_entry.get("reference_url")),
                 "id_attribute_hints": _attribute_evidence(raw_entry.get("id_attributes")),
+                "identity_source": "verified_shared_query_no"
+                if not trusted and entry.identity is not None
+                else None,
             }
             for entry, raw_entry in zip(inventory, raw.get("attachments", []), strict=True)
         ],
         "layout_status": layout_status,
+        "profile_evidence": {
+            "status": "resource_relation_verified_header_confirmation_pending",
+            "source": "user_site_probe_v7",
+            "observed_post_ids": ["7036949"],
+            "scope": {"gallery_type": "normal", "gallery_id": "comic_new6"},
+            "header_selector": ".gallview_head",
+            "header_count": raw.get("header_count"),
+            "header_field_counts": raw.get("header_field_counts", {}),
+            "queue_validation": "not_enabled",
+        }
+        if resource_profile and not trusted
+        else {"status": layout_status},
         "queue_eligible": trusted and nickname is not None and not pending,
         "warnings": warnings,
         "image_counts": {
@@ -350,10 +445,14 @@ RAW_JS = """root => {
  const identifiers=node=>Object.fromEntries([...node.attributes].filter(a=>
   /^(data-(file|image|attachment)[a-z0-9_-]*|file_no|data-no|data-id)$/.test(a.name))
   .slice(0,10).map(a=>[a.name,a.value.length<=2048?a.value:null]));
- const unique=(selector)=>{const a=document.querySelectorAll(selector);
+ const headers=document.querySelectorAll('.gallview_head');
+ const header=headers.length===1?headers[0]:null;
+ const fieldCounts={};
+ const unique=(selector)=>{const a=header?header.querySelectorAll(selector):[];
+  fieldCounts[selector]=a.length;
   return a.length===1?a[0]:null;};
- const writer=unique('.view_head .gall_writer'), date=unique('.view_head .gall_date');
- const title=unique('.view_head .title_subject');
+ const writer=unique('.gall_writer'), date=unique('.gall_date');
+ const title=unique('.title_subject');
  const publicIp=()=>{
   if(!writer)return null;
   const nodes=writer.querySelectorAll('.ip');
@@ -384,6 +483,7 @@ RAW_JS = """root => {
   return null;
  };
  return {body_count:document.querySelectorAll('.write_div').length,
+  header_count:headers.length,header_field_counts:fieldCounts,
   title:title?title.textContent.trim().slice(0,500):null,
   nickname:writer?(writer.getAttribute('data-nick')||null):null,
   ip_display:publicIp(),
@@ -453,6 +553,8 @@ def inspect_post(
             raise DCSnapshotError("Expected exactly one post body", diagnostics=diagnostics)
         root = body.element_handle()
         raw = root.evaluate(RAW_JS)
+        if raw["header_count"] != 1:
+            raise DCSnapshotError("Expected exactly one post header", diagnostics=diagnostics)
         if raw.get("inventory_total", 0) > len(raw["attachments"]):
             raise DCSnapshotError(
                 "Attachment inventory exceeds inspection limit", diagnostics=diagnostics

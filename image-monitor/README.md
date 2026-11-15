@@ -8,10 +8,11 @@ Windows에서 공개 게시글의 본문 이미지를 실제 우클릭과 브라
 
 Windows 사용자는 ZIP 안의 [짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)에 따라
 이번에는 `RUN_LIST_INSPECTION.cmd`를 더블클릭합니다. 화면 없는 전용 Chrome으로
-검색 목록 한 페이지를 읽고 결과 TXT를 자동으로 엽니다. 시작 버튼 조작은 필요 없습니다.
+최신 목록과 같은 검색 범위의 다음 페이지를 최대 두 개 읽고 결과 TXT를 자동으로 엽니다.
+시작 버튼 조작은 필요 없습니다.
 기본 저장 시험과 게시글 저장·재개 명령은 별도로 유지합니다.
 안내는 `image-monitor/WINDOWS_TEST_GUIDE.txt` 하나만 동봉합니다.
-개발용 패키징은 `python scripts/build_windows_bundle.py --version v11`이며 기존 ZIP을 덮어쓰지 않습니다.
+개발용 패키징은 `python scripts/build_windows_bundle.py --version v12`이며 기존 ZIP을 덮어쓰지 않습니다.
 
 ## 현재 구현
 

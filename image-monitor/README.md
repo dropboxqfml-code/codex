@@ -9,7 +9,7 @@ Windows 전용 [이미지 1장 네이티브 저장 시험](docs/native-probe.md)
 비교하는 명령입니다. 실제 Windows UI 시험 결과와 환경은 [검증 기록](docs/validation.md)에
 정리하며 Linux 모의 테스트와 구분합니다. Windows CI의 영어·한국어 Edge에서 지정 경로 저장과
 원본 해시 일치를 확인했습니다. 사용자 Windows 10·한국어 Windows·Edge 157·RDP 환경에서도
-시작 버튼부터 저장·검증·전용 브라우저 종료까지 성공했습니다. Chrome은 별도 검증합니다.
+시작 버튼부터 저장·검증·전용 브라우저 종료까지 성공했습니다. Chrome도 영어·한국어 메뉴의 Windows 자동 저장 시험을 통과했으며 사용자 PC 검증은 남아 있습니다.
 미해결 저장은 세션 공통 상태로 보존하며, 다른 작업 루트로 실행해도 차단됩니다.
 실패 후에는 전용 브라우저를 닫고 안내된 `native-recover` 명령으로 복구합니다.
 
@@ -19,6 +19,8 @@ Edge는 `RUN_WINDOWS_TEST.cmd`, Chrome은 `RUN_CHROME_TEST.cmd`를 더블클릭�
 실패 뒤 재시험은 전용 시험 브라우저를 닫고 해당 브라우저의
 `RETRY_WINDOWS_TEST.cmd` 또는 `RETRY_CHROME_TEST.cmd`를 사용합니다.
 새 페이지의 `시험 시작` 버튼을 누른 뒤 전경 조건이 확인되어야 자동 조작을 시작합니다.
+배포 ZIP의 최상위에도 `WINDOWS_TEST_GUIDE.txt`를 동봉합니다. 개발용 패키징은
+`python scripts/build_windows_bundle.py --version v6`으로 생성하며 기존 버전 ZIP은 덮어쓰지 않습니다.
 
 ## 현재 구현
 

@@ -7,9 +7,9 @@
 
 | 검사 | 결과 |
 | --- | --- |
-| Linux / CPython 3.12.14 `pytest -q` | 185 passed, 4 skipped; Windows 전용 시험만 건너뜀 |
+| Linux / CPython 3.12.14 `pytest -q` | 185 passed, 13 skipped; Windows 전용 시험만 건너뜀 |
 | Ruff lint / format | 통과 |
-| [Windows CI #17](https://github.com/dropboxqfml-code/codex/actions/runs/43654232686) · Ruff / pytest | 전체 검사 성공, 영어·한국어 Edge 실제 저장 포함 |
+| [Windows CI #19](https://github.com/dropboxqfml-code/codex/actions/runs/43659745007) · Ruff / pytest | 196 passed, 2 skipped; 영어·한국어 Edge/Chrome 실제 저장과 CMD 실행기 |
 | 관리형 Python / Windows 의존성 잠금 설치 | Windows CI와 사용자 TXT에서 성공 확인 |
 | 실제 Windows CMD의 uv 검색 | 한글·공백·앰퍼샌드 경로와 새 사용자 PATH 검색 통과 |
 | 기존 Image Duplicate Finder 테스트 | 57 passed, 1 skipped; 기존 앱 수정 없음 |
@@ -61,6 +61,21 @@ Windows build 19045 / Edge 157.0.4341.46 / Windows UI ko-KR / RDP / DPI 96 / 모
 시작 버튼부터 실제 저장·원본 SHA-256 일치·브라우저 종료까지 성공했습니다.
 제안 파일명은 `fixture-original.png`, 저장명은 `native-image.png`입니다.
 이는 합성 이미지 한 장의 정상 저장에 대한 사용자 환경 검증이며 실사이트 감시나 다른 환경의 검증은 아닙니다.
+
+## Chrome과 배포 안내
+
+[Windows CI #18](https://github.com/dropboxqfml-code/codex/actions/runs/43659493217)에서
+Chrome 156.0.8078.80의 영어·한국어 메뉴를 각각 실제로 열고 네이티브 Save As로 저장했습니다.
+Edge 2개 조합도 함께 다시 통과했습니다. 4개 모두 같은 합성 PNG의 원본 SHA-256과 일치했습니다.
+브라우저 엔진이 같아도 메뉴/UIA/프로세스 관계와 버전 차이가 있어 별도 검증합니다.
+사용자 Chrome 버전·환경의 실제 저장은 별도 한 번의 시험으로 확인합니다.
+
+Chrome 실행기와 재시험 실행기를 추가했습니다. 자동 대체나 자동 복구는 없으며,
+알 수 없는 실행기 인자는 설치·로그·UI 실행 전에 거부합니다.
+[Windows CI #19](https://github.com/dropboxqfml-code/codex/actions/runs/43659745007)에서
+실제 CMD로 옵션 순서·잘못된 인자·래퍼 전달/종료 코드를 확인하는 7개 회귀 검사도 통과했습니다.
+사용자 안내는 UTF-8 BOM/CRLF TXT로 만들고 ZIP 최상위와 프로젝트 폴더에 같은 내용을 동봉합니다.
+재사용 가능한 패키징 스크립트가 안내 동봉과 일치 여부를 검사하고 기존 버전 덮어쓰기를 거부합니다.
 
 ## 회귀 검사
 

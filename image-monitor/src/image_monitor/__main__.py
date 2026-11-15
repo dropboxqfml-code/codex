@@ -42,12 +42,24 @@ def main() -> int:
         "post-demo", help="Inspect a synthetic post and persist its image jobs; no collection"
     )
     post_demo_parser.add_argument("--db", type=Path, required=True)
+    watch_demo_parser = commands.add_parser(
+        "watch-demo", help="Create a local synthetic watch demo; no network or native UI"
+    )
+    watch_demo_parser.add_argument("--db", type=Path, required=True)
     site = commands.add_parser(
         "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
     )
     site.add_argument("--work-root", type=Path, required=True)
     site.add_argument("--browser", choices=("edge", "chrome"), default="chrome")
     site.add_argument("--post-url", help="Public DCInside post URL; defaults to the design example")
+    list_inspection = commands.add_parser(
+        "list-inspect", help="Read a public search list in a headless browser; never save images"
+    )
+    list_inspection.add_argument("--work-root", type=Path, required=True)
+    list_inspection.add_argument("--browser", choices=("chrome", "edge"), default="chrome")
+    list_inspection.add_argument(
+        "--list-url", help="Public DCInside search-list URL; defaults to the design example"
+    )
     save_post = commands.add_parser(
         "save-post", help="Review and natively save images from one public post in Chrome"
     )
@@ -62,6 +74,30 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "watch-demo":
+        try:
+            from image_monitor.watch_commands import watch_demo
+
+            output = watch_demo(args.db)
+        except KeyboardInterrupt:
+            parser.exit(130, "Synthetic watch demo cancelled.\n")
+        except Exception as error:
+            parser.exit(2, f"Synthetic watch demo failed ({type(error).__name__}).\n")
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "list-inspect":
+        try:
+            from image_monitor.list_inspection import run_list_inspection, share_report
+
+            options = {"url": args.list_url} if args.list_url else {}
+            output = run_list_inspection(args.work_root, args.browser, **options)
+            public_report = share_report(output)
+        except KeyboardInterrupt:
+            parser.exit(130, "Read-only list inspection cancelled.\n")
+        except Exception as error:
+            parser.exit(2, f"Read-only list inspection stopped ({type(error).__name__}).\n")
+        print(json.dumps(public_report, ensure_ascii=False, indent=2))
+        return 2 if output.get("status") == "inspection_failed" else 0
     if args.command == "save-post":
         from image_monitor.native_ui import NativeUIError
         from image_monitor.post_worker import run_post_save, share_worker_report

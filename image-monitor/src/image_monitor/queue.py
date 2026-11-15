@@ -21,7 +21,7 @@ from image_monitor.retry import retry_after, schedule_retry
 from image_monitor.validation import EXTENSIONS
 
 APPLICATION_ID = 0x494D5131
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 ACTIVE = ("loading", "saving", "verifying")
 
 
@@ -193,7 +193,40 @@ ARTIFACT_STATEMENTS = (
         target_key TEXT NOT NULL UNIQUE
     )""",
 )
-SCHEMA = V2_SCHEMA + ";\n".join(ARTIFACT_STATEMENTS) + ";"
+V3_SCHEMA = V2_SCHEMA + ";\n".join(ARTIFACT_STATEMENTS) + ";"
+WATCH_STATEMENTS = (
+    """CREATE TABLE watch_state (
+        watch_name TEXT NOT NULL, gallery_type TEXT NOT NULL, gallery_id TEXT NOT NULL,
+        keyword TEXT NOT NULL, search_type TEXT NOT NULL, generation INTEGER NOT NULL,
+        baseline_json TEXT, checkpoint_json TEXT, latest_scan_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY(watch_name,gallery_type,gallery_id,keyword,search_type)
+    )""",
+    """CREATE TABLE watch_scans (
+        scan_id TEXT PRIMARY KEY, watch_name TEXT NOT NULL, gallery_type TEXT NOT NULL,
+        gallery_id TEXT NOT NULL, keyword TEXT NOT NULL, search_type TEXT NOT NULL,
+        generation INTEGER NOT NULL, observed_at TEXT NOT NULL, result_json TEXT NOT NULL,
+        checkpoint_json TEXT NOT NULL, complete INTEGER NOT NULL CHECK(complete IN (0,1)),
+        gap_reason TEXT,
+        UNIQUE(watch_name,gallery_type,gallery_id,keyword,search_type,generation)
+    )""",
+    """CREATE TABLE watch_candidates (
+        watch_name TEXT NOT NULL, gallery_type TEXT NOT NULL, gallery_id TEXT NOT NULL,
+        keyword TEXT NOT NULL, search_type TEXT NOT NULL, post_id TEXT NOT NULL,
+        post_url TEXT, title TEXT, shown_metadata_json TEXT NOT NULL,
+        first_seen_at TEXT NOT NULL, last_seen_at TEXT NOT NULL,
+        first_scan_id TEXT NOT NULL REFERENCES watch_scans,
+        latest_scan_id TEXT NOT NULL REFERENCES watch_scans,
+        PRIMARY KEY(watch_name,gallery_type,gallery_id,keyword,search_type,post_id)
+    )""",
+    """CREATE TABLE watch_gaps (
+        scan_id TEXT PRIMARY KEY REFERENCES watch_scans,
+        watch_name TEXT NOT NULL, gallery_type TEXT NOT NULL, gallery_id TEXT NOT NULL,
+        keyword TEXT NOT NULL, search_type TEXT NOT NULL, generation INTEGER NOT NULL,
+        observed_at TEXT NOT NULL, reason TEXT NOT NULL
+    )""",
+)
+SCHEMA = V3_SCHEMA + ";\n".join(WATCH_STATEMENTS) + ";"
 
 
 def _schema_objects(connection: sqlite3.Connection) -> set[tuple]:
@@ -250,9 +283,9 @@ class QueueStore:
                     + "COMMIT;"
                 )
                 version = SCHEMA_VERSION
-            elif application == APPLICATION_ID and version in {1, 2}:
+            elif application == APPLICATION_ID and version in {1, 2, 3}:
                 if read_only:
-                    expected = BASE_SCHEMA if version == 1 else V2_SCHEMA
+                    expected = {1: BASE_SCHEMA, 2: V2_SCHEMA, 3: V3_SCHEMA}[version]
                     if not _matches_schema(self.connection, expected):
                         raise QueueError("Unknown queue database schema; migration refused")
                 else:
@@ -270,6 +303,12 @@ class QueueStore:
                             if not _matches_schema(self.connection, V2_SCHEMA):
                                 raise QueueError("Unknown queue database schema; migration refused")
                             for statement in ARTIFACT_STATEMENTS:
+                                self.connection.execute(statement)
+                            current = 3
+                        if current == 3:
+                            if not _matches_schema(self.connection, V3_SCHEMA):
+                                raise QueueError("Unknown queue database schema; migration refused")
+                            for statement in WATCH_STATEMENTS:
                                 self.connection.execute(statement)
                             self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                         elif current != SCHEMA_VERSION or not _matches_schema(

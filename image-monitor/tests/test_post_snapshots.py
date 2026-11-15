@@ -55,7 +55,7 @@ def snapshots(store):
 
 def make_legacy_database(path):
     # Keep real data created through the existing API, then remove only the
-    # additive v2 objects to reproduce the app's exact previous v1 format.
+    # additive objects to reproduce the app's exact previous v1 format.
     with QueueStore(path) as store:
         store.discover_batch(
             watch_name="watch",
@@ -72,6 +72,8 @@ def make_legacy_database(path):
             gallery_type="normal", gallery_id="comic_new6", post_id="123", images=[IMAGE]
         )[0]
     with closing(sqlite3.connect(path)) as db, db:
+        for table in ("watch_gaps", "watch_candidates", "watch_scans", "watch_state"):
+            db.execute(f"DROP TABLE {table}")
         db.execute("DROP TABLE artifact_finalizations")
         db.execute("DROP TABLE observation_jobs")
         db.execute("DROP TABLE post_observations")

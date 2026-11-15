@@ -23,6 +23,7 @@ def main():
         "RUN_CHROME_TEST.cmd",
         "RETRY_CHROME_TEST.cmd",
         "RUN_SITE_INSPECTION.cmd",
+        "RUN_LIST_INSPECTION.cmd",
         "RUN_POST_SAVE_TEST.cmd",
         "RETRY_POST_SAVE_TEST.cmd",
         "WINDOWS_TEST_GUIDE.txt",

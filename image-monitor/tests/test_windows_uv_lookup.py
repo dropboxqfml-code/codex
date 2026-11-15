@@ -88,6 +88,19 @@ def guarded_launcher(directory):
         ("--find-uv", "--save-post", "--resume-preinput", "--chrome"),
         ("--resume-preinput", "--recover-closed", "--find-uv"),
         ("--site-inspect", "--resume-preinput", "--find-uv"),
+        ("--list-inspect", "--chrome", "--find-uv"),
+        ("--find-uv", "--list-inspect", "--site-inspect"),
+        ("--save-post", "--list-inspect", "--find-uv"),
+        ("--list-inspect", "--recover-closed", "--find-uv"),
+        ("--resume-preinput", "--find-uv", "--list-inspect"),
+        (
+            "--list-inspect",
+            "--site-inspect",
+            "--save-post",
+            "--recover-closed",
+            "--resume-preinput",
+            "--find-uv",
+        ),
     ],
 )
 def test_check_flags_preserve_read_only_lookup(tmp_path, arguments):
@@ -117,6 +130,7 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
         ("RUN_CHROME_TEST.cmd", "--chrome"),
         ("RETRY_CHROME_TEST.cmd", "--chrome --recover-closed"),
         ("RUN_SITE_INSPECTION.cmd", "--site-inspect --chrome"),
+        ("RUN_LIST_INSPECTION.cmd", "--list-inspect --chrome"),
         ("RUN_POST_SAVE_TEST.cmd", "--save-post --chrome"),
         ("RETRY_POST_SAVE_TEST.cmd", "--save-post --chrome --resume-preinput"),
     ],
@@ -192,6 +206,123 @@ def test_preinput_resume_rejects_incompatible_modes_before_setup(tmp_path, argum
     assert result.returncode == 2
     assert "Pre-input resume requires post saving" in result.stderr
     assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ("--list-inspect", "--site-inspect"),
+        ("--site-inspect", "--chrome", "--list-inspect"),
+        ("--list-inspect", "--save-post"),
+        ("--save-post", "--list-inspect"),
+        ("--list-inspect", "--recover-closed"),
+        ("--recover-closed", "--list-inspect"),
+        ("--list-inspect", "--resume-preinput"),
+        ("--resume-preinput", "--list-inspect"),
+        ("--list-inspect", "--save-post", "--resume-preinput", "--recover-closed"),
+    ],
+)
+def test_list_inspection_rejects_incompatible_modes_before_setup(tmp_path, arguments):
+    launcher = guarded_launcher(tmp_path / "guarded list inspection")
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 2
+    assert "Read-only list inspection cannot be combined" in result.stderr
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
+    ("arguments", "expected_browser"),
+    [
+        (("--list-inspect",), "edge"),
+        (("--list-inspect", "--chrome"), "chrome"),
+        (("--chrome", "--list-inspect"), "chrome"),
+    ],
+)
+def test_list_inspection_routes_before_recovery_and_all_native_modes(
+    tmp_path, arguments, expected_browser
+):
+    text = LAUNCHER.read_text(encoding="ascii")
+    text = text.replace(
+        "\n:new_log\n", '\n:new_log\nset "LOG_FILE=NUL"\ngoto after_dependencies\n', 1
+    )
+    marker = 'if "%READ_ONLY_LIST_INSPECTION%"=="1" goto start_list_inspection'
+    assert marker in text
+    text = text.replace(marker, ":after_dependencies\n" + marker, 1)
+    for label, mode, code in [
+        ("start_probe", "native-probe", 92),
+        ("start_site_inspection", "site-inspect", 91),
+        ("start_post_save", "save-post", 93),
+        ("start_list_inspection", "list-inspect", 95),
+    ]:
+        text = text.replace(
+            f"\n:{label}\n",
+            f"\n:{label}\necho MODE={mode} BROWSER=%TEST_BROWSER%\nexit /b {code}\n",
+            1,
+        )
+    lines = [
+        "exit /b 77" if line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')) else line
+        for line in text.splitlines()
+    ]
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 95, result.stderr
+    assert result.stdout.strip() == f"MODE=list-inspect BROWSER={expected_browser}"
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize("chrome", [False, True])
+def test_list_inspection_command_expands_quoted_work_root_and_selected_browser(tmp_path, chrome):
+    text = LAUNCHER.read_text(encoding="ascii")
+    text = text.replace(
+        "\n:new_log\n", '\n:new_log\nset "LOG_FILE=NUL"\ngoto after_dependencies\n', 1
+    )
+    marker = 'if "%READ_ONLY_LIST_INSPECTION%"=="1" goto start_list_inspection'
+    assert marker in text
+    text = text.replace(marker, ":after_dependencies\n" + marker, 1)
+    inspection_commands = 0
+    lines = []
+    for line in text.splitlines():
+        if line.startswith('"%UV_EXE%"') and " image-monitor list-inspect " in line:
+            command = line.split(" image-monitor ", 1)[1].split(' >>"%LOG_FILE%"', 1)[0]
+            lines.extend([f"echo COMMAND={command}", "exit /b 95"])
+            inspection_commands += 1
+        elif line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')):
+            lines.append("exit /b 77")
+        else:
+            lines.append(line)
+    assert inspection_commands == 1
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    environment = os.environ.copy()
+    environment["LOCALAPPDATA"] = str(tmp_path / "local 한글 & space")
+    command_processor = Path(environment["SystemRoot"]) / "System32" / "cmd.exe"
+    arguments = ["--list-inspect"]
+    if chrome:
+        arguments.append("--chrome")
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(
+        command,
+        env=environment,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 95, result.stderr
+    browser = "chrome" if chrome else "edge"
+    expected = (
+        f'COMMAND=list-inspect --work-root "{environment["LOCALAPPDATA"]}'
+        f'\\ImageMonitorListInspection" --browser "{browser}"'
+    )
+    assert result.stdout.strip().splitlines()[-1] == expected
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+    assert not Path(environment["LOCALAPPDATA"]).exists()
 
 
 @pytest.mark.parametrize(

@@ -8,6 +8,7 @@ set "TEST_BROWSER=edge"
 set "RECOVER_CLOSED=0"
 set "UV_LOOKUP_ONLY=0"
 set "READ_ONLY_INSPECTION=0"
+set "READ_ONLY_LIST_INSPECTION=0"
 set "SAVE_POST=0"
 set "RESUME_PREINPUT=0"
 set "POST_SAVE_RESUME_ARGUMENT="
@@ -19,6 +20,7 @@ if /i "%~1"=="--chrome" goto option_chrome
 if /i "%~1"=="--recover-closed" goto option_recover
 if /i "%~1"=="--find-uv" goto option_lookup
 if /i "%~1"=="--site-inspect" goto option_site_inspection
+if /i "%~1"=="--list-inspect" goto option_list_inspection
 if /i "%~1"=="--save-post" goto option_save_post
 if /i "%~1"=="--resume-preinput" goto option_resume_preinput
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
@@ -45,6 +47,12 @@ set "CHECK_LABEL=read-only site inspection"
 shift
 goto parse_arguments
 
+:option_list_inspection
+set "READ_ONLY_LIST_INSPECTION=1"
+set "CHECK_LABEL=read-only list search inspection"
+shift
+goto parse_arguments
+
 :option_save_post
 set "SAVE_POST=1"
 set "CHECK_LABEL=single-post native-save test"
@@ -59,12 +67,20 @@ goto parse_arguments
 
 :arguments_ready
 if "%UV_LOOKUP_ONLY%"=="1" goto lookup_only
+if "%READ_ONLY_LIST_INSPECTION%"=="1" if "%READ_ONLY_INSPECTION%"=="1" goto incompatible_list_modes
+if "%READ_ONLY_LIST_INSPECTION%"=="1" if "%SAVE_POST%"=="1" goto incompatible_list_modes
+if "%READ_ONLY_LIST_INSPECTION%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_list_modes
+if "%READ_ONLY_LIST_INSPECTION%"=="1" if "%RESUME_PREINPUT%"=="1" goto incompatible_list_modes
 if "%RESUME_PREINPUT%"=="1" if "%SAVE_POST%"=="0" goto incompatible_resume
 if "%RESUME_PREINPUT%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_resume
 if "%RESUME_PREINPUT%"=="1" if "%READ_ONLY_INSPECTION%"=="1" goto incompatible_resume
 if "%READ_ONLY_INSPECTION%"=="1" if "%SAVE_POST%"=="1" goto incompatible_post_modes
 if "%READ_ONLY_INSPECTION%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_options
 goto new_log
+
+:incompatible_list_modes
+>&2 echo Read-only list inspection cannot be combined with site inspection, post saving, native recovery, or pre-input resume.
+exit /b 2
 
 :incompatible_options
 >&2 echo Read-only site inspection cannot recover native-save state.
@@ -83,10 +99,11 @@ set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
-if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
+if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Single-post native image saving requires review in the dedicated Chrome app window.
 if "%RESUME_PREINPUT%"=="1" >>"%LOG_FILE%" echo Verified pre-input resume was explicitly requested. Generic native recovery will not run.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public-page DOM inspection. No image saving is attempted.
+if "%READ_ONLY_LIST_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public search-list DOM inspection in a headless browser. No image saving or monitoring is attempted.
 >>"%LOG_FILE%" echo Selected browser: %TEST_BROWSER%
 if not exist "pyproject.toml" goto missing_project
 if not exist "uv.lock" goto missing_project
@@ -120,6 +137,7 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+if "%READ_ONLY_LIST_INSPECTION%"=="1" goto start_list_inspection
 if "%READ_ONLY_INSPECTION%"=="1" goto start_site_inspection
 rem Recovery is only enabled by the dedicated, user-initiated retry launcher.
 if "%RECOVER_CLOSED%"=="0" goto recovery_finished
@@ -174,6 +192,19 @@ echo Site inspection finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
+:start_list_inspection
+echo Inspecting the public search list in a headless %TEST_BROWSER% session. Please wait.
+>>"%LOG_FILE%" echo STAGE: list_inspection
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor list-inspect --work-root "%LOCALAPPDATA%\ImageMonitorListInspection" --browser "%TEST_BROWSER%" >>"%LOG_FILE%" 2>&1
+set "LIST_INSPECTION_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Read-only list inspection exit code: %LIST_INSPECTION_CODE%
+if not "%LIST_INSPECTION_CODE%"=="0" goto failed
+>>"%LOG_FILE%" echo RESULT: SUCCESS - READ_ONLY_LIST_INSPECTION
+>>"%LOG_FILE%" echo A read-only search-list report was created. No images were saved or monitored.
+echo List inspection finished. Opening the result file.
+start "" notepad.exe "%LOG_FILE%"
+exit /b 0
+
 :missing_project
 >>"%LOG_FILE%" echo Setup stopped: pyproject.toml or uv.lock is missing. Fully extract the ZIP first.
 goto failed
@@ -186,10 +217,12 @@ goto failed
 :failed
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - SINGLE_POST_NATIVE_SAVE. No automatic retry was performed.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending browser unchanged for inspection.
-if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
-if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
+if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
+if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo RESULT: FAILED - READ_ONLY_SITE_INSPECTION. No image saving was attempted.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
+if "%READ_ONLY_LIST_INSPECTION%"=="1" >>"%LOG_FILE%" echo RESULT: FAILED - READ_ONLY_LIST_INSPECTION. No image saving was attempted.
+if "%READ_ONLY_LIST_INSPECTION%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
 echo Test stopped. Opening the result file; please send that TXT file for help.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 1

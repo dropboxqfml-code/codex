@@ -19,6 +19,7 @@ def test_bundle_contains_one_guide_inside_the_project_folder(tmp_path, monkeypat
         "RUN_CHROME_TEST.cmd",
         "RETRY_CHROME_TEST.cmd",
         "RUN_SITE_INSPECTION.cmd",
+        "RUN_LIST_INSPECTION.cmd",
         "RUN_POST_SAVE_TEST.cmd",
         "RETRY_POST_SAVE_TEST.cmd",
         "WINDOWS_TEST_GUIDE.txt",

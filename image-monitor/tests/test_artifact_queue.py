@@ -6,7 +6,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from image_monitor import queue as queue_module
-from image_monitor.queue import ImageDiscovery, PostDiscovery, QueueError, QueueStore
+from image_monitor.queue import (
+    SCHEMA_VERSION,
+    ImageDiscovery,
+    PostDiscovery,
+    QueueError,
+    QueueStore,
+)
 
 NOW = datetime(2026, 11, 15, tzinfo=UTC)
 IMAGE = ImageDiscovery("stable-a", 1, "https://images.example.invalid/a.png")
@@ -66,7 +72,10 @@ def prepare(store, claim, tmp_path, **overrides):
 
 def downgrade(path, version):
     with closing(sqlite3.connect(path)) as db, db:
-        db.execute("DROP TABLE artifact_finalizations")
+        for table in ("watch_gaps", "watch_candidates", "watch_scans", "watch_state"):
+            db.execute(f"DROP TABLE {table}")
+        if version < 3:
+            db.execute("DROP TABLE artifact_finalizations")
         if version == 1:
             db.execute("DROP TABLE observation_jobs")
             db.execute("DROP TABLE post_observations")
@@ -361,7 +370,7 @@ def test_completed_artifact_retains_its_original_observation_after_job_url_updat
         assert store.get_artifact(claim["job_id"]) == artifact | {"phase": "metadata_pending"}
 
 
-@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize("version", [1, 2, 3])
 def test_legacy_readonly_and_writable_migration_preserve_existing_sources_and_jobs(
     tmp_path, version
 ):
@@ -374,12 +383,12 @@ def test_legacy_readonly_and_writable_migration_preserve_existing_sources_and_jo
         assert store.summary()["schema_version"] == version
         assert store.get_artifact(initial["jobs"][0]["job_id"]) is None
         assert store.list_artifacts() == []
-        assert (store.get_job_source(initial["jobs"][0]["job_id"]) is not None) == (version == 2)
+        assert (store.get_job_source(initial["jobs"][0]["job_id"]) is not None) == (version >= 2)
     assert database_state(path) == before
     with QueueStore(path) as store:
-        assert store.summary()["schema_version"] == 3
+        assert store.summary()["schema_version"] == SCHEMA_VERSION
         assert store.get_job(initial["jobs"][0]["job_id"]) == initial["jobs"][0]
-        assert (store.get_observation(initial["observation_id"]) is not None) == (version == 2)
+        assert (store.get_observation(initial["observation_id"]) is not None) == (version >= 2)
 
 
 @pytest.mark.parametrize("version", [1, 2])

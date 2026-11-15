@@ -414,6 +414,105 @@ def safe_download_histograms(session):
     return result
 
 
+def safe_downloads_webui_probe(
+    session, context, source_page, ui, expected_target, expected_source_url, browser_kind
+):
+    """Inspect this disposable profile's downloads UI without changing download behavior."""
+    result = {"probe": "background_downloads_webui", "downloads": []}
+    target_id = None
+    downloads_url = "chrome://downloads/" if browser_kind == "chrome" else "edge://downloads/"
+    try:
+        source_title = source_page.title()
+        window_title = ui._window_text(ui.target_hwnd)
+        foreground = ui.user32.GetForegroundWindow()
+        created = session.send(
+            "Target.createTarget", {"url": downloads_url, "background": True}, timeout=2_000
+        )
+        target_id = created["targetId"]
+        result["target_created"] = True
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            candidates = [page for page in context.pages if page.url == downloads_url]
+            if len(candidates) > 1:
+                result["diagnostic_reason"] = "multiple_downloads_pages"
+                break
+            if candidates:
+                downloads_page = candidates[0]
+                # The only page with this internal URL was created above in this
+                # fresh, owned profile. Read the WebUI model, never its actions.
+                snapshot = downloads_page.evaluate(
+                    """expected => {
+                        const manager = document.querySelector('downloads-manager');
+                        const list = manager?.shadowRoot?.querySelector('#downloadsList');
+                        const items = Array.isArray(list?.items) ? list.items :
+                            (Array.isArray(manager?.items_) ? manager.items_ : null);
+                        const urlText = value => typeof value === 'string' ? value :
+                            (typeof value?.url === 'string' ? value.url : null);
+                        const matches = (item, names, value, url = false) => names.filter(
+                            name => (url ? urlText(item[name]) : item[name]) === value);
+                        return {
+                            manager_present: Boolean(manager),
+                            items_available: Boolean(items),
+                            item_count: items?.length ?? null,
+                            downloads: (items || []).slice(0, 3).map(item => {
+                                const state = String(item.state);
+                                const pathMatches = matches(item,
+                                    ['filePath', 'file_path', 'targetPath', 'target_path'],
+                                    expected.path);
+                                const fileUrlMatches = matches(item,
+                                    ['fileUrl', 'file_url'], expected.fileUrl, true);
+                                const sourceMatches = matches(item,
+                                    ['url', 'originalUrl', 'original_url'],
+                                    expected.sourceUrl, true);
+                                const nameMatches = matches(item,
+                                    ['fileName', 'file_name'], expected.name);
+                                return {
+                                    state: /^[A-Za-z0-9_.-]{1,40}$/.test(state) ? state : null,
+                                    state_type: typeof item.state,
+                                    path_equals_expected: pathMatches.length > 0,
+                                    path_match_fields: pathMatches,
+                                    file_url_equals_expected: fileUrlMatches.length > 0,
+                                    source_url_equals_fixture: sourceMatches.length > 0,
+                                    source_match_fields: sourceMatches,
+                                    filename_equals_expected: nameMatches.length > 0,
+                                    available_fields: Object.keys(item).filter(
+                                        name => /^[A-Za-z_][A-Za-z0-9_]{0,39}$/.test(name)
+                                    ).sort().slice(0, 48),
+                                };
+                            }),
+                        };
+                    }""",
+                    {
+                        "path": str(expected_target),
+                        "fileUrl": expected_target.as_uri(),
+                        "sourceUrl": expected_source_url,
+                        "name": expected_target.name,
+                    },
+                )
+                result.update(snapshot)
+                if snapshot["downloads"]:
+                    break
+            # Pump Playwright events while the background target/model is loading.
+            source_page.wait_for_timeout(100)
+        else:
+            result["diagnostic_reason"] = "downloads_model_deadline"
+        result["source_title_unchanged"] = source_page.title() == source_title
+        result["foreground_hwnd_unchanged"] = ui.user32.GetForegroundWindow() == foreground
+        result["window_title_unchanged"] = ui._window_text(ui.target_hwnd) == window_title
+        result["source_document_focused"] = source_page.evaluate("document.hasFocus()")
+    except Exception as error:
+        # This experiment cannot weaken or fail the established native-save check.
+        result["diagnostic_error_type"] = type(error).__name__
+    finally:
+        if target_id is not None:
+            try:
+                closed = session.send("Target.closeTarget", {"targetId": target_id}, timeout=2_000)
+                result["created_target_closed"] = closed.get("success") is True
+            except Exception as error:
+                result["close_error_type"] = type(error).__name__
+    return result
+
+
 def bind_owned_window(process, title, timeout=15):
     deadline = time.monotonic() + timeout
     last_error = None
@@ -593,6 +692,22 @@ def test_owned_headed_browser_context_menu_saves_the_synthetic_fixture(
                     "detected_format": verified["detected_format"],
                     "sha256": verified["sha256"],
                     "file_size": verified["file_size"],
+                },
+            )
+            public_snapshot(
+                capsys,
+                locale,
+                {
+                    **metadata,
+                    **safe_downloads_webui_probe(
+                        cleanup_session,
+                        context,
+                        page,
+                        ui,
+                        target,
+                        (html.parent / "fixture-original.png").as_uri(),
+                        browser_kind,
+                    ),
                 },
             )
         except Exception as error:

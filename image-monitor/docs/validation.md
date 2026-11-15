@@ -9,7 +9,7 @@
 | --- | --- |
 | Linux / CPython 3.12.14 `pytest -q` | 317 passed, 22 skipped; Windows 전용 시험만 건너뜀 |
 | Ruff lint / format | 통과 |
-| [Windows CI #19](https://github.com/dropboxqfml-code/codex/actions/runs/43659745007) · Ruff / pytest | 196 passed, 2 skipped; 영어·한국어 Edge/Chrome 실제 저장과 CMD 실행기 |
+| [Windows CI #20](https://github.com/dropboxqfml-code/codex/actions/runs/43663407825) · Ruff / pytest | 337 passed, 2 skipped; 본문 분석·대기열·CMD와 Edge/Chrome 실제 저장 |
 | 관리형 Python / Windows 의존성 잠금 설치 | Windows CI와 사용자 TXT에서 성공 확인 |
 | 실제 Windows CMD의 uv 검색 | 한글·공백·앰퍼샌드 경로와 새 사용자 PATH 검색 통과 |
 | 기존 Image Duplicate Finder 테스트 | 57 passed, 1 skipped; 기존 앱 수정 없음 |
@@ -113,6 +113,9 @@ HTTP 저장·응답 바이트 추출·download.save_as·스크린샷으로 대�
 대기열 등록을 허용하지 않습니다. 실제 연결 시도는 터널 연결 오류로 종료됐으며 HTTP 차단이나
 사이트 구조 변경으로 해석하지 않습니다. [관측 기록](live-dom-observations.md)을 참고하세요.
 
+[Windows CI #20](https://github.com/dropboxqfml-code/codex/actions/runs/43663407825)에서
+337개 통과·2개 건너뜀으로 완료했으며 기존 영어·한국어 Edge/Chrome 네이티브 저장도 모두 통과했습니다.
+
 새 관찰 결과와 이미지 작업을 SQLite에 원자적으로 저장하고 새 연결로 다시 읽는 `post-demo`
 통합 시험을 추가했습니다. 첨부 순서가 달라도 근거로 이름을 대응하고, 반복 이미지는 하나의
 작업으로 보존하며, 대응이 불확실한 이름은 null입니다. 목록 체크포인트는 바꾸지 않습니다.
@@ -122,8 +125,8 @@ DB v1→v2 추가 마이그레이션·실패 롤백·동시 마이그레이션·
 테이블이 있는 DB를 초기화하거나 마이그레이션하지 않고 보존합니다.
 
 읽기 전용 Windows `site-inspect`는 개인 프로필을 쓰지 않고 다운로드가 비활성화된 별도
-브라우저로 예제 게시글 한 개를 분석합니다. 첨부 링크·원본 URL을 요청하거나 이미지 파일을
-저장하지 않습니다. 실패 단계·안전한 네트워크 오류 코드·본문/첨부 구조와 해시 처리한
+브라우저로 예제 게시글 한 개를 분석합니다. 첨부 링크를 클릭하거나 파일명 확인을 위한
+추가 요청을 보내지 않으며 이미지 파일을 저장하지 않습니다. 실패 단계·안전한 네트워크 오류 코드·본문/첨부 구조와 해시 처리한
 참조 근거를 TXT에 남깁니다. 로컬 경로·URL 토큰·쿠키·인증 헤더·인라인 이미지 바이트는
 공유 보고서에서 제외합니다. 실제 사이트 선택자·파일 식별 규칙은 아직 검증되지 않았습니다.
 

@@ -2,7 +2,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 
@@ -308,3 +308,273 @@ def test_unbounded_failure_diagnostics_are_omitted(tmp_path, browser_session, mo
     assert report["status"] == "inspection_failed"
     assert "diagnostics" not in report
     assert report["diagnostics_omitted"] == "metadata_limit"
+
+
+def _candidate(url):
+    target = validate_list_url(url)
+    return {
+        "canonical_url": target["canonical_url"],
+        "page": target["page"],
+        "search_pos": target["search_pos"],
+    }
+
+
+def _observed_snapshot(url=inspection.DEFAULT_LIST_URL, candidates=()):
+    target = validate_list_url(url)
+    return {
+        "status": "observed",
+        "layout_status": "unverified",
+        "queue_eligible": False,
+        "url": target["canonical_url"],
+        "page": target["page"],
+        "search_pos": target["search_pos"],
+        "scope": {key: target[key] for key in inspection._SCOPE_KEYS},
+        "counts": {"list_containers": 1},
+        "rows": [{"canonical_url": "https://gall.dcinside.com/board/view/?id=test&no=1"}],
+        "pagination_candidates": list(candidates),
+    }
+
+
+def test_latest_list_follows_one_actual_adjacent_link_and_never_a_third_page(
+    tmp_path, browser_session
+):
+    manager, driver, browser, page, response, inspect = browser_session
+    next_url = build_list_url("normal", "comic_new6", "ai", page=2)
+    third_url = build_list_url("normal", "comic_new6", "ai", page=3)
+    first = _observed_snapshot(candidates=[_candidate(next_url)])
+    second = _observed_snapshot(next_url, [_candidate(third_url)])
+    inspect.side_effect = [first, second]
+    report = inspection.run_list_inspection(tmp_path)
+    assert page.goto.call_args_list == [
+        call(inspection.DEFAULT_LIST_URL, wait_until="domcontentloaded", timeout=30_000),
+        call(next_url, wait_until="domcontentloaded", timeout=30_000),
+    ]
+    assert report["status"] == "inspected_unverified"
+    assert report["navigation_attempts"] == 2
+    assert report["snapshot"] == first
+    assert report["follow_up"] == {
+        "status": "observed",
+        "url": next_url,
+        "http_status": 200,
+        "retry_after": None,
+        "snapshot": second,
+    }
+    assert inspect.call_count == 2
+    assert inspect.call_args_list[1].kwargs["expected_url"] == next_url
+    assert inspect.call_args_list[1].kwargs["timeout_ms"] == 15_000
+    assert response.header_value.call_args_list == [call("retry-after"), call("retry-after")]
+    assert [operation[0] for operation in page.mock_calls] == [
+        "goto",
+        "goto().header_value",
+        "goto",
+        "goto().header_value",
+    ]
+    driver.chromium.launch.assert_called_once()
+    browser.new_context.assert_called_once_with(accept_downloads=False)
+    browser.close.assert_called_once()
+    manager.__exit__.assert_called_once()
+    assert json.loads(Path(report["report_path"]).read_text()) == report
+
+
+def test_follow_up_preserves_matching_navigation_filters(tmp_path, browser_session):
+    suffix = "&search_head=1&exception_mode=recommend"
+    url = inspection.DEFAULT_LIST_URL + suffix
+    next_url = build_list_url("normal", "comic_new6", "ai", page=2) + suffix
+    first = _observed_snapshot(url, [_candidate(next_url)])
+    browser_session[5].side_effect = [first, _observed_snapshot(next_url)]
+    report = inspection.run_list_inspection(tmp_path, url=url)
+    assert report["navigation_attempts"] == 2
+    assert report["follow_up"]["url"] == validate_list_url(next_url)["canonical_url"]
+    assert report["follow_up"]["snapshot"]["scope"]["navigation"] == {
+        "search_head": "1",
+        "exception_mode": "recommend",
+    }
+
+
+def test_observed_empty_cursor_is_revalidated_as_latest_before_follow_up(tmp_path, browser_session):
+    next_url = build_list_url("normal", "comic_new6", "ai", page=2)
+    candidate = {"canonical_url": next_url + "&search_pos=", "page": 2, "search_pos": None}
+    browser_session[5].side_effect = [
+        _observed_snapshot(candidates=[candidate]),
+        _observed_snapshot(next_url),
+    ]
+    report = inspection.run_list_inspection(tmp_path)
+    assert report["navigation_attempts"] == 2
+    assert report["follow_up"]["url"] == next_url
+    assert browser_session[3].goto.call_args == call(
+        next_url, wait_until="domcontentloaded", timeout=30_000
+    )
+
+
+@pytest.mark.parametrize(("first_page", "cursor"), [(1, "-1200000"), (2, None), (2, "-1200000")])
+def test_non_latest_initial_window_never_follows_even_a_matching_next_link(
+    tmp_path, browser_session, first_page, cursor
+):
+    url = build_list_url("normal", "comic_new6", "ai", page=first_page, search_pos=cursor)
+    next_url = build_list_url("normal", "comic_new6", "ai", page=first_page + 1, search_pos=cursor)
+    browser_session[5].return_value = _observed_snapshot(url, [_candidate(next_url)])
+    report = inspection.run_list_inspection(tmp_path, url=url)
+    assert report["navigation_attempts"] == 1
+    assert report["follow_up"] == {
+        "status": "skipped",
+        "reason": "initial_page_is_not_latest_page_one",
+    }
+    browser_session[3].goto.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "candidate_url",
+    [
+        build_list_url("normal", "comic_new6", "ai", page=2, search_pos="-999"),
+        build_list_url("minor", "comic_new6", "ai", page=2),
+        build_list_url("normal", "other", "ai", page=2),
+        build_list_url("normal", "comic_new6", "other", page=2),
+        build_list_url("normal", "comic_new6", "ai", page=2) + "&search_head=1",
+        build_list_url("normal", "comic_new6", "ai", page=3),
+        "https://evil.invalid/board/lists/?id=comic_new6&s_type=search_subject_memo&s_keyword=ai&page=2",
+        inspection.DEFAULT_LIST_URL.replace("search_subject_memo", "search_name") + "&page=2",
+    ],
+)
+def test_changed_cursor_scope_navigation_or_non_adjacent_link_is_not_followed(
+    tmp_path, browser_session, candidate_url
+):
+    candidate = {"canonical_url": candidate_url, "page": 2, "search_pos": None}
+    browser_session[5].return_value = _observed_snapshot(candidates=[candidate])
+    report = inspection.run_list_inspection(tmp_path)
+    assert report["navigation_attempts"] == 1
+    assert report["follow_up"]["status"] == "no_adjacent_page"
+    browser_session[3].goto.assert_called_once()
+
+
+def test_duplicate_adjacent_candidates_are_ambiguous_and_not_followed(tmp_path, browser_session):
+    candidate = _candidate(build_list_url("normal", "comic_new6", "ai", page=2))
+    browser_session[5].return_value = _observed_snapshot(candidates=[candidate, candidate])
+    report = inspection.run_list_inspection(tmp_path)
+    assert report["navigation_attempts"] == 1
+    assert report["follow_up"] == {"status": "skipped", "reason": "ambiguous_adjacent_links"}
+    browser_session[3].goto.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("status", "containers", "rows"),
+    [
+        ("missing_list", 0, []),
+        ("ambiguous_list", 2, []),
+        ("empty", 1, []),
+        ("conflicting_empty_marker", 1, [{}]),
+        ("observed", 2, [{}]),
+        ("observed", 1, []),
+    ],
+)
+def test_unusable_first_main_list_never_follows_pagination(
+    tmp_path, browser_session, status, containers, rows
+):
+    next_url = build_list_url("normal", "comic_new6", "ai", page=2)
+    first = _observed_snapshot(candidates=[_candidate(next_url)])
+    first.update(status=status, counts={"list_containers": containers}, rows=rows)
+    browser_session[5].return_value = first
+    report = inspection.run_list_inspection(tmp_path)
+    assert report["status"] == "inspected_unverified"
+    assert report["snapshot"] == first
+    assert report["follow_up"] == {"status": "skipped", "reason": "main_list_not_observed"}
+    browser_session[3].goto.assert_called_once()
+
+
+@pytest.mark.parametrize("status", [None, 403, 429, 503])
+def test_second_response_error_preserves_first_and_stops_without_retry(
+    tmp_path, browser_session, status
+):
+    _manager, _driver, browser, page, response, inspect = browser_session
+    next_url = build_list_url("normal", "comic_new6", "ai", page=2)
+    first = _observed_snapshot(candidates=[_candidate(next_url)])
+    inspect.return_value = first
+    second_response = MagicMock() if status is not None else None
+    if second_response is not None:
+        second_response.status = status
+        second_response.header_value.return_value = "120"
+    page.goto.side_effect = [response, second_response]
+    report = inspection.run_list_inspection(tmp_path)
+    assert report["status"] == "inspection_failed"
+    assert report["last_stage"] == "follow_up_navigation"
+    assert report["error_type"] == "HTTPStatusError"
+    assert report["http_status"] == 200
+    assert report["snapshot"] == first
+    assert report["navigation_attempts"] == 2
+    assert report["follow_up"]["status"] == "failed"
+    assert report["follow_up"]["http_status"] == status
+    assert report["follow_up"]["retry_after"] == ("120" if status is not None else None)
+    assert "snapshot" not in report["follow_up"]
+    assert page.goto.call_count == 2
+    inspect.assert_called_once()
+    browser.close.assert_called_once()
+
+
+def test_second_navigation_exception_keeps_first_with_only_safe_error_code(
+    tmp_path, browser_session
+):
+    next_url = build_list_url("normal", "comic_new6", "ai", page=2)
+    first = _observed_snapshot(candidates=[_candidate(next_url)])
+    browser_session[5].return_value = first
+    browser_session[3].goto.side_effect = [
+        browser_session[4],
+        RuntimeError("net::ERR_CONNECTION_RESET at https://example.invalid/?token=secret"),
+    ]
+    report = inspection.run_list_inspection(tmp_path)
+    assert report["status"] == "inspection_failed"
+    assert report["last_stage"] == "follow_up_navigation"
+    assert report["snapshot"] == first
+    assert report["error_code"] == "ERR_CONNECTION_RESET"
+    assert report["follow_up"]["error_code"] == "ERR_CONNECTION_RESET"
+    assert report["follow_up"]["status"] == "failed"
+    assert "secret" not in json.dumps(report)
+    assert browser_session[3].goto.call_count == 2
+    browser_session[2].close.assert_called_once()
+
+
+def test_second_dom_exception_keeps_first_and_safe_diagnostics(tmp_path, browser_session):
+    next_url = build_list_url("normal", "comic_new6", "ai", page=2)
+    first = _observed_snapshot(candidates=[_candidate(next_url)])
+    diagnostics = {"counts": {".gall_list": 0}, "samples": []}
+    browser_session[5].side_effect = [
+        first,
+        DCSnapshotError("private second document", diagnostics=diagnostics),
+    ]
+    report = inspection.run_list_inspection(tmp_path)
+    assert report["status"] == "inspection_failed"
+    assert report["last_stage"] == "follow_up_dom_inspection"
+    assert report["snapshot"] == first
+    assert report["follow_up"]["status"] == "failed"
+    assert report["diagnostics"] == diagnostics
+    assert "private second document" not in json.dumps(report)
+    assert browser_session[3].goto.call_count == 2
+    browser_session[2].close.assert_called_once()
+
+
+def test_combined_report_limit_discards_only_second_snapshot(
+    tmp_path, browser_session, monkeypatch
+):
+    monkeypatch.setattr(inspection, "MAX_REPORT_BYTES", 6000)
+    next_url = build_list_url("normal", "comic_new6", "ai", page=2)
+    first = _observed_snapshot(candidates=[_candidate(next_url)])
+    second = _observed_snapshot(next_url)
+    second["fixture_metadata"] = "a" * 5000
+    browser_session[5].side_effect = [first, second]
+    report = inspection.run_list_inspection(tmp_path)
+    assert report["status"] == "inspection_failed"
+    assert report["snapshot"] == first
+    assert report["follow_up"]["status"] == "failed"
+    assert "snapshot" not in report["follow_up"]
+    assert Path(report["report_path"]).stat().st_size <= 6000
+
+
+def test_share_report_redacts_cursor_in_nested_follow_up_without_losing_scope():
+    cursor = "-1200000"
+    url = build_list_url("normal", "comic_new6", "ai", page=2, search_pos=cursor)
+    shared = inspection.share_report(
+        {"follow_up": {"url": url, "snapshot": _observed_snapshot(url, [_candidate(url)])}}
+    )
+    assert cursor not in json.dumps(shared)
+    digest = hashlib.sha256(cursor.encode()).hexdigest()
+    assert "search_pos_sha256=" + digest in shared["follow_up"]["url"]
+    assert shared["follow_up"]["snapshot"]["search_pos_sha256"] == digest
+    assert "page=2" in shared["follow_up"]["snapshot"]["url"]

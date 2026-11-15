@@ -1,4 +1,4 @@
-"""Inspect one DC search list in an owned, headless browser without saving or queuing."""
+"""Inspect a DC search list and one observed next-page link without saving or queuing."""
 
 import hashlib
 import json
@@ -23,6 +23,9 @@ from image_monitor.site_inspection import (
 from image_monitor.site_inspection import share_report as _site_share_report
 
 DEFAULT_LIST_URL = build_list_url("normal", "comic_new6", "ai")
+MAX_REPORT_BYTES = MAX_SNAPSHOT_BYTES
+_REPORT_RESERVE_BYTES = 1024
+_SCOPE_KEYS = ("gallery_type", "gallery_id", "search_type", "keyword", "navigation")
 _RELATIVE_LIST_URL = re.compile(
     r"(?<![\w/:])/(?:mgallery/|mini/)?board/lists/?\?[^\s<>\"']+", re.IGNORECASE
 )
@@ -118,14 +121,121 @@ def _failure(report: dict, error: Exception) -> None:
         diagnostics = _report_copy(error.diagnostics, public=False)
         if len(json.dumps(diagnostics).encode("utf-8")) <= MAX_SNAPSHOT_BYTES:
             report["diagnostics"] = diagnostics
-        else:
+        if "diagnostics" not in report or not _report_fits(report, reserve=_REPORT_RESERVE_BYTES):
+            report.pop("diagnostics", None)
             report["diagnostics_omitted"] = "metadata_limit"
+
+
+def _report_fits(report: dict, *, reserve: int = 0) -> bool:
+    return (
+        len(json.dumps(report, ensure_ascii=False, indent=2).encode("utf-8"))
+        <= MAX_REPORT_BYTES - reserve
+    )
+
+
+def _store_snapshot(report: dict, destination: dict, snapshot: dict) -> None:
+    snapshot = _report_copy(snapshot, public=False)
+    if len(json.dumps(snapshot).encode("utf-8")) > MAX_SNAPSHOT_BYTES:
+        raise ValueError("Inspection metadata exceeds report limit")
+    destination["snapshot"] = snapshot
+    if not _report_fits(report, reserve=_REPORT_RESERVE_BYTES):
+        del destination["snapshot"]
+        raise ValueError("Combined inspection metadata exceeds report limit")
+
+
+def _adjacent_page(target: dict, snapshot: dict) -> dict:
+    """Choose only one actual, revalidated adjacent link in the latest search window."""
+    if target["page"] != 1 or target["search_pos"] is not None:
+        return {"status": "skipped", "reason": "initial_page_is_not_latest_page_one"}
+    if (
+        snapshot.get("status") != "observed"
+        or snapshot.get("counts", {}).get("list_containers") != 1
+        or not snapshot.get("rows")
+    ):
+        return {"status": "skipped", "reason": "main_list_not_observed"}
+    candidates = []
+    for observed in snapshot.get("pagination_candidates", []):
+        if not isinstance(observed, dict):
+            continue
+        try:
+            candidate = validate_list_url(observed.get("canonical_url"))
+        except DCSnapshotError:
+            continue
+        if (
+            any(candidate[key] != target[key] for key in _SCOPE_KEYS)
+            or candidate["page"] != target["page"] + 1
+            or candidate["search_pos"] != target["search_pos"]
+            or observed.get("page") != candidate["page"]
+            or observed.get("search_pos") != candidate["search_pos"]
+        ):
+            continue
+        candidates.append(candidate["canonical_url"])
+    if not candidates:
+        return {"status": "no_adjacent_page", "reason": "no_same_scope_adjacent_link"}
+    if len(candidates) != 1:
+        return {"status": "skipped", "reason": "ambiguous_adjacent_links"}
+    return {
+        "status": "failed",
+        "url": candidates[0],
+        "http_status": None,
+        "retry_after": None,
+    }
+
+
+def _response_status(response, destination: dict) -> bool:
+    status = response.status if response is not None else None
+    destination["http_status"] = status
+    if response is not None:
+        retry_after = response.header_value("retry-after")
+        destination["retry_after"] = retry_after[:256] if retry_after is not None else None
+    return status is not None and status < 400
+
+
+def _inspect_follow_up(page, target: dict, report: dict) -> None:
+    follow_up = _adjacent_page(target, report["snapshot"])
+    report["follow_up"] = follow_up
+    if "url" not in follow_up:
+        return
+    if not _report_fits(report, reserve=_REPORT_RESERVE_BYTES):
+        report["follow_up"] = {"status": "skipped", "reason": "metadata_limit"}
+        return
+    try:
+        report["last_stage"] = "follow_up_navigation"
+        report["navigation_attempts"] = 2
+        response = page.goto(follow_up["url"], wait_until="domcontentloaded", timeout=30_000)
+        if not _response_status(response, follow_up):
+            follow_up.update(
+                error_type="HTTPStatusError", reason="Document response prevented inspection"
+            )
+            report.update(
+                status="inspection_failed",
+                error_type="HTTPStatusError",
+                reason="Follow-up document response prevented inspection",
+            )
+            return
+        report["last_stage"] = "follow_up_dom_inspection"
+        snapshot = inspect_list(
+            page,
+            expected_url=follow_up["url"],
+            observed_at=datetime.now(UTC),
+            timeout_ms=15_000,
+        )
+        _store_snapshot(report, follow_up, snapshot)
+        follow_up["status"] = "observed"
+    except Exception as error:
+        follow_up.update(
+            status="failed",
+            error_type=type(error).__name__,
+            error_code=_error_code(error),
+            reason="Read-only follow-up inspection did not complete",
+        )
+        _failure(report, error)
 
 
 def run_list_inspection(
     work_root: Path, browser: str = "chrome", url: str = DEFAULT_LIST_URL
 ) -> dict:
-    """Navigate once, inspect the current list DOM, and close this owned browser."""
+    """Inspect at most two pages using observed links, then close this owned browser."""
     require_windows()
     target = validate_list_url(url)
     if browser not in {"edge", "chrome"}:
@@ -148,6 +258,7 @@ def run_list_inspection(
         "error_type": None,
         "error_code": None,
         "last_stage": "preparing",
+        "follow_up": {"status": "skipped", "reason": "first_page_unavailable"},
         "report_path": str(run_directory / "report.json"),
     }
     try:
@@ -170,12 +281,7 @@ def run_list_inspection(
                 response = page.goto(
                     target["canonical_url"], wait_until="domcontentloaded", timeout=30_000
                 )
-                status = response.status if response is not None else None
-                report["http_status"] = status
-                if response is not None:
-                    retry_after = response.header_value("retry-after")
-                    report["retry_after"] = retry_after[:256] if retry_after is not None else None
-                if status is None or status >= 400:
+                if not _response_status(response, report):
                     report.update(
                         error_type="HTTPStatusError",
                         reason="Document response prevented inspection",
@@ -188,10 +294,9 @@ def run_list_inspection(
                         observed_at=datetime.now(UTC),
                         timeout_ms=15_000,
                     )
-                    snapshot = _report_copy(snapshot, public=False)
-                    if len(json.dumps(snapshot).encode("utf-8")) > MAX_SNAPSHOT_BYTES:
-                        raise ValueError("Inspection metadata exceeds report limit")
-                    report.update(status="inspected_unverified", snapshot=snapshot)
+                    _store_snapshot(report, report, snapshot)
+                    report["status"] = "inspected_unverified"
+                    _inspect_follow_up(page, target, report)
             except Exception as error:
                 _failure(report, error)
             finally:
@@ -213,5 +318,19 @@ def run_list_inspection(
         report["status"] = "inspection_failed"
     if report["status"] == "inspected_unverified":
         report["last_stage"] = "complete"
+    if not _report_fits(report):
+        report.pop("diagnostics", None)
+        report["follow_up"].pop("snapshot", None)
+        report["follow_up"].update(status="failed", reason="metadata_limit")
+        report.update(
+            status="inspection_failed",
+            error_type="ValueError",
+            error_code=None,
+            reason="Combined inspection metadata exceeds report limit",
+        )
+        if not _report_fits(report):
+            report.pop("snapshot", None)
+        if not _report_fits(report):
+            raise ValueError("Inspection report metadata exceeds limit")
     _write_report(Path(report["report_path"]), report)
     return report

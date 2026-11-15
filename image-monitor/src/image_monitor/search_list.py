@@ -8,17 +8,24 @@ import re
 import time
 import unicodedata
 from datetime import datetime
-from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
+from urllib.parse import urljoin
 
-from image_monitor.dcinside import HOST, DCSnapshotError, validate_post_url
+from image_monitor.dcinside import DCSnapshotError, validate_post_url
+from image_monitor.list_links import (
+    LIST_PATHS as LIST_PATHS,
+)
+from image_monitor.list_links import (
+    SEARCH_TYPE as SEARCH_TYPE,
+)
+from image_monitor.list_links import (
+    build_list_url as build_list_url,
+)
+from image_monitor.list_links import (
+    classify_rejected_list_link,
+    validate_list_url,
+)
 from image_monitor.paths import aware
 
-LIST_PATHS = {
-    "normal": "/board/lists/",
-    "minor": "/mgallery/board/lists/",
-    "mini": "/mini/board/lists/",
-}
-SEARCH_TYPE = "search_subject_memo"
 MAX_ROWS = 200
 MAX_PAGINATION = 200
 MAX_LINKS_PER_ROW = 8
@@ -32,7 +39,9 @@ SELECTORS = {
     "empty": ".gall_list .no_data, .gall_list .no_result",
     "pagination": ".bottom_paging_box a, a.search_next, .search_next a",
 }
-_LIST_KEYS = {"id", "s_type", "s_keyword", "page", "search_pos", "search_head", "exception_mode"}
+MAX_LIST_CANDIDATES = 12
+MAX_PAGINATION_SAMPLES = 12
+NAVIGATION_KINDS = {"number", "next", "previous", "first", "last", "other", "unavailable"}
 
 
 def _control(char):
@@ -49,137 +58,6 @@ def _public_text(value, limit):
     ):
         raise DCSnapshotError("Invalid bounded public text")
     return value or None
-
-
-def _query_text(value, *, maximum):
-    return (
-        isinstance(value, str)
-        and 0 < len(value) <= maximum
-        and value == value.strip()
-        and not any(_control(char) for char in value)
-    )
-
-
-def _page_number(value):
-    if not isinstance(value, str) or not re.fullmatch(r"[0-9]{1,9}", value):
-        raise DCSnapshotError("Invalid list page")
-    number = int(value)
-    if number < 1:
-        raise DCSnapshotError("Invalid list page")
-    return number
-
-
-def _cursor(value):
-    if value is None:
-        return None
-    if not isinstance(value, str) or not re.fullmatch(r"-?[0-9]{1,20}", value):
-        raise DCSnapshotError("Invalid list search cursor")
-    return str(int(value))
-
-
-def validate_list_url(url: str) -> dict:
-    """Validate one exact title/body search; preserve explicit filters and cursor.
-
-    Missing page means page 1. Canonical URLs always state that page explicitly.
-    Optional filter values remain part of search scope, rather than being dropped.
-    """
-    if (
-        not isinstance(url, str)
-        or not url
-        or len(url) > 4096
-        or any(ord(char) <= 32 or _control(char) for char in url)
-        or "#" in url
-        or re.search(r"%(?![0-9a-fA-F]{2})", url)
-    ):
-        raise DCSnapshotError("Invalid list URL")
-    try:
-        parsed = urlsplit(url)
-        if parsed.scheme != "https" or parsed.netloc.lower() != HOST:
-            raise DCSnapshotError("Expected an HTTPS gall.dcinside.com list URL")
-        kind = next(
-            (kind for kind, path in LIST_PATHS.items() if parsed.path.rstrip("/") == path[:-1]),
-            None,
-        )
-        if kind is None or parsed.path not in {LIST_PATHS[kind], LIST_PATHS[kind][:-1]}:
-            raise DCSnapshotError("Unsupported DC list path")
-        values = {}
-        for key, value in parse_qsl(
-            parsed.query,
-            keep_blank_values=True,
-            strict_parsing=True,
-            max_num_fields=12,
-            errors="strict",
-        ):
-            if key not in _LIST_KEYS or key in values:
-                raise DCSnapshotError("Unsupported or duplicate list URL parameter")
-            if any(_control(char) for char in value):
-                raise DCSnapshotError("Invalid list URL query value")
-            values[key] = value
-        gallery = values.get("id", "")
-        post_path = LIST_PATHS[kind].replace("/lists/", "/view/")
-        identity = validate_post_url(
-            "https://" + HOST + post_path + "?" + urlencode({"id": gallery, "no": "1"})
-        )
-        if values.get("s_type") != SEARCH_TYPE:
-            raise DCSnapshotError("Expected an exact title/body search")
-        keyword = values.get("s_keyword")
-        if not _query_text(keyword, maximum=200):
-            raise DCSnapshotError("Invalid list search keyword")
-        page = _page_number(values.get("page", "1"))
-        search_pos = _cursor(values.get("search_pos"))
-        navigation = {}
-        if "search_head" in values:
-            if not re.fullmatch(r"-?[0-9]{1,10}|", values["search_head"]):
-                raise DCSnapshotError("Invalid search head")
-            navigation["search_head"] = values["search_head"]
-        if "exception_mode" in values:
-            if not re.fullmatch(r"[A-Za-z0-9_]{0,32}", values["exception_mode"]):
-                raise DCSnapshotError("Invalid exception mode")
-            navigation["exception_mode"] = values["exception_mode"]
-        query = {
-            "id": identity["gallery_id"],
-            "s_type": SEARCH_TYPE,
-            "s_keyword": keyword,
-            "page": str(page),
-        }
-        if search_pos is not None:
-            query["search_pos"] = search_pos
-        query.update(navigation)
-        return {
-            "gallery_type": kind,
-            "gallery_id": identity["gallery_id"],
-            "search_type": SEARCH_TYPE,
-            "keyword": keyword,
-            "page": page,
-            "search_pos": search_pos,
-            "navigation": navigation,
-            "canonical_url": "https://" + HOST + LIST_PATHS[kind] + "?" + urlencode(query),
-        }
-    except DCSnapshotError:
-        raise
-    except (ValueError, TypeError, UnicodeError) as error:
-        raise DCSnapshotError("Invalid list URL") from error
-
-
-def build_list_url(
-    gallery_type: str, gallery_id: str, keyword: str, page: int = 1, search_pos: str | None = None
-) -> str:
-    """Construct a fresh search URL; default latest scan never inherits a cursor."""
-    if (
-        not isinstance(gallery_type, str)
-        or gallery_type not in LIST_PATHS
-        or type(page) is not int
-        or not 1 <= page <= 999_999_999
-    ):
-        raise DCSnapshotError("Invalid list construction options")
-    if not isinstance(gallery_id, str) or not _query_text(keyword, maximum=200):
-        raise DCSnapshotError("Invalid list construction options")
-    query = {"id": gallery_id, "s_type": SEARCH_TYPE, "s_keyword": keyword, "page": str(page)}
-    cursor = _cursor(search_pos)
-    if cursor is not None:
-        query["search_pos"] = cursor
-    url = "https://" + HOST + LIST_PATHS[gallery_type] + "?" + urlencode(query)
-    return validate_list_url(url)["canonical_url"]
 
 
 def _scope(target):
@@ -205,10 +83,61 @@ def _safe_diagnostics(raw):
     for key, value in list(incoming_counts.items())[:16]:
         if key in SELECTORS.values() and type(value) is int and 0 <= value <= 1_000_000:
             counts[key] = value
+    result = {"counts": counts, "samples": []}
+    candidates = raw.get("list_candidates", [])
+    if isinstance(candidates, list):
+        inventory = []
+        for entry in candidates[:MAX_LIST_CANDIDATES]:
+            if not isinstance(entry, dict):
+                continue
+            candidate = {}
+            tag = entry.get("tag")
+            if isinstance(tag, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,30}", tag):
+                candidate["tag"] = tag
+            classes = entry.get("classes", [])
+            if isinstance(classes, list):
+                candidate["classes"] = [
+                    value
+                    for value in classes[:10]
+                    if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,60}", value)
+                ]
+            for key in (
+                "table_row_count",
+                "ordinary_row_count",
+                "number_field_count",
+                "writer_field_count",
+                "date_field_count",
+                "title_link_count",
+                "empty_marker_count",
+                "visible_empty_marker_count",
+            ):
+                value = entry.get(key)
+                if type(value) is int and 0 <= value <= 1_000_000:
+                    candidate[key] = value
+            for key in ("has_id", "qualifies", "selected"):
+                if type(entry.get(key)) is bool:
+                    candidate[key] = entry[key]
+            schemes = entry.get("title_link_schemes")
+            if isinstance(schemes, dict):
+                candidate["title_link_schemes"] = {
+                    key: value
+                    for key, value in schemes.items()
+                    if key in {"https", "http", "javascript", "relative", "other", "missing"}
+                    and type(value) is int
+                    and 0 <= value <= 1_000_000
+                }
+            inventory.append(candidate)
+        result["list_candidates"] = inventory
+    total = raw.get("list_candidate_total")
+    if type(total) is int and 0 <= total <= 1_000_000:
+        result["list_candidate_total"] = total
+    truncated = raw.get("list_candidates_truncated")
+    if type(truncated) is bool:
+        result["list_candidates_truncated"] = truncated
     samples = []
     incoming = raw.get("samples", [])
     if not isinstance(incoming, list):
-        return {"counts": counts, "samples": []}
+        return result
     for value in incoming[:18]:
         if not isinstance(value, dict) or value.get("selector") not in SELECTORS.values():
             continue
@@ -249,7 +178,8 @@ def _safe_diagnostics(raw):
                 ]
             sample["link_shape"] = safe_shape
         samples.append(sample)
-    return {"counts": counts, "samples": samples}
+    result["samples"] = samples
+    return result
 
 
 def _absolute_link(value, base):
@@ -348,6 +278,11 @@ def parse_list_snapshot(
     if current["canonical_url"] != target["canonical_url"]:
         raise DCSnapshotError("Search identity changed during observation", diagnostics=diagnostics)
     list_count = _count(raw, "list_count")
+    container_count = (
+        _count(raw, "list_container_count") if "list_container_count" in raw else list_count
+    )
+    if list_count > container_count:
+        raise DCSnapshotError("Invalid selected list count", diagnostics=diagnostics)
     row_total = _count(raw, "row_total")
     pagination_total = _count(raw, "pagination_total")
     empty_count = _count(raw, "empty_marker_count")
@@ -376,7 +311,8 @@ def parse_list_snapshot(
                 seen.add(row["post_id"])
                 rows.append(row)
     pagination, pagination_excluded, seen_urls = [], {}, set()
-    for entry in pagination_raw:
+    rejection_counts, pagination_samples, sample_kinds = {}, [], {}
+    for link_order, entry in enumerate(pagination_raw, 1):
         reason = None
         if not isinstance(entry, dict):
             raise DCSnapshotError("Invalid pagination observation")
@@ -402,9 +338,33 @@ def parse_list_snapshot(
                 seen_urls.add(candidate["canonical_url"])
         except DCSnapshotError:
             reason = "invalid_url"
+        evidence = classify_rejected_list_link(
+            entry.get("href"), target["canonical_url"], expected_scope=_scope(target)
+        )
+        for code in evidence["reason_codes"]:
+            rejection_counts[code] = rejection_counts.get(code, 0) + 1
+        label_kind = entry.get("label_kind")
+        if not isinstance(label_kind, str) or label_kind not in NAVIGATION_KINDS:
+            label_kind = "unavailable"
+        sample_kind = (
+            evidence["validation_status"],
+            tuple(evidence["reason_codes"]),
+            label_kind,
+            tuple(evidence["query_value_categories"].items()),
+        )
+        if (
+            len(pagination_samples) < MAX_PAGINATION_SAMPLES
+            and sample_kinds.get(sample_kind, 0) < 2
+        ):
+            sample_kinds[sample_kind] = sample_kinds.get(sample_kind, 0) + 1
+            pagination_samples.append(
+                {"link_order": link_order, "label_kind": label_kind, **evidence}
+            )
         if reason:
             pagination_excluded[reason] = pagination_excluded.get(reason, 0) + 1
-    if list_count == 0:
+    if list_count == 0 and container_count:
+        status = "unrecognized_empty"
+    elif list_count == 0:
         status = "missing_list"
     elif list_count != 1:
         status = "ambiguous_list"
@@ -423,6 +383,8 @@ def parse_list_snapshot(
         and not pagination
         and not (set(pagination_excluded) - {"current_document", "duplicate"})
     )
+    diagnostics["pagination_rejections"] = rejection_counts
+    diagnostics["pagination_samples"] = pagination_samples
     return {
         "schema_version": 1,
         "scope": _scope(target),
@@ -443,6 +405,7 @@ def parse_list_snapshot(
         else ("candidates_observed" if pagination else "missing_or_unrecognized"),
         "counts": {
             "list_containers": list_count,
+            "matched_list_containers": container_count,
             "observed_rows": row_total,
             "ordinary_rows": len(rows),
             "excluded_rows": len(excluded),
@@ -503,14 +466,66 @@ LIST_DOM_JS = r"""(options) => {
    diagnostics.samples.push(sample);
   }
  }
- const containers=document.querySelectorAll(selectors.list);
- const root=containers.length===1?containers[0]:null;
- const allRows=root?[...root.querySelectorAll('tbody tr.ub-content')]:[];
- const emptyNodes=root?[...root.querySelectorAll('.no_data, .no_result')].filter(visible):[];
+ const containers=[...document.querySelectorAll(selectors.list)];
+ // A structural candidate owns its tbody rows. Visibility and DOM order cannot
+ // break ties between two matching list templates.
+ const ownedRows=table=>table.matches('table.gall_list')?
+  [...table.tBodies].filter(body=>body.parentElement===table).flatMap(body=>
+   [...body.children].filter(row=>row.matches('tr'))):[];
+ const owned= (table,selector)=>[...table.querySelectorAll(selector)]
+  .filter(node=>node.closest('table')===table);
+ const scheme=href=>{
+  if(!href)return 'missing';
+  const match=/^([a-z][a-z0-9+.-]*):/i.exec(href);
+  if(!match)return 'relative';
+  const name=match[1].toLowerCase();
+  return ['https','http','javascript'].includes(name)?name:'other';
+ };
+ const candidates=containers.map(table=>{
+  budget();
+  const tableRows=ownedRows(table);
+  const rows=tableRows.filter(row=>row.matches('tr.ub-content'));
+  const empty=table.matches('table.gall_list')?owned(table,'.no_data, .no_result'):[];
+  return {table,tableRows,rows,empty,qualifies:rows.length>0||empty.length>0};
+ });
+ const qualified=candidates.filter(candidate=>candidate.qualifies);
+ const selected=qualified.length===1?qualified[0]:null;
+ const root=selected?selected.table:null;
+ const allRows=selected?selected.rows:[];
+ const emptyNodes=selected?selected.empty.filter(visible):[];
+ diagnostics.list_candidate_total=qualified.length;
+ diagnostics.list_candidates_truncated=containers.length>options.maxListCandidates;
+ diagnostics.list_candidates=candidates.slice(0,options.maxListCandidates).map(candidate=>{
+  budget();
+  const table=candidate.table,links=owned(table,selectors.title_links),schemes={};
+  for(const link of links){const kind=scheme(link.getAttribute('href'));
+   schemes[kind]=(schemes[kind]||0)+1;}
+  return {tag:table.tagName,classes:[...table.classList].slice(0,10),
+   has_id:table.hasAttribute('id'),
+   table_row_count:candidate.tableRows.length,ordinary_row_count:candidate.rows.length,
+   number_field_count:owned(table,selectors.number).length,
+   writer_field_count:owned(table,selectors.author).length,
+   date_field_count:owned(table,selectors.date).length,title_link_count:links.length,
+   title_link_schemes:schemes,empty_marker_count:candidate.empty.length,
+   visible_empty_marker_count:candidate.empty.filter(visible).length,
+   qualifies:candidate.qualifies,selected:table===root};
+ });
  const pageLinks=[...document.querySelectorAll(selectors.pagination)];
+ const navigationKind=link=>{
+  const label=(text(link,40)||'').toLowerCase();
+  if(!label)return 'unavailable';
+  if(/^[0-9]+$/.test(label))return 'number';
+  if(/^(다음|다음페이지|다음 페이지|next|next page|›|»|>)$/.test(label))return 'next';
+  if(/^(이전|이전페이지|이전 페이지|prev|previous|previous page|‹|«|<)$/.test(label))
+   return 'previous';
+  if(/^(처음|첫 페이지|first|first page)$/.test(label))return 'first';
+  if(/^(끝|마지막|마지막 페이지|last|last page)$/.test(label))return 'last';
+  return 'other';
+ };
  const unique=(row,selector)=>{const nodes=row.querySelectorAll(selector);
   return {count:nodes.length,node:nodes.length===1?nodes[0]:null};};
- return {document_url:document.URL,list_count:containers.length,row_total:allRows.length,
+ return {document_url:document.URL,list_count:qualified.length,
+  list_container_count:containers.length,row_total:allRows.length,
   empty_marker_count:emptyNodes.length,pagination_total:pageLinks.length,diagnostics,
   rows:allRows.slice(0,options.maxRows).map(row=>{
    budget();
@@ -526,7 +541,8 @@ LIST_DOM_JS = r"""(options) => {
     link_total:links.length,links:links.slice(0,options.maxLinks).map(link=>({
      href:link.getAttribute('href'),text_raw:text(link,1000)}))};
   }),
-  pagination:pageLinks.slice(0,options.maxPagination).map(link=>({href:link.getAttribute('href')}))};
+  pagination:pageLinks.slice(0,options.maxPagination).map(link=>({
+   href:link.getAttribute('href'),label_kind:navigationKind(link)}))};
 }"""
 
 
@@ -555,6 +571,7 @@ def inspect_list(
                 "maxRows": MAX_ROWS,
                 "maxLinks": MAX_LINKS_PER_ROW,
                 "maxPagination": MAX_PAGINATION,
+                "maxListCandidates": MAX_LIST_CANDIDATES,
                 "timeoutMs": timeout_ms,
             },
         )

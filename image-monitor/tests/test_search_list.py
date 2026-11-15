@@ -8,7 +8,9 @@ import pytest
 
 from image_monitor.dcinside import DCSnapshotError
 from image_monitor.search_list import (
+    MAX_LIST_CANDIDATES,
     MAX_PAGINATION,
+    MAX_PAGINATION_SAMPLES,
     MAX_ROWS,
     build_list_url,
     inspect_list,
@@ -116,7 +118,6 @@ def test_identity_normalizes_page_and_cursor_but_preserves_exact_filters_and_key
         URL.replace("page=1", "page=0"),
         URL.replace("page=1", "page=-1"),
         URL.replace("page=1", "page=1000000000"),
-        URL + "&search_pos=",
         URL + "&search_pos=+123",
         URL + "&search_pos=1%0A",
         URL + "&search_head=abc",
@@ -148,6 +149,19 @@ def test_bad_construction_options_fail_closed(changes):
     args = {"gallery_type": "normal", "gallery_id": "comic_new6", "keyword": "ai"} | changes
     with pytest.raises(DCSnapshotError):
         build_list_url(**args)
+
+
+def test_explicit_blank_display_link_cursor_is_the_latest_search_window():
+    assert validate_list_url(URL + "&search_pos=")["canonical_url"] == URL
+    raw = raw_snapshot(
+        pagination_total=1,
+        pagination=[{"href": URL.replace("page=1", "page=2") + "&search_pos="}],
+    )
+    snapshot = parse(raw)
+    assert snapshot["pagination_candidates"][0]["search_pos"] is None
+    sample = snapshot["diagnostics"]["pagination_samples"][0]
+    assert sample["query_value_categories"]["search_pos"] == "empty"
+    assert sample["validation_status"] == "accepted"
 
 
 @pytest.mark.parametrize("layout", ["unverified", "fixture_validated"])
@@ -196,6 +210,18 @@ def test_public_shown_metadata_has_exact_ids_raw_dates_and_never_queue_permissio
             "wrong_gallery",
         ),
         (row(links=[{"href": "javascript:alert(1)", "text_raw": "x"}]), "invalid_post_link"),
+        (
+            row(links=[{"href": POST.replace("https:", "http:"), "text_raw": "x"}]),
+            "invalid_post_link",
+        ),
+        (
+            row(
+                links=[
+                    {"href": "https://gall.dcinside.com/?id=comic_new6&no=7036949", "text_raw": "x"}
+                ]
+            ),
+            "invalid_post_link",
+        ),
         (row(links=[{"href": POST, "text_raw": None}]), "missing_title"),
     ],
 )
@@ -395,6 +421,89 @@ def test_diagnostics_keep_only_bounded_shapes_and_no_attributes_or_query_values(
     assert parse(raw_snapshot(diagnostics={"counts": []}))["diagnostics"]["counts"] == {}
 
 
+def test_candidate_inventory_is_bounded_and_drops_nonstructural_content():
+    candidate = {
+        "tag": "TABLE",
+        "classes": ["gall_list"],
+        "id": "fixture_recommend",
+        "has_id": True,
+        "table_row_count": 20,
+        "ordinary_row_count": 0,
+        "number_field_count": 20,
+        "writer_field_count": 0,
+        "date_field_count": 20,
+        "title_link_count": 20,
+        "title_link_schemes": {"https": 20, "private-token": 1, "http": -1},
+        "empty_marker_count": 0,
+        "qualifies": False,
+        "selected": False,
+        "outerHTML": "private content",
+    }
+    raw = raw_snapshot(
+        diagnostics={
+            "list_candidates": [candidate] * (MAX_LIST_CANDIDATES + 1),
+            "list_candidate_total": 1,
+            "list_candidates_truncated": True,
+        }
+    )
+    diagnostics = parse(raw)["diagnostics"]
+    assert len(diagnostics["list_candidates"]) == MAX_LIST_CANDIDATES
+    assert diagnostics["list_candidates"][0]["has_id"]
+    assert "id" not in diagnostics["list_candidates"][0]
+    assert diagnostics["list_candidates"][0]["title_link_schemes"] == {"https": 20}
+    assert diagnostics["list_candidates_truncated"]
+    assert "private" not in json.dumps(diagnostics)
+
+
+def test_pagination_rejection_diagnostics_explain_types_without_copying_query_values():
+    links = [
+        URL.replace("page=1", "page=") + "&search_pos=",
+        URL + "&search_pos=%20%20",
+        URL + "&search_pos=secret-cursor%00",
+        URL + "&page=2&private-key=private-value",
+        URL.replace("comic_new6", "foreign_gallery"),
+    ]
+    snapshot = parse(
+        raw_snapshot(
+            pagination_total=len(links),
+            pagination=[{"href": href, "label_kind": "next"} for href in links],
+        )
+    )
+    diagnostics = snapshot["diagnostics"]
+    assert diagnostics["pagination_rejections"]["blank_page"] == 1
+    assert diagnostics["pagination_rejections"]["invalid_cursor"] == 1
+    assert diagnostics["pagination_rejections"]["control_query_value"] == 1
+    assert diagnostics["pagination_rejections"]["duplicate_query_key"] == 1
+    assert diagnostics["pagination_rejections"]["unknown_query_keys"] == 1
+    assert diagnostics["pagination_rejections"]["gallery_id_mismatch"] == 1
+    samples = diagnostics["pagination_samples"]
+    assert samples[0]["query_value_categories"]["page"] == "empty"
+    assert samples[0]["query_value_categories"]["search_pos"] == "empty"
+    assert samples[1]["query_value_categories"]["search_pos"] == "surrounding_whitespace"
+    assert samples[2]["control_character_count"] == 1
+    assert samples[3]["duplicate_query_key_count"] == 1
+    assert samples[3]["unknown_query_key_count"] == 1
+    assert all(sample["label_kind"] == "next" for sample in samples)
+    output = json.dumps(diagnostics)
+    for secret in ("secret-cursor", "private-key", "private-value", "foreign_gallery"):
+        assert secret not in output
+
+
+def test_pagination_samples_stay_bounded_and_keep_navigation_label_categories_only():
+    links = [
+        {"href": URL.replace("page=1", f"page={page}"), "label_kind": "number"}
+        for page in range(2, 30)
+    ]
+    links += [
+        {"href": URL.replace("page=1", "page=30"), "label_kind": "next"},
+        {"href": URL.replace("page=1", "page=31"), "label_kind": ["private label"]},
+    ]
+    diagnostics = parse(raw_snapshot(pagination_total=len(links), pagination=links))["diagnostics"]
+    assert len(diagnostics["pagination_samples"]) <= MAX_PAGINATION_SAMPLES
+    assert any(sample["label_kind"] == "next" for sample in diagnostics["pagination_samples"])
+    assert "private" not in json.dumps(diagnostics)
+
+
 def test_inspection_only_evaluates_dom_and_rechecks_identity():
     page = Mock()
     page.url = URL
@@ -517,7 +626,10 @@ def test_browser_fixture_reads_visible_metadata_without_hidden_attributes_or_res
             "</tr></tbody></table>",
             "empty",
         ),
-        ("<table class='gall_list'></table><table class='gall_list'></table>", "ambiguous_list"),
+        (
+            "<table class='gall_list'></table><table class='gall_list'></table>",
+            "unrecognized_empty",
+        ),
     ],
 )
 def test_browser_fixture_distinguishes_explicit_empty_from_missing_dom(local_page, html, status):
@@ -527,3 +639,155 @@ def test_browser_fixture_distinguishes_explicit_empty_from_missing_dom(local_pag
     assert snapshot["status"] == status
     assert snapshot["rows"] == []
     assert not snapshot["end_of_results"]
+
+
+def fixture_table(*, ordinary=True, count=1, start=100, table_id="", style=""):
+    rows = []
+    for number in range(start, start + count):
+        row_class = ' class="ub-content"' if ordinary else ""
+        author = '<td class="gall_writer">fixture author</td>' if ordinary else ""
+        rows.append(
+            f'<tr{row_class}><td class="gall_num">{number}</td>'
+            '<td class="gall_tit"><a '
+            f'href="/board/view/?id=comic_new6&amp;no={number}">fixture title</a></td>'
+            f'{author}<td class="gall_date">10:23</td></tr>'
+        )
+    attributes = f' id="{table_id}"' if table_id else ""
+    if style:
+        attributes += f' style="{style}"'
+    return f'<table class="gall_list"{attributes}><tbody>' + "".join(rows) + "</tbody></table>"
+
+
+@pytest.mark.parametrize("main_first", [True, False])
+def test_browser_fixture_selects_owned_main_template_among_two_visible_tables(
+    local_page, main_first
+):
+    load, requests = local_page
+    main = fixture_table(count=22)
+    recommendation = fixture_table(
+        ordinary=False, count=20, start=200, table_id="fixture_recommend"
+    )
+    tables = [main, recommendation] if main_first else [recommendation, main]
+    page = load("<!doctype html><html><body>" + "".join(tables) + "</body></html>")
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["status"] == "observed"
+    assert [row["post_id"] for row in snapshot["rows"]] == [str(n) for n in range(100, 122)]
+    assert snapshot["counts"]["list_containers"] == 1
+    assert snapshot["counts"]["matched_list_containers"] == 2
+    assert snapshot["diagnostics"]["counts"][".gall_list"] == 2
+    assert snapshot["diagnostics"]["counts"][".gall_num"] == 42
+    inventory = snapshot["diagnostics"]["list_candidates"]
+    selected = next(candidate for candidate in inventory if candidate["selected"])
+    secondary = next(candidate for candidate in inventory if not candidate["qualifies"])
+    assert selected["ordinary_row_count"] == selected["writer_field_count"] == 22
+    assert selected["number_field_count"] == selected["date_field_count"] == 22
+    assert selected["title_link_schemes"] == {"relative": 22}
+    assert not selected["has_id"]
+    assert secondary["ordinary_row_count"] == secondary["writer_field_count"] == 0
+    assert secondary["table_row_count"] == secondary["number_field_count"] == 20
+    assert secondary["date_field_count"] == secondary["title_link_count"] == 20
+    assert secondary["has_id"]
+    assert requests == [URL]
+    assert not snapshot["queue_eligible"]
+    assert not snapshot["selector_evidence"]["live_layout_verified"]
+
+
+@pytest.mark.parametrize("decoy_style", ["", "display:none", "visibility:hidden"])
+def test_browser_fixture_two_owned_row_templates_remain_ambiguous(local_page, decoy_style):
+    load, _requests = local_page
+    page = load(
+        fixture_table(count=2)
+        + fixture_table(count=1, start=200, table_id="fixture_decoy", style=decoy_style)
+    )
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["status"] == "ambiguous_list"
+    assert snapshot["counts"]["list_containers"] == 2
+    assert snapshot["rows"] == []
+    assert all(candidate["qualifies"] for candidate in snapshot["diagnostics"]["list_candidates"])
+    assert not any(
+        candidate["selected"] for candidate in snapshot["diagnostics"]["list_candidates"]
+    )
+
+
+def test_browser_fixture_hidden_secondary_without_row_template_is_unambiguous(local_page):
+    load, _requests = local_page
+    page = load(
+        fixture_table() + fixture_table(ordinary=False, count=2, start=200, style="display:none")
+    )
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["status"] == "observed"
+    assert snapshot["rows"][0]["post_id"] == "100"
+
+
+@pytest.mark.parametrize("other_style", ["", "display:none"])
+def test_browser_fixture_structural_empty_templates_cannot_be_tiebroken_by_visibility(
+    local_page, other_style
+):
+    load, _requests = local_page
+    empty = '<table class="gall_list"><tbody><tr><td class="no_data">fixture empty</td>'
+    empty += "</tr></tbody></table>"
+    other = empty.replace('class="gall_list"', f'class="gall_list" style="{other_style}"')
+    snapshot = inspect_list(load(empty + other), expected_url=URL, observed_at=NOW)
+    assert snapshot["status"] == "ambiguous_list"
+    assert snapshot["counts"]["list_containers"] == 2
+    assert snapshot["counts"]["empty_markers"] == 0
+
+
+def test_browser_fixture_one_hidden_empty_marker_is_unrecognized_empty(local_page):
+    load, _requests = local_page
+    page = load(
+        '<table class="gall_list" style="display:none"><tbody><tr>'
+        '<td class="no_result">fixture empty</td></tr></tbody></table>'
+    )
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["status"] == "unrecognized_empty"
+    candidate = snapshot["diagnostics"]["list_candidates"][0]
+    assert candidate["selected"]
+    assert candidate["empty_marker_count"] == 1
+    assert candidate["visible_empty_marker_count"] == 0
+
+
+def test_browser_fixture_explicit_empty_main_is_selected_over_generic_recommendations(local_page):
+    load, _requests = local_page
+    page = load(
+        '<table class="gall_list"><tbody><tr><td class="no_data">fixture empty</td>'
+        "</tr></tbody></table>" + fixture_table(ordinary=False, count=20, start=200)
+    )
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["status"] == "empty"
+    assert snapshot["counts"]["list_containers"] == 1
+    assert snapshot["counts"]["matched_list_containers"] == 2
+    assert snapshot["rows"] == []
+    assert not snapshot["end_of_results"]
+
+
+def test_browser_fixture_nested_table_rows_are_owned_only_by_the_inner_table(local_page):
+    load, _requests = local_page
+    page = load(
+        '<table class="gall_list"><tbody><tr><td>' + fixture_table() + "</td></tr></tbody></table>"
+    )
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["status"] == "observed"
+    inventory = snapshot["diagnostics"]["list_candidates"]
+    assert inventory[0]["ordinary_row_count"] == 0
+    assert inventory[0]["writer_field_count"] == 0
+    assert not inventory[0]["qualifies"]
+    assert inventory[1]["ordinary_row_count"] == 1
+    assert snapshot["rows"][0]["post_id"] == "100"
+
+
+def test_browser_fixture_pagination_diagnostics_classify_visible_next_label(local_page):
+    load, _requests = local_page
+    page = load(
+        fixture_table() + '<div class="bottom_paging_box"><a '
+        'href="?id=comic_new6&amp;s_type=search_subject_memo&amp;s_keyword=ai&amp;page=2'
+        '&amp;search_pos=">다음</a></div>'
+        '<a href="?id=comic_new6&amp;s_type=search_subject_memo&amp;s_keyword=ai&amp;page=99">'
+        "unrelated</a>"
+    )
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["counts"]["pagination_links"] == 1
+    assert snapshot["pagination_candidates"][0]["page"] == 2
+    sample = snapshot["diagnostics"]["pagination_samples"][0]
+    assert sample["label_kind"] == "next"
+    assert sample["query_value_categories"]["search_pos"] == "empty"

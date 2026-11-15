@@ -9,7 +9,7 @@
 | --- | --- |
 | Linux / CPython 3.12.14 `pytest -q` | 355 passed, 22 skipped; Windows 전용 시험만 건너뜀 |
 | Ruff lint / format | 통과 |
-| [Windows CI #20](https://github.com/dropboxqfml-code/codex/actions/runs/43663407825) · Ruff / pytest | 337 passed, 2 skipped; 본문 분석·대기열·CMD와 Edge/Chrome 실제 저장 |
+| [Windows CI #22](https://github.com/dropboxqfml-code/codex/actions/runs/43670951194) · Ruff / pytest | 375 passed, 2 skipped; 관측 구조·식별자·압축 구조와 Edge/Chrome 실제 저장 |
 | 관리형 Python / Windows 의존성 잠금 설치 | Windows CI와 사용자 TXT에서 성공 확인 |
 | 실제 Windows CMD의 uv 검색 | 한글·공백·앰퍼샌드 경로와 새 사용자 PATH 검색 통과 |
 | 기존 Image Duplicate Finder 테스트 | 57 passed, 1 skipped; 기존 앱 수정 없음 |
@@ -145,6 +145,10 @@ DB v1→v2 추가 마이그레이션·실패 롤백·동시 마이그레이션·
 ZIP 바깥의 중복 안내를 제거했습니다. 새 ZIP에는 `image-monitor/WINDOWS_TEST_GUIDE.txt`가
 정확히 하나만 있으며, 실제 임시 ZIP을 만들어 위치·유일성·내용과 덮어쓰기 거부를 검사합니다.
 기존에 배포한 ZIP은 변경하지 않습니다.
+[Windows CI #22](https://github.com/dropboxqfml-code/codex/actions/runs/43670951194)는
+375개 통과·2개 건너뜀으로 완료됐으며 Edge/Chrome 영어·한국어 실제 저장도 모두 통과했습니다.
+마이그레이션 실패 검사는 테스트 DB 연결을 명시적으로 닫고 커밋된 스키마·모든 행·버전·
+무결성을 비교합니다. WAL 체크포인트 시점에 따른 메인 파일 바이트 변화와 논리적 롤백을 구분합니다.
 
 ## 남은 작업
 

@@ -80,6 +80,45 @@ def test_owned_descendant_process_dialog_uses_its_actual_foreground_hwnd():
     ui.owned_windows.assert_not_called()
 
 
+def test_native_target_factory_uses_actual_suggestion_before_any_focus_or_edit():
+    ui, state, edit, save = dialog_ui()
+    save.invoke.side_effect = lambda: state.update(exists=False)
+
+    def target(suggested):
+        assert suggested == "fixture-original.png"
+        assert ui.browser_suggested_filename == suggested
+        edit.element_info.element.SetFocus.assert_not_called()
+        ui.user32.SendMessageTimeoutW.assert_not_called()
+        save.invoke.assert_not_called()
+        return "C:\\staging\\image.png"
+
+    assert ui.save_dialog(target) == "fixture-original.png"
+    save.invoke.assert_called_once()
+
+
+@pytest.mark.parametrize("invalid", [None, 1, "", "C:\\bad\0.png"])
+def test_invalid_target_factory_output_stops_before_native_input(invalid):
+    ui, _state, edit, save = dialog_ui()
+    with pytest.raises(NativeUIError, match="nonempty path string"):
+        ui.save_dialog(lambda _suggested: invalid)
+    edit.element_info.element.SetFocus.assert_not_called()
+    ui.user32.SendMessageTimeoutW.assert_not_called()
+    save.invoke.assert_not_called()
+
+
+def test_target_factory_failure_preserves_the_untouched_native_dialog():
+    ui, _state, edit, save = dialog_ui()
+
+    def reject(_suggested):
+        raise NativeUIError("Unsupported suggested extension")
+
+    with pytest.raises(NativeUIError, match="Unsupported suggested extension"):
+        ui.save_dialog(reject)
+    edit.element_info.element.SetFocus.assert_not_called()
+    ui.user32.SendMessageTimeoutW.assert_not_called()
+    save.invoke.assert_not_called()
+
+
 def test_native_replacement_notifies_shell_before_save_invoke():
     ui, state, edit, save = dialog_ui()
     target = "C:\\staging\\image.png"

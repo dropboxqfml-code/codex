@@ -1,24 +1,27 @@
 """Durable discovery and image work queue; no browser or file-saving side effects.
 
 Returned records use UTC ISO timestamps and a decoded ``folder_plan`` dictionary.
-``verifying`` is deliberately not a completed-file state. Artifact finalization and
-filesystem reconciliation must be supplied by a later, Windows-validated pipeline.
+``verifying`` is not a completed-file state. Artifact journals bridge verified
+filesystem finalization and metadata writes; file checks remain the caller's duty.
 """
 
 import json
+import ntpath
+import re
 import sqlite3
 import uuid
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
-from image_monitor.paths import aware, plan_folder
+from image_monitor.paths import RESERVED, aware, plan_folder
 from image_monitor.retry import retry_after, schedule_retry
+from image_monitor.validation import EXTENSIONS
 
 APPLICATION_ID = 0x494D5131
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 ACTIVE = ("loading", "saving", "verifying")
 
 
@@ -63,6 +66,56 @@ def _gallery(value: str) -> str:
     if value not in {"normal", "minor", "mini"}:
         raise QueueError("Unknown gallery type")
     return value
+
+
+def _relative_path(value: str) -> str:
+    _text(value, "relative path")
+    normalized = value.replace("\\", "/")
+    parts = normalized.split("/")
+    if (
+        any(
+            part in {"", ".", ".."}
+            or part != part.rstrip(" .")
+            or part.split(".")[0].upper() in RESERVED
+            for part in parts
+        )
+        or any(ord(char) < 32 or char in '<>:"|?*' for char in normalized)
+        or PurePosixPath(normalized).is_absolute()
+        or PureWindowsPath(value).drive
+    ):
+        raise QueueError("Unsafe artifact relative path")
+    return "/".join(parts)
+
+
+def _save_root(value: str) -> tuple[str, bool]:
+    _text(value, "save_root")
+    if any(ord(char) < 32 for char in value):
+        raise QueueError("Artifact save root must be an absolute local path")
+    windows = PureWindowsPath(value)
+    if windows.drive:
+        if not windows.is_absolute() or windows.drive.startswith("\\"):
+            raise QueueError("Artifact save root must be an absolute local path")
+        path = windows
+        is_windows = True
+    else:
+        if "\\" in value:
+            raise QueueError("Artifact save root must be an absolute local path")
+        path = PurePosixPath(value)
+        is_windows = False
+        if not path.is_absolute():
+            raise QueueError("Artifact save root must be an absolute local path")
+    if ".." in path.parts:
+        raise QueueError("Artifact save root must not contain parent traversal")
+    return path.as_posix(), is_windows
+
+
+def _json_data(value: dict, description: str) -> str:
+    if not isinstance(value, dict):
+        raise QueueError(f"{description} must be a dictionary")
+    try:
+        return json.dumps(value, ensure_ascii=False, allow_nan=False, sort_keys=True)
+    except (TypeError, ValueError, RecursionError) as error:
+        raise QueueError(f"{description} must contain finite JSON data") from error
 
 
 BASE_SCHEMA = """
@@ -127,7 +180,20 @@ OBSERVATION_STATEMENTS = (
     """CREATE INDEX observations_post_time ON post_observations
         (gallery_type,gallery_id,post_id,observed_at)""",
 )
-SCHEMA = BASE_SCHEMA + ";\n".join(OBSERVATION_STATEMENTS) + ";"
+V2_SCHEMA = BASE_SCHEMA + ";\n".join(OBSERVATION_STATEMENTS) + ";"
+ARTIFACT_STATEMENTS = (
+    """CREATE TABLE artifact_finalizations (
+        job_id TEXT PRIMARY KEY REFERENCES jobs,
+        artifact_id TEXT NOT NULL UNIQUE,
+        observation_id TEXT NOT NULL REFERENCES post_observations,
+        save_root TEXT NOT NULL, staging_relative TEXT NOT NULL,
+        final_relative TEXT NOT NULL, verification_json TEXT NOT NULL,
+        image_metadata_json TEXT NOT NULL, saved_at TEXT NOT NULL,
+        phase TEXT NOT NULL CHECK(phase IN ('prepared','metadata_pending','finalized')),
+        target_key TEXT NOT NULL UNIQUE
+    )""",
+)
+SCHEMA = V2_SCHEMA + ";\n".join(ARTIFACT_STATEMENTS) + ";"
 
 
 def _schema_objects(connection: sqlite3.Connection) -> set[tuple]:
@@ -184,17 +250,26 @@ class QueueStore:
                     + "COMMIT;"
                 )
                 version = SCHEMA_VERSION
-            elif application == APPLICATION_ID and version == 1:
+            elif application == APPLICATION_ID and version in {1, 2}:
                 if read_only:
-                    if not _matches_schema(self.connection, BASE_SCHEMA):
+                    expected = BASE_SCHEMA if version == 1 else V2_SCHEMA
+                    if not _matches_schema(self.connection, expected):
                         raise QueueError("Unknown queue database schema; migration refused")
                 else:
                     with self._write():
-                        # A second process can have completed migration while this
-                        # connection waited for BEGIN IMMEDIATE. Recheck under lock.
+                        # Recheck after acquiring the migration lock: another
+                        # process may already have upgraded the same database.
                         current = self.connection.execute("PRAGMA user_version").fetchone()[0]
-                        if current == 1 and _matches_schema(self.connection, BASE_SCHEMA):
+                        if current == 1:
+                            if not _matches_schema(self.connection, BASE_SCHEMA):
+                                raise QueueError("Unknown queue database schema; migration refused")
                             for statement in OBSERVATION_STATEMENTS:
+                                self.connection.execute(statement)
+                            current = 2
+                        if current == 2:
+                            if not _matches_schema(self.connection, V2_SCHEMA):
+                                raise QueueError("Unknown queue database schema; migration refused")
+                            for statement in ARTIFACT_STATEMENTS:
                                 self.connection.execute(statement)
                             self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                         elif current != SCHEMA_VERSION or not _matches_schema(
@@ -549,28 +624,78 @@ class QueueStore:
             "jobs": [self.get_job(job) for job in identifiers],
         }
 
+    def _observation_record(self, row: sqlite3.Row) -> dict:
+        record = dict(row)
+        record["snapshot"] = json.loads(record.pop("snapshot_json"))
+        record["jobs"] = [
+            dict(job)
+            for job in self.connection.execute(
+                "SELECT o.job_id,o.body_order,j.stable_key,j.file_slot FROM observation_jobs o "
+                "JOIN jobs j USING(job_id) WHERE o.observation_id=? ORDER BY o.body_order",
+                (record["observation_id"],),
+            )
+        ]
+        return record
+
+    def get_observation(self, observation_id: str) -> dict | None:
+        """Read immutable source data, including after a completed job is rediscovered."""
+        if self.schema_version == 1:
+            return None
+        row = self.connection.execute(
+            "SELECT * FROM post_observations WHERE observation_id=?", (observation_id,)
+        ).fetchone()
+        return self._observation_record(row) if row is not None else None
+
     def list_post_snapshots(self, gallery_type: str, gallery_id: str, post_id: str) -> list[dict]:
         """Return immutable observations newest first, with their frozen job associations."""
         if self.schema_version == 1:
             return []
-        records = []
-        for row in self.connection.execute(
-            "SELECT * FROM post_observations WHERE gallery_type=? AND gallery_id=? AND post_id=? "
-            "ORDER BY observed_at DESC,rowid DESC",
-            (gallery_type, gallery_id, post_id),
-        ):
-            record = dict(row)
-            record["snapshot"] = json.loads(record.pop("snapshot_json"))
-            record["jobs"] = [
-                dict(job)
-                for job in self.connection.execute(
-                    "SELECT o.job_id,o.body_order,j.stable_key,j.file_slot FROM observation_jobs o "
-                    "JOIN jobs j USING(job_id) WHERE o.observation_id=? ORDER BY o.body_order",
-                    (record["observation_id"],),
-                )
+        return [
+            self._observation_record(row)
+            for row in self.connection.execute(
+                "SELECT * FROM post_observations WHERE gallery_type=? AND gallery_id=? "
+                "AND post_id=? "
+                "ORDER BY observed_at DESC,rowid DESC",
+                (gallery_type, gallery_id, post_id),
+            )
+        ]
+
+    def _job_source(self, job: dict, observation_id: str | None = None) -> dict | None:
+        if self.schema_version == 1:
+            return None
+        rows = self.connection.execute(
+            "SELECT p.*,o.body_order AS source_body_order FROM observation_jobs o "
+            "JOIN post_observations p USING(observation_id) WHERE o.job_id=? "
+            "AND (? IS NULL OR p.observation_id=?) ORDER BY p.observed_at DESC,p.rowid DESC",
+            (job["job_id"], observation_id, observation_id),
+        )
+        for row in rows:
+            snapshot = json.loads(row["snapshot_json"])
+            if any(
+                snapshot.get(key) != job[key] for key in ("gallery_type", "gallery_id", "post_id")
+            ):
+                raise QueueError("Stored source identity does not match its image job")
+            images = [
+                image
+                for image in snapshot.get("images", [])
+                if image.get("stable_key") == job["stable_key"]
+                and image.get("display_url") == job["display_url"]
+                and image.get("body_order") == row["source_body_order"]
             ]
-            records.append(record)
-        return records
+            if len(images) > 1:
+                raise QueueError("Stored source has ambiguous image identity")
+            if images:
+                return {
+                    "observation_id": row["observation_id"],
+                    "snapshot": snapshot,
+                    "image": images[0],
+                }
+        return None
+
+    def get_job_source(self, job_id: str, observation_id: str | None = None) -> dict | None:
+        """Return associated source matching this job's exact current URL and stable key."""
+        job = self.get_job(job_id)
+        return self._job_source(job, observation_id) if job is not None else None
 
     def get_post(self, gallery_type: str, gallery_id: str, post_id: str) -> dict | None:
         return self._record(
@@ -623,25 +748,285 @@ class QueueStore:
             )
         ]
 
-    def claim_next(self, worker_id: str, now: datetime) -> dict | None:
+    @staticmethod
+    def _artifact_record(row: sqlite3.Row | None) -> dict | None:
+        if row is None:
+            return None
+        record = dict(row)
+        record.pop("target_key", None)
+        record["verification"] = json.loads(record.pop("verification_json"))
+        record["image_metadata"] = json.loads(record.pop("image_metadata_json"))
+        return record
+
+    def get_artifact(self, job_id: str) -> dict | None:
+        if self.schema_version < 3:
+            return None
+        return self._artifact_record(
+            self.connection.execute(
+                "SELECT * FROM artifact_finalizations WHERE job_id=?", (job_id,)
+            ).fetchone()
+        )
+
+    def list_artifacts(self) -> list[dict]:
+        if self.schema_version < 3:
+            return []
+        return [
+            self._artifact_record(row)
+            for row in self.connection.execute(
+                "SELECT * FROM artifact_finalizations ORDER BY saved_at,artifact_id"
+            )
+        ]
+
+    def prepare_artifact(
+        self,
+        job_id: str,
+        token: str,
+        *,
+        observation_id: str,
+        save_root: str,
+        staging_relative: str,
+        final_relative: str,
+        verification: dict,
+        image_metadata: dict,
+        saved_at: datetime,
+    ) -> dict:
+        """Journal an externally verified staging file before its final move.
+
+        This API performs no file I/O and cannot establish writer completion or
+        image correspondence. The native saver/finalizer must supply that proof.
+        """
+        root, windows_root = _save_root(save_root)
+        staging = _relative_path(staging_relative)
+        final = _relative_path(final_relative)
+        if not staging.startswith(f"_staging/{job_id}/") or staging == final:
+            raise QueueError("Artifact staging path must belong to this image job")
+        if not isinstance(verification, dict):
+            raise QueueError("Artifact verification must be a dictionary")
+        fmt = verification.get("detected_format")
+        sha = verification.get("sha256")
+        size = verification.get("file_size")
+        if (
+            not isinstance(fmt, str)
+            or fmt not in EXTENSIONS
+            or not isinstance(sha, str)
+            or re.fullmatch(r"[0-9a-fA-F]{64}", sha) is None
+            or type(size) is not int
+            or size < 1
+            or verification.get("extension", EXTENSIONS[fmt]) != EXTENSIONS[fmt]
+            or any(
+                type(verification[key]) is not int or verification[key] < 1
+                for key in ("width", "height", "frames")
+                if key in verification
+            )
+        ):
+            raise QueueError("Invalid artifact verification data")
+        verified = verification | {"sha256": sha.lower(), "extension": EXTENSIONS[fmt]}
+        verified_json = _json_data(verified, "Artifact verification")
+        image_json = _json_data(image_metadata, "Artifact image metadata")
+        timestamp = _time(saved_at)
+        target_key = (
+            "windows:" + ntpath.normcase(ntpath.join(root, final))
+            if windows_root
+            else "posix:" + PurePosixPath(root, final).as_posix()
+        )
+        with self._write():
+            job = self._claimed(job_id, token)
+            if job["status"] != "verifying":
+                raise QueueError("Only a verifying image job can prepare an artifact")
+            source = self._job_source(job, observation_id)
+            if source is None:
+                raise QueueError("Artifact requires an associated immutable image source")
+            expected = (
+                job["folder_plan"]["relative_directory"]
+                + f"/{job['file_slot']:03d}.{EXTENSIONS[fmt]}"
+            )
+            if final != expected:
+                raise QueueError("Artifact target differs from the job's frozen folder and slot")
+            if any(
+                image_metadata.get(key) != source["image"].get(key)
+                for key in ("stable_key", "display_url")
+            ):
+                raise QueueError("Artifact image metadata does not match its frozen source")
+            if (
+                image_metadata.get("saved_filename", final.rsplit("/", 1)[1])
+                != final.rsplit("/", 1)[1]
+            ):
+                raise QueueError("Artifact saved filename does not match its final target")
+            values = {
+                "observation_id": observation_id,
+                "save_root": root,
+                "staging_relative": staging,
+                "final_relative": final,
+                "verification": verified,
+                "image_metadata": image_metadata,
+                "saved_at": timestamp,
+            }
+            existing = self.get_artifact(job_id)
+            if existing is not None:
+                if existing["phase"] != "prepared" or any(
+                    existing[key] != value for key, value in values.items()
+                ):
+                    raise QueueError("Existing artifact journal is immutable")
+                return existing
+            try:
+                self.connection.execute(
+                    "INSERT INTO artifact_finalizations(job_id,artifact_id,observation_id,"
+                    "save_root,staging_relative,final_relative,verification_json,"
+                    "image_metadata_json,saved_at,phase,target_key) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,'prepared',?)",
+                    (
+                        job_id,
+                        uuid.uuid4().hex,
+                        observation_id,
+                        root,
+                        staging,
+                        final,
+                        verified_json,
+                        image_json,
+                        timestamp,
+                        target_key,
+                    ),
+                )
+            except sqlite3.IntegrityError as error:
+                raise QueueError("Artifact journal or final target is already reserved") from error
+            return self.get_artifact(job_id)
+
+    def _complete_artifact(self, job_id: str) -> dict:
+        self.connection.execute(
+            "UPDATE jobs SET status='completed',worker_id=NULL,lease_token=NULL,"
+            "last_error=NULL,next_retry_at=NULL WHERE job_id=?",
+            (job_id,),
+        )
+        self.connection.execute(
+            "UPDATE artifact_finalizations SET phase='metadata_pending' WHERE job_id=?", (job_id,)
+        )
+        return self.get_artifact(job_id)
+
+    def complete_artifact(self, job_id: str, token: str) -> dict:
+        """Commit completion only after the caller verified the actual final file."""
+        with self._write():
+            job = self._claimed(job_id, token)
+            artifact = self.get_artifact(job_id)
+            if job["status"] != "verifying" or artifact is None or artifact["phase"] != "prepared":
+                raise QueueError("Only a prepared verifying artifact can be completed")
+            return self._complete_artifact(job_id)
+
+    def mark_metadata_written(self, job_id: str) -> dict:
+        with self._write():
+            artifact = self.get_artifact(job_id)
+            job = self.get_job(job_id)
+            if (
+                artifact is None
+                or job is None
+                or job["status"] != "completed"
+                or artifact["phase"] not in {"metadata_pending", "finalized"}
+            ):
+                raise QueueError("Artifact metadata is not ready for finalization")
+            self.connection.execute(
+                "UPDATE artifact_finalizations SET phase='finalized' WHERE job_id=?", (job_id,)
+            )
+            self.connection.execute("UPDATE jobs SET last_error=NULL WHERE job_id=?", (job_id,))
+            return self.get_artifact(job_id)
+
+    def mark_artifact_manual_review(
+        self,
+        job_id: str,
+        reason: str,
+        *,
+        confirm_workers_stopped: bool = False,
+    ) -> dict:
+        """Record a journal conflict after the caller has confirmed worker shutdown."""
+        if confirm_workers_stopped is not True:
+            raise QueueError("Confirm all workers stopped before reviewing an artifact")
+        _text(reason, "reason")
+        with self._write():
+            artifact = self.get_artifact(job_id)
+            job = self.get_job(job_id)
+            if artifact is None or job is None:
+                raise QueueError("Artifact journal is missing")
+            if artifact["phase"] == "prepared":
+                if job["status"] == "completed":
+                    raise QueueError("Prepared artifact has inconsistent completed state")
+                self.connection.execute(
+                    "UPDATE jobs SET status='manual_review',worker_id=NULL,lease_token=NULL,"
+                    "last_error=? WHERE job_id=?",
+                    (reason, job_id),
+                )
+            elif job["status"] == "completed":
+                # The final file is already committed. Preserve that fact while
+                # reporting the metadata issue through last_error and journal phase.
+                self.connection.execute(
+                    "UPDATE jobs SET last_error=? WHERE job_id=?", (reason, job_id)
+                )
+            else:
+                raise QueueError("Artifact journal has inconsistent completion state")
+            return self.get_artifact(job_id)
+
+    def recover_artifact_complete(
+        self,
+        job_id: str,
+        *,
+        confirm_workers_stopped: bool = False,
+    ) -> dict:
+        """Finish a prepared journal after external file/source checks and worker shutdown."""
+        if confirm_workers_stopped is not True:
+            raise QueueError("Confirm all workers stopped before recovering an artifact")
+        with self._write():
+            artifact = self.get_artifact(job_id)
+            job = self.get_job(job_id)
+            if (
+                artifact is None
+                or artifact["phase"] != "prepared"
+                or job is None
+                or job["status"] not in {"verifying", "manual_review", "paused_local"}
+            ):
+                raise QueueError("Artifact is not a recoverable prepared save")
+            return self._complete_artifact(job_id)
+
+    def claim_next(
+        self,
+        worker_id: str,
+        now: datetime,
+        *,
+        job_ids: Sequence[str] | None = None,
+    ) -> dict | None:
         _text(worker_id, "worker_id")
+        approved = None
+        if job_ids is not None:
+            if isinstance(job_ids, (str, bytes)) or not isinstance(job_ids, Sequence):
+                raise QueueError("Approved job IDs must be a sequence of nonempty strings")
+            if len(job_ids) > 500:
+                raise QueueError("At most 500 approved job IDs are allowed")
+            for job_id in job_ids:
+                _text(job_id, "approved job ID")
+            approved = tuple(dict.fromkeys(job_ids))
+            if not approved:
+                return None
+        # Only bounded placeholder counts are composed; all caller IDs remain
+        # bound values. Empty approval lists never fall back to the global queue.
+        placeholders = ",".join("?" for _job_id in approved) if approved is not None else ""
+        expiry_scope = f" AND job_id IN ({placeholders})" if approved is not None else ""
+        select_scope = f"AND j.job_id IN ({placeholders}) " if approved is not None else ""
+        parameters = approved or ()
         at = _time(now)
         with self._write():
             self.connection.execute(
                 "UPDATE jobs SET status='manual_review',last_error='automatic_retry_limit' "
                 "WHERE status IN ('queued','retry_wait','deferred') "
-                "AND (attempt_count>=8 OR first_failure_at<=?)",
-                (_time(now - timedelta(hours=24)),),
+                "AND (attempt_count>=8 OR first_failure_at<=?)" + expiry_scope,
+                (_time(now - timedelta(hours=24)), *parameters),
             )
             row = self.connection.execute(
                 "SELECT j.job_id FROM jobs j JOIN posts p "
                 "USING(gallery_type,gallery_id,post_id) "
                 "LEFT JOIN service_limits s ON s.scope=j.service_scope "
                 "WHERE j.status IN ('queued','retry_wait','deferred') "
+                "AND NOT EXISTS (SELECT 1 FROM artifact_finalizations a WHERE a.job_id=j.job_id) "
                 "AND COALESCE(j.next_retry_at,'')<=? AND COALESCE(j.server_not_before,'')<=? "
                 "AND COALESCE(s.not_before,'')<=? "
-                "ORDER BY COALESCE(j.next_retry_at,p.first_seen_at),j.rowid LIMIT 1",
-                (at, at, at),
+                + select_scope
+                + "ORDER BY COALESCE(j.next_retry_at,p.first_seen_at),j.rowid LIMIT 1",
+                (at, at, at, *parameters),
             ).fetchone()
             if row is None:
                 return None
@@ -650,7 +1035,8 @@ class QueueStore:
                 "UPDATE jobs SET status='loading',worker_id=?,lease_token=? WHERE job_id=?",
                 (worker_id, token, row[0]),
             )
-            return self.get_job(row[0])
+            job = self.get_job(row[0])
+            return job | {"source": self._job_source(job)}
 
     def _claimed(self, job_id: str, token: str) -> dict:
         job = self.get_job(job_id)

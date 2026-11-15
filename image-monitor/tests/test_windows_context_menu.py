@@ -20,6 +20,7 @@ from contextlib import closing
 
 import pytest
 
+from image_monitor.browser_completion import BrowserCompletion
 from image_monitor.native_probe import (
     browser_executable,
     close_probe_browser,
@@ -589,7 +590,7 @@ def test_owned_headed_browser_context_menu_saves_the_synthetic_fixture(
     )
     owned_process = psutil.Process(process.pid)
     created_at = owned_process.create_time()
-    driver = browser = ui = cleanup_session = None
+    driver = browser = ui = cleanup_session = completion_reader = None
     selected = []
     metadata = {"browser_kind": browser_kind, "fixture_origin": "file"}
     native_save_stage = "browser_startup"
@@ -605,6 +606,10 @@ def test_owned_headed_browser_context_menu_saves_the_synthetic_fixture(
         page.goto(html.as_uri(), wait_until="load", timeout=30_000)
         ui = bind_owned_window(process, page.title())
         foreground_owned_window(page, ui)
+        if browser_kind == "chrome":
+            native_save_stage = "browser_completion_setup"
+            completion_reader = BrowserCompletion(browser, context, page, browser_kind, ui=ui)
+            completion_reader.__enter__()
         image = page.locator("#probe-image")
         image.scroll_into_view_if_needed(timeout=15_000)
         image.evaluate("async image => { await image.decode(); }")
@@ -682,6 +687,15 @@ def test_owned_headed_browser_context_menu_saves_the_synthetic_fixture(
             assert verified["detected_format"] == "PNG"
             assert verified["sha256"] == expected_hash
             assert target.read_bytes() == (html.parent / "fixture-original.png").read_bytes()
+            if completion_reader is not None:
+                completion = completion_reader.wait_for_completion(
+                    target, (html.parent / "fixture-original.png").as_uri(), ui, timeout=15
+                )
+                metadata["browser_completion_confirmed"] = completion["state"] == "COMPLETE"
+                metadata["browser_completion_destination_confirmed"] = completion[
+                    "destination_confirmed"
+                ]
+                metadata["browser_completion_source_confirmed"] = completion["source_confirmed"]
             public_snapshot(
                 capsys,
                 locale,
@@ -694,22 +708,23 @@ def test_owned_headed_browser_context_menu_saves_the_synthetic_fixture(
                     "file_size": verified["file_size"],
                 },
             )
-            public_snapshot(
-                capsys,
-                locale,
-                {
-                    **metadata,
-                    **safe_downloads_webui_probe(
-                        cleanup_session,
-                        context,
-                        page,
-                        ui,
-                        target,
-                        (html.parent / "fixture-original.png").as_uri(),
-                        browser_kind,
-                    ),
-                },
-            )
+            if completion_reader is None:
+                public_snapshot(
+                    capsys,
+                    locale,
+                    {
+                        **metadata,
+                        **safe_downloads_webui_probe(
+                            cleanup_session,
+                            context,
+                            page,
+                            ui,
+                            target,
+                            (html.parent / "fixture-original.png").as_uri(),
+                            browser_kind,
+                        ),
+                    },
+                )
         except Exception as error:
             # Put the reason/trace first: GitHub truncates large public notices.
             public_snapshot(capsys, locale, before)
@@ -754,6 +769,7 @@ def test_owned_headed_browser_context_menu_saves_the_synthetic_fixture(
                 )
             )
     finally:
+        failure_details = sys.exc_info()
         already_failed = sys.exc_info()[0] is not None
         cleanup_errors = []
         if already_failed and cleanup_session is not None:
@@ -767,6 +783,11 @@ def test_owned_headed_browser_context_menu_saves_the_synthetic_fixture(
                 },
             )
         try:
+            if completion_reader is not None:
+                try:
+                    completion_reader.__exit__(*failure_details)
+                except Exception as error:
+                    cleanup_errors.append(type(error).__name__)
             if ui is not None and ui.user32.IsWindow(ui.target_hwnd):
                 # End this owned window's menu loop before asking CDP to close.
                 # Never send a global Escape key or act on another application.

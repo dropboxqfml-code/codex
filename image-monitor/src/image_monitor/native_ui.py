@@ -544,7 +544,7 @@ class WindowsUI:
         if filename.get_value() != target:
             raise NativeUIError("Save dialog did not retain the exact staging path")
 
-    def save_dialog(self, target: str) -> str | None:
+    def save_dialog(self, target: str | Callable[[str | None], str]) -> str | None:
         self.stage = "save_dialog"
 
         def lookup():
@@ -587,6 +587,10 @@ class WindowsUI:
         self.assert_control_ready(filename, dialog)
         suggested = filename.get_value() or None
         self.browser_suggested_filename = suggested
+        if callable(target):
+            target = target(suggested)
+        if not isinstance(target, str) or not target or "\0" in target:
+            raise NativeUIError("Save target must be a nonempty path string")
         save = choose_unique(
             dialog.descendants(control_type="Button"),
             lambda button: (

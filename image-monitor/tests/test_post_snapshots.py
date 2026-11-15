@@ -72,6 +72,7 @@ def make_legacy_database(path):
             gallery_type="normal", gallery_id="comic_new6", post_id="123", images=[IMAGE]
         )[0]
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE artifact_finalizations")
         db.execute("DROP TABLE observation_jobs")
         db.execute("DROP TABLE post_observations")
         db.execute("PRAGMA user_version=1")

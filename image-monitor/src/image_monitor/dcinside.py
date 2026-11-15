@@ -20,6 +20,8 @@ PATHS = {"/board/view": "normal", "/mgallery/board/view": "minor", "/mini/board/
 EXTRA_QUERY_KEYS = {"page", "search_pos", "s_type", "s_keyword", "search_head", "exception_mode"}
 SEOUL = ZoneInfo("Asia/Seoul")
 RESOURCE_PROFILE_SCOPE = ("normal", "comic_new6")
+SITE_VERIFIED_POST = ("normal", "comic_new6", "7036949")
+HEADER_FIELD_COUNTS = {".gall_writer": 1, ".gall_date": 1, ".title_subject": 1}
 
 
 class DCSnapshotError(ValueError):
@@ -181,15 +183,69 @@ def _shared_no_identity(value, *, body):
         return None
 
 
+def _mark_occurrence_conflict(image):
+    references = image["occurrence_attachment_matches"]
+    candidates = []
+    for occurrence in references:
+        for candidate in occurrence["candidates"]:
+            if candidate not in candidates:
+                candidates.append(candidate)
+    image.update(
+        {
+            "original_filename_match_evidence": {
+                "body_references": [
+                    item["original_filename_match_evidence"]["body_reference"]
+                    for item in references
+                ],
+                "candidate_keys": [item["key"] for item in candidates],
+                "candidate_identities": [item["identity"] for item in candidates],
+            },
+            "candidates": candidates,
+            "original_attachment_filename": None,
+            "original_filename_source": None,
+            "original_filename_match_status": "ambiguous",
+            "original_filename_match_method": None,
+            "original_filename_match_reason": "repeated_image_reference_conflict",
+        }
+    )
+
+
+def _verified_images(images):
+    """Coalesce URL variants only after the reviewed post is eligible for live work."""
+    result, grouped = [], {}
+    for image in images:
+        identity = image["resource_identity"]
+        if identity is not None:
+            image["stable_key"] = identity
+            image["stable_key_source"] = "verified_shared_query_no"
+        existing = grouped.get(image["stable_key"])
+        if existing is None:
+            result.append(image)
+            grouped[image["stable_key"]] = image
+            continue
+        existing["occurrences"].extend(image["occurrences"])
+        existing["occurrences"].sort()
+        existing["occurrence_attachment_matches"].extend(image["occurrence_attachment_matches"])
+        existing["display_urls"] = list(
+            dict.fromkeys(existing["display_urls"] + image["display_urls"])
+        )
+        if (
+            existing["original_filename_match_evidence"]
+            != image["original_filename_match_evidence"]
+        ):
+            _mark_occurrence_conflict(existing)
+    return result
+
+
 def parse_snapshot(
     raw: dict, *, expected_url: str, observed_at: datetime, layout_status: str = "unverified"
 ) -> dict:
-    """Map a bounded DOM observation; only synthetic reviewed fixtures may be queue eligible."""
+    """Map a bounded observation; live readiness is derived only for the reviewed post."""
     target = validate_post_url(expected_url)
     aware(observed_at)
     if layout_status not in {"unverified", "fixture_validated"}:
         raise DCSnapshotError("Unsupported layout validation status")
-    if raw.get("body_count") != 1:
+    if type(raw.get("body_count")) is not int or raw["body_count"] != 1:
         raise DCSnapshotError("Expected exactly one post body", diagnostics=raw.get("diagnostics"))
     if "header_count" in raw and raw["header_count"] != 1:
         raise DCSnapshotError(
@@ -234,6 +290,19 @@ def parse_snapshot(
     if not isinstance(nickname, str) or not nickname.strip():
         nickname = None
         warnings.append("author_nickname_unavailable")
+    title = raw.get("title")
+    metadata_verified = (
+        not trusted
+        and (target["gallery_type"], target["gallery_id"], target["post_id"]) == SITE_VERIFIED_POST
+        and type(raw.get("header_count")) is int
+        and raw["header_count"] == 1
+        and raw.get("header_field_counts") == HEADER_FIELD_COUNTS
+        and all(type(value) is int for value in raw["header_field_counts"].values())
+        and isinstance(title, str)
+        and bool(title.strip())
+        and nickname is not None
+        and published is not None
+    )
     images, excluded, pending, grouped = [], [], [], {}
     orders = set()
     for entry in raw.get("images", []):
@@ -304,42 +373,19 @@ def parse_snapshot(
                 image["original_filename_match_evidence"]
                 != matched["original_filename_match_evidence"]
             ):
-                references = image["occurrence_attachment_matches"]
-                combined_candidates = []
-                for occurrence in references:
-                    for candidate in occurrence["candidates"]:
-                        if candidate not in combined_candidates:
-                            combined_candidates.append(candidate)
-                image.update(
-                    {
-                        "original_filename_match_evidence": {
-                            "body_references": [
-                                item["original_filename_match_evidence"]["body_reference"]
-                                for item in references
-                            ],
-                            "candidate_keys": [item["key"] for item in combined_candidates],
-                            "candidate_identities": [
-                                item["identity"] for item in combined_candidates
-                            ],
-                        },
-                        "candidates": combined_candidates,
-                        "original_attachment_filename": None,
-                        "original_filename_source": None,
-                        "original_filename_match_status": "ambiguous",
-                        "original_filename_match_method": None,
-                        "original_filename_match_reason": "repeated_image_reference_conflict",
-                    }
-                )
+                _mark_occurrence_conflict(image)
             continue
         image = (
             basic
             | {
                 "stable_key": stable,
                 "stable_key_source": "exact_display_url_hash",
+                "resource_identity": resource_identity if not trusted else None,
                 "resource_identity_source": "verified_shared_query_no"
                 if resource_identity and not trusted
                 else None,
                 "occurrences": [order],
+                "display_urls": [source],
                 "occurrence_attachment_matches": [{"body_order": order, **matched}],
                 "natural_width": entry["natural_width"],
                 "natural_height": entry["natural_height"],
@@ -350,7 +396,13 @@ def parse_snapshot(
         )
         images.append(image)
         grouped[stable] = image
-    if images:
+    site_verified = metadata_verified and not pending
+    if site_verified:
+        layout_status = "site_verified"
+        images = _verified_images(images)
+        warnings.remove("live_dom_profile_unverified")
+        warnings.append("live_validation_limited_to_reviewed_post")
+    if any(image["stable_key_source"] == "exact_display_url_hash" for image in images):
         warnings.append("url_based_job_identity_may_change_with_display_url")
     if pending:
         warnings.append("unresolved_body_images")
@@ -358,7 +410,7 @@ def parse_snapshot(
         "schema_version": 1,
         **{key: target[key] for key in ("gallery_type", "gallery_id", "post_id")},
         "post_url": target["canonical_url"],
-        "title": raw.get("title"),
+        "title": title,
         "nickname": nickname,
         "ip_display": raw.get("ip_display"),
         "published_at": published,
@@ -381,18 +433,21 @@ def parse_snapshot(
         ],
         "layout_status": layout_status,
         "profile_evidence": {
-            "status": "resource_relation_verified_header_confirmation_pending",
-            "source": "user_site_probe_v7",
+            "status": "reviewed_post_layout_verified"
+            if site_verified
+            else "resource_relation_verified_header_confirmation_pending",
+            "source": "user_site_probe_v8" if site_verified else "user_site_probe_v7",
             "observed_post_ids": ["7036949"],
             "scope": {"gallery_type": "normal", "gallery_id": "comic_new6"},
+            "verified_post_id": "7036949" if site_verified else None,
             "header_selector": ".gallview_head",
             "header_count": raw.get("header_count"),
             "header_field_counts": raw.get("header_field_counts", {}),
-            "queue_validation": "not_enabled",
+            "queue_validation": "reviewed_post_only" if site_verified else "not_enabled",
         }
         if resource_profile and not trusted
         else {"status": layout_status},
-        "queue_eligible": trusted and nickname is not None and not pending,
+        "queue_eligible": (trusted or site_verified) and nickname is not None and not pending,
         "warnings": warnings,
         "image_counts": {
             "body_occurrences": len(orders),

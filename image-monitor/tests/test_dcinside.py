@@ -191,7 +191,7 @@ def page(browser):
     context = browser.new_context()
     page = context.new_page()
 
-    def load(html):
+    def load(html, *, url=URL):
         def route(request):
             if request.request.url.startswith(
                 ("https://fixture.invalid/", "https://dcimg3.dcinside.co.kr/")
@@ -200,13 +200,13 @@ def page(browser):
                     request.fulfill(status=200, content_type="image/png", body=b"broken image")
                 else:
                     request.fulfill(status=200, content_type="image/png", body=image.getvalue())
-            elif request.request.url == URL:
+            elif request.request.url == url:
                 request.fulfill(status=200, content_type="text/html; charset=utf-8", body=html)
             else:
                 request.abort()
 
         page.route("**/*", route)
-        page.goto(URL, wait_until="domcontentloaded")
+        page.goto(url, wait_until="domcontentloaded")
         return page
 
     yield load
@@ -234,8 +234,9 @@ def test_real_browser_body_scope_lazy_decode_and_exclusion_reasons(page):
     <script>setTimeout(()=>document.querySelector('#lazy').src=
       document.querySelector('#lazy').dataset.src,30)</script>"""
     )
-    current = page(html)
-    snapshot = inspect_post(current, expected_url=URL, observed_at=NOW, timeout_ms=1500)
+    unverified_url = URL.replace("7036949", "999")
+    current = page(html, url=unverified_url)
+    snapshot = inspect_post(current, expected_url=unverified_url, observed_at=NOW, timeout_ms=1500)
     assert [image["body_order"] for image in snapshot["images"]] == [1, 6]
     assert all(image["natural_width"] == 4 for image in snapshot["images"])
     assert {item["reason"] for item in snapshot["excluded_images"]} == {
@@ -554,8 +555,9 @@ def test_real_browser_observed_structural_profile_reads_header_and_reordered_inv
     assert [image["original_attachment_filename"] for image in snapshot["images"]] == [
         "synthetic-" + key + ".png" for key in sources
     ]
-    assert snapshot["layout_status"] == "unverified"
-    assert not snapshot["queue_eligible"]
+    assert snapshot["layout_status"] == "site_verified"
+    assert snapshot["queue_eligible"]
+    assert all(image["stable_key"] == image["resource_identity"] for image in snapshot["images"])
 
 
 def test_real_browser_ambiguous_header_is_not_arbitrarily_selected(page):
@@ -566,3 +568,151 @@ def test_real_browser_ambiguous_header_is_not_arbitrarily_selected(page):
             observed_at=NOW,
             timeout_ms=300,
         )
+
+
+def verified_post_snapshot():
+    return resource_snapshot() | {
+        "header_count": 1,
+        "header_field_counts": {".gall_writer": 1, ".gall_date": 1, ".title_subject": 1},
+    }
+
+
+def test_only_reviewed_live_post_with_complete_metadata_is_promoted():
+    snapshot = parse_snapshot(verified_post_snapshot(), expected_url=URL, observed_at=NOW)
+    assert snapshot["layout_status"] == "site_verified"
+    assert snapshot["queue_eligible"]
+    image = snapshot["images"][0]
+    assert image["stable_key"] == image["resource_identity"]
+    assert image["stable_key_source"] == "verified_shared_query_no"
+    assert "live_dom_profile_unverified" not in snapshot["warnings"]
+    assert snapshot["profile_evidence"]["source"] == "user_site_probe_v8"
+    assert snapshot["profile_evidence"]["verified_post_id"] == "7036949"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        URL.replace("7036949", "7036950"),
+        URL.replace("comic_new6", "another_gallery"),
+        URL.replace("/board/view/", "/mgallery/board/view/"),
+    ],
+)
+def test_same_layout_on_unreviewed_post_or_gallery_remains_gated(url):
+    snapshot = parse_snapshot(verified_post_snapshot(), expected_url=url, observed_at=NOW)
+    assert snapshot["layout_status"] == "unverified"
+    assert not snapshot["queue_eligible"]
+    assert snapshot["images"][0]["stable_key_source"] == "exact_display_url_hash"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"title": None},
+        {"title": ""},
+        {"title": "  "},
+        {"nickname": None},
+        {"nickname": ""},
+        {"published_at_raw": None},
+        {"published_at_raw": "오늘"},
+        {"published_at_raw": "2026.99.99 00:00:00"},
+        {"header_field_counts": {}},
+        {"header_field_counts": {".gall_writer": 2, ".gall_date": 1, ".title_subject": 1}},
+        {"header_field_counts": {".gall_writer": True, ".gall_date": 1, ".title_subject": 1}},
+    ],
+)
+def test_metadata_gaps_or_ambiguous_fields_prevent_live_promotion(change):
+    snapshot = parse_snapshot(verified_post_snapshot() | change, expected_url=URL, observed_at=NOW)
+    assert snapshot["layout_status"] == "unverified"
+    assert not snapshot["queue_eligible"]
+    assert snapshot["images"][0]["stable_key_source"] == "exact_display_url_hash"
+
+
+def test_pending_image_prevents_promotion_and_does_not_change_job_identity_scheme():
+    raw = verified_post_snapshot()
+    raw["images"].append(raw["images"][0] | {"body_order": 2, "decode_ok": False})
+    snapshot = parse_snapshot(raw, expected_url=URL, observed_at=NOW)
+    assert snapshot["layout_status"] == "unverified"
+    assert not snapshot["queue_eligible"]
+    assert snapshot["pending_images"][0]["body_order"] == 2
+    assert snapshot["images"][0]["stable_key_source"] == "exact_display_url_hash"
+
+
+def test_original_name_unavailable_does_not_block_otherwise_verified_body_image():
+    raw = verified_post_snapshot() | {"attachments": []}
+    snapshot = parse_snapshot(raw, expected_url=URL, observed_at=NOW)
+    assert snapshot["layout_status"] == "site_verified" and snapshot["queue_eligible"]
+    assert snapshot["images"][0]["original_attachment_filename"] is None
+    assert snapshot["images"][0]["stable_key"] == snapshot["images"][0]["resource_identity"]
+
+
+def test_fixture_mode_retains_exact_url_job_keys_even_on_reviewed_post():
+    snapshot = parse_fixture(verified_post_snapshot(), expected_url=URL, observed_at=NOW)
+    assert snapshot["layout_status"] == "fixture_validated"
+    assert snapshot["images"][0]["stable_key_source"] == "exact_display_url_hash"
+    assert snapshot["images"][0]["resource_identity"] is None
+
+
+def test_companion_url_parameter_rotation_keeps_reviewed_resource_job_key():
+    first = parse_snapshot(verified_post_snapshot(), expected_url=URL, observed_at=NOW)
+    raw = verified_post_snapshot()
+    raw["images"][0]["display_url"] = raw["images"][0]["display_url"].replace(
+        "id=synthetic", "id=fresh"
+    )
+    second = parse_snapshot(raw, expected_url=URL, observed_at=NOW)
+    assert first["images"][0]["display_url"] != second["images"][0]["display_url"]
+    assert first["images"][0]["stable_key"] == second["images"][0]["stable_key"]
+
+
+def test_url_variants_of_one_reviewed_resource_keep_all_body_occurrences():
+    raw = verified_post_snapshot()
+    raw["images"].append(
+        raw["images"][0]
+        | {
+            "body_order": 3,
+            "display_url": raw["images"][0]["display_url"].replace("id=synthetic", "id=fresh"),
+        }
+    )
+    snapshot = parse_snapshot(raw, expected_url=URL, observed_at=NOW)
+    assert len(snapshot["images"]) == 1
+    image = snapshot["images"][0]
+    assert image["occurrences"] == [1, 3]
+    assert len(image["display_urls"]) == 2
+    assert len(image["occurrence_attachment_matches"]) == 2
+    assert image["original_filename_match_status"] == "matched"
+
+
+def test_reviewed_resource_reordering_and_url_rotation_are_queue_idempotent(tmp_path):
+    from image_monitor.post_pipeline import enqueue_snapshot
+    from image_monitor.queue import QueueStore
+
+    raw = verified_post_snapshot()
+    raw["images"].append(
+        raw["images"][0]
+        | {
+            "body_order": 2,
+            "display_url": raw["images"][0]["display_url"].replace("no=fixture-a", "no=fixture-b"),
+        }
+    )
+    raw["attachments"].append(
+        raw["attachments"][0]
+        | {
+            "key": "file-b",
+            "reference_url": raw["attachments"][0]["reference_url"].replace(
+                "no=fixture-a", "no=fixture-b"
+            ),
+        }
+    )
+    first = parse_snapshot(raw, expected_url=URL, observed_at=NOW)
+    with QueueStore(tmp_path / "queue.db") as store:
+        enqueue_snapshot(store, first, watch_name="합성감시", keyword="ai")
+        prior = {job["stable_key"]: (job["job_id"], job["file_slot"]) for job in store.list_jobs()}
+        raw["images"].reverse()
+        for order, image in enumerate(raw["images"], 1):
+            image["body_order"] = order
+            image["display_url"] = image["display_url"].replace("id=synthetic", "id=fresh")
+        second = parse_snapshot(raw, expected_url=URL, observed_at=NOW)
+        enqueue_snapshot(store, second, watch_name="합성감시", keyword="ai")
+        after = store.list_jobs()
+        assert len(after) == 2
+        assert {job["stable_key"]: (job["job_id"], job["file_slot"]) for job in after} == prior
+        assert all("id=fresh" in job["display_url"] for job in after)

@@ -1,8 +1,8 @@
 # Windows에서 이미지 1장 네이티브 저장 검증
 
 Windows 사용자용 짧은 안내는 [WINDOWS_TEST_GUIDE.txt](../WINDOWS_TEST_GUIDE.txt)입니다.
-최초 시험은 `RUN_WINDOWS_TEST.cmd`, 기존 시험 뒤 명시적 재시험은 `RETRY_WINDOWS_TEST.cmd`를
-사용합니다. 재시험은 이전 시험 브라우저를 닫은 뒤 실행하며, 종료를 확인할 수 없으면 중단합니다.
+Edge 최초 시험은 `RUN_WINDOWS_TEST.cmd`, Chrome은 `RUN_CHROME_TEST.cmd`를 사용합니다.
+실패 뒤 명시적 재시험은 브라우저에 맞는 `RETRY_WINDOWS_TEST.cmd` / `RETRY_CHROME_TEST.cmd`를 사용합니다. 재시험은 이전 시험 브라우저를 닫은 뒤 실행하며, 종료를 확인할 수 없으면 중단합니다.
 새 시험 페이지의 `시험 시작` 버튼을 누른 뒤에만 자동 조작합니다. 아래 명령은 개발자 수동 실행용입니다.
 
 이 명령은 개발 중인 Windows 어댑터의 수동 인수 시험용입니다. 별도 Windows CI에서

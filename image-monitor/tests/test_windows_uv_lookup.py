@@ -16,17 +16,17 @@ pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Requires real W
 LAUNCHER = Path(__file__).resolve().parents[1] / "RUN_WINDOWS_TEST.cmd"
 
 
-def run_lookup(*, path: str) -> str:
+def run_lookup(*, path: str, launcher=LAUNCHER, arguments=("--find-uv",)) -> str:
     # Refuse to run an older launcher that could enter installation instead.
-    assert "--find-uv" in LAUNCHER.read_text(encoding="ascii")
+    assert "--find-uv" in launcher.read_text(encoding="ascii")
     environment = os.environ.copy()
     environment["PATH"] = path
     environment["PYTHONUTF8"] = "1"
     # os.environ is case-insensitive on Windows, but its copied dict is not.
     command_processor = Path(environment["SYSTEMROOT"]) / "System32" / "cmd.exe"
     # /s /c needs one surrounding quote pair in addition to the executable's pair.
-    command = f'"{command_processor}" /d /s /c ""{LAUNCHER}" --find-uv"'
-    existing_logs = set(LAUNCHER.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    existing_logs = set(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
     result = subprocess.run(
         command,
         env=environment,
@@ -37,7 +37,7 @@ def run_lookup(*, path: str) -> str:
         timeout=30,
         check=False,
     )
-    assert set(LAUNCHER.parent.glob("WINDOWS_TEST_RESULT-*.txt")) == existing_logs
+    assert set(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt")) == existing_logs
     assert result.returncode == 0, result.stderr
     lines = result.stdout.strip().splitlines()
     assert len(lines) == 1, result.stdout
@@ -58,6 +58,69 @@ def test_process_path_lookup_preserves_korean_spaces_and_ampersand(tmp_path):
     system32 = Path(os.environ["SystemRoot"]) / "System32"
     found = run_lookup(path=f"{executable.parent};{system32}")
     assert os.path.normcase(found) == os.path.normcase(str(executable))
+
+
+def guarded_launcher(directory):
+    """Keep a parser regression from ever reaching setup, log creation or native UI."""
+    directory.mkdir()
+    text = LAUNCHER.read_text(encoding="ascii")
+    assert "\n:new_log\n" in text
+    text = text.replace("\n:new_log\n", "\n:new_log\nexit /b 77\n", 1)
+    copied = directory / LAUNCHER.name
+    copied.write_bytes(text.replace("\n", "\r\n").encode("ascii"))
+    return copied
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ("--chrome", "--find-uv"),
+        ("--find-uv", "--chrome", "--recover-closed"),
+        ("--recover-closed", "--chrome", "--find-uv"),
+    ],
+)
+def test_browser_and_recovery_flags_preserve_read_only_lookup(tmp_path, arguments):
+    launcher = guarded_launcher(tmp_path / "launcher 한글 & space")
+    executable = fake_uv(tmp_path / "uv 한글 & space")
+    system32 = Path(os.environ["SystemRoot"]) / "System32"
+    found = run_lookup(
+        path=f"{executable.parent};{system32}", launcher=launcher, arguments=arguments
+    )
+    assert os.path.normcase(found) == os.path.normcase(str(executable))
+
+
+@pytest.mark.parametrize("arguments", [("--unsupported",), ("--find-uv", "--unsupported")])
+def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
+    launcher = guarded_launcher(tmp_path / "guarded launcher")
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 2
+    assert "Unsupported test launcher argument" in result.stderr
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected_arguments"),
+    [
+        ("RUN_CHROME_TEST.cmd", "--chrome"),
+        ("RETRY_CHROME_TEST.cmd", "--chrome --recover-closed"),
+    ],
+)
+def test_chrome_wrappers_forward_explicit_options_and_exit_status(
+    tmp_path, filename, expected_arguments
+):
+    folder = tmp_path / "Chrome 한글 & space"
+    folder.mkdir()
+    wrapper = folder / filename
+    wrapper.write_bytes((LAUNCHER.parent / filename).read_bytes())
+    # This inert stub is the only program the copied wrapper may call.
+    (folder / LAUNCHER.name).write_bytes(b"@echo off\r\necho %*\r\nexit /b 19\r\n")
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{wrapper}""'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 19, result.stderr
+    assert result.stdout.strip() == expected_arguments
 
 
 @contextmanager

@@ -4,7 +4,35 @@ chcp 65001 >nul
 set "PYTHONUTF8=1"
 cd /d "%~dp0"
 if errorlevel 1 exit /b 1
-if /i "%~1"=="--find-uv" goto lookup_only
+set "TEST_BROWSER=edge"
+set "RECOVER_CLOSED=0"
+set "UV_LOOKUP_ONLY=0"
+
+:parse_arguments
+if "%~1"=="" goto arguments_ready
+if /i "%~1"=="--chrome" goto option_chrome
+if /i "%~1"=="--recover-closed" goto option_recover
+if /i "%~1"=="--find-uv" goto option_lookup
+>&2 echo Unsupported test launcher argument. Use the supplied CMD files.
+exit /b 2
+
+:option_chrome
+set "TEST_BROWSER=chrome"
+shift
+goto parse_arguments
+
+:option_recover
+set "RECOVER_CLOSED=1"
+shift
+goto parse_arguments
+
+:option_lookup
+set "UV_LOOKUP_ONLY=1"
+shift
+goto parse_arguments
+
+:arguments_ready
+if "%UV_LOOKUP_ONLY%"=="1" goto lookup_only
 
 :new_log
 set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
@@ -12,6 +40,7 @@ if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - Windows native-save test
 if errorlevel 1 goto log_unavailable
 >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
+>>"%LOG_FILE%" echo Selected browser: %TEST_BROWSER%
 if not exist "pyproject.toml" goto missing_project
 if not exist "uv.lock" goto missing_project
 if not defined LOCALAPPDATA goto missing_appdata
@@ -45,7 +74,7 @@ echo Installing locked project dependencies...
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
 rem Recovery is only enabled by the dedicated, user-initiated retry launcher.
-if /i not "%~1"=="--recover-closed" goto start_probe
+if "%RECOVER_CLOSED%"=="0" goto start_probe
 echo Checking that the previous test browser is closed...
 >>"%LOG_FILE%" echo STAGE: recover_previous_probe
 "%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor native-recover --confirm-browser-closed >>"%LOG_FILE%" 2>&1
@@ -54,9 +83,9 @@ set "RECOVERY_CODE=%ERRORLEVEL%"
 if not "%RECOVERY_CODE%"=="0" goto failed
 
 :start_probe
-echo Starting the dedicated test browser. Keep that browser in front until the test ends.
+echo Starting the dedicated %TEST_BROWSER% test browser. Keep that browser in front until the test ends.
 >>"%LOG_FILE%" echo STAGE: native_probe
-"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor native-probe --work-root "%LOCALAPPDATA%\ImageMonitorProbe" --browser edge >>"%LOG_FILE%" 2>&1
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor native-probe --work-root "%LOCALAPPDATA%\ImageMonitorProbe" --browser "%TEST_BROWSER%" >>"%LOG_FILE%" 2>&1
 set "PROBE_CODE=%ERRORLEVEL%"
 >>"%LOG_FILE%" echo Native probe exit code: %PROBE_CODE%
 if not "%PROBE_CODE%"=="0" goto failed

@@ -45,12 +45,19 @@ class HeadlessWatchBrowser:
     optional clock supplies actual page observation times in controlled tests.
     """
 
-    def __init__(self, browser: str = "chrome", *, now: Callable[[], datetime] | None = None):
+    def __init__(
+        self,
+        browser: str = "chrome",
+        *,
+        now: Callable[[], datetime] | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ):
         self.browser = browser
         self.browser_closed: bool | None = None
         self.browser_version: str | None = None
         self.cleanup_error_type: str | None = None
         self._now = _utc_now if now is None else now
+        self._should_stop = should_stop
         self._manager = None
         self._driver_entered = False
         self._owned_browser = None
@@ -68,6 +75,8 @@ class HeadlessWatchBrowser:
             raise ValueError("Choose edge or chrome")
         if not callable(self._now):
             raise ValueError("now must be a clock callable")
+        if self._should_stop is not None and not callable(self._should_stop):
+            raise ValueError("should_stop must be a callable")
         if self._entered:
             raise ValueError("A watch browser context can only be entered once")
         self._entered = True
@@ -143,6 +152,14 @@ class HeadlessWatchBrowser:
             result["diagnostics"] = _safe_diagnostics(error.diagnostics)
         return result
 
+    def _stop_requested(self):
+        if self._should_stop is None:
+            return False
+        requested = self._should_stop()
+        if type(requested) is not bool:
+            raise ValueError("should_stop must return a boolean")
+        return requested
+
     def scan(self, scope: WatchScope, observed_at: datetime, max_pages: int = 2) -> dict:
         """Read fresh latest page one and at most one actual adjacent page link.
 
@@ -175,6 +192,8 @@ class HeadlessWatchBrowser:
             "lastRetryAfter": None,
         }
         for index in range(max_pages):
+            if self._stop_requested():
+                return result | {"status": "cancelled", "reason": "requested_stop"}
             navigation = {"url": url, "http_status": None, "retry_after": None}
             result["navigation"].append(navigation)
             result.update(http_status=None, retry_after=None, lastRetryAfter=None)
@@ -193,6 +212,8 @@ class HeadlessWatchBrowser:
                         )
             except Exception as error:
                 return self._failure(result, error, "network_error")
+            if self._stop_requested():
+                return result | {"status": "cancelled", "reason": "requested_stop"}
             if status is None or status >= 400:
                 result.update(status="http_error", error_type="HTTPStatusError")
                 return result
@@ -207,6 +228,8 @@ class HeadlessWatchBrowser:
                 )
                 snapshot["scan_observed_at"] = scan_time.isoformat(timespec="microseconds")
                 result["pages"].append(snapshot)
+                if self._stop_requested():
+                    return result | {"status": "cancelled", "reason": "requested_stop"}
                 if index == 0 and max_pages == 2:
                     adjacent = _adjacent_page(target, snapshot)
                     if "url" in adjacent:

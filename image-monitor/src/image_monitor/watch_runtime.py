@@ -70,11 +70,44 @@ def _control(state):
     return control
 
 
+def _list_service_blocked(queue):
+    if queue.schema_version < 4:
+        return False
+    broken = queue.connection.execute(
+        "SELECT 1 FROM watch_state w LEFT JOIN watch_scans s ON s.scan_id=w.latest_scan_id "
+        "WHERE s.scan_id IS NULL OR "
+        "w.watch_name!=s.watch_name OR w.gallery_type!=s.gallery_type OR "
+        "w.gallery_id!=s.gallery_id OR w.keyword!=s.keyword OR w.search_type!=s.search_type OR "
+        "w.generation!=s.generation LIMIT 1"
+    ).fetchone()
+    if broken is not None:
+        raise QueueError("Stored list state does not identify its latest scan")
+    latest = "FROM watch_state w JOIN watch_scans s ON s.scan_id=w.latest_scan_id WHERE "
+    invalid = queue.connection.execute(
+        "SELECT 1 " + latest + "(json_type(s.result_json,'$.control') IS NOT NULL AND "
+        "json_type(s.result_json,'$.control')!='object') OR "
+        "(json_type(s.result_json,'$.control.blocked') IS NOT NULL AND "
+        "json_type(s.result_json,'$.control.blocked') NOT IN ('true','false')) LIMIT 1"
+    ).fetchone()
+    if invalid is not None:
+        raise QueueError("Stored list block metadata is invalid")
+    return (
+        queue.connection.execute(
+            "SELECT 1 " + latest + "json_type(s.result_json,'$.control.blocked')='true' LIMIT 1"
+        ).fetchone()
+        is not None
+    )
+
+
 def _eligibility(queue, state, now):
     from image_monitor.candidate_save_selection import selection_service_blocked
     from image_monitor.candidate_store import detail_service_blocked
 
-    if detail_service_blocked(queue) or selection_service_blocked(queue):
+    if (
+        detail_service_blocked(queue)
+        or selection_service_blocked(queue)
+        or _list_service_blocked(queue)
+    ):
         return "blocked", None
     control = _control(state)
     if control.get("blocked") is True:
@@ -90,19 +123,19 @@ def _eligibility(queue, state, now):
     return ("waiting" if due > now else "ready"), due
 
 
-def _count_candidates(queue):
+def _count_candidates(queue, scope=DEFAULT_SCOPE):
     return queue.connection.execute(
         "SELECT COUNT(*) FROM watch_candidates WHERE watch_name=? AND gallery_type=? "
         "AND gallery_id=? AND keyword=? AND search_type=?",
-        DEFAULT_SCOPE.key(),
+        scope.key(),
     ).fetchone()[0]
 
 
-def _empty_plan(state, observed_at, reason):
+def _empty_plan(state, observed_at, reason, scope=DEFAULT_SCOPE):
     checkpoint = state.get("checkpoint") or {
         "anchor_ids": [],
         "observed_at": _stamp(observed_at),
-        "source_url": build_list_url("normal", "comic_new6", "ai"),
+        "source_url": build_list_url(scope.gallery_type, scope.gallery_id, scope.keyword),
     }
     return {
         "observed_at": observed_at,
@@ -195,12 +228,24 @@ def run_watch_trial(
     interval_seconds=60,
     backend_factory=HeadlessWatchBrowser,
     clock=None,
+    scope=DEFAULT_SCOPE,
+    should_stop=None,
 ):
     require_windows()
     if browser not in {"chrome", "edge"} or type(cycles) is not int or not 1 <= cycles <= 2:
         raise NativeUIError("Choose a supported browser and one or two watch cycles")
     if type(interval_seconds) is not int or not 60 <= interval_seconds <= 300:
         raise NativeUIError("The watch trial interval must be an integer from 60 to 300 seconds")
+    try:
+        reviewed_scope = (
+            isinstance(scope, WatchScope) and scope.key()[1:] == DEFAULT_SCOPE.key()[1:]
+        )
+    except QueueError:
+        reviewed_scope = False
+    if not reviewed_scope:
+        raise NativeUIError("The watch trial requires the reviewed gallery and search scope")
+    if should_stop is not None and not callable(should_stop):
+        raise NativeUIError("The watch stop condition must be callable")
     clock = clock or _Clock()
     next_poll_at(clock.now(), interval_seconds=interval_seconds)
     base = Path(work_root).resolve()
@@ -231,13 +276,24 @@ def run_watch_trial(
     }
     backend = None
     try:
+
+        def stopped():
+            if should_stop is None:
+                return False
+            value = should_stop()
+            if type(value) is not bool:
+                raise QueueError("The watch stop condition must return a boolean")
+            return value
+
         with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
             store = WatchStore(queue)
             if queue.summary()["jobs"]:
                 raise QueueError("The watch trial requires its separate discovery database")
-            state = store.get_state(DEFAULT_SCOPE)
+            state = store.get_state(scope)
             eligibility, due = _eligibility(queue, state, clock.now())
-            if eligibility == "blocked":
+            if stopped():
+                report.update(status="watch_test_cancelled", reason="requested_stop")
+            elif eligibility == "blocked":
                 report.update(reason="access_block_requires_review", last_stage="blocked")
             elif eligibility == "waiting":
                 report.update(status="watch_waiting", reason="persisted_cooldown")
@@ -245,12 +301,18 @@ def run_watch_trial(
                     ZoneInfo("Asia/Seoul")
                 ).isoformat()
             else:
-                backend = backend_factory(browser, now=clock.now)
+                backend_options = {"now": clock.now}
+                if should_stop is not None:
+                    backend_options["should_stop"] = should_stop
+                backend = backend_factory(browser, **backend_options)
                 with backend:
                     report["browser_closed"] = False
                     report["browser_version"] = backend.browser_version
                     for index in range(cycles):
-                        state = store.get_state(DEFAULT_SCOPE)
+                        state = store.get_state(scope)
+                        if stopped():
+                            report.update(status="watch_test_cancelled", reason="requested_stop")
+                            break
                         eligibility, due = _eligibility(queue, state, clock.now())
                         if eligibility == "blocked":
                             report.update(
@@ -266,11 +328,14 @@ def run_watch_trial(
                             write_report(report_path, report)
                             clock.wait(max(0, remaining))
                             eligibility, due = _eligibility(
-                                queue, store.get_state(DEFAULT_SCOPE), clock.now()
+                                queue, store.get_state(scope), clock.now()
                             )
                             if eligibility != "ready":
                                 report.update(status="watch_waiting", reason="cooldown_not_elapsed")
                                 break
+                        if stopped():
+                            report.update(status="watch_test_cancelled", reason="requested_stop")
+                            break
                         observed_at = clock.now()
                         report["last_stage"] = "list_observation"
                         # Commit before navigation so cancellation or a process failure
@@ -281,7 +346,7 @@ def run_watch_trial(
                         )
                         try:
                             outcome = backend.scan(
-                                DEFAULT_SCOPE,
+                                scope,
                                 observed_at,
                                 max_pages=1 if state["baseline"] is None else 2,
                             )
@@ -295,14 +360,19 @@ def run_watch_trial(
                         reason = None
                         try:
                             plan = plan_scan(
-                                DEFAULT_SCOPE, state, pages, observed_at, allow_verified_live=True
+                                scope, state, pages, observed_at, allow_verified_live=True
                             )
                         except WatchPlanError:
                             reason = "list_profile_unverified_or_incomplete"
-                            plan = _empty_plan(state, observed_at, reason)
-                        failed = outcome["status"] != "observed"
-                        if failed:
-                            reason = "list_transport_or_inspection_failure"
+                            plan = _empty_plan(state, observed_at, reason, scope)
+                        cancelled = outcome["status"] == "cancelled" or stopped()
+                        failed = outcome["status"] != "observed" and not cancelled
+                        if failed or cancelled:
+                            reason = (
+                                "requested_stop"
+                                if cancelled
+                                else "list_transport_or_inspection_failure"
+                            )
                             plan.update(complete=False, gap_reason=reason, baseline=None)
                             plan["scan_result"].update(complete=False, gap_reason=reason)
                         next_at = next_poll_at(finished_at, interval_seconds=interval_seconds)
@@ -326,7 +396,7 @@ def run_watch_trial(
                         }
                         plan["scan_result"]["private_observation"] = outcome
                         report["last_stage"] = "persist_scan"
-                        persisted = store.persist_scan(DEFAULT_SCOPE, **plan)
+                        persisted = store.persist_scan(scope, **plan)
                         summary = _cycle_summary(outcome, plan, persisted)
                         report["cycles"].append(summary)
                         report["cycles_completed"] += 1
@@ -335,6 +405,13 @@ def run_watch_trial(
                             ZoneInfo("Asia/Seoul")
                         ).isoformat()
                         write_report(report_path, report)
+                        if cancelled:
+                            report.update(
+                                status="watch_test_cancelled",
+                                reason="requested_stop",
+                                error_type=None,
+                            )
+                            break
                         if failed:
                             report.update(
                                 status="watch_test_failed",
@@ -348,9 +425,9 @@ def run_watch_trial(
                         if index + 1 == cycles:
                             report.update(status="watch_test_completed", last_stage="complete")
                 report["browser_closed"] = backend.browser_closed
-            state = store.get_state(DEFAULT_SCOPE)
+            state = store.get_state(scope)
             report["baseline_initialized"] = state["baseline"] is not None
-            report["candidate_count"] = _count_candidates(queue)
+            report["candidate_count"] = _count_candidates(queue, scope)
             if queue.summary()["jobs"]:
                 # The separate watch DB must never silently become an image worker.
                 report.update(

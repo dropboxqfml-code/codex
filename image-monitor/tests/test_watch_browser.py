@@ -399,3 +399,69 @@ def test_scan_requires_active_context(browser_session):
     assert browser_session[3].goto.call_args_list == [
         call(PAGE_ONE, wait_until="domcontentloaded", timeout=30_000)
     ]
+
+
+@pytest.mark.parametrize("condition", [False, 1, "stop"])
+def test_stop_condition_must_be_callable_before_browser_launch(browser_session, condition):
+    with pytest.raises(ValueError, match="callable"):
+        with backend.HeadlessWatchBrowser(should_stop=condition):
+            pass
+    browser_session[6].assert_not_called()
+    browser_session[7].assert_not_called()
+
+
+def test_preexisting_stop_does_not_navigate_or_inspect(browser_session):
+    with backend.HeadlessWatchBrowser(now=lambda: NOW, should_stop=lambda: True) as owned:
+        report = owned.scan(SCOPE, NOW)
+    assert report["status"] == "cancelled"
+    assert report["reason"] == "requested_stop"
+    assert report["pages"] == report["navigation"] == []
+    browser_session[3].goto.assert_not_called()
+    browser_session[5].assert_not_called()
+    assert owned.browser_closed is True
+
+
+def test_stop_during_navigation_avoids_further_dom_inspection(browser_session):
+    stopped = False
+
+    def response(*_args, **_kwargs):
+        nonlocal stopped
+        stopped = True
+        return browser_session[4]
+
+    browser_session[3].goto.side_effect = response
+    with backend.HeadlessWatchBrowser(now=lambda: NOW, should_stop=lambda: stopped) as owned:
+        report = owned.scan(SCOPE, NOW)
+    assert report["status"] == "cancelled"
+    assert report["http_status"] == 200
+    assert len(report["navigation"]) == 1
+    assert report["pages"] == []
+    browser_session[5].assert_not_called()
+
+
+def test_stop_after_first_snapshot_preserves_it_without_following_page_two(browser_session):
+    stopped = False
+
+    def inspect(*_args, **_kwargs):
+        nonlocal stopped
+        stopped = True
+        return snapshot(links=[PAGE_TWO])
+
+    browser_session[5].side_effect = inspect
+    with backend.HeadlessWatchBrowser(now=lambda: NOW, should_stop=lambda: stopped) as owned:
+        report = owned.scan(SCOPE, NOW)
+    assert report["status"] == "cancelled"
+    assert len(report["pages"]) == len(report["navigation"]) == 1
+    assert report["pages"][0]["url"] == PAGE_ONE
+    browser_session[3].goto.assert_called_once_with(
+        PAGE_ONE, wait_until="domcontentloaded", timeout=30_000
+    )
+    assert owned.browser_closed is True
+
+
+@pytest.mark.parametrize("value", [None, 1, "true"])
+def test_nonboolean_stop_callback_result_is_rejected_before_navigation(browser_session, value):
+    with backend.HeadlessWatchBrowser(should_stop=lambda: value) as owned:
+        with pytest.raises(ValueError, match="boolean"):
+            owned.scan(SCOPE, NOW)
+    browser_session[3].goto.assert_not_called()

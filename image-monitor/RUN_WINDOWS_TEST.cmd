@@ -13,6 +13,7 @@ set "WATCH_TEST=0"
 set "CANDIDATE_TEST=0"
 set "CANDIDATE_SAVE_TEST=0"
 set "CANDIDATE_FINISH=0"
+set "MONITOR=0"
 set "SAVE_POST=0"
 set "RESUME_PREINPUT=0"
 set "POST_SAVE_RESUME_ARGUMENT="
@@ -29,6 +30,7 @@ if /i "%~1"=="--watch-test" goto option_watch_test
 if /i "%~1"=="--candidate-test" goto option_candidate_test
 if /i "%~1"=="--candidate-save-test" goto option_candidate_save_test
 if /i "%~1"=="--candidate-finish" goto option_candidate_finish
+if /i "%~1"=="--monitor" goto option_monitor
 if /i "%~1"=="--save-post" goto option_save_post
 if /i "%~1"=="--resume-preinput" goto option_resume_preinput
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
@@ -85,6 +87,12 @@ set "CHECK_LABEL=completed candidate file verification"
 shift
 goto parse_arguments
 
+:option_monitor
+set "MONITOR=1"
+set "CHECK_LABEL=continuous list monitor"
+shift
+goto parse_arguments
+
 :option_save_post
 set "SAVE_POST=1"
 set "CHECK_LABEL=single-post native-save test"
@@ -99,6 +107,16 @@ goto parse_arguments
 
 :arguments_ready
 if "%UV_LOOKUP_ONLY%"=="1" goto lookup_only
+if "%MONITOR%"=="1" if "%CANDIDATE_FINISH%"=="1" goto incompatible_monitor_modes
+if "%MONITOR%"=="1" if "%CANDIDATE_SAVE_TEST%"=="1" goto incompatible_monitor_modes
+if "%MONITOR%"=="1" if "%CANDIDATE_TEST%"=="1" goto incompatible_monitor_modes
+if "%MONITOR%"=="1" if "%WATCH_TEST%"=="1" goto incompatible_monitor_modes
+if "%MONITOR%"=="1" if "%READ_ONLY_INSPECTION%"=="1" goto incompatible_monitor_modes
+if "%MONITOR%"=="1" if "%READ_ONLY_LIST_INSPECTION%"=="1" goto incompatible_monitor_modes
+if "%MONITOR%"=="1" if "%SAVE_POST%"=="1" goto incompatible_monitor_modes
+if "%MONITOR%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_monitor_modes
+if "%MONITOR%"=="1" if "%RESUME_PREINPUT%"=="1" goto incompatible_monitor_modes
+if "%MONITOR%"=="1" if /i not "%TEST_BROWSER%"=="chrome" goto unsupported_monitor_browser
 if "%CANDIDATE_FINISH%"=="1" if "%CANDIDATE_SAVE_TEST%"=="1" goto incompatible_candidate_finish_modes
 if "%CANDIDATE_FINISH%"=="1" if "%CANDIDATE_TEST%"=="1" goto incompatible_candidate_finish_modes
 if "%CANDIDATE_FINISH%"=="1" if "%WATCH_TEST%"=="1" goto incompatible_candidate_finish_modes
@@ -136,6 +154,14 @@ if "%RESUME_PREINPUT%"=="1" if "%READ_ONLY_INSPECTION%"=="1" goto incompatible_r
 if "%READ_ONLY_INSPECTION%"=="1" if "%SAVE_POST%"=="1" goto incompatible_post_modes
 if "%READ_ONLY_INSPECTION%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_options
 goto new_log
+
+:incompatible_monitor_modes
+>&2 echo List monitoring cannot be combined with inspection, native saving, finishing, recovery, or resume.
+exit /b 2
+
+:unsupported_monitor_browser
+>&2 echo List monitoring requires the supplied Chrome launcher.
+exit /b 2
 
 :incompatible_candidate_finish_modes
 >&2 echo Completed candidate verification cannot be combined with saving, inspection, watching, generic recovery, or pre-input resume.
@@ -178,7 +204,7 @@ set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
-if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
+if "%MONITOR%"=="0" if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Single-post native image saving requires review in the dedicated Chrome app window.
 if "%RESUME_PREINPUT%"=="1" >>"%LOG_FILE%" echo Verified pre-input resume was explicitly requested. Generic native recovery will not run.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public-page DOM inspection. No image saving is attempted.
@@ -196,7 +222,11 @@ if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo Offline verification of the alr
 if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo Shared pending state is cleared only after the prior dedicated browser is verified closed and all saved artifacts match.
 if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo Only the dedicated test browser may receive a normal close request after saved-file and exact ownership checks. Personal browser windows are not used.
 if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo No browser is launched or forced closed, no images are saved again, and no Start button is required. This TXT opens automatically.
-if "%CANDIDATE_FINISH%"=="0" >>"%LOG_FILE%" echo Selected browser: %TEST_BROWSER%
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Local status screen for continuous list discovery. Background reader: Chrome.
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Watching begins only after you choose Start in the screen. Use Pause, Stop, or Exit there.
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo The new monitor watch records newly seen posts; previous trial records and saved images are retained.
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo No images are saved and no native recovery is started. Choose Exit when finished; this TXT opens automatically.
+if "%MONITOR%"=="0" if "%CANDIDATE_FINISH%"=="0" >>"%LOG_FILE%" echo Selected browser: %TEST_BROWSER%
 if not exist "pyproject.toml" goto missing_project
 if not exist "uv.lock" goto missing_project
 if not defined LOCALAPPDATA goto missing_appdata
@@ -229,6 +259,7 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+if "%MONITOR%"=="1" goto start_monitor
 if "%CANDIDATE_FINISH%"=="1" goto start_candidate_finish
 if "%CANDIDATE_SAVE_TEST%"=="1" goto start_candidate_save_test
 if "%CANDIDATE_TEST%"=="1" goto start_candidate_test
@@ -301,6 +332,20 @@ echo List inspection finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
+:start_monitor
+echo Opening the local monitoring screen. Choose Start there to begin watching.
+echo Use Pause or Stop as needed, then choose Exit when finished. One result TXT will open.
+>>"%LOG_FILE%" echo STAGE: monitor
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor --work-root "%LOCALAPPDATA%\ImageMonitorWatch" >>"%LOG_FILE%" 2>&1
+set "MONITOR_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo List monitor exit code: %MONITOR_CODE%
+if not "%MONITOR_CODE%"=="0" goto failed
+>>"%LOG_FILE%" echo RESULT: CLOSED_OR_BUSY - LIST_MONITOR
+>>"%LOG_FILE%" echo See the JSON status above for the final monitoring state. Existing records and image files are preserved.
+echo List monitoring ended. Opening the result file.
+start "" notepad.exe "%LOG_FILE%"
+exit /b 0
+
 :start_candidate_finish
 echo Verifying the existing saved candidate images and closed-browser state offline.
 echo No browser window or Start button is needed. The existing files will not be downloaded again.
@@ -368,14 +413,16 @@ goto failed
 >>"%LOG_FILE%" echo uv is not installed and WinGet is unavailable. Send this file for help.
 goto failed
 :failed
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - LIST_MONITOR. No native image saving or recovery was started.
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Send this TXT for diagnosis. Existing records and image files are preserved.
 if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - COMPLETED_CANDIDATE_VERIFICATION. Existing files and unresolved state are preserved.
 if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo Send this TXT for diagnosis. No browser was launched or forced closed and no image was saved again.
 if "%CANDIDATE_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - REVIEWED_CANDIDATE_NATIVE_SAVE. No automatic retry or recovery was performed.
 if "%CANDIDATE_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending browser unchanged for inspection.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - SINGLE_POST_NATIVE_SAVE. No automatic retry was performed.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending browser unchanged for inspection.
-if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
-if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
+if "%MONITOR%"=="0" if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
+if "%MONITOR%"=="0" if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo RESULT: FAILED - READ_ONLY_SITE_INSPECTION. No image saving was attempted.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
 if "%READ_ONLY_LIST_INSPECTION%"=="1" >>"%LOG_FILE%" echo RESULT: FAILED - READ_ONLY_LIST_INSPECTION. No image saving was attempted.

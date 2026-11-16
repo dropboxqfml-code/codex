@@ -22,12 +22,17 @@ class WatchRunBusy(QueueError):
     """Another local process or thread owns this watch's scan lease."""
 
 
-def _lock_path(database: Path, scope: WatchScope) -> Path:
+def _lock_path(database: Path, scope: WatchScope, *, purpose=None) -> Path:
+    if purpose is not None and (not isinstance(purpose, str) or purpose != "monitor"):
+        raise QueueError("Unknown watch lease purpose")
     if not isinstance(scope, WatchScope):
         raise QueueError("scope must be a WatchScope")
     canonical = Path(database).resolve()
+    identity_parts = [os.path.normcase(str(canonical)), scope.key()]
+    if purpose is not None:
+        identity_parts.append(purpose)
     identity = json.dumps(
-        [os.path.normcase(str(canonical)), scope.key()],
+        identity_parts,
         ensure_ascii=True,
         separators=(",", ":"),
     ).encode("utf-8")
@@ -73,14 +78,14 @@ def _release(descriptor: int) -> None:
 
 
 @contextmanager
-def watch_run_lock(database: Path, scope: WatchScope) -> Iterator[None]:
+def watch_run_lock(database: Path, scope: WatchScope, *, purpose=None) -> Iterator[None]:
     """Own this canonical database/scope until exit; raise if already owned.
 
     The database's parent directory must exist. Existing sidecar contents are
     left intact, including on Windows where the one-byte lock may extend beyond
     EOF. Sidecars must never be deleted to recover an interrupted process.
     """
-    path = _lock_path(database, scope)
+    path = _lock_path(database, scope, purpose=purpose)
     try:
         _check_regular(path)
     except FileNotFoundError:

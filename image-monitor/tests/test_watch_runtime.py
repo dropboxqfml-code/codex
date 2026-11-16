@@ -1,6 +1,7 @@
 """Exercise the bounded runner with real storage and planning, without a website."""
 
 import json
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
 from pathlib import Path
@@ -13,9 +14,10 @@ from image_monitor.queue import QueueStore
 from image_monitor.search_list import build_list_url
 from image_monitor.watch_lock import watch_run_lock
 from image_monitor.watch_runtime import DEFAULT_SCOPE, run_watch_trial, share_watch_report
-from image_monitor.watch_store import WatchStore
+from image_monitor.watch_store import WatchScope, WatchStore
 
 NOW = datetime(2026, 11, 15, 8, 0, tzinfo=UTC)
+MONITOR_SCOPE = replace(DEFAULT_SCOPE, watch_name="목록 감시")
 
 
 class FakeClock:
@@ -511,3 +513,366 @@ def test_invalid_interval_is_rejected_before_creating_state(tmp_path, interval):
 def test_established_state_without_latest_scan_fails_closed():
     with pytest.raises(watch_runtime.QueueError, match="missing"):
         watch_runtime._control({"generation": 1, "latest_scan": None})
+
+
+def test_new_watch_name_keeps_existing_trial_baseline_and_candidates_separate(tmp_path):
+    clock = FakeClock()
+    initial = run_watch_trial(
+        tmp_path,
+        clock=clock,
+        backend_factory=BrowserFactory(baseline_outcome, new_posts_outcome),
+    )
+    assert initial["candidate_count"] == 2
+    previous = stored(tmp_path)
+    clock.current += timedelta(seconds=60)
+    fresh = run_watch_trial(
+        tmp_path,
+        clock=clock,
+        scope=MONITOR_SCOPE,
+        backend_factory=BrowserFactory(baseline_outcome, new_posts_outcome),
+    )
+    assert fresh["status"] == "watch_test_completed"
+    assert fresh["cycles"][0]["baseline_created"] is True
+    assert fresh["cycles"][0]["new_candidates"] == 0
+    assert fresh["candidate_count"] == 2
+    assert stored(tmp_path) == previous
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        monitor = WatchStore(queue)
+        assert monitor.get_state(MONITOR_SCOPE)["generation"] == 2
+        assert len(monitor.list_candidates(MONITOR_SCOPE)) == 2
+        assert queue.summary()["posts"] == queue.summary()["jobs"] == 0
+
+
+def test_custom_watch_still_uses_legacy_shared_scan_lease(tmp_path):
+    with watch_run_lock(tmp_path / "watch.sqlite", DEFAULT_SCOPE):
+        report = run_watch_trial(
+            tmp_path, scope=MONITOR_SCOPE, clock=FakeClock(), backend_factory=no_browser
+        )
+    assert report["status"] == "watch_busy"
+    assert not (tmp_path / "watch.sqlite").exists()
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [
+        None,
+        "monitor",
+        replace(MONITOR_SCOPE, watch_name=""),
+        replace(MONITOR_SCOPE, gallery_type="minor"),
+        replace(MONITOR_SCOPE, gallery_id="another"),
+        replace(MONITOR_SCOPE, keyword="AI"),
+        replace(MONITOR_SCOPE, search_type="other"),
+    ],
+)
+def test_unreviewed_or_invalid_scope_is_rejected_before_filesystem_work(tmp_path, scope):
+    root = tmp_path / "not-created"
+    with pytest.raises(NativeUIError, match="scope"):
+        run_watch_trial(root, scope=scope, backend_factory=no_browser)
+    assert not root.exists()
+
+
+@pytest.mark.parametrize("blocked_scope", [DEFAULT_SCOPE, MONITOR_SCOPE])
+@pytest.mark.parametrize("status", [401, 403, 404, 410])
+def test_latest_list_access_block_applies_to_a_fresh_watch_scope(tmp_path, blocked_scope, status):
+    first = run_watch_trial(
+        tmp_path,
+        scope=blocked_scope,
+        clock=FakeClock(),
+        backend_factory=BrowserFactory(http_failure(status)),
+    )
+    assert first["status"] == "watch_test_failed"
+    other = MONITOR_SCOPE if blocked_scope == DEFAULT_SCOPE else DEFAULT_SCOPE
+    report = run_watch_trial(
+        tmp_path,
+        scope=other,
+        clock=FakeClock(NOW + timedelta(minutes=5)),
+        backend_factory=no_browser,
+    )
+    assert report["status"] == "watch_test_failed"
+    assert report["reason"] == "access_block_requires_review"
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        assert WatchStore(queue).get_state(other)["generation"] == 0
+
+
+def _manual_scan(store, scope, *, control=None, at=NOW):
+    state = store.get_state(scope)
+    result = {"mode": "invented local fixture"}
+    if control is not None:
+        result["control"] = control
+    return store.persist_scan(
+        scope,
+        observed_at=at,
+        expected_generation=state["generation"],
+        scan_result=result,
+        candidates=[],
+        checkpoint={"anchor_ids": []},
+        complete=False,
+        gap_reason="invented fixture",
+        baseline=None,
+    )
+
+
+def test_global_list_block_uses_only_latest_state_not_historical_scans(tmp_path):
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        store = WatchStore(queue)
+        _manual_scan(store, DEFAULT_SCOPE, control={"blocked": True})
+        _manual_scan(
+            store,
+            DEFAULT_SCOPE,
+            control={"blocked": False},
+            at=NOW + timedelta(seconds=1),
+        )
+    report = run_watch_trial(
+        tmp_path,
+        scope=MONITOR_SCOPE,
+        cycles=1,
+        clock=FakeClock(NOW + timedelta(minutes=5)),
+        backend_factory=BrowserFactory(baseline_outcome),
+    )
+    assert report["status"] == "watch_test_completed"
+
+
+def test_unrelated_fixture_without_control_does_not_create_a_global_block(tmp_path):
+    toy = WatchScope("invented fixture", "normal", "other", "ai", "search_subject_memo")
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        _manual_scan(WatchStore(queue), toy)
+        before = WatchStore(queue).get_state(toy)
+    report = run_watch_trial(
+        tmp_path,
+        scope=MONITOR_SCOPE,
+        cycles=1,
+        clock=FakeClock(),
+        backend_factory=BrowserFactory(baseline_outcome),
+    )
+    assert report["status"] == "watch_test_completed"
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        assert WatchStore(queue).get_state(toy) == before
+
+
+@pytest.mark.parametrize("blocked", [None, 0, 1, "true", {}, []])
+def test_malformed_explicit_global_block_metadata_fails_before_browser(tmp_path, blocked):
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        _manual_scan(WatchStore(queue), DEFAULT_SCOPE, control={"blocked": blocked})
+    report = run_watch_trial(
+        tmp_path, scope=MONITOR_SCOPE, clock=FakeClock(), backend_factory=no_browser
+    )
+    assert report["status"] == "watch_test_failed"
+    assert report["error_type"] == "QueueError"
+
+
+class StoppableFactory(BrowserFactory):
+    def __call__(self, browser, *, now, should_stop):
+        self.stop_condition = should_stop
+        return super().__call__(browser, now=now)
+
+
+def test_requested_stop_before_factory_creates_no_browser_or_scan(tmp_path):
+    report = run_watch_trial(
+        tmp_path,
+        scope=MONITOR_SCOPE,
+        clock=FakeClock(),
+        backend_factory=no_browser,
+        should_stop=lambda: True,
+    )
+    assert report["status"] == "watch_test_cancelled"
+    assert report["reason"] == "requested_stop"
+    assert report["error_type"] is None
+    assert report["browser_closed"] is True
+    assert report["cycles_completed"] == 0
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        assert WatchStore(queue).get_state(MONITOR_SCOPE)["generation"] == 0
+
+
+def test_stop_predicate_is_forwarded_only_when_explicitly_supplied(tmp_path):
+    def predicate():
+        return False
+
+    factory = StoppableFactory(baseline_outcome)
+    report = run_watch_trial(
+        tmp_path,
+        cycles=1,
+        should_stop=predicate,
+        clock=FakeClock(),
+        backend_factory=factory,
+    )
+    assert report["status"] == "watch_test_completed"
+    assert factory.stop_condition is predicate
+
+
+def test_cancelled_first_page_cannot_initialize_a_new_baseline(tmp_path):
+    def cancelled(stamp):
+        return baseline_outcome(stamp) | {"status": "cancelled"}
+
+    report = run_watch_trial(
+        tmp_path,
+        cycles=1,
+        should_stop=lambda: False,
+        clock=FakeClock(),
+        backend_factory=StoppableFactory(cancelled),
+    )
+    assert report["status"] == "watch_test_cancelled"
+    assert report["error_type"] is None
+    assert report["cycles"][0]["navigation_attempts"] == 1
+    result = stored(tmp_path)
+    assert result["state"]["baseline"] is None
+    assert result["state"]["checkpoint"] is None
+    assert result["candidates"] == []
+    assert result["scans"][0]["gap_reason"] == "requested_stop"
+
+
+def test_cancelled_overlap_scan_preserves_coverage_but_commits_safe_candidates(tmp_path):
+    clock = FakeClock()
+    run_watch_trial(
+        tmp_path, cycles=1, clock=clock, backend_factory=BrowserFactory(baseline_outcome)
+    )
+    before = stored(tmp_path)["state"]
+    clock.current += timedelta(seconds=60)
+
+    def cancelled(stamp):
+        result = new_posts_outcome(stamp)
+        return result | {
+            "status": "cancelled",
+            "pages": result["pages"][:1],
+            "navigation": result["navigation"][:1],
+        }
+
+    report = run_watch_trial(
+        tmp_path,
+        cycles=1,
+        should_stop=lambda: False,
+        clock=clock,
+        backend_factory=StoppableFactory(cancelled),
+    )
+    assert report["status"] == "watch_test_cancelled"
+    assert report["cycles"][0]["complete"] is False
+    result = stored(tmp_path)
+    assert result["state"]["baseline"] == before["baseline"]
+    assert result["state"]["checkpoint"] == before["checkpoint"]
+    assert {row["post_id"] for row in result["candidates"]} == {"104", "103"}
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        assert queue.connection.execute("SELECT COUNT(*) FROM attempts").fetchone()[0] == 0
+
+
+def test_stop_arriving_as_scan_returns_does_not_advance_the_baseline(tmp_path):
+    stopped = False
+
+    def last_moment_stop(stamp):
+        nonlocal stopped
+        stopped = True
+        return baseline_outcome(stamp)
+
+    report = run_watch_trial(
+        tmp_path,
+        cycles=1,
+        should_stop=lambda: stopped,
+        clock=FakeClock(),
+        backend_factory=StoppableFactory(last_moment_stop),
+    )
+    assert report["status"] == "watch_test_cancelled"
+    assert stored(tmp_path)["state"]["baseline"] is None
+
+
+def test_stop_during_between_cycle_wait_avoids_the_next_navigation(tmp_path):
+    stopped = False
+
+    class StopClock(FakeClock):
+        def wait(self, seconds):
+            nonlocal stopped
+            super().wait(seconds)
+            stopped = True
+
+    factory = StoppableFactory(baseline_outcome)
+    report = run_watch_trial(
+        tmp_path,
+        should_stop=lambda: stopped,
+        clock=StopClock(),
+        backend_factory=factory,
+    )
+    assert report["status"] == "watch_test_cancelled"
+    assert report["cycles_completed"] == 1
+    assert len(factory.browser.calls) == 1
+    assert stored(tmp_path)["state"]["generation"] == 1
+
+
+@pytest.mark.parametrize("predicate", [False, 1, "stop"])
+def test_noncallable_stop_is_rejected_before_filesystem_work(tmp_path, predicate):
+    root = tmp_path / "not-created"
+    with pytest.raises(NativeUIError, match="callable"):
+        run_watch_trial(root, should_stop=predicate, backend_factory=no_browser)
+    assert not root.exists()
+
+
+@pytest.mark.parametrize("status", [401, 403, 404, 410])
+def test_cancellation_preserves_an_observed_list_access_block(tmp_path, status):
+    def cancelled(_stamp):
+        return http_failure(status)(_stamp) | {"status": "cancelled"}
+
+    report = run_watch_trial(
+        tmp_path,
+        cycles=1,
+        scope=MONITOR_SCOPE,
+        should_stop=lambda: False,
+        clock=FakeClock(),
+        backend_factory=StoppableFactory(cancelled),
+    )
+    assert report["status"] == "watch_test_cancelled"
+    reopened = run_watch_trial(
+        tmp_path,
+        scope=DEFAULT_SCOPE,
+        clock=FakeClock(NOW + timedelta(minutes=5)),
+        backend_factory=no_browser,
+    )
+    assert reopened["reason"] == "access_block_requires_review"
+
+
+@pytest.mark.parametrize("status", [429, 503])
+def test_cancellation_preserves_observed_server_wait(tmp_path, status):
+    def cancelled(_stamp):
+        return http_failure(status, "180")(_stamp) | {"status": "cancelled"}
+
+    report = run_watch_trial(
+        tmp_path,
+        cycles=1,
+        should_stop=lambda: False,
+        clock=FakeClock(),
+        backend_factory=StoppableFactory(cancelled),
+    )
+    assert report["status"] == "watch_test_cancelled"
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        due = queue.connection.execute(
+            "SELECT not_before FROM service_limits WHERE scope='dcinside'"
+        ).fetchone()[0]
+        assert datetime.fromisoformat(due) >= NOW + timedelta(seconds=180)
+    reopened = run_watch_trial(
+        tmp_path,
+        scope=MONITOR_SCOPE,
+        clock=FakeClock(NOW + timedelta(seconds=60)),
+        backend_factory=no_browser,
+    )
+    assert reopened["status"] == "watch_waiting"
+
+
+@pytest.mark.parametrize("broken", ["missing", "other_scope", "generation"])
+def test_corrupt_old_latest_state_cannot_be_bypassed_by_a_new_watch_name(tmp_path, broken):
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        store = WatchStore(queue)
+        _manual_scan(store, DEFAULT_SCOPE, control={"blocked": True})
+        if broken == "other_scope":
+            other = WatchScope("invented fixture", "normal", "other", "ai", "search_subject_memo")
+            other_id = _manual_scan(store, other)["scan_id"]
+        with queue._write():
+            if broken == "generation":
+                queue.connection.execute(
+                    "UPDATE watch_state SET generation=generation+1 WHERE watch_name=?",
+                    (DEFAULT_SCOPE.watch_name,),
+                )
+            else:
+                queue.connection.execute(
+                    "UPDATE watch_state SET latest_scan_id=? WHERE watch_name=?",
+                    ("0" * 32 if broken == "missing" else other_id, DEFAULT_SCOPE.watch_name),
+                )
+    report = run_watch_trial(
+        tmp_path, scope=MONITOR_SCOPE, clock=FakeClock(), backend_factory=no_browser
+    )
+    assert report["status"] == "watch_test_failed"
+    assert report["error_type"] == "QueueError"

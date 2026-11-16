@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 import subprocess
 import sys
@@ -20,7 +22,7 @@ from image_monitor.watch_store import WatchScope
 
 scope = WatchScope("watch", "normal", "gallery", "ai", "search_subject_memo")
 try:
-    with watch_run_lock(Path(sys.argv[1]), scope):
+    with watch_run_lock(Path(sys.argv[1]), scope, purpose=sys.argv[3] or None):
         print("acquired", flush=True)
         if sys.argv[2] == "crash":
             os._exit(0)
@@ -29,9 +31,9 @@ except WatchRunBusy:
 """
 
 
-def child(database, mode="normal"):
+def child(database, mode="normal", *, purpose=None):
     return subprocess.run(
-        [sys.executable, "-c", CHILD, str(database), mode],
+        [sys.executable, "-c", CHILD, str(database), mode, purpose or ""],
         capture_output=True,
         text=True,
         timeout=10,
@@ -155,5 +157,39 @@ def test_preexisting_sidecar_directory_is_refused(tmp_path):
 def test_invalid_scope_does_not_create_any_sidecar(tmp_path):
     with pytest.raises(QueueError, match="scope"):
         with watch_run_lock(tmp_path / "watch.sqlite", object()):
+            pass
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_default_lock_path_retains_the_exact_published_lease_identity(tmp_path):
+    database = tmp_path / "watch.sqlite"
+    identity = json.dumps(
+        [os.path.normcase(str(database.resolve())), SCOPE.key()],
+        ensure_ascii=True,
+        separators=(",", ":"),
+    ).encode()
+    expected = tmp_path / f".image-monitor-watch-{hashlib.sha256(identity).hexdigest()}.lock"
+    assert _lock_path(database, SCOPE) == expected
+    assert _lock_path(database, SCOPE, purpose=None) == expected
+
+
+def test_monitor_lease_is_independent_but_excludes_another_monitor_process(tmp_path):
+    database = tmp_path / "watch.sqlite"
+    with watch_run_lock(database, SCOPE, purpose="monitor"):
+        assert child(database, purpose="monitor") == "busy"
+        assert child(database) == "acquired"
+        with watch_run_lock(database, SCOPE):
+            pass
+        with pytest.raises(WatchRunBusy):
+            with watch_run_lock(database, SCOPE, purpose="monitor"):
+                pytest.fail("A second monitor must not run")
+    assert child(database, purpose="monitor") == "acquired"
+    assert not database.exists()
+
+
+@pytest.mark.parametrize("purpose", [True, 0, "scan", "Monitor", b"monitor", ""])
+def test_invalid_lease_purpose_is_rejected_before_filesystem_work(tmp_path, purpose):
+    with pytest.raises(QueueError, match="purpose"):
+        with watch_run_lock(tmp_path / "missing" / "watch.sqlite", SCOPE, purpose=purpose):
             pass
     assert list(tmp_path.iterdir()) == []

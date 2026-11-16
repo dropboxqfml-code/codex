@@ -112,6 +112,10 @@ def guarded_launcher(directory):
         ("--find-uv", "--candidate-finish", "--candidate-save-test"),
         ("--candidate-finish", "--save-post", "--recover-closed", "--find-uv"),
         ("--resume-preinput", "--candidate-finish", "--watch-test", "--find-uv"),
+        ("--monitor", "--chrome", "--find-uv"),
+        ("--find-uv", "--monitor", "--candidate-finish"),
+        ("--monitor", "--save-post", "--recover-closed", "--find-uv"),
+        ("--resume-preinput", "--monitor", "--watch-test", "--find-uv"),
         (
             "--watch-test",
             "--list-inspect",
@@ -155,6 +159,7 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
         ("RUN_CANDIDATE_TEST.cmd", "--candidate-test --chrome"),
         ("RUN_CANDIDATE_SAVE_TEST.cmd", "--candidate-save-test --chrome"),
         ("RUN_CANDIDATE_FINISH.cmd", "--candidate-finish"),
+        ("RUN_MONITOR.cmd", "--monitor --chrome"),
         ("RUN_POST_SAVE_TEST.cmd", "--save-post --chrome"),
         ("RETRY_POST_SAVE_TEST.cmd", "--save-post --chrome --resume-preinput"),
     ],
@@ -445,6 +450,129 @@ def test_completed_candidate_command_preserves_both_quoted_roots_without_browser
         f'\\ImageMonitorWatch" --work-root "{environment["LOCALAPPDATA"]}'
         '\\ImageMonitorCandidateSave"'
     )
+    assert result.stdout.strip().splitlines()[-1] == expected
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+    assert not Path(environment["LOCALAPPDATA"]).exists()
+
+
+@pytest.mark.parametrize(
+    "conflict",
+    [
+        "--candidate-finish",
+        "--candidate-save-test",
+        "--candidate-test",
+        "--watch-test",
+        "--site-inspect",
+        "--list-inspect",
+        "--save-post",
+        "--recover-closed",
+        "--resume-preinput",
+    ],
+)
+@pytest.mark.parametrize("monitor_first", [False, True])
+def test_monitor_rejects_every_other_mode_before_setup(tmp_path, conflict, monitor_first):
+    launcher = guarded_launcher(tmp_path / "guarded monitor")
+    arguments = ["--monitor", conflict] if monitor_first else [conflict, "--monitor"]
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 2
+    assert "List monitoring cannot be combined" in result.stderr
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
+    ("arguments", "message"),
+    [
+        (("--monitor",), "List monitoring requires the supplied Chrome launcher"),
+        (("--monitor", "--edge"), "Unsupported test launcher argument"),
+    ],
+)
+def test_monitor_browser_validation_precedes_setup(tmp_path, arguments, message):
+    launcher = guarded_launcher(tmp_path / "guarded monitor browser")
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 2
+    assert message in result.stderr
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+def inert_monitor_launcher_text():
+    """Exercise only the new status-screen branch with every setup command guarded."""
+    text = LAUNCHER.read_text(encoding="ascii")
+    text = text.replace(
+        "\n:new_log\n", '\n:new_log\nset "LOG_FILE=NUL"\ngoto after_dependencies\n', 1
+    )
+    marker = 'if "%MONITOR%"=="1" goto start_monitor'
+    assert text.count(marker) == 1
+    return text.replace(marker, ":after_dependencies\n" + marker, 1)
+
+
+@pytest.mark.parametrize("arguments", [("--monitor", "--chrome"), ("--chrome", "--monitor")])
+def test_monitor_routes_before_all_inspection_saving_and_recovery_modes(tmp_path, arguments):
+    text = inert_monitor_launcher_text()
+    for label, mode, code in [
+        ("start_probe", "native-probe", 92),
+        ("start_site_inspection", "site-inspect", 91),
+        ("start_post_save", "save-post", 93),
+        ("start_list_inspection", "list-inspect", 95),
+        ("start_watch_test", "watch-test", 96),
+        ("start_candidate_test", "candidate-test", 97),
+        ("start_candidate_save_test", "candidate-save-test", 98),
+        ("start_candidate_finish", "candidate-finish", 99),
+        ("start_monitor", "monitor", 100),
+    ]:
+        text = text.replace(f"\n:{label}\n", f"\n:{label}\necho MODE={mode}\nexit /b {code}\n", 1)
+    lines = [
+        "exit /b 77" if line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')) else line
+        for line in text.splitlines()
+    ]
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 100, result.stderr
+    assert result.stdout.strip() == "MODE=monitor"
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+def test_monitor_command_preserves_watch_root_and_has_no_browser_native_or_autostart_options(
+    tmp_path,
+):
+    text = inert_monitor_launcher_text()
+    commands = 0
+    lines = []
+    for line in text.splitlines():
+        if line.startswith('"%UV_EXE%"') and " image-monitor monitor " in line:
+            command = line.split(" image-monitor ", 1)[1].split(' >>"%LOG_FILE%"', 1)[0]
+            assert "--browser" not in command and "--start" not in command
+            assert "recover" not in command and "resume" not in command
+            lines.extend([f"echo COMMAND={command}", "exit /b 100"])
+            commands += 1
+        elif line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')):
+            lines.append("exit /b 77")
+        else:
+            lines.append(line)
+    assert commands == 1
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    environment = os.environ.copy()
+    environment["LOCALAPPDATA"] = str(tmp_path / "local 한글 & space")
+    command_processor = Path(environment["SYSTEMROOT"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" --monitor --chrome"'
+    result = subprocess.run(
+        command,
+        env=environment,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 100, result.stderr
+    expected = f'COMMAND=monitor --work-root "{environment["LOCALAPPDATA"]}\\ImageMonitorWatch"'
     assert result.stdout.strip().splitlines()[-1] == expected
     assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
     assert not Path(environment["LOCALAPPDATA"]).exists()

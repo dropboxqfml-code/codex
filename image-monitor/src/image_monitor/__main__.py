@@ -46,6 +46,10 @@ def main() -> int:
         "watch-demo", help="Create a local synthetic watch demo; no network or native UI"
     )
     watch_demo_parser.add_argument("--db", type=Path, required=True)
+    monitor = commands.add_parser(
+        "monitor", help="Open the local list-monitoring screen; start watching explicitly"
+    )
+    monitor.add_argument("--work-root", type=Path, required=True)
     watch_test = commands.add_parser(
         "watch-test", help="Run a bounded public-list discovery trial; never save images"
     )
@@ -95,6 +99,23 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "monitor":
+        try:
+            from image_monitor.monitor_app import run_monitor_app, share_monitor_report
+
+            output = run_monitor_app(args.work_root)
+            public_report = share_monitor_report(output)
+        except KeyboardInterrupt:
+            parser.exit(130, "List monitoring cancelled.\n")
+        except Exception as error:
+            parser.exit(2, f"List monitoring stopped ({type(error).__name__}).\n")
+        print(json.dumps(public_report, ensure_ascii=False, indent=2))
+        if (
+            output.get("error_type") == "KeyboardInterrupt"
+            or output.get("status") == "monitor_cancelled"
+        ):
+            return 130
+        return 0 if output.get("status") in {"monitor_closed", "monitor_busy"} else 2
     if args.command == "candidate-finish":
         try:
             from image_monitor.candidate_finish_runtime import (

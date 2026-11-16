@@ -72,7 +72,13 @@ def make_legacy_database(path):
             gallery_type="normal", gallery_id="comic_new6", post_id="123", images=[IMAGE]
         )[0]
     with closing(sqlite3.connect(path)) as db, db:
-        for table in ("watch_gaps", "watch_candidates", "watch_scans", "watch_state"):
+        for table in (
+            "candidate_details",
+            "watch_gaps",
+            "watch_candidates",
+            "watch_scans",
+            "watch_state",
+        ):
             db.execute(f"DROP TABLE {table}")
         db.execute("DROP TABLE artifact_finalizations")
         db.execute("DROP TABLE observation_jobs")

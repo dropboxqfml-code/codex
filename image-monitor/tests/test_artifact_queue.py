@@ -72,7 +72,13 @@ def prepare(store, claim, tmp_path, **overrides):
 
 def downgrade(path, version):
     with closing(sqlite3.connect(path)) as db, db:
-        for table in ("watch_gaps", "watch_candidates", "watch_scans", "watch_state"):
+        for table in (
+            "candidate_details",
+            "watch_gaps",
+            "watch_candidates",
+            "watch_scans",
+            "watch_state",
+        ):
             db.execute(f"DROP TABLE {table}")
         if version < 3:
             db.execute("DROP TABLE artifact_finalizations")

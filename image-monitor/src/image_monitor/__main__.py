@@ -51,6 +51,11 @@ def main() -> int:
     )
     watch_test.add_argument("--work-root", type=Path, required=True)
     watch_test.add_argument("--browser", choices=("chrome", "edge"), default="chrome")
+    candidate_test = commands.add_parser(
+        "candidate-test", help="Inspect at most two stored candidates; never save images"
+    )
+    candidate_test.add_argument("--work-root", type=Path, required=True)
+    candidate_test.add_argument("--browser", choices=("chrome", "edge"), default="chrome")
     site = commands.add_parser(
         "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
     )
@@ -79,6 +84,34 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "candidate-test":
+        try:
+            from image_monitor.candidate_runtime import run_candidate_trial, share_candidate_report
+
+            output = run_candidate_trial(args.work_root, args.browser)
+            public_report = share_candidate_report(output)
+        except KeyboardInterrupt:
+            parser.exit(130, "Bounded candidate inspection cancelled.\n")
+        except Exception as error:
+            parser.exit(2, f"Bounded candidate inspection stopped ({type(error).__name__}).\n")
+        print(json.dumps(public_report, ensure_ascii=False, indent=2))
+        if (
+            output.get("error_type") == "KeyboardInterrupt"
+            or output.get("status") == "candidate_test_cancelled"
+        ):
+            return 130
+        return (
+            0
+            if output.get("status")
+            in {
+                "candidate_test_completed",
+                "candidate_waiting",
+                "candidate_busy",
+                "candidate_no_pending",
+                "candidate_no_baseline",
+            }
+            else 2
+        )
     if args.command == "watch-test":
         try:
             from image_monitor.watch_runtime import run_watch_trial, share_watch_report

@@ -400,7 +400,13 @@ def test_v3_migration_preserves_existing_jobs_sources_and_prepared_artifacts(tmp
         source = queue.get_job_source(claim["job_id"])
         post = queue.get_post("normal", "gallery", "10")
     with closing(sqlite3.connect(path)) as db, db:
-        for table in ("watch_gaps", "watch_candidates", "watch_scans", "watch_state"):
+        for table in (
+            "candidate_details",
+            "watch_gaps",
+            "watch_candidates",
+            "watch_scans",
+            "watch_state",
+        ):
             db.execute(f"DROP TABLE {table}")
         db.execute("PRAGMA user_version=3")
     before = database_state(path)

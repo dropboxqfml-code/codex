@@ -10,6 +10,7 @@ set "UV_LOOKUP_ONLY=0"
 set "READ_ONLY_INSPECTION=0"
 set "READ_ONLY_LIST_INSPECTION=0"
 set "WATCH_TEST=0"
+set "CANDIDATE_TEST=0"
 set "SAVE_POST=0"
 set "RESUME_PREINPUT=0"
 set "POST_SAVE_RESUME_ARGUMENT="
@@ -23,6 +24,7 @@ if /i "%~1"=="--find-uv" goto option_lookup
 if /i "%~1"=="--site-inspect" goto option_site_inspection
 if /i "%~1"=="--list-inspect" goto option_list_inspection
 if /i "%~1"=="--watch-test" goto option_watch_test
+if /i "%~1"=="--candidate-test" goto option_candidate_test
 if /i "%~1"=="--save-post" goto option_save_post
 if /i "%~1"=="--resume-preinput" goto option_resume_preinput
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
@@ -61,6 +63,12 @@ set "CHECK_LABEL=bounded list-watch trial"
 shift
 goto parse_arguments
 
+:option_candidate_test
+set "CANDIDATE_TEST=1"
+set "CHECK_LABEL=bounded candidate-detail inspection"
+shift
+goto parse_arguments
+
 :option_save_post
 set "SAVE_POST=1"
 set "CHECK_LABEL=single-post native-save test"
@@ -75,6 +83,12 @@ goto parse_arguments
 
 :arguments_ready
 if "%UV_LOOKUP_ONLY%"=="1" goto lookup_only
+if "%CANDIDATE_TEST%"=="1" if "%WATCH_TEST%"=="1" goto incompatible_candidate_modes
+if "%CANDIDATE_TEST%"=="1" if "%READ_ONLY_INSPECTION%"=="1" goto incompatible_candidate_modes
+if "%CANDIDATE_TEST%"=="1" if "%READ_ONLY_LIST_INSPECTION%"=="1" goto incompatible_candidate_modes
+if "%CANDIDATE_TEST%"=="1" if "%SAVE_POST%"=="1" goto incompatible_candidate_modes
+if "%CANDIDATE_TEST%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_candidate_modes
+if "%CANDIDATE_TEST%"=="1" if "%RESUME_PREINPUT%"=="1" goto incompatible_candidate_modes
 if "%WATCH_TEST%"=="1" if "%READ_ONLY_INSPECTION%"=="1" goto incompatible_watch_modes
 if "%WATCH_TEST%"=="1" if "%READ_ONLY_LIST_INSPECTION%"=="1" goto incompatible_watch_modes
 if "%WATCH_TEST%"=="1" if "%SAVE_POST%"=="1" goto incompatible_watch_modes
@@ -90,6 +104,10 @@ if "%RESUME_PREINPUT%"=="1" if "%READ_ONLY_INSPECTION%"=="1" goto incompatible_r
 if "%READ_ONLY_INSPECTION%"=="1" if "%SAVE_POST%"=="1" goto incompatible_post_modes
 if "%READ_ONLY_INSPECTION%"=="1" if "%RECOVER_CLOSED%"=="1" goto incompatible_options
 goto new_log
+
+:incompatible_candidate_modes
+>&2 echo Bounded candidate inspection cannot be combined with list watching, site inspection, list inspection, post saving, native recovery, or pre-input resume.
+exit /b 2
 
 :incompatible_watch_modes
 >&2 echo Bounded list-watch trial cannot be combined with site inspection, list inspection, post saving, native recovery, or pre-input resume.
@@ -116,7 +134,7 @@ set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
-if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
+if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Single-post native image saving requires review in the dedicated Chrome app window.
 if "%RESUME_PREINPUT%"=="1" >>"%LOG_FILE%" echo Verified pre-input resume was explicitly requested. Generic native recovery will not run.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public-page DOM inspection. No image saving is attempted.
@@ -124,6 +142,9 @@ if "%READ_ONLY_LIST_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public searc
 if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo Bounded public-list discovery trial: two cycles in headless mode, about two minutes after setup.
 if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo The separate watch database persists baseline and candidate records. The image-job queue and image files are untouched.
 if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo No continuous program or native image saving is started. This single TXT opens automatically when the trial ends.
+if "%CANDIDATE_TEST%"=="1" >>"%LOG_FILE%" echo Read-only inspection of at most two previously stored candidate posts, with at least 60 seconds between requests.
+if "%CANDIDATE_TEST%"=="1" >>"%LOG_FILE%" echo Uses the existing watch baseline and candidates. No new list scan, image saving, or continuous monitoring is started.
+if "%CANDIDATE_TEST%"=="1" >>"%LOG_FILE%" echo This single TXT opens automatically when the inspection ends. Already attempted candidates are not automatically retried.
 >>"%LOG_FILE%" echo Selected browser: %TEST_BROWSER%
 if not exist "pyproject.toml" goto missing_project
 if not exist "uv.lock" goto missing_project
@@ -157,6 +178,7 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+if "%CANDIDATE_TEST%"=="1" goto start_candidate_test
 if "%WATCH_TEST%"=="1" goto start_watch_test
 if "%READ_ONLY_LIST_INSPECTION%"=="1" goto start_list_inspection
 if "%READ_ONLY_INSPECTION%"=="1" goto start_site_inspection
@@ -226,6 +248,20 @@ echo List inspection finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
+:start_candidate_test
+echo Inspecting at most two stored candidates in headless %TEST_BROWSER%. Allow about two minutes after setup.
+echo Existing baseline and candidate records are retained. No native-save button or foreground window is required.
+>>"%LOG_FILE%" echo STAGE: candidate_test
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor candidate-test --work-root "%LOCALAPPDATA%\ImageMonitorWatch" --browser "%TEST_BROWSER%" >>"%LOG_FILE%" 2>&1
+set "CANDIDATE_TEST_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Bounded candidate inspection exit code: %CANDIDATE_TEST_CODE%
+if not "%CANDIDATE_TEST_CODE%"=="0" goto failed
+>>"%LOG_FILE%" echo RESULT: COMPLETED_OR_SAFELY_WAITING - BOUNDED_CANDIDATE_INSPECTION
+>>"%LOG_FILE%" echo See the JSON status above for completed, waiting, busy, no pending candidates, or no baseline. No images were saved.
+echo Candidate inspection finished. Opening the result file.
+start "" notepad.exe "%LOG_FILE%"
+exit /b 0
+
 :start_watch_test
 echo Running two list-discovery cycles in headless %TEST_BROWSER%. Allow about two minutes after setup.
 echo This bounded trial persists a separate watch baseline and candidates; it leaves image jobs and files untouched.
@@ -253,14 +289,16 @@ goto failed
 :failed
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - SINGLE_POST_NATIVE_SAVE. No automatic retry was performed.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending browser unchanged for inspection.
-if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
-if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
+if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo RESULT: FAILED - automation stopped; no automatic retry was performed.
+if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Leave any pending test browser unchanged for inspection.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo RESULT: FAILED - READ_ONLY_SITE_INSPECTION. No image saving was attempted.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
 if "%READ_ONLY_LIST_INSPECTION%"=="1" >>"%LOG_FILE%" echo RESULT: FAILED - READ_ONLY_LIST_INSPECTION. No image saving was attempted.
 if "%READ_ONLY_LIST_INSPECTION%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
 if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - BOUNDED_LIST_WATCH_TRIAL. No image saving was attempted.
 if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
+if "%CANDIDATE_TEST%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - BOUNDED_CANDIDATE_INSPECTION. No image saving was attempted.
+if "%CANDIDATE_TEST%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
 echo Test stopped. Opening the result file; please send that TXT file for help.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 1

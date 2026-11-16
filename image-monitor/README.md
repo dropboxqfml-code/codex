@@ -3,13 +3,14 @@
 Windows에서 공개 게시글의 본문 이미지를 실제 우클릭과 브라우저의 네이티브 저장 창으로
 저장하는 별도 프로젝트입니다. 기존 Image Duplicate Finder는 그대로 유지합니다.
 현재 **검증한 예제 게시글 하나의 Chrome 저장과 재개**를 사용자 환경에서 완료했습니다.
-사용자 v12 결과로 한 검색 범위의 목록 두 페이지 구조를 확인했으며,
-v13은 기준점과 영구 후보를 기록하는 **두 주기 한정 목록 감시 시험**을 추가합니다.
+사용자 v12 결과로 한 검색 범위의 목록 두 페이지 구조를 확인했고, v13 결과로 기준점 저장과
+다음 주기의 새 후보 6개 기록을 확인했습니다. v14는 기존 후보를 최대 두 개 읽어
+**상세 작성 시각과 본문 구조를 확인하는 한정 시험**을 추가합니다.
 계속 실행하는 정기 감시·새 글 이미지 자동 저장·설정 UI는 아직 구현하지 않았습니다.
 
 Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)에
 하나로 정리합니다. 기본 저장 시험과 게시글 저장·재개 명령도 유지합니다.
-개발용 패키징은 `python scripts/build_windows_bundle.py --version v13`이며 기존 ZIP을 덮어쓰지 않습니다.
+개발용 패키징은 `python scripts/build_windows_bundle.py --version v14`이며 기존 ZIP을 덮어쓰지 않습니다.
 
 ## 현재 구현
 
@@ -19,8 +20,12 @@ Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS
   순서·파일명·다른 속성으로 대응을 추측하지 않습니다.
 - SQLite 발견·불변 관찰 결과·작업 선점·재시도 정책·파일 슬롯·최초 폴더 계획 보존.
 - [검색 목록과 한정 감시 시험](docs/list-watch.md): 검토한 검색 구조·번호/링크 일치·행 분류,
-  최신 기준점·겹친 구간·미확인 구간과 별도 SQLite v4의 영구 후보 기록.
+  최신 기준점·겹친 구간·미확인 구간과 별도 SQLite의 영구 후보 기록.
   두 주기는 앞 관찰 종료 후 최소 60초 간격이며 이미지 작업을 생성하지 않습니다.
+- 기존 감시 DB의 미시도 후보를 최대 두 개 읽어 정확한 작성 시각과 최초 기준 시각을 대조하고,
+  헤더·본문·이미지 개수 등 제한된 구조를 보고합니다. 목록을 다시 읽거나 기준점을 초기화하지
+  않으며, 결과는 DB v5의 별도 상세 시도 기록으로 보존합니다. 날짜 판정과 관계없이 저장 승인과
+  이미지 작업 등록은 허용하지 않습니다.
 - 전용 프로필·Windows 세션 공통 잠금·미해결 저장 표시와 전경/창 소유권 보호.
 - 이미지 사이의 전경 이탈 시 선점 전 일시정지, 새 사용자 클릭과 게시글 재검사 후 재개.
 - 입력 전 중단이 기록·원본 관찰·빈 임시 폴더·브라우저 종료로 입증된 v9 실패의 개별 재개.
@@ -40,6 +45,8 @@ v9 사용자 TXT에서 실제 WEBP 한 개의 저장·검증·최종 확정을 �
 이 저장 결과는 검증한 게시글 하나에 한정합니다. 별도의 v12 목록 관찰은 일반 갤러리
 `comic_new6`의 `ai` 제목+내용 검색 두 페이지에서 게시글 40개와 실제 다음 페이지 이동을
 확인했습니다. 목록 구조 검증은 다른 검색 범위의 본문 분석이나 이미지 자동 저장을 허용하지 않습니다.
+v13의 새 후보 6개 발견은 목록 발견 연결의 사용자 인수 결과이며 상세 작성 시각 필터·본문 분석·
+새 글 이미지 저장을 입증하지 않습니다. v14의 상세 시험은 새 사용자 결과로 확인해야 합니다.
 Edge와 Chrome의 기본 합성 이미지 저장은 Windows CI와 사용자 보고에서 성공했으며,
 이번 통합 작업자의 완료 판독은 Chrome만 지원합니다.
 
@@ -57,6 +64,7 @@ TXT 안내의 Windows 실행기는 uv·관리형 Python 3.12.14·잠금 의존�
 uv sync --locked --extra windows
 uv run --locked --extra windows image-monitor save-post --work-root C:/IMPost --browser chrome
 uv run --locked --extra windows image-monitor watch-test --work-root C:/IMWatch --browser chrome
+uv run --locked --extra windows image-monitor candidate-test --work-root C:/IMWatch --browser chrome
 uv run --locked pytest -q
 uv run --locked ruff check .
 uv run --locked ruff format --check .
@@ -64,6 +72,8 @@ uv run --locked ruff format --check .
 
 Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할 수 있습니다.
 실제 Windows UI 시험과 모의 시험의 결과는 [검증 기록](docs/validation.md)에 구분합니다.
+`candidate-test`는 같은 작업 루트의 기존 감시 DB와 최초 기준점·후보를 요구합니다. DB v5로
+추가 마이그레이션한 상태는 이전 v13 실행 파일에서 거부되므로 버전이 다른 실행기를 섞지 않습니다.
 
 - [게시글 저장 작업자와 장애 복구](docs/native-post-save.md)
 - [검색 목록과 감시 기준점](docs/list-watch.md)
@@ -79,6 +89,6 @@ Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할
 직접 HTTP 이미지 저장·응답 바이트 추출·`download.save_as`·스크린샷·재인코딩은 사용하지 않습니다.
 알려진 원본 해시 비교는 합성 fixture 시험에만 사용하며 실제 게시글에서는 저장 파일의 해시를 기록합니다.
 남은 작업은 다른 게시글의 본문 구조 검증·계속 실행하는 정기 감시·누락 구간 재탐색·
-상세 작성 시각 필터와 이미지 작업자 연결·다중 갤러리·설정/열람 및 긴급 중단 UI·용량 관리,
+상세 시각 필터의 실사이트 인수와 이미지 작업자 연결·다중 갤러리·설정/열람 및 긴급 중단 UI·용량 관리,
 보류 작업 수동 처리, 화면 잠금·다중 모니터·배율의 추가 인수 시험,
 Pillow 단일 디코딩 호출의 프로세스 격리입니다.

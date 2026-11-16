@@ -21,7 +21,7 @@ from image_monitor.retry import retry_after, schedule_retry
 from image_monitor.validation import EXTENSIONS
 
 APPLICATION_ID = 0x494D5131
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 ACTIVE = ("loading", "saving", "verifying")
 
 
@@ -226,7 +226,27 @@ WATCH_STATEMENTS = (
         observed_at TEXT NOT NULL, reason TEXT NOT NULL
     )""",
 )
-SCHEMA = V3_SCHEMA + ";\n".join(WATCH_STATEMENTS) + ";"
+V4_SCHEMA = V3_SCHEMA + ";\n".join(WATCH_STATEMENTS) + ";"
+CANDIDATE_DETAIL_STATEMENTS = (
+    """CREATE TABLE candidate_details (
+        attempt_id TEXT PRIMARY KEY, watch_name TEXT NOT NULL,
+        gallery_type TEXT NOT NULL, gallery_id TEXT NOT NULL,
+        keyword TEXT NOT NULL, search_type TEXT NOT NULL, post_id TEXT NOT NULL,
+        first_scan_id TEXT NOT NULL REFERENCES watch_scans,
+        baseline_observed_at TEXT NOT NULL, started_at TEXT NOT NULL,
+        finished_at TEXT, status TEXT NOT NULL CHECK(status IN ('started','completed','failed')),
+        result_json TEXT,
+        UNIQUE(watch_name,gallery_type,gallery_id,keyword,search_type,post_id),
+        FOREIGN KEY(watch_name,gallery_type,gallery_id,keyword,search_type,post_id)
+            REFERENCES watch_candidates,
+        CHECK((status='started' AND finished_at IS NULL AND result_json IS NULL) OR
+            (status IN ('completed','failed') AND finished_at IS NOT NULL
+                AND result_json IS NOT NULL))
+    )""",
+    """CREATE INDEX candidate_detail_blocks ON candidate_details
+        (json_extract(result_json,'$.control.blocked')) WHERE result_json IS NOT NULL""",
+)
+SCHEMA = V4_SCHEMA + ";\n".join(CANDIDATE_DETAIL_STATEMENTS) + ";"
 
 
 def _schema_objects(connection: sqlite3.Connection) -> set[tuple]:
@@ -283,9 +303,9 @@ class QueueStore:
                     + "COMMIT;"
                 )
                 version = SCHEMA_VERSION
-            elif application == APPLICATION_ID and version in {1, 2, 3}:
+            elif application == APPLICATION_ID and version in {1, 2, 3, 4}:
                 if read_only:
-                    expected = {1: BASE_SCHEMA, 2: V2_SCHEMA, 3: V3_SCHEMA}[version]
+                    expected = {1: BASE_SCHEMA, 2: V2_SCHEMA, 3: V3_SCHEMA, 4: V4_SCHEMA}[version]
                     if not _matches_schema(self.connection, expected):
                         raise QueueError("Unknown queue database schema; migration refused")
                 else:
@@ -309,6 +329,12 @@ class QueueStore:
                             if not _matches_schema(self.connection, V3_SCHEMA):
                                 raise QueueError("Unknown queue database schema; migration refused")
                             for statement in WATCH_STATEMENTS:
+                                self.connection.execute(statement)
+                            current = 4
+                        if current == 4:
+                            if not _matches_schema(self.connection, V4_SCHEMA):
+                                raise QueueError("Unknown queue database schema; migration refused")
+                            for statement in CANDIDATE_DETAIL_STATEMENTS:
                                 self.connection.execute(statement)
                             self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                         elif current != SCHEMA_VERSION or not _matches_schema(

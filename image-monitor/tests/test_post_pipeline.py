@@ -7,7 +7,11 @@ import pytest
 from image_monitor.__main__ import main
 from image_monitor.dcinside import parse_snapshot
 from image_monitor.post_commands import fixture_raw, post_demo
-from image_monitor.post_pipeline import PostPipelineError, enqueue_snapshot
+from image_monitor.post_pipeline import (
+    PostPipelineError,
+    enqueue_candidate_snapshot,
+    enqueue_snapshot,
+)
 from image_monitor.queue import QueueStore
 
 
@@ -62,6 +66,56 @@ def test_fixture_observation_requires_explicit_synthetic_mode(tmp_path):
         with pytest.raises(PostPipelineError, match="explicit fixture mode"):
             enqueue_snapshot(store, snapshot, watch_name="watch", keyword="ai")
         assert store.list_jobs() == []
+
+
+def test_candidate_queue_requires_explicit_permit_and_preserves_original_discovery(tmp_path):
+    from test_post_worker import candidate_observation, candidate_permit
+
+    snapshot = candidate_observation(count=2)
+    permit = candidate_permit(snapshot)
+    authorized = permit.authorize_snapshot(snapshot)
+    with QueueStore(tmp_path / "queue.sqlite") as store:
+        with pytest.raises(PostPipelineError, match="unverified site layout"):
+            enqueue_snapshot(store, authorized, watch_name="manual", keyword="manual")
+        assert store.list_jobs() == []
+        queued = enqueue_candidate_snapshot(store, authorized, permit=permit)
+        assert len(queued["jobs"]) == 2
+        assert len(store.list_jobs()) == 2
+        post = store.get_post("normal", "comic_new6", snapshot["post_id"])
+        assert datetime.fromisoformat(post["first_seen_at"]) == permit.first_seen_at
+        assert post["folder_plan"]["folder_date"] == "2026-11-14"
+        assert post["watch_name"] == permit.watch_name
+        match = store.connection.execute("SELECT * FROM matches").fetchone()
+        assert (match["keyword"], match["search_type"]) == (permit.keyword, permit.search_type)
+        observation = store.get_observation(queued["observation_id"])
+        assert observation["snapshot"]["layout_status"] == "candidate_reviewed"
+        assert all(
+            image["original_attachment_filename"] is None
+            and image["original_filename_match_status"] == "ambiguous"
+            for image in observation["snapshot"]["images"]
+        )
+        repeated = enqueue_candidate_snapshot(store, snapshot, permit=permit)
+        assert [job["job_id"] for job in repeated["jobs"]] == [
+            job["job_id"] for job in queued["jobs"]
+        ]
+        assert len(store.list_jobs()) == 2
+
+
+def test_candidate_queue_refuses_missing_permit_and_changed_sources_without_writes(tmp_path):
+    from test_post_worker import candidate_observation, candidate_permit
+
+    from image_monitor.candidate_save_policy import CandidateSavePolicyError
+
+    snapshot = candidate_observation()
+    permit = candidate_permit(snapshot)
+    with QueueStore(tmp_path / "queue.sqlite") as store:
+        with pytest.raises(PostPipelineError, match="permit"):
+            enqueue_candidate_snapshot(store, snapshot, permit=object())
+        changed = candidate_observation()
+        changed["images"][0]["display_url"] += "?changed=1"
+        with pytest.raises(CandidateSavePolicyError):
+            enqueue_candidate_snapshot(store, changed, permit=permit)
+        assert store.summary()["posts"] == 0 and store.list_jobs() == []
 
 
 def test_post_demo_cli_outputs_durable_jobs_without_overwriting_database(

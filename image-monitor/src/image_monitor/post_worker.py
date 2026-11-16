@@ -6,6 +6,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path, PureWindowsPath
+from typing import TYPE_CHECKING
 
 from image_monitor.artifact_files import (
     ArtifactError,
@@ -37,11 +38,18 @@ from image_monitor.native_ui import (
     WindowsUI,
     require_windows,
 )
-from image_monitor.post_pipeline import PostPipelineError, enqueue_snapshot
+from image_monitor.post_pipeline import (
+    PostPipelineError,
+    enqueue_candidate_snapshot,
+    enqueue_snapshot,
+)
 from image_monitor.post_resume import resume_preinput_failure
 from image_monitor.queue import ACTIVE, QueueError, QueueStore
 from image_monitor.site_inspection import DEFAULT_POST_URL
 from image_monitor.validation import VerificationError, verify_image
+
+if TYPE_CHECKING:
+    from image_monitor.candidate_save_policy import CandidateSavePermit
 
 MIN_FREE_BYTES = 256 * 1024 * 1024
 
@@ -198,8 +206,28 @@ def _job_counts(store, job_ids) -> dict:
     }
 
 
+def _inspect_for_save(runtime, page, url, *, candidate_permit=None, before_interaction=None):
+    snapshot = runtime.inspect(page, url, before_interaction=before_interaction)
+    return snapshot if candidate_permit is None else candidate_permit.authorize_snapshot(snapshot)
+
+
+def _enqueue_for_save(store, snapshot, candidate_permit):
+    if candidate_permit is not None:
+        return enqueue_candidate_snapshot(store, snapshot, permit=candidate_permit)
+    return enqueue_snapshot(store, snapshot, watch_name="게시글 저장 시험", keyword="manual")
+
+
 def _wait_for_next_image(
-    runtime, page, ui, snapshot, save_root, report, report_path, *, force_resume=False
+    runtime,
+    page,
+    ui,
+    snapshot,
+    save_root,
+    report,
+    report_path,
+    *,
+    force_resume=False,
+    candidate_permit=None,
 ):
     report["last_stage"] = "pre_input_check"
     if not force_resume:
@@ -221,7 +249,13 @@ def _wait_for_next_image(
     )
     write_report(report_path, report)
     wait_for_approval(page, ui, nonce)
-    fresh = runtime.inspect(page, snapshot["post_url"], before_interaction=ui.assert_target_ready)
+    fresh = _inspect_for_save(
+        runtime,
+        page,
+        snapshot["post_url"],
+        before_interaction=ui.assert_target_ready,
+        candidate_permit=candidate_permit,
+    )
     if {image["stable_key"] for image in fresh["images"]} != {
         image["stable_key"] for image in snapshot["images"]
     } or any(
@@ -322,13 +356,31 @@ def run_post_save(
     url: str = DEFAULT_POST_URL,
     *,
     resume_preinput: bool = False,
+    candidate_permit: "CandidateSavePermit | None" = None,
+    navigation_observer=None,
 ) -> dict:
     require_windows()
     if browser != "chrome":
         raise NativeUIError("Integrated completion is currently verified for Chrome only")
     target = validate_post_url(url)
-    if target["canonical_url"] != validate_post_url(DEFAULT_POST_URL)["canonical_url"]:
+    if candidate_permit is not None:
+        from image_monitor.candidate_save_policy import CandidateSavePermit
+
+        if not isinstance(candidate_permit, CandidateSavePermit):
+            raise NativeUIError("A reviewed candidate save permit is required")
+        candidate_permit.validate()
+        if target["canonical_url"] != candidate_permit.post_url:
+            raise NativeUIError("Candidate permit does not match the requested post")
+        if resume_preinput:
+            raise NativeUIError("The legacy pre-input resume does not apply to candidate saving")
+    elif target["canonical_url"] != validate_post_url(DEFAULT_POST_URL)["canonical_url"]:
         raise NativeUIError("This pilot saves only the reviewed example post")
+    if navigation_observer is not None and (
+        candidate_permit is None
+        or not callable(getattr(navigation_observer, "before", None))
+        or not callable(getattr(navigation_observer, "after", None))
+    ):
+        raise NativeUIError("A navigation observer requires reviewed candidate saving")
     base = Path(work_root).resolve()
     if str(base).startswith("\\\\"):
         raise NativeUIError("A local post-save work root is required")
@@ -356,7 +408,11 @@ def run_post_save(
         save_root.mkdir(parents=True, exist_ok=True)
         report = {
             "schema_version": 2,
-            "mode": "single_post_native_context_menu",
+            "mode": (
+                "single_post_native_context_menu"
+                if candidate_permit is None
+                else "reviewed_candidate_native_context_menu"
+            ),
             "status": "manual_review",
             "browser": browser,
             "last_stage": "local_recovery",
@@ -387,15 +443,25 @@ def run_post_save(
                 page = runtime.attach(profile, process)
                 report["browser_version"] = runtime.browser.version
                 report["last_stage"] = "post_inspection"
-                response = page.goto(
-                    target["canonical_url"], wait_until="domcontentloaded", timeout=30_000
-                )
+                response = navigation_error = None
+                if navigation_observer is not None:
+                    navigation_observer.before()
+                try:
+                    response = page.goto(
+                        target["canonical_url"], wait_until="domcontentloaded", timeout=30_000
+                    )
+                except BaseException as error:
+                    navigation_error = error
+                    raise
+                finally:
+                    if navigation_observer is not None:
+                        navigation_observer.after(response, navigation_error)
                 if response is None or response.status >= 400:
                     raise NativeUIError("The document response prevented post saving")
-                snapshot = runtime.inspect(page, target["canonical_url"])
-                queued = enqueue_snapshot(
-                    store, snapshot, watch_name="게시글 저장 시험", keyword="manual"
+                snapshot = _inspect_for_save(
+                    runtime, page, target["canonical_url"], candidate_permit=candidate_permit
                 )
+                queued = _enqueue_for_save(store, snapshot, candidate_permit)
                 ids = [item["job_id"] for item in queued["jobs"]]
                 approved_keys = {image["stable_key"] for image in snapshot["images"]}
                 report["job_counts"] = _job_counts(store, ids)
@@ -413,16 +479,16 @@ def run_post_save(
                     report["last_stage"] = "waiting_for_user_start"
                     wait_for_approval(page, ui, nonce)
                     report["last_stage"] = "post_recheck"
-                    fresh = runtime.inspect(
+                    fresh = _inspect_for_save(
+                        runtime,
                         page,
                         target["canonical_url"],
                         before_interaction=ui.assert_target_ready,
+                        candidate_permit=candidate_permit,
                     )
                     if {image["stable_key"] for image in fresh["images"]} != approved_keys:
                         raise NativeUIError("The post's image set changed after approval")
-                    queued = enqueue_snapshot(
-                        store, fresh, watch_name="게시글 저장 시험", keyword="manual"
-                    )
+                    queued = _enqueue_for_save(store, fresh, candidate_permit)
                     snapshot = fresh
                     ids = [item["job_id"] for item in queued["jobs"]]
                     report["last_stage"] = "completion_setup"
@@ -446,6 +512,7 @@ def run_post_save(
                                 report,
                                 run_directory / "report.json",
                                 force_resume=force_resume,
+                                candidate_permit=candidate_permit,
                             )
                             force_resume = False
                             job = store.claim_next(uuid.uuid4().hex, datetime.now(UTC), job_ids=ids)

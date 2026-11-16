@@ -56,6 +56,12 @@ def main() -> int:
     )
     candidate_test.add_argument("--work-root", type=Path, required=True)
     candidate_test.add_argument("--browser", choices=("chrome", "edge"), default="chrome")
+    candidate_save = commands.add_parser(
+        "candidate-save-test", help="Review and natively save one previously inspected candidate"
+    )
+    candidate_save.add_argument("--watch-root", type=Path, required=True)
+    candidate_save.add_argument("--work-root", type=Path, required=True)
+    candidate_save.add_argument("--browser", choices=("chrome",), default="chrome")
     site = commands.add_parser(
         "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
     )
@@ -84,6 +90,36 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "candidate-save-test":
+        try:
+            from image_monitor.candidate_save_runtime import (
+                run_candidate_save_trial,
+                share_candidate_save_report,
+            )
+
+            output = run_candidate_save_trial(args.watch_root, args.work_root, args.browser)
+            public_report = share_candidate_save_report(output)
+        except KeyboardInterrupt:
+            parser.exit(130, "Candidate native saving cancelled. Inspect the dedicated browser.\n")
+        except Exception as error:
+            parser.exit(2, f"Candidate native saving stopped ({type(error).__name__}).\n")
+        print(json.dumps(public_report, ensure_ascii=False, indent=2))
+        if (
+            output.get("error_type") == "KeyboardInterrupt"
+            or output.get("status") == "candidate_save_cancelled"
+        ):
+            return 130
+        return (
+            0
+            if output.get("status")
+            in {
+                "candidate_save_completed",
+                "candidate_save_waiting",
+                "candidate_save_busy",
+                "candidate_save_no_candidate",
+            }
+            else 2
+        )
     if args.command == "candidate-test":
         try:
             from image_monitor.candidate_runtime import run_candidate_trial, share_candidate_report

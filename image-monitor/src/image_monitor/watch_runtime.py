@@ -71,9 +71,10 @@ def _control(state):
 
 
 def _eligibility(queue, state, now):
+    from image_monitor.candidate_save_selection import selection_service_blocked
     from image_monitor.candidate_store import detail_service_blocked
 
-    if detail_service_blocked(queue):
+    if detail_service_blocked(queue) or selection_service_blocked(queue):
         return "blocked", None
     control = _control(state)
     if control.get("blocked") is True:

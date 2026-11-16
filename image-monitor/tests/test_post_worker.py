@@ -4,7 +4,8 @@ import shutil
 import tempfile
 import uuid
 from contextlib import nullcontext
-from datetime import UTC, datetime
+from copy import deepcopy
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -85,6 +86,9 @@ def pilot(monkeypatch):
         focus_resumes=0,
         resume_save_counts=[],
         save_approval_counts=[],
+        expected_url=worker.DEFAULT_POST_URL,
+        navigation=[],
+        navigation_failure=None,
         cancel_resume=False,
     )
     monkeypatch.setattr(worker, "require_windows", lambda: None)
@@ -110,7 +114,13 @@ def pilot(monkeypatch):
             return 1.0
 
         def attach(self, _profile, _process):
-            return SimpleNamespace(goto=lambda *_args, **_kwargs: SimpleNamespace(status=200))
+            def navigate(*_args, **_kwargs):
+                values.navigation.append("goto")
+                if values.navigation_failure is not None:
+                    raise values.navigation_failure
+                return SimpleNamespace(status=200)
+
+            return SimpleNamespace(goto=navigate)
 
         def inspect(self, _page, _url, **_options):
             return (
@@ -187,7 +197,7 @@ def pilot(monkeypatch):
     monkeypatch.setattr(worker, "BrowserCompletion", Completion)
 
     def native_save(_page, ui, *, post_url, image, staging_directory, before_native_input=None):
-        assert post_url == worker.DEFAULT_POST_URL
+        assert post_url == values.expected_url
         assert image["expected_header"]["title"] == "Synthetic controller fixture"
         values.native_calls += 1
         ui.stage = "image_load"
@@ -384,6 +394,205 @@ def test_changed_post_after_user_start_is_rejected_before_native_input(pilot):
     assert report["last_stage"] == "post_recheck"
     assert report["status"] == "manual_review" and report["browser_closed"]
     assert pilot.saves == [] and not pilot.pending.exists()
+
+
+def candidate_observation(*, count=1):
+    return parse_snapshot(
+        {
+            "body_count": 1,
+            "header_count": 1,
+            "header_field_counts": {".gall_writer": 1, ".gall_date": 1, ".title_subject": 1},
+            "title": "Synthetic controller fixture",
+            "nickname": "fixture author",
+            "ip_display": "123.45",
+            "published_at_raw": "2026.11.14 10:00:00",
+            "attachments": [
+                {
+                    "filename": "unrelated-declared-name.png",
+                    "filename_complete": True,
+                    "reference_url": "https://image.dcinside.com/download.php?no=one&f_no=1",
+                }
+            ],
+            "images": [
+                {
+                    "body_order": index + 1,
+                    "display_url": f"https://cdn.example/candidate-{index + 1}.png",
+                    "complete": True,
+                    "natural_width": 4,
+                    "natural_height": 3,
+                    "decode_ok": True,
+                }
+                for index in range(count)
+            ],
+            "diagnostics": {"counts": {".write_div": 1, ".gallview_head": 1}},
+        },
+        expected_url="https://gall.dcinside.com/board/view/?id=comic_new6&no=2",
+        observed_at=datetime.now(UTC),
+    )
+
+
+def candidate_permit(snapshot):
+    from image_monitor.candidate_policy import classify_candidate_detail
+    from image_monitor.candidate_save_policy import make_candidate_save_permit
+    from image_monitor.watch_runtime import DEFAULT_SCOPE
+
+    observed = datetime.fromisoformat(snapshot["observed_at"])
+    baseline = {"observed_at": "2026-11-14T00:59:00+00:00", "mode": "new"}
+    scope = dict(
+        zip(
+            ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type"),
+            DEFAULT_SCOPE.key(),
+            strict=True,
+        )
+    )
+    candidate = scope | {
+        "post_id": snapshot["post_id"],
+        "post_url": snapshot["post_url"],
+        "first_scan_id": "f" * 32,
+        "first_seen_at": "2026-11-14T01:01:00+00:00",
+    }
+    detail = scope | {
+        "post_id": snapshot["post_id"],
+        "first_scan_id": candidate["first_scan_id"],
+        "attempt_id": "a" * 32,
+        "baseline_observed_at": baseline["observed_at"],
+        "status": "completed",
+        "started_at": (observed - timedelta(seconds=1)).isoformat(),
+        "finished_at": (observed + timedelta(seconds=1)).isoformat(),
+        "result": {
+            "classification": classify_candidate_detail(candidate, baseline, snapshot),
+            "private_observation": {
+                "status": "observed",
+                "http_status": 200,
+                "url": snapshot["post_url"],
+                "navigation_attempts": 1,
+                "snapshot": snapshot,
+            },
+            "control": {
+                "blocked": False,
+                "http_status": 200,
+                "finished_at": (observed + timedelta(seconds=1)).isoformat(),
+                "next_eligible_at": (observed + timedelta(seconds=61)).isoformat(),
+                "interval_seconds": 60,
+            },
+        },
+    }
+    return make_candidate_save_permit(candidate, baseline, detail)
+
+
+def test_candidate_controller_preserves_discovery_time_and_ambiguous_original_name(pilot):
+    snapshot = candidate_observation()
+    permit = candidate_permit(snapshot)
+    pilot.expected_url = snapshot["post_url"]
+    pilot.snapshots = [deepcopy(snapshot), deepcopy(snapshot)]
+    observer = SimpleNamespace(
+        before=lambda: pilot.navigation.append("before"),
+        after=lambda response, error: pilot.navigation.append(("after", response.status, error)),
+    )
+    report = worker.run_post_save(
+        pilot.root, url=permit.post_url, candidate_permit=permit, navigation_observer=observer
+    )
+    assert report["status"] == "post_completed", report
+    assert pilot.navigation == ["before", "goto", ("after", 200, None)]
+    assert report["mode"] == "reviewed_candidate_native_context_menu"
+    assert report["job_counts"] == {"observed": 1, "completed": 1, "unresolved": 0}
+    assert len(pilot.saves) == 1
+    with QueueStore(pilot.root / "session-1/queue.sqlite", read_only=True) as store:
+        post = store.get_post("normal", "comic_new6", "2")
+        assert datetime.fromisoformat(post["first_seen_at"]) == permit.first_seen_at
+    metadata = list((pilot.root / "session-1/images").rglob("metadata.json"))
+    artifact = json.loads(metadata[0].read_text())["images"][0]["artifact"]
+    assert artifact["original_attachment_filename"] is None
+    assert artifact["original_filename_match_status"] == "ambiguous"
+    assert artifact["browser_suggested_filename"] == "browser-fixture.png"
+    assert artifact["saved_filename"] == "001.png"
+
+
+@pytest.mark.parametrize("field", ["title", "nickname", "published_at_raw", "ip_display"])
+def test_candidate_header_change_after_start_stops_before_native_input(pilot, field):
+    snapshot = candidate_observation()
+    permit = candidate_permit(snapshot)
+    changed = deepcopy(snapshot)
+    changed[field] = "Changed inspected header"
+    pilot.expected_url = snapshot["post_url"]
+    pilot.snapshots = [snapshot, changed]
+    report = worker.run_post_save(pilot.root, url=permit.post_url, candidate_permit=permit)
+    assert report["status"] == "manual_review"
+    assert report["last_stage"] == "post_recheck"
+    assert pilot.approval_count == 1
+    assert pilot.saves == [] and not pilot.pending.exists()
+
+
+def test_candidate_source_change_is_rejected_during_initial_inspection(pilot):
+    snapshot = candidate_observation()
+    permit = candidate_permit(snapshot)
+    changed = candidate_observation()
+    changed["images"][0]["display_url"] += "?changed=1"
+    pilot.expected_url = snapshot["post_url"]
+    pilot.snapshots = [changed]
+    report = worker.run_post_save(pilot.root, url=permit.post_url, candidate_permit=permit)
+    assert report["status"] == "manual_review"
+    assert pilot.approval_count == 0 and pilot.saves == []
+    with QueueStore(pilot.root / "session-1/queue.sqlite", read_only=True) as store:
+        assert store.list_jobs() == []
+
+
+def test_candidate_focus_resume_reauthorizes_the_frozen_header(pilot):
+    snapshot = candidate_observation(count=2)
+    permit = candidate_permit(snapshot)
+    changed = deepcopy(snapshot)
+    changed["title"] = "Edited while paused"
+    pilot.expected_url = snapshot["post_url"]
+    pilot.snapshots = [snapshot, deepcopy(snapshot), changed]
+    pilot.failure = "second_preinput_focus"
+    report = worker.run_post_save(pilot.root, url=permit.post_url, candidate_permit=permit)
+    assert report["status"] == "manual_review"
+    assert report["job_counts"] == {"observed": 2, "completed": 1, "unresolved": 1}
+    assert len(pilot.saves) == 1 and pilot.approval_count == 2
+
+
+def test_candidate_observer_wraps_navigation_and_runs_after_cancellation(pilot):
+    snapshot = candidate_observation()
+    permit = candidate_permit(snapshot)
+    events = pilot.navigation
+
+    class Observer:
+        def before(self):
+            events.append("before")
+
+        def after(self, response, error):
+            events.append(("after", response, type(error)))
+
+    pilot.expected_url = snapshot["post_url"]
+    pilot.navigation_failure = KeyboardInterrupt()
+    report = worker.run_post_save(
+        pilot.root, url=permit.post_url, candidate_permit=permit, navigation_observer=Observer()
+    )
+    assert events == ["before", "goto", ("after", None, KeyboardInterrupt)]
+    assert report["error_type"] == "KeyboardInterrupt"
+    assert report["browser_closed"] and not pilot.pending.exists()
+    assert pilot.saves == []
+
+
+@pytest.mark.parametrize("invalid", ["type", "identity", "resume", "legacy_observer"])
+def test_candidate_scope_options_are_rejected_before_creating_files(pilot, invalid):
+    snapshot = candidate_observation()
+    permit = candidate_permit(snapshot)
+    root = pilot.root / "not-created"
+    options = {"url": permit.post_url, "candidate_permit": permit}
+    if invalid == "type":
+        options["candidate_permit"] = object()
+    elif invalid == "identity":
+        options["url"] = worker.DEFAULT_POST_URL
+    elif invalid == "resume":
+        options["resume_preinput"] = True
+    else:
+        options = {
+            "navigation_observer": SimpleNamespace(before=lambda: None, after=lambda *_: None)
+        }
+    with pytest.raises(NativeUIError):
+        worker.run_post_save(root, **options)
+    assert not root.exists() and pilot.runtimes == []
 
 
 def test_completed_file_needs_exact_source_and_destination_before_pillow(pilot, monkeypatch):

@@ -177,6 +177,15 @@ def _same_json(left, right):
     )
 
 
+def _same_save_root(value, expected):
+    # QueueStore serializes Windows roots with forward slashes. Path comparison
+    # preserves Windows identity rules without depending on the stored spelling.
+    if not isinstance(value, str):
+        return False
+    path = Path(value)
+    return path.is_absolute() and not str(path).startswith("\\\\") and _plain_path(path) == expected
+
+
 def finish_completed_candidate(
     store: QueueStore,
     permit: CandidateSavePermit,
@@ -263,7 +272,7 @@ def finish_completed_candidate(
         _require(
             isinstance(artifact, dict)
             and artifact.get("phase") == "finalized"
-            and artifact.get("save_root") == str(save_root)
+            and _same_save_root(artifact.get("save_root"), save_root)
             and _uuid(artifact.get("observation_id")),
             "A candidate image has no finalized owned artifact journal",
         )

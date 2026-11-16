@@ -70,6 +70,7 @@ class NativeRuntime:
                 "--no-first-run",
                 "--no-default-browser-check",
                 "--disable-background-networking",
+                "--disable-background-mode",
                 "--force-renderer-accessibility",
                 "about:blank",
             ],
@@ -346,6 +347,7 @@ def share_worker_report(report: dict) -> dict:
         "focus_at_pause",
         "focus_pauses",
         "preinput_recovery",
+        "shutdown",
     )
     return {key: report[key] for key in keys if key in report}
 
@@ -633,6 +635,9 @@ def run_post_save(
                 )
         except BaseException as error:
             report.update(error_type=type(error).__name__, reason=_safe_reason(error))
+            diagnostics = getattr(error, "shutdown_diagnostics", None)
+            if isinstance(diagnostics, dict):
+                report["shutdown"] = diagnostics
             if ui is not None:
                 report["focus_at_failure"] = ui.focus_snapshot()
                 report["native_stage"] = ui.stage

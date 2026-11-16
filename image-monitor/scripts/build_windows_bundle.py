@@ -27,6 +27,7 @@ def main():
         "RUN_WATCH_TEST.cmd",
         "RUN_CANDIDATE_TEST.cmd",
         "RUN_CANDIDATE_SAVE_TEST.cmd",
+        "RUN_CANDIDATE_FINISH.cmd",
         "RUN_POST_SAVE_TEST.cmd",
         "RETRY_POST_SAVE_TEST.cmd",
         "WINDOWS_TEST_GUIDE.txt",

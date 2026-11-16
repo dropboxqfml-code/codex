@@ -128,6 +128,7 @@ def share_candidate_save_report(report):
         "focus_at_pause",
         "focus_pauses",
         "recovery",
+        "shutdown",
     )
     public = {key: report[key] for key in fields if key in report}
     public["saved_files"] = [_public_file(item) for item in report.get("saved_files", [])]

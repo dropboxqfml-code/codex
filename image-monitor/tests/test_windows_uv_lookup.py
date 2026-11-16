@@ -108,6 +108,10 @@ def guarded_launcher(directory):
         ("--find-uv", "--candidate-save-test", "--candidate-test"),
         ("--candidate-save-test", "--save-post", "--recover-closed", "--find-uv"),
         ("--resume-preinput", "--candidate-save-test", "--watch-test", "--find-uv"),
+        ("--candidate-finish", "--find-uv"),
+        ("--find-uv", "--candidate-finish", "--candidate-save-test"),
+        ("--candidate-finish", "--save-post", "--recover-closed", "--find-uv"),
+        ("--resume-preinput", "--candidate-finish", "--watch-test", "--find-uv"),
         (
             "--watch-test",
             "--list-inspect",
@@ -150,6 +154,7 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
         ("RUN_WATCH_TEST.cmd", "--watch-test --chrome"),
         ("RUN_CANDIDATE_TEST.cmd", "--candidate-test --chrome"),
         ("RUN_CANDIDATE_SAVE_TEST.cmd", "--candidate-save-test --chrome"),
+        ("RUN_CANDIDATE_FINISH.cmd", "--candidate-finish"),
         ("RUN_POST_SAVE_TEST.cmd", "--save-post --chrome"),
         ("RETRY_POST_SAVE_TEST.cmd", "--save-post --chrome --resume-preinput"),
     ],
@@ -329,6 +334,120 @@ def test_candidate_save_requires_chrome_before_setup(tmp_path):
     assert result.returncode == 2
     assert "Candidate native saving requires the supplied Chrome launcher" in result.stderr
     assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+@pytest.mark.parametrize(
+    "conflict",
+    [
+        "--candidate-save-test",
+        "--candidate-test",
+        "--watch-test",
+        "--site-inspect",
+        "--list-inspect",
+        "--save-post",
+        "--recover-closed",
+        "--resume-preinput",
+    ],
+)
+@pytest.mark.parametrize("finish_first", [False, True])
+def test_completed_candidate_verification_rejects_other_modes_before_setup(
+    tmp_path, conflict, finish_first
+):
+    launcher = guarded_launcher(tmp_path / "guarded candidate finish")
+    arguments = (
+        ["--candidate-finish", conflict] if finish_first else [conflict, "--candidate-finish"]
+    )
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 2
+    assert "Completed candidate verification cannot be combined" in result.stderr
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+def inert_candidate_finish_launcher_text():
+    """Retain offline mode routing while guarding setup and every external command."""
+    text = LAUNCHER.read_text(encoding="ascii")
+    text = text.replace(
+        "\n:new_log\n", '\n:new_log\nset "LOG_FILE=NUL"\ngoto after_dependencies\n', 1
+    )
+    marker = 'if "%CANDIDATE_FINISH%"=="1" goto start_candidate_finish'
+    assert text.count(marker) == 1
+    return text.replace(marker, ":after_dependencies\n" + marker, 1)
+
+
+@pytest.mark.parametrize("arguments", [("--candidate-finish",), ("--chrome", "--candidate-finish")])
+def test_completed_candidate_verification_routes_before_every_native_or_browser_mode(
+    tmp_path, arguments
+):
+    text = inert_candidate_finish_launcher_text()
+    for label, mode, code in [
+        ("start_probe", "native-probe", 92),
+        ("start_site_inspection", "site-inspect", 91),
+        ("start_post_save", "save-post", 93),
+        ("start_list_inspection", "list-inspect", 95),
+        ("start_watch_test", "watch-test", 96),
+        ("start_candidate_test", "candidate-test", 97),
+        ("start_candidate_save_test", "candidate-save-test", 98),
+        ("start_candidate_finish", "candidate-finish", 99),
+    ]:
+        text = text.replace(f"\n:{label}\n", f"\n:{label}\necho MODE={mode}\nexit /b {code}\n", 1)
+    lines = [
+        "exit /b 77" if line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')) else line
+        for line in text.splitlines()
+    ]
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    command_processor = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" {" ".join(arguments)}"'
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 99, result.stderr
+    assert result.stdout.strip() == "MODE=candidate-finish"
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+
+
+def test_completed_candidate_command_preserves_both_quoted_roots_without_browser_or_native_flags(
+    tmp_path,
+):
+    text = inert_candidate_finish_launcher_text()
+    finish_commands = 0
+    lines = []
+    for line in text.splitlines():
+        if line.startswith('"%UV_EXE%"') and " image-monitor candidate-finish " in line:
+            command = line.split(" image-monitor ", 1)[1].split(' >>"%LOG_FILE%"', 1)[0]
+            assert "--browser" not in command
+            assert "resume" not in command and "recover" not in command
+            lines.extend([f"echo COMMAND={command}", "exit /b 99"])
+            finish_commands += 1
+        elif line.startswith(('"%UV_EXE%"', "winget.exe ", 'start "" ')):
+            lines.append("exit /b 77")
+        else:
+            lines.append(line)
+    assert finish_commands == 1
+    launcher = tmp_path / LAUNCHER.name
+    launcher.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+    environment = os.environ.copy()
+    environment["LOCALAPPDATA"] = str(tmp_path / "local 한글 & space")
+    command_processor = Path(environment["SYSTEMROOT"]) / "System32" / "cmd.exe"
+    command = f'"{command_processor}" /d /s /c ""{launcher}" --candidate-finish"'
+    result = subprocess.run(
+        command,
+        env=environment,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 99, result.stderr
+    expected = (
+        f'COMMAND=candidate-finish --watch-root "{environment["LOCALAPPDATA"]}'
+        f'\\ImageMonitorWatch" --work-root "{environment["LOCALAPPDATA"]}'
+        '\\ImageMonitorCandidateSave"'
+    )
+    assert result.stdout.strip().splitlines()[-1] == expected
+    assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
+    assert not Path(environment["LOCALAPPDATA"]).exists()
 
 
 def inert_candidate_save_launcher_text():

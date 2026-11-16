@@ -200,17 +200,41 @@ def connect_owned_browser(driver, port: int):
 def close_probe_browser(browser, process) -> None:
     # Browser.close() on a CDP attachment only disconnects. Explicitly close the
     # disposable browser and independently confirm that the process actually exited.
+    diagnostics = {
+        "cdp_close_requested": False,
+        "cdp_error_type": None,
+        "transport_disconnect_attempted": False,
+        "transport_error_type": None,
+        "process_exit_confirmed": False,
+        "process_wait_seconds": 30,
+    }
     try:
         session = browser.new_browser_cdp_session()
+        diagnostics["cdp_close_requested"] = True
         session.send("Browser.close", timeout=5_000)
-    except Exception:
+    except Exception as error:
         # Closing the browser may disconnect before the CDP response arrives.
         # Process exit below is the required success signal, not this exception.
-        pass
+        diagnostics["cdp_error_type"] = type(error).__name__
     try:
         process.wait(timeout=10)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    # Some Chrome versions close their window before the process finishes
+    # shutting down. Release our attached debugging client, then allow a bounded
+    # grace period for that exact process. Disconnecting is not evidence of exit.
+    diagnostics["transport_disconnect_attempted"] = True
+    try:
+        browser.close()
+    except Exception as error:
+        diagnostics["transport_error_type"] = type(error).__name__
+    try:
+        process.wait(timeout=20)
     except subprocess.TimeoutExpired as error:
-        raise NativeUIError("Dedicated browser did not close; inspect it manually") from error
+        failure = NativeUIError("Dedicated browser did not close; inspect it manually")
+        failure.shutdown_diagnostics = diagnostics
+        raise failure from error
 
 
 def run_probe(work_root: Path, browser: str) -> dict:
@@ -274,6 +298,7 @@ def run_probe(work_root: Path, browser: str) -> dict:
                     "--no-first-run",
                     "--no-default-browser-check",
                     "--disable-background-networking",
+                    "--disable-background-mode",
                     "--force-renderer-accessibility",
                     "about:blank",
                 ],

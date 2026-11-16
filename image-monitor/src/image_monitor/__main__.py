@@ -62,6 +62,11 @@ def main() -> int:
     candidate_save.add_argument("--watch-root", type=Path, required=True)
     candidate_save.add_argument("--work-root", type=Path, required=True)
     candidate_save.add_argument("--browser", choices=("chrome",), default="chrome")
+    candidate_finish = commands.add_parser(
+        "candidate-finish", help="Verify completed candidate files and resolve a closed save"
+    )
+    candidate_finish.add_argument("--watch-root", type=Path, required=True)
+    candidate_finish.add_argument("--work-root", type=Path, required=True)
     site = commands.add_parser(
         "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
     )
@@ -90,6 +95,35 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "candidate-finish":
+        try:
+            from image_monitor.candidate_finish_runtime import (
+                run_candidate_finish_trial,
+                share_candidate_finish_report,
+            )
+
+            output = run_candidate_finish_trial(args.watch_root, args.work_root)
+            public_report = share_candidate_finish_report(output)
+        except KeyboardInterrupt:
+            parser.exit(130, "Completed candidate verification cancelled.\n")
+        except Exception as error:
+            parser.exit(2, f"Completed candidate verification stopped ({type(error).__name__}).\n")
+        print(json.dumps(public_report, ensure_ascii=False, indent=2))
+        if (
+            output.get("error_type") == "KeyboardInterrupt"
+            or output.get("status") == "candidate_finish_cancelled"
+        ):
+            return 130
+        return (
+            0
+            if output.get("status")
+            in {
+                "candidate_finish_completed",
+                "candidate_finish_no_pending",
+                "candidate_finish_busy",
+            }
+            else 2
+        )
     if args.command == "candidate-save-test":
         try:
             from image_monitor.candidate_save_runtime import (

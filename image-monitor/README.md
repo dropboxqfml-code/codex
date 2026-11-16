@@ -5,13 +5,15 @@ Windows에서 공개 게시글의 본문 이미지를 실제 우클릭과 브라
 현재 **검증한 예제 게시글 하나의 Chrome 저장과 재개**를 사용자 환경에서 완료했습니다.
 사용자 v12 결과로 한 검색 범위의 목록 두 페이지 구조를 확인했고, v13 결과로 기준점 저장과
 다음 주기의 새 후보 6개 기록을 확인했습니다. v14 사용자 결과에서는 기존 후보 두 개의
-작성 시각과 본문을 확인했고 한 후보에 이미지 두 개가 있었습니다. v15는 그 완료 관찰에
-명시적으로 묶인 **후보 한 게시글의 네이티브 저장 시험**을 추가합니다. 계속 실행하는 정기
-감시·모든 새 후보의 자동 저장·설정 UI는 아직 구현하지 않았습니다.
+작성 시각과 본문을 확인했고 한 후보에 이미지 두 개가 있었습니다. v15 사용자 결과에서 그
+후보의 **JPEG·PNG 두 파일 저장·검증·최종 확정**을 확인했지만 마지막 브라우저 종료 확인은
+중단됐습니다. v16은 기존 완료 파일과 메타데이터를 다시 검사하고 전용 브라우저의 종료를
+확인한 뒤 미해결 표시만 정리하는 한정 완료 확인을 추가합니다. 계속 실행하는 정기 감시·
+모든 새 후보의 자동 저장·설정 UI는 아직 구현하지 않았습니다.
 
 Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)에
 하나로 정리합니다. 기본 저장 시험과 게시글 저장·재개 명령도 유지합니다.
-개발용 패키징은 `python scripts/build_windows_bundle.py --version v15`이며 기존 ZIP을 덮어쓰지 않습니다.
+개발용 패키징은 `python scripts/build_windows_bundle.py --version v16`이며 기존 ZIP을 덮어쓰지 않습니다.
 
 ## 현재 구현
 
@@ -31,6 +33,11 @@ Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS
   본문 이미지가 없는 후보는 건너뛰고 로딩된 이미지 1~2개·기준점 이후 작성 시각을 확인한 대상을
   고정합니다. 별도 네이티브 DB와 출력 루트에서 기존 저장 작업자를 사용하며 발견 DB의 이미지
   작업은 0개로 유지합니다. 다시 실행해도 같은 선택과 완료 파일을 유지합니다.
+- 기존 후보의 저장 완료 보고서·고정 원본 관찰·완료 작업·확정 저널·파일 해시·Pillow 결과와
+  메타데이터를 읽기 전용으로 대조하는 `candidate-finish`를 추가합니다. 전용 브라우저가 남아
+  있으면 정확한 PID·생성 시각·프로필·세션·디버깅 포트 소유권을 확인한 뒤 정상 종료만 요청하고,
+  전체 프로필 종료를 확인해야 세션 공통 미해결 표시를 정리합니다. 이미지 재저장·작업 재대기·
+  이미지와 메타데이터 덮어쓰기는 없습니다.
 - 전용 프로필·Windows 세션 공통 잠금·미해결 저장 표시와 전경/창 소유권 보호.
 - 이미지 사이의 전경 이탈 시 선점 전 일시정지, 새 사용자 클릭과 게시글 재검사 후 재개.
 - 입력 전 중단이 기록·원본 관찰·빈 임시 폴더·브라우저 종료로 입증된 v9 실패의 개별 재개.
@@ -55,7 +62,10 @@ v9 사용자 TXT에서 실제 WEBP 한 개의 저장·검증·최종 확정을 �
 v13의 새 후보 6개 발견은 목록 발견 연결의 사용자 인수 결과이며 상세 작성 시각 필터·본문 분석·
 새 글 이미지 저장을 입증하지 않습니다. v14 결과에서는 두 후보의 기준점 이후 작성 시각과
 본문 이미지 0개/2개를 확인했습니다. 이미지 두 개와 첨부 한 개의 원본명 대응은 `ambiguous`여서
-원본명은 null로 유지합니다. v15 후보의 실제 네이티브 저장은 새 사용자 결과로 확인해야 합니다.
+원본명은 null로 유지합니다. v15 사용자 결과에서 후보의 `001.jpg`와 `002.png`가 모두 검증·
+확정되고 완료 2개·미완료 0개인 것을 확인했습니다. 전체 결과는 마지막 Chrome 종료 확인 실패로
+`candidate_save_manual_review`였으며 미해결 표시가 남았습니다. 창이 사라진 사실만으로 프로세스
+종료나 표시 해제를 단정하지 않습니다. v16의 완료 확인은 새 사용자 결과로 확인해야 합니다.
 Edge와 Chrome의 기본 합성 이미지 저장은 Windows CI와 사용자 보고에서 성공했으며,
 이번 통합 작업자의 완료 판독은 Chrome만 지원합니다.
 
@@ -75,6 +85,7 @@ uv run --locked --extra windows image-monitor save-post --work-root C:/IMPost --
 uv run --locked --extra windows image-monitor watch-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor candidate-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor candidate-save-test --watch-root C:/IMWatch --work-root C:/IMCandidateSave --browser chrome
+uv run --locked --extra windows image-monitor candidate-finish --watch-root C:/IMWatch --work-root C:/IMCandidateSave
 uv run --locked pytest -q
 uv run --locked ruff check .
 uv run --locked ruff format --check .
@@ -87,7 +98,8 @@ Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할
 `candidate-save-test`는 같은 발견 루트와 별도의 저장 루트를
 요구하며, Windows 실행기는 각각 `ImageMonitorWatch`와 `ImageMonitorCandidateSave`를 사용합니다.
 선택은 발견 루트의 `candidate-save-selection.json`에 고정합니다. 후보 시험에는 기존 v9용
-`--resume-preinput`을 적용하지 않습니다.
+`--resume-preinput`을 적용하지 않습니다. `candidate-finish`도 같은 두 루트와 고정 선택을 사용하며
+완료된 파일의 읽기 전용 확인과 종료 정리만 수행합니다. 새 브라우저·게시글 탐색·네이티브 입력은 없습니다.
 
 - [게시글 저장 작업자와 장애 복구](docs/native-post-save.md)
 - [검색 목록과 감시 기준점](docs/list-watch.md)
@@ -98,7 +110,9 @@ Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할
 중단 뒤 자동으로 재저장하거나 보류 상태를 초기화하지 않습니다. 명시적인 입력 전 재개는
 브라우저 종료와 로컬 기록을 대조해 검증한 실패 작업 하나만 다시 대기열에 넣고,
 이미 저장한 파일·확정 기록·재시도 이력을 유지합니다. 입력이 시작됐거나 근거가 불명확한
-보류 작업은 검토 상태를 유지합니다. 사용자 절차는 위 TXT 안내를 따릅니다.
+보류 작업은 검토 상태를 유지합니다. v16의 명시적 완료 확인은 이미 완료된 후보의 모든 로컬
+근거와 전용 프로필 종료가 확인된 경우에만 표시를 정리하며 이전 작업자 보고서는 보존합니다.
+사용자 절차는 위 TXT 안내를 따릅니다.
 
 직접 HTTP 이미지 저장·응답 바이트 추출·`download.save_as`·스크린샷·재인코딩은 사용하지 않습니다.
 알려진 원본 해시 비교는 합성 fixture 시험에만 사용하며 실제 게시글에서는 저장 파일의 해시를 기록합니다.

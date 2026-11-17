@@ -1,8 +1,9 @@
 """Recheck an already completed candidate's local files without changing them.
 
-The caller holds the watch and native locks. The report and journals must prove
-that every native writer completed before these read-only checks. Clearing the
-pending marker also requires separate proof that the old browser/profile stopped.
+The caller holds the watch and native locks. Frozen sources and finalized journals
+must prove every image completed before these read-only checks. Finishing a pending
+save additionally requires its exact shutdown-failure report, and clearing its
+marker requires separate proof that the old browser/profile stopped.
 This module never opens a browser, edits a queue, deletes a marker, or retries an image.
 """
 
@@ -203,6 +204,33 @@ def finish_completed_candidate(
     permit.validate()
     base, run_directory, save_root = _paths(base, pending)
     _report(report, run_directory, save_root, permit.image_count)
+    summary, _ = verify_completed_candidate_files(store, permit, base=base)
+    return summary
+
+
+def verify_completed_candidate_files(
+    store: QueueStore,
+    permit: CandidateSavePermit,
+    *,
+    base: Path,
+) -> tuple[dict, list[dict]]:
+    """Read completed journals and files without needing or changing a pending save.
+
+    The caller must hold the shared watch and native locks. The public summary
+    excludes source identities and paths. Private proofs pair each exact local
+    file with its verified digest so a viewer can check its bounded byte buffer
+    before caching it; these proofs must never be included in a shared report.
+    """
+    _require(isinstance(permit, CandidateSavePermit), "A frozen candidate permit is required")
+    permit.validate()
+    base = _directory(base)
+    _require(
+        base.is_absolute()
+        and not str(base).startswith("\\\\")
+        and re.fullmatch(r"session-[0-9]+", base.name),
+        "Completed candidate files require an exact local session save root",
+    )
+    save_root = _directory(base / "images")
     database = _plain_path(base / "queue.sqlite")
     _require(stat.S_ISREG(database.lstat().st_mode), "The existing native queue is missing")
     main = [row for row in store.connection.execute("PRAGMA database_list") if row[1] == "main"]
@@ -253,6 +281,7 @@ def finish_completed_candidate(
         "The native queue contains missing or unrelated candidate work",
     )
     files = []
+    proofs = []
     expected_sources = {image["stable_key"] for image in reference["images"]}
     _require(
         {job["stable_key"] for job in jobs} == expected_sources,
@@ -329,16 +358,18 @@ def finish_completed_candidate(
                 "The completed candidate metadata differs from its frozen journals",
             )
             metadata_paths.add(metadata_path)
-        files.append(
-            {"saved_filename": final.name}
-            | {
-                key: actual[key]
-                for key in ("detected_format", "file_size", "width", "height", "frames")
-            }
-        )
-    return {
-        "job_counts": {"observed": len(jobs), "completed": len(jobs), "unresolved": 0},
-        "saved_files": files,
-        "files_preserved": True,
-        "metadata_preserved": True,
-    }
+        public_file = {"saved_filename": final.name} | {
+            key: actual[key]
+            for key in ("detected_format", "file_size", "width", "height", "frames")
+        }
+        files.append(public_file)
+        proofs.append({"path": final, "sha256": actual["sha256"]} | public_file)
+    return (
+        {
+            "job_counts": {"observed": len(jobs), "completed": len(jobs), "unresolved": 0},
+            "saved_files": files,
+            "files_preserved": True,
+            "metadata_preserved": True,
+        },
+        proofs,
+    )

@@ -1,6 +1,7 @@
 """A local, capability-protected control window for background list monitoring."""
 
 import json
+import re
 import secrets
 import threading
 import uuid
@@ -39,12 +40,28 @@ _STATUS_FIELDS = (
     "detail_pending_count",
     "detail_completed_count",
     "detail_failed_count",
+    "saved_status",
+    "saved_reason",
+    "saved_error_type",
+    "saved_files_verified",
+    "saved_preview_count",
 )
 
 _DETAIL_FIELDS = ("order", "status", "time_status", "reason", "image_count", "pending_images")
+_SAVED_FIELDS = (
+    "saved_filename",
+    "detected_format",
+    "file_size",
+    "width",
+    "height",
+    "frames",
+    "preview_available",
+)
+_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp"}
+_PREVIEW_LIMIT = 16 * 1024 * 1024
 
 
-def _public_status(status):
+def _public_status(status, *, include_preview_ids=False):
     if not isinstance(status, dict):
         raise ValueError("A monitor status object is required")
     result = {key: status[key] for key in _STATUS_FIELDS if key in status}
@@ -57,6 +74,21 @@ def _public_status(status):
             for row in status["details"][:10]
             if isinstance(row, dict)
         ]
+    if isinstance(status.get("saved_files"), list):
+        result["saved_files"] = []
+        for row in status["saved_files"][:2]:
+            if not isinstance(row, dict):
+                continue
+            item = {key: row[key] for key in _SAVED_FIELDS if key in row}
+            preview_id = row.get("preview_id")
+            if (
+                include_preview_ids
+                and row.get("preview_available") is True
+                and isinstance(preview_id, str)
+                and re.fullmatch(r"[0-9a-f]{32}", preview_id)
+            ):
+                item["preview_id"] = preview_id
+            result["saved_files"].append(item)
     return result
 
 
@@ -89,7 +121,7 @@ class MonitorServer(ThreadingHTTPServer):
 
     def snapshot(self):
         return {
-            "status": _public_status(self.controller.status()),
+            "status": _public_status(self.controller.status(), include_preview_ids=True),
             "closing": self.closing.is_set(),
         }
 
@@ -117,18 +149,26 @@ class _MonitorHandler(BaseHTTPRequestHandler):
     def log_message(self, *_args):
         pass
 
-    def _respond(self, status, payload, *, html=False):
-        data = (
-            payload.encode("utf-8")
-            if html
-            else json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8")
-        )
+    def _respond(self, status, payload, *, html=False, image_type=None):
+        if image_type is not None:
+            if (
+                image_type not in _IMAGE_TYPES
+                or not isinstance(payload, bytes)
+                or not 0 < len(payload) <= _PREVIEW_LIMIT
+            ):
+                raise ValueError("A bounded verified image buffer is required")
+            data = payload
+            content_type = image_type
+        else:
+            data = (
+                payload.encode("utf-8")
+                if html
+                else json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8")
+            )
+            content_type = "text/html; charset=utf-8" if html else "application/json; charset=utf-8"
         self.close_connection = True
         self.send_response(status)
-        self.send_header(
-            "Content-Type",
-            "text/html; charset=utf-8" if html else "application/json; charset=utf-8",
-        )
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Connection", "close")
         self.send_header("Cache-Control", "no-store")
@@ -170,6 +210,22 @@ class _MonitorHandler(BaseHTTPRequestHandler):
                 )
             elif self.path == self.server.base_path + "api/status":
                 self._respond(200, self.server.snapshot())
+            elif self.path.startswith(self.server.base_path + "images/"):
+                if self.headers.get_all("Range"):
+                    self._respond(416, {"error": "range_not_supported"})
+                    return
+                image_id = self.path.removeprefix(self.server.base_path + "images/")
+                getter = getattr(self.server.controller, "saved_image", None)
+                cached = (
+                    getter(image_id)
+                    if re.fullmatch(r"[0-9a-f]{32}", image_id) and callable(getter)
+                    else None
+                )
+                if cached is None:
+                    self._respond(404, {"error": "not_found"})
+                else:
+                    content_type, data = cached
+                    self._respond(200, data, image_type=content_type)
             else:
                 self._respond(404, {"error": "not_found"})
         except Exception:
@@ -225,9 +281,14 @@ class _MonitorHandler(BaseHTTPRequestHandler):
                     or not 60 <= interval <= 300
                 ):
                     raise ValueError("Invalid interval")
-            elif name not in {"start", "pause", "stop", "exit", "inspect_candidates"} or set(
-                action
-            ) != {"action"}:
+            elif name not in {
+                "start",
+                "pause",
+                "stop",
+                "exit",
+                "inspect_candidates",
+                "refresh_saved",
+            } or set(action) != {"action"}:
                 raise ValueError("Invalid action")
         except (ValueError, UnicodeError, RecursionError, OSError):
             self._respond(400, {"error": "invalid_action"})
@@ -247,6 +308,8 @@ class _MonitorHandler(BaseHTTPRequestHandler):
                 controller.configure(action["interval_seconds"])
             elif name == "inspect_candidates":
                 controller.inspect_candidates()
+            elif name == "refresh_saved":
+                controller.refresh_saved()
             else:
                 controller.stop()
                 self.server._exit_reply_pending.set()
@@ -288,6 +351,7 @@ def share_monitor_report(report):
 def run_monitor_app(
     work_root: Path,
     *,
+    save_root: Path | None = None,
     controller_factory=MonitorController,
     server_factory=MonitorServer,
     opener=None,
@@ -296,6 +360,16 @@ def run_monitor_app(
     base = _plain_path(Path(work_root).absolute()).resolve()
     if str(base).startswith("\\\\"):
         raise NativeUIError("A local monitoring work root is required")
+    saved_base = None
+    if save_root is not None:
+        saved_base = _plain_path(Path(save_root).absolute()).resolve()
+        if (
+            str(saved_base).startswith("\\\\")
+            or saved_base == base
+            or saved_base.is_relative_to(base)
+            or base.is_relative_to(saved_base)
+        ):
+            raise NativeUIError("Saved results require a separate local output root")
     base.mkdir(parents=True, exist_ok=True)
     run_directory = base / "monitor-runs" / uuid.uuid4().hex
     run_directory.mkdir(parents=True)
@@ -314,7 +388,11 @@ def run_monitor_app(
     cancelled = False
     try:
         with watch_run_lock(base / "watch.sqlite", MONITOR_SCOPE, purpose="monitor"):
-            controller = controller_factory(base)
+            controller = (
+                controller_factory(base)
+                if saved_base is None
+                else controller_factory(base, save_root=saved_base)
+            )
             try:
                 server = server_factory(controller)
                 if opener is None:
@@ -325,6 +403,8 @@ def run_monitor_app(
                 if opener(server.url) is False:
                     raise NativeUIError("The local monitoring status window could not be opened")
                 report["ui_opened"] = True
+                if saved_base is not None and controller.status().get("phase") == "stopped":
+                    controller.refresh_saved()
                 report["last_stage"] = "status_window"
                 server.serve()
             except KeyboardInterrupt:

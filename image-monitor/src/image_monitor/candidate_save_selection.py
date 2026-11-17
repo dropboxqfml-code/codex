@@ -302,7 +302,9 @@ def select_candidate_save(
         if any(existing[key] != expected[key] for key in _FIELDS - {"control"}):
             raise QueueError("The frozen candidate save evidence changed")
         return permit
-    if baseline is None or queue.schema_version < 5:
+    # Read-only callers may verify an existing binding, never create a sidecar
+    # if it disappeared between their existence check and this reread.
+    if queue.read_only or baseline is None or queue.schema_version < 5:
         return None
     rows = queue.connection.execute(
         "SELECT attempt_id,post_id,result_json FROM candidate_details WHERE watch_name=? "

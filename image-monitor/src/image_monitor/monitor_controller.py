@@ -85,6 +85,51 @@ _REPORT_STATUSES = {
     "watch_test_partial",
     "watch_test_cancelled",
 }
+_SAVED_STATUSES = {"ready", "empty", "busy", "needs_review", "cancelled"}
+_SAVED_REASONS = {
+    "existing_saved_candidate_required",
+    "another_scan_owns_this_scope",
+    "native_save_in_progress",
+    "pending_save_requires_review",
+    "saved_catalog_requires_review",
+    "requested_stop",
+    "preview_limit",
+}
+_SAVED_MIMES = {
+    "JPEG": "image/jpeg",
+    "PNG": "image/png",
+    "WEBP": "image/webp",
+    "GIF": "image/gif",
+    "BMP": "image/bmp",
+}
+_SAVED_EXTENSIONS = {
+    "JPEG": "jpg",
+    "PNG": "png",
+    "WEBP": "webp",
+    "GIF": "gif",
+    "BMP": "bmp",
+    "TIFF": "tiff",
+}
+_SAVED_FILE_FIELDS = (
+    "saved_filename",
+    "detected_format",
+    "file_size",
+    "width",
+    "height",
+    "frames",
+    "preview_id",
+    "preview_available",
+)
+_MAX_PREVIEW_BYTES = 16 * 1024 * 1024
+_MAX_TOTAL_PREVIEW_BYTES = 32 * 1024 * 1024
+
+
+def _load_saved_catalog(*args, **kwargs):
+    # Import only when a configured local preview is requested. Opening the
+    # discovery screen without a save root keeps the earlier startup behavior.
+    from image_monitor.saved_catalog import load_saved_catalog
+
+    return load_saved_catalog(*args, **kwargs)
 
 
 def _safe_error_type(value):
@@ -118,6 +163,8 @@ class MonitorController:
         run_cycle=run_watch_trial,
         run_details=run_candidate_trial,
         clock=None,
+        save_root=None,
+        catalog_loader=_load_saved_catalog,
     ):
         self.work_root = _plain_path(Path(work_root).absolute()).resolve()
         if str(self.work_root).startswith("\\\\"):
@@ -128,6 +175,9 @@ class MonitorController:
         _stamp(self._clock.now())
         self._run_cycle = run_cycle
         self._run_details = run_details
+        self.save_root = Path(save_root) if save_root is not None else None
+        self._catalog_loader = catalog_loader
+        self._saved_images = {}
         settings = load_monitor_settings(self.work_root)
         self._lock = threading.RLock()
         self._wake = threading.Event()
@@ -163,6 +213,12 @@ class MonitorController:
             "detail_completed_count": 0,
             "detail_failed_count": 0,
             "details": [],
+            "saved_status": "disabled" if self.save_root is None else "empty",
+            "saved_reason": None,
+            "saved_error_type": None,
+            "saved_files_verified": 0,
+            "saved_preview_count": 0,
+            "saved_files": [],
         }
         try:
             self._read_source()
@@ -181,6 +237,7 @@ class MonitorController:
         with self._lock:
             result = self._state.copy()
             result["details"] = [row.copy() for row in result["details"]]
+            result["saved_files"] = [row.copy() for row in result["saved_files"]]
             result["settings_editable"] = result["phase"] == "stopped" and not self.is_alive()
             due = result["next_eligible_at"]
             result["remaining_seconds"] = (
@@ -218,6 +275,8 @@ class MonitorController:
             if self._state["phase"] == "needs_review":
                 raise QueueError("The monitor requires review before another start")
             if self.is_alive():
+                if self._state["task_kind"] == "saved":
+                    return self.status()
                 if self._pause.is_set() and not self._stop.is_set():
                     self._pause.clear()
                     self._wake.set()
@@ -232,6 +291,154 @@ class MonitorController:
             )
             self._thread.start()
             return self.status()
+
+    def refresh_saved(self):
+        """Refresh local completed files without doing I/O in the caller thread."""
+        with self._lock:
+            if (
+                self.is_alive()
+                or self._state["phase"] != "stopped"
+                or self._state["browser_closed"] is not True
+            ):
+                raise QueueError("Stop the monitor before checking saved images")
+            if self.save_root is None:
+                return self.status()
+            # Revoke all previous IDs before starting another bounded snapshot.
+            self._saved_images = {}
+            self._state.update(
+                task_kind="saved",
+                phase="verifying_saved",
+                saved_status="checking",
+                saved_reason=None,
+                saved_error_type=None,
+                saved_files_verified=0,
+                saved_preview_count=0,
+                saved_files=[],
+            )
+            self._stop.clear()
+            self._pause.clear()
+            self._wake.clear()
+            self._thread = threading.Thread(
+                target=self._work_saved, name="image-monitor-saved-files", daemon=True
+            )
+            self._thread.start()
+            return self.status()
+
+    def saved_image(self, image_id):
+        """Return a cached immutable raster only; never reopen a local path."""
+        if not isinstance(image_id, str) or not re.fullmatch(r"[0-9a-f]{32}", image_id):
+            return None
+        with self._lock:
+            return self._saved_images.get(image_id)
+
+    @staticmethod
+    def _saved_snapshot(snapshot):
+        """Project and validate a bounded loader result before publishing it."""
+        summary = getattr(snapshot, "summary", None)
+        images = getattr(snapshot, "images", None)
+        if not isinstance(summary, dict) or not isinstance(images, dict):
+            raise QueueError("Saved catalog did not return a snapshot")
+        status = summary.get("status")
+        reason = summary.get("reason")
+        if status not in _SAVED_STATUSES or reason is not None and reason not in _SAVED_REASONS:
+            raise QueueError("Saved catalog status is invalid")
+        files = summary.get("files")
+        verified, preview_count = summary.get("files_verified"), summary.get("preview_count")
+        if (
+            not isinstance(files, list)
+            or not 0 <= len(files) <= 2
+            or type(verified) is not int
+            or verified != len(files)
+            or type(preview_count) is not int
+            or not 0 <= preview_count <= verified
+            or len(images) != preview_count
+            or status == "ready"
+            and not 1 <= verified <= 2
+            or status != "ready"
+            and (files or images or verified or preview_count)
+        ):
+            raise QueueError("Saved catalog counts are invalid")
+        safe_files, expected_ids, names = [], set(), set()
+        total = 0
+        for row in files:
+            if not isinstance(row, dict):
+                raise QueueError("Saved catalog file metadata is invalid")
+            name, detected = row.get("saved_filename"), row.get("detected_format")
+            available, image_id = row.get("preview_available"), row.get("preview_id")
+            if (
+                not isinstance(name, str)
+                or not re.fullmatch(r"00[12]\.(?:jpg|png|webp|gif|bmp|tiff)", name)
+                or name in names
+                or detected not in _SAVED_EXTENSIONS
+                or not name.endswith("." + _SAVED_EXTENSIONS[detected])
+                or type(available) is not bool
+                or any(
+                    type(row.get(key)) is not int or not 1 <= row[key] <= 2**31 - 1
+                    for key in ("file_size", "width", "height", "frames")
+                )
+            ):
+                raise QueueError("Saved catalog file metadata is invalid")
+            names.add(name)
+            if available:
+                if (
+                    detected not in _SAVED_MIMES
+                    or not isinstance(image_id, str)
+                    or not re.fullmatch(r"[0-9a-f]{32}", image_id)
+                    or image_id in expected_ids
+                ):
+                    raise QueueError("Saved catalog preview identity is invalid")
+                expected_ids.add(image_id)
+                value = images.get(image_id)
+                if (
+                    not isinstance(value, tuple)
+                    or len(value) != 2
+                    or value[0] != _SAVED_MIMES.get(detected)
+                    or type(value[1]) is not bytes
+                    or not 0 < len(value[1]) <= _MAX_PREVIEW_BYTES
+                    or len(value[1]) != row["file_size"]
+                ):
+                    raise QueueError("Saved catalog preview data is invalid")
+                total += len(value[1])
+            elif image_id is not None:
+                raise QueueError("Unavailable previews cannot retain an image identity")
+            safe_files.append({key: row.get(key) for key in _SAVED_FILE_FIELDS})
+        if set(images) != expected_ids or total > _MAX_TOTAL_PREVIEW_BYTES:
+            raise QueueError("Saved catalog preview cache is invalid")
+        return {
+            "saved_status": status,
+            "saved_reason": reason,
+            "saved_error_type": _safe_error_type(summary.get("error_type")),
+            "saved_files_verified": verified,
+            "saved_preview_count": preview_count,
+            "saved_files": safe_files,
+        }, images.copy()
+
+    def _work_saved(self):
+        try:
+            snapshot = self._catalog_loader(
+                self.work_root, self.save_root, should_stop=self._requested_stop
+            )
+            state, images = self._saved_snapshot(snapshot)
+            with self._lock:
+                if self._requested_stop():
+                    self._state.update(saved_status="cancelled", saved_reason="requested_stop")
+                else:
+                    self._saved_images = images
+                    self._state.update(state)
+        except BaseException as error:
+            with self._lock:
+                self._saved_images = {}
+                self._state.update(
+                    saved_status="cancelled" if self._requested_stop() else "needs_review",
+                    saved_reason="requested_stop"
+                    if self._requested_stop()
+                    else "saved_catalog_requires_review",
+                    saved_error_type=_safe_error_type(type(error).__name__),
+                )
+        finally:
+            with self._lock:
+                if self._state["phase"] != "needs_review":
+                    self._state["phase"] = "stopped"
 
     def inspect_candidates(self):
         """Inspect an existing, bounded batch without starting list discovery."""

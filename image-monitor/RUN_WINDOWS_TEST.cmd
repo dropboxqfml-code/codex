@@ -276,7 +276,8 @@ if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo No browser is launched or force
 if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Local status screen for continuous list discovery. Background reader: Chrome.
 if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Watching begins only after you choose Start in the screen. Use Pause, Stop, or Exit there.
 if "%MONITOR%"=="1" >>"%LOG_FILE%" echo The new monitor watch records newly seen posts; previous trial records and saved images are retained.
-if "%MONITOR%"=="1" >>"%LOG_FILE%" echo No images are saved and no native recovery is started. Choose Exit when finished; this TXT opens automatically.
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Existing saved monitor images are verified locally when the screen opens; no site request or native input starts for this check.
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo No images are saved, no saved files are changed, and no native recovery is started. Choose Exit when finished; this TXT opens automatically.
 if "%MONITOR_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo Native saving of one frozen candidate from the local monitor, at most two reviewed images.
 if "%MONITOR_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo Review the dedicated Chrome window and click its save-start button once. Keep that window in front until saving finishes.
 if "%MONITOR_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo Existing watch records and earlier saved files are preserved. This save uses its separate monitor output directory.
@@ -421,10 +422,11 @@ start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
 :start_monitor
-echo Opening the local monitoring screen. Choose Start there to begin watching.
+echo Opening the local monitoring screen and checking existing saved results offline.
+echo Choose Start only when you want to begin list watching.
 echo Use Pause or Stop as needed, then choose Exit when finished. One result TXT will open.
 >>"%LOG_FILE%" echo STAGE: monitor
-"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor --work-root "%LOCALAPPDATA%\ImageMonitorWatch" >>"%LOG_FILE%" 2>&1
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor --work-root "%LOCALAPPDATA%\ImageMonitorWatch" --save-root "%LOCALAPPDATA%\ImageMonitorMonitorSave" >>"%LOG_FILE%" 2>&1
 set "MONITOR_CODE=%ERRORLEVEL%"
 >>"%LOG_FILE%" echo List monitor exit code: %MONITOR_CODE%
 if not "%MONITOR_CODE%"=="0" goto failed

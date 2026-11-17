@@ -101,6 +101,20 @@ input:disabled{background:#f4f6f4;color:#7d8985}
 .details-table th:first-child{width:26%}.details-table th:nth-child(2){width:43%}
 .details-table td small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
 .details-empty{color:var(--muted);font-size:13px;margin:15px 0 0}
+.saved-panel{margin-top:18px;padding:21px 25px}
+.saved-panel h2{font-size:18px;margin-top:2px;letter-spacing:-.5px}
+.saved-state{color:var(--teal);font-size:13px;font-weight:650;margin:13px 0 3px}
+.saved-state[data-state="needs_review"],.saved-state[data-state="busy"]{color:var(--amber)}
+.saved-help{color:var(--muted);font-size:13px;margin:0;line-height:1.8}
+.saved-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+.saved-grid:empty{display:none}
+.saved-card{min-width:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.saved-image{display:grid;place-items:center;min-height:120px;background:#f1f4f0;padding:12px}
+.saved-image img{display:block;width:100%;height:auto;max-height:430px;object-fit:contain}
+.saved-fallback{font-size:13px;color:var(--muted);padding:22px 8px;text-align:center}
+.saved-caption{padding:12px 15px}
+.saved-caption h3{font-size:14px;margin:0 0 5px;overflow-wrap:anywhere}
+.saved-caption p{font-size:12px;color:var(--muted);margin:0;overflow-wrap:anywhere}
 .message{font-size:13px;color:var(--teal);min-height:25px;padding:0 2px;margin:13px 0 0}
 .message[data-kind="error"]{color:var(--red)}
 .footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:19px;
@@ -110,7 +124,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   .connection{font-size:11px}.main-grid{grid-template-columns:1fr}.metrics{gap:9px}
   .metric{padding:16px 13px}.metric-value{font-size:26px}.metric-label{font-size:11px}
   h1{font-size:26px}.monitor-panel{padding:23px 20px}.settings{padding:21px}
-  .details-panel{padding:21px 20px}
+  .details-panel,.saved-panel{padding:21px 20px}.saved-grid{grid-template-columns:1fr}
   .setting-label{margin-top:17px}
   .settings form{display:grid;grid-template-columns:1fr 140px;gap:0 15px;align-items:end}
   .settings .setting-label,.settings .setting-help{grid-column:1/-1}
@@ -195,6 +209,18 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     </aside>
   </div>
 
+  <section class="panel saved-panel" aria-labelledby="saved-title">
+    <div class="details-heading">
+      <div><p class="section-label">이미 저장한 이미지</p>
+        <h2 id="saved-title">저장 결과를 바로 확인합니다.</h2></div>
+      <button class="button" id="refresh-saved" type="button" disabled>저장 결과 새로 확인</button>
+    </div>
+    <p class="saved-state" id="saved-state" data-state="disabled" role="status">
+      저장 결과 확인 꺼짐</p>
+    <p class="saved-help" id="saved-help">저장 결과 확인을 사용할 수 없습니다.</p>
+    <div class="saved-grid" id="saved-files"></div>
+  </section>
+
   <section class="panel details-panel" aria-labelledby="details-title">
     <div class="details-heading">
       <div><p class="section-label">기록된 후보의 내용</p>
@@ -244,6 +270,9 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       detail: '기존 후보의 작성 시각과 본문 이미지 정보를 읽고 있습니다. ' +
         '이미지 저장은 하지 않습니다.',
       tone: 'active'},
+    verifying_saved: {title: '저장 결과를 확인하고 있습니다.',
+      detail: '이 PC에 저장된 파일과 완료 기록을 읽고 있습니다. ' +
+        '목록 확인이나 이미지 저장은 시작하지 않습니다.', tone: 'active'},
     waiting: {title: '다음 확인을 기다리고 있습니다.',
       detail: '앞 확인을 마친 뒤 정해진 간격만큼 기다립니다.', tone: 'active'},
     pausing: {title: '일시정지를 준비하고 있습니다.',
@@ -291,6 +320,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   let connectionLost = false;
   let commandRevision = 0;
   let timer = null;
+  let savedSignature = null;
 
   function text(id, value) {
     const node = element(id);
@@ -354,10 +384,89 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       pending > 0 ? '확인할 후보가 있습니다. 감시를 중지한 뒤 후보 내용 확인을 눌러 주세요.' :
         '아직 내용을 확인한 후보가 없습니다.');
   }
+  function renderSaved(state) {
+    const savedStates = {
+      disabled: ['저장 결과 확인 꺼짐', '저장 결과 확인을 사용할 수 없습니다.'],
+      checking: ['저장 결과 확인 중',
+        '기존 파일과 완료 기록을 확인하고 있습니다. 이미지를 다시 저장하지 않습니다.'],
+      ready: ['검증 완료',
+        `검증한 파일 ${count(state.saved_files_verified)}개 · ` +
+        `미리보기 ${count(state.saved_preview_count)}개`],
+      empty: ['저장 결과 없음', '완료된 감시 후보의 저장 결과가 아직 없습니다.'],
+      busy: ['저장 중 또는 보류',
+        '다른 작업이 진행 중이거나 보류된 저장이 있습니다. 기존 파일은 유지됩니다.'],
+      needs_review: ['확인 필요',
+        '저장 파일과 완료 기록을 확인하지 못했습니다. 결과 TXT를 보내주세요.'],
+      cancelled: ['확인 중지', '저장 결과 확인을 멈췄습니다. 기존 파일은 유지됩니다.']
+    };
+    const status = typeof state.saved_status === 'string' &&
+      Object.hasOwn(savedStates, state.saved_status) ? state.saved_status : 'disabled';
+    text('saved-state', savedStates[status][0]);
+    element('saved-state').dataset.state = status;
+    text('saved-help', savedStates[status][1]);
+    const formats = ['JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'TIFF'];
+    const source = status === 'ready' && Array.isArray(state.saved_files) ?
+      state.saved_files.slice(0, 2) : [];
+    const files = source.filter(row => row && typeof row === 'object' && !Array.isArray(row))
+      .map(row => ({
+        name: typeof row.saved_filename === 'string' &&
+          /^[0-9]{3}\.(?:jpe?g|png|webp|gif|bmp|tiff?)$/i.test(row.saved_filename) ?
+          row.saved_filename : '저장 이미지',
+        format: formats.includes(row.detected_format) ? row.detected_format : '형식 확인 필요',
+        size: count(row.file_size), width: count(row.width), height: count(row.height),
+        frames: count(row.frames),
+        id: row.preview_available === true && typeof row.preview_id === 'string' &&
+          /^[0-9a-f]{32}$/.test(row.preview_id) ? row.preview_id : null
+      }));
+    const signature = JSON.stringify(files);
+    if (signature === savedSignature) return;
+    savedSignature = signature;
+    const container = element('saved-files');
+    container.replaceChildren();
+    for (const file of files) {
+      const card = document.createElement('article');
+      card.className = 'saved-card';
+      const picture = document.createElement('div');
+      picture.className = 'saved-image';
+      const fallback = document.createElement('p');
+      fallback.className = 'saved-fallback';
+      fallback.textContent = '이 파일은 미리보기를 제공하지 않습니다. 저장 파일은 유지됩니다.';
+      picture.appendChild(fallback);
+      if (file.id !== null) {
+        const image = document.createElement('img');
+        image.alt = `저장 이미지 ${file.name}`;
+        image.decoding = 'async';
+        fallback.hidden = true;
+        image.addEventListener('error', () => {
+          image.remove();
+          fallback.textContent = '미리보기를 불러오지 못했습니다. 저장 파일은 유지됩니다.';
+          fallback.hidden = false;
+        }, {once: true});
+        image.src = new URL(`images/${file.id}`, base).href;
+        picture.appendChild(image);
+      }
+      const caption = document.createElement('div');
+      caption.className = 'saved-caption';
+      const name = document.createElement('h3');
+      name.textContent = file.name;
+      const metadata = document.createElement('p');
+      const size = file.size >= 1024 * 1024 ?
+        `${(file.size / (1024 * 1024)).toLocaleString('ko-KR', {maximumFractionDigits: 1})} MB` :
+        file.size >= 1024 ?
+          `${(file.size / 1024).toLocaleString('ko-KR', {maximumFractionDigits: 1})} KB` :
+          `${file.size.toLocaleString('ko-KR')} 바이트`;
+      metadata.textContent = `${file.format} · ${file.width} × ${file.height} · ${size}` +
+        (file.frames > 0 ? ` · ${file.frames}프레임` : '');
+      caption.append(name, metadata);
+      card.append(picture, caption);
+      container.appendChild(card);
+    }
+  }
   function render(state) {
     current = state;
     const phase = typeof state.phase === 'string' ? state.phase : 'unknown';
     const detailTask = state.task_kind === 'details';
+    const savedTask = state.task_kind === 'saved';
     let info = phases[phase] || phases.unknown;
     if (detailTask) {
       const detailPhases = {
@@ -410,8 +519,9 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       element('interval').value = String(state.interval_seconds);
     }
     text('start', phase === 'paused' ? (detailTask ? '내용 확인 계속' : '계속 감시') : '감시 시작');
-    element('start').disabled = requesting || closing || !['stopped', 'paused'].includes(phase);
-    element('pause').disabled = requesting || closing ||
+    element('start').disabled = requesting || closing || !['stopped', 'paused'].includes(phase) ||
+      (savedTask && phase === 'paused');
+    element('pause').disabled = requesting || closing || savedTask ||
       !['starting', 'scanning', 'inspecting', 'waiting'].includes(phase);
     element('stop').disabled = requesting || closing ||
       ['stopped', 'stopping', 'unknown'].includes(phase);
@@ -421,7 +531,12 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     element('inspect-candidates').disabled = requesting || closing || phase !== 'stopped' ||
       state.settings_editable !== true || state.browser_closed !== true ||
       count(state.candidate_count) === 0 || count(state.detail_pending_count) === 0;
+    const savedConfigured = ['checking', 'ready', 'empty', 'busy', 'needs_review', 'cancelled']
+      .includes(state.saved_status);
+    element('refresh-saved').disabled = requesting || closing || phase !== 'stopped' ||
+      state.settings_editable !== true || state.browser_closed !== true || !savedConfigured;
     renderDetails(state);
+    renderSaved(state);
   }
   function finishScreen() {
     ended = true;
@@ -432,7 +547,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       '이 창은 닫아도 됩니다.');
     element('status-mark').className = 'status-mark';
     text('countdown', '');
-    const controls = ['start', 'pause', 'stop', 'apply', 'exit', 'interval', 'inspect-candidates'];
+    const controls = ['start', 'pause', 'stop', 'apply', 'exit', 'interval',
+      'inspect-candidates', 'refresh-saved'];
     for (const id of controls) {
       element(id).disabled = true;
     }
@@ -482,6 +598,10 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     requesting = true;
     commandRevision += 1;
     if (current) render(current);
+    if (name === 'refresh_saved') {
+      savedSignature = null;
+      element('saved-files').replaceChildren();
+    }
     message('');
     const body = {action: name};
     if (name === 'configure') body.interval_seconds = interval;
@@ -507,6 +627,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   }
   element('start').addEventListener('click', () => action('start'));
   element('inspect-candidates').addEventListener('click', () => action('inspect_candidates'));
+  element('refresh-saved').addEventListener('click', () => action('refresh_saved'));
   element('pause').addEventListener('click', () => action('pause'));
   element('stop').addEventListener('click', () => action('stop'));
   element('exit').addEventListener('click', () => action('exit'));

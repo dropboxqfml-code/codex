@@ -572,7 +572,10 @@ def test_monitor_command_preserves_watch_root_and_has_no_browser_native_or_autos
         check=False,
     )
     assert result.returncode == 100, result.stderr
-    expected = f'COMMAND=monitor --work-root "{environment["LOCALAPPDATA"]}\\ImageMonitorWatch"'
+    expected = (
+        f'COMMAND=monitor --work-root "{environment["LOCALAPPDATA"]}\\ImageMonitorWatch" '
+        f'--save-root "{environment["LOCALAPPDATA"]}\\ImageMonitorMonitorSave"'
+    )
     assert result.stdout.strip().splitlines()[-1] == expected
     assert not list(launcher.parent.glob("WINDOWS_TEST_RESULT-*.txt"))
     assert not Path(environment["LOCALAPPDATA"]).exists()

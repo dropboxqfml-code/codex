@@ -23,12 +23,19 @@ v18에서는 같은 화면의 정지 상태에서 기존 후보 두 개의 내�
 
 v19의 별도 `RUN_MONITOR_SAVE.cmd`는 이 `목록 감시` 범위의 완료 상세 관찰에서 후보 하나를
 고정해 기존 Chrome 네이티브 저장 작업자에 연결합니다. 전용 Chrome에서 `저장 시작`을 누른 뒤
-그 창을 앞에 유지해야 합니다. 이전 후보 시험의 선택·저장 위치와 분리하며 모든 후보의 이미지
-자동 저장과 다중 갤러리 설정은 아직 없습니다.
+그 창을 앞에 유지해야 합니다. 사용자 결과에서 JPEG 한 개의 저장·검증·확정과 브라우저 정상
+종료·미해결 표시 해제를 확인했습니다. 이전 후보 시험의 선택·저장 위치와 분리하며 모든 후보의
+이미지 자동 저장과 다중 갤러리 설정은 아직 없습니다.
+
+v20은 `RUN_MONITOR.cmd`의 같은 로컬 화면에 **저장 결과**를 추가합니다. 화면을 열면 정지
+상태에서 기존 완료 파일을 한 번 검증하고, 감시 제어 아래의 저장 결과 영역에 미리보기와 형식·
+크기·해상도를 표시합니다. 아래로 스크롤해야 보일 수 있습니다. 이번 확인에는 감시 시작·후보
+내용 확인·네이티브 저장을 다시 실행할 필요가 없습니다. 현재 Windows 세션에 저장한 한 고정
+후보의 결과를 읽는 기능이며 원본 사이트 접속·이미지 재저장·자동 복구는 하지 않습니다.
 
 Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)에
 하나로 정리합니다. 기본 저장 시험과 게시글 저장·재개 명령도 유지합니다.
-개발용 패키징은 `python scripts/build_windows_bundle.py --version v19`이며 기존 ZIP을 덮어쓰지 않습니다.
+개발용 패키징은 `python scripts/build_windows_bundle.py --version v20`이며 기존 ZIP을 덮어쓰지 않습니다.
 
 ## 현재 구현
 
@@ -63,6 +70,12 @@ Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS
   이전 `검색 감시 시험`의 선택·저장 파일은 유지하며 범위가 다른 관찰을 섞지 않습니다.
   목록·상세 확인을 반복하지 않고 전용 Chrome의 현재 헤더·이미지 집합을 허가와 다시 대조합니다.
   로컬 감시 화면의 백그라운드 작업에 네이티브 저장을 넣지 않고 별도 실행기의 주 스레드에서 처리합니다.
+- 로컬 화면의 저장 결과는 고정 선택과 현재 세션의 기존 DB·완료 저널·파일·메타데이터를 읽기
+  전용으로 대조합니다. Pillow와 배타적 해시 검증을 통과한 원본 파일 바이트만 메모리에 보관하며
+  새 이미지 수집·재인코딩·파일 변경은 없습니다. 정지 상태의 `저장 결과 새로 확인`으로 명시적으로
+  다시 읽을 수 있습니다. 미해결 네이티브 저장이 있거나 근거가 맞지 않으면 파일을 표시하지 않습니다.
+  JPEG·PNG·WEBP·GIF·BMP는 파일당 16MiB·전체 32MiB 이내에서 최대 두 개를 표시하고,
+  TIFF나 한도를 넘는 파일은 검증된 정보만 표시합니다. 전체 과거 저장 폴더를 탐색하는 기능은 아닙니다.
 - 기존 후보의 저장 완료 보고서·고정 원본 관찰·완료 작업·확정 저널·파일 해시·Pillow 결과와
   메타데이터를 읽기 전용으로 대조하는 `candidate-finish`를 추가합니다. 전용 브라우저가 남아
   있으면 정확한 PID·생성 시각·프로필·세션·디버깅 포트 소유권을 확인한 뒤 정상 종료만 요청하고,
@@ -116,6 +129,7 @@ uv sync --locked --extra windows
 uv run --locked --extra windows image-monitor save-post --work-root C:/IMPost --browser chrome
 uv run --locked --extra windows image-monitor watch-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor monitor --work-root C:/IMWatch
+uv run --locked --extra windows image-monitor monitor --work-root C:/IMWatch --save-root C:/IMMonitorSave
 uv run --locked --extra windows image-monitor candidate-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor candidate-save-test --watch-root C:/IMWatch --work-root C:/IMCandidateSave --browser chrome
 uv run --locked --extra windows image-monitor candidate-finish --watch-root C:/IMWatch --work-root C:/IMCandidateSave
@@ -133,6 +147,11 @@ Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할
 가져오거나 초기화하지 않습니다. 화면을 열기만 해서는 사이트에 접속하지 않습니다.
 시작·대기·중지 상태와 새 후보 수를 로컬 화면에서 확인하고 종료하면 결과 TXT를 엽니다.
 일시정지·중지는 진행 중인 탐색을 즉시 강제 종료하지 않고 안전한 종료가 끝날 때까지 기다립니다.
+`RUN_MONITOR.cmd`는 기존 `ImageMonitorMonitorSave`를 열람 루트로 전달합니다. 저장 결과를
+사용하는 화면은 열자마자 정지 상태에서 로컬 검증을 한 번 시작합니다. 저장 결과 영역에서
+이미지를 확인한 뒤 `프로그램 종료`를 누르면 결과 TXT가 열립니다. 새 저장이나 감시 시작은
+필요하지 않으며 다른 작업을 계속할 수 있습니다. 개발용 `monitor --save-root`는 선택 옵션으로,
+생략하면 기존 감시 화면만 열고 저장 결과 검증은 시작하지 않습니다.
 기존 감시 후보의 내용만 확인하려면 `RUN_MONITOR.cmd`를 열고 정지 상태에서 `후보 내용 확인`을
 한 번 누릅니다. 완료 후 정지 상태가 되면 `프로그램 종료`를 눌러 자동으로 열린 결과 TXT를
 전달하면 됩니다. 이 동작은 새 목록 탐색·기준점 초기화·이미지 저장·목록 감시 자동 재개를
@@ -169,7 +188,7 @@ Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할
 직접 HTTP 이미지 저장·응답 바이트 추출·`download.save_as`·스크린샷·재인코딩은 사용하지 않습니다.
 알려진 원본 해시 비교는 합성 fixture 시험에만 사용하며 실제 게시글에서는 저장 파일의 해시를 기록합니다.
 남은 작업은 다른 게시글의 본문 구조 검증·장시간 감시 및 재시작 보존의 사용자 인수·누락 구간 재탐색·
-상세 시각 필터의 다른 분기 인수와 모든 후보의 이미지 작업자 연결·다중 갤러리 설정·로컬 열람·
+상세 시각 필터의 다른 분기 인수와 모든 후보의 이미지 작업자 연결·다중 갤러리 설정·전체 저장 이력 열람·
 네이티브 저장의 긴급 중단 UI·용량 관리,
 보류 작업 수동 처리, 화면 잠금·다중 모니터·배율의 추가 인수 시험,
 Pillow 단일 디코딩 호출의 프로세스 격리입니다.

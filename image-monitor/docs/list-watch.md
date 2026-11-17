@@ -8,8 +8,9 @@
 v17은 별도 범위에서 시작·일시정지·재개·중지할 수 있는 주기적 목록 발견을 연결했습니다.
 사용자 결과에서 두 주기·새 후보 3개와 정상 종료를 확인했습니다. v18에서는 같은 화면의 정지
 상태에서 기존 후보 두 개의 작성 시각·본문 이미지 관찰과 정상 종료를 확인했습니다. 이 읽기
-전용 연결과 별도로 v19는 `목록 감시`의 완료 관찰에 묶인 한 후보를 별도 실행기로 저장합니다.
-정기 목록 감시가 이미지 작업자나 모든 새 후보의 자동 저장을 실행하지는 않습니다.
+전용 연결과 별도로 v19에서는 `목록 감시`의 완료 관찰에 묶인 한 후보의 JPEG 저장·검증·확정과
+정상 종료를 사용자 환경에서 확인했습니다. v20은 같은 로컬 화면에서 기존 완료 파일을 검증하고
+표시합니다. 정기 목록 감시가 이미지 작업자나 모든 새 후보의 자동 저장을 실행하지는 않습니다.
 
 ## 읽기 전용 관찰과 사용자 v12 근거
 
@@ -256,6 +257,35 @@ TXT 하나에 정리하며 별도 명령 입력이나 새 목록 감시 실행�
 이미지 재저장이 없으며 일반적인 미완료 작업 복구로 확대하지 않습니다. 기본 사용자 시험은
 저장 실행기 한 번으로 결과 TXT를 받는 절차이고 완료 정리 실행기를 추가로 요구하지 않습니다.
 
+## v20 기존 저장 결과의 로컬 확인
+
+`RUN_MONITOR.cmd`는 기존 `ImageMonitorMonitorSave`를 저장 결과 루트로 전달합니다. 화면을
+열면 정지 상태에서 백그라운드 로컬 확인을 한 번 시작하며, 감시 제어 아래·후보 내용 확인 위의
+저장 결과 영역에 검증한 파일과 미리보기를 표시합니다. 아래로 스크롤해야 보일 수 있습니다.
+별도 감시 시작·후보 내용 확인·네이티브 저장 시작은 필요하지 않으며 다른 작업을 계속할 수
+있습니다. 정지 상태의 `저장 결과 새로 확인`은 기존 결과를 명시적으로 다시 읽습니다.
+
+열람 대상은 `monitor-save-selection.json`의 한 고정 후보와 현재 Windows 세션의 기존
+`queue.sqlite`에 묶입니다. 발견 DB와 네이티브 DB를 읽기 전용으로 열고, 선택·허가·완료 작업·
+확정 저널·고정 폴더 계획·메타데이터·Pillow 결과·배타적 SHA-256을 대조합니다. 같은 공통
+탐색 잠금과 네이티브 저장 잠금을 사용하며 미해결 저장이 있으면 표시하지 않습니다. 누락된
+선택·DB·저장 파일을 만들거나 다른 범위·세션·임의 과거 폴더로 대체하지 않습니다.
+
+로컬 파일 확인은 사이트 대기나 접근 차단 중에도 실행할 수 있습니다. 원본 사이트 요청이나
+이미지 재다운로드·네이티브 입력·재인코딩·보류 표시 변경·자동 복구는 하지 않습니다. 기존
+완료 정리는 같은 파일 검증기를 재사용하지만 이전 완료 보고서와 미해결 표시의 엄격한 확인
+조건을 유지합니다. 열람만으로 종료 정리를 대신하거나 표시를 해제하지 않습니다.
+
+검증된 원본 바이트를 파일당 16MiB·전체 32MiB 이내에서 최대 두 개 메모리에 보관합니다.
+JPEG·PNG·WEBP·GIF·BMP는 이 범위에서 미리보기를 제공하고 TIFF·한도 초과는 파일 정보만
+표시합니다. 로컬 HTTP 서버는 같은 비밀 경로 아래의 임의 32자리 식별자로 메모리 바이트만
+전달하며 사용자 경로를 받아 파일을 열지 않습니다. 공유 TXT에는 미리보기 식별자·로컬 경로·
+원본 URL·해시를 넣지 않습니다.
+
+개발용 `monitor --save-root`는 선택 옵션입니다. 생략하면 기존 감시 화면 동작을 유지합니다.
+이번 사용자 확인은 실행기를 열고 저장 결과 이미지를 본 뒤 `프로그램 종료`를 눌러 열린 TXT를
+전달하는 절차이며, 사용자 환경의 새 열람 결과는 별도로 확인합니다.
+
 ## 영구 기록과 개발 명령
 
 별도 `watch.sqlite`의 `watch_*` 테이블에 기준점·후보·관찰·미확인 이력을
@@ -269,6 +299,7 @@ TXT 하나에 정리하며 별도 명령 입력이나 새 목록 감시 실행�
 ```powershell
 uv run --locked --extra windows image-monitor watch-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor monitor --work-root C:/IMWatch
+uv run --locked --extra windows image-monitor monitor --work-root C:/IMWatch --save-root C:/IMMonitorSave
 uv run --locked --extra windows image-monitor candidate-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor candidate-save-test --watch-root C:/IMWatch --work-root C:/IMCandidateSave --browser chrome
 uv run --locked --extra windows image-monitor monitor-save-test --watch-root C:/IMWatch --work-root C:/IMMonitorSave --browser chrome

@@ -50,6 +50,9 @@ def main() -> int:
         "monitor", help="Open the local list-monitoring screen; start watching explicitly"
     )
     monitor.add_argument("--work-root", type=Path, required=True)
+    monitor.add_argument(
+        "--save-root", type=Path, help="Read existing monitor-saved images for local preview"
+    )
     watch_test = commands.add_parser(
         "watch-test", help="Run a bounded public-list discovery trial; never save images"
     )
@@ -107,7 +110,11 @@ def main() -> int:
         try:
             from image_monitor.monitor_app import run_monitor_app, share_monitor_report
 
-            output = run_monitor_app(args.work_root)
+            output = (
+                run_monitor_app(args.work_root, save_root=args.save_root)
+                if args.save_root is not None
+                else run_monitor_app(args.work_root)
+            )
             public_report = share_monitor_report(output)
         except KeyboardInterrupt:
             parser.exit(130, "List monitoring cancelled.\n")

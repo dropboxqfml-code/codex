@@ -43,7 +43,9 @@ _STATUS_FIELDS = (
     "saved_status",
     "saved_reason",
     "saved_error_type",
+    "saved_groups_verified",
     "saved_files_verified",
+    "saved_files_omitted",
     "saved_preview_count",
 )
 
@@ -76,10 +78,17 @@ def _public_status(status, *, include_preview_ids=False):
         ]
     if isinstance(status.get("saved_files"), list):
         result["saved_files"] = []
-        for row in status["saved_files"][:2]:
+        for row in status["saved_files"][:20]:
             if not isinstance(row, dict):
                 continue
             item = {key: row[key] for key in _SAVED_FIELDS if key in row}
+            group_id = row.get("group_id")
+            if (
+                include_preview_ids
+                and isinstance(group_id, str)
+                and re.fullmatch(r"[0-9a-f]{32}", group_id)
+            ):
+                item["group_id"] = group_id
             preview_id = row.get("preview_id")
             if (
                 include_preview_ids
@@ -352,6 +361,7 @@ def run_monitor_app(
     work_root: Path,
     *,
     save_root: Path | None = None,
+    batch_root: Path | None = None,
     controller_factory=MonitorController,
     server_factory=MonitorServer,
     opener=None,
@@ -360,6 +370,8 @@ def run_monitor_app(
     base = _plain_path(Path(work_root).absolute()).resolve()
     if str(base).startswith("\\\\"):
         raise NativeUIError("A local monitoring work root is required")
+    if batch_root is not None and save_root is None:
+        raise NativeUIError("Batch saved results require the legacy saved-output root")
     saved_base = None
     if save_root is not None:
         saved_base = _plain_path(Path(save_root).absolute()).resolve()
@@ -370,6 +382,16 @@ def run_monitor_app(
             or base.is_relative_to(saved_base)
         ):
             raise NativeUIError("Saved results require a separate local output root")
+    batch_base = None
+    if batch_root is not None:
+        batch_base = _plain_path(Path(batch_root).absolute()).resolve()
+        if str(batch_base).startswith("\\\\") or any(
+            batch_base == other
+            or batch_base.is_relative_to(other)
+            or other.is_relative_to(batch_base)
+            for other in (base, saved_base)
+        ):
+            raise NativeUIError("Batch saved results require a separate local output root")
     base.mkdir(parents=True, exist_ok=True)
     run_directory = base / "monitor-runs" / uuid.uuid4().hex
     run_directory.mkdir(parents=True)
@@ -388,11 +410,12 @@ def run_monitor_app(
     cancelled = False
     try:
         with watch_run_lock(base / "watch.sqlite", MONITOR_SCOPE, purpose="monitor"):
-            controller = (
-                controller_factory(base)
-                if saved_base is None
-                else controller_factory(base, save_root=saved_base)
-            )
+            controller_options = {}
+            if saved_base is not None:
+                controller_options["save_root"] = saved_base
+            if batch_base is not None:
+                controller_options["batch_root"] = batch_base
+            controller = controller_factory(base, **controller_options)
             try:
                 server = server_factory(controller)
                 if opener is None:

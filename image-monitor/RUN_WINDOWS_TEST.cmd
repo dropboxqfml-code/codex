@@ -515,7 +515,7 @@ echo Opening the local monitoring screen and checking existing saved results off
 echo Choose Start only when you want to begin list watching.
 echo Use Pause or Stop as needed, then choose Exit when finished. One result TXT will open.
 >>"%LOG_FILE%" echo STAGE: monitor
-"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor --work-root "%LOCALAPPDATA%\ImageMonitorWatch" --save-root "%LOCALAPPDATA%\ImageMonitorMonitorSave" >>"%LOG_FILE%" 2>&1
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor --work-root "%LOCALAPPDATA%\ImageMonitorWatch" --save-root "%LOCALAPPDATA%\ImageMonitorMonitorSave" --batch-root "%LOCALAPPDATA%\ImageMonitorBatch" >>"%LOG_FILE%" 2>&1
 set "MONITOR_CODE=%ERRORLEVEL%"
 >>"%LOG_FILE%" echo List monitor exit code: %MONITOR_CODE%
 if not "%MONITOR_CODE%"=="0" goto failed

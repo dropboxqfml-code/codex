@@ -9,6 +9,9 @@ v16에서 기존 두 파일과 메타데이터 보존·이전 브라우저 종�
 v16은 이미 종료된 브라우저를 확인한 결과이며 사용자 PC에서 새 CDP 재연결 종료를 실행한
 증거는 아닙니다.
 
+원 설계와 현재 구현·사용자 인수 범위의 차이는 [프로젝트 검토](docs/project-review.md)에
+정리했습니다. 목록 발견부터 상세 확인·저장까지 계속 이어지는 전체 자동 수집은 아직 완료되지 않았습니다.
+
 v17은 **목록 감시를 시작·일시정지·중지하는 로컬 상태 화면**을 추가했습니다. 사용자 결과에서
 두 주기 실행·새 후보 3개 기록·정상 종료를 확인했습니다. 검토한 검색 범위의 목록을
 주기적으로 읽어 새 후보를 기록하며 이미지 자동 저장은 연결하지 않습니다.
@@ -39,12 +42,19 @@ v20 사용자 TXT에서는 기존 JPEG 한 개의 재검증과 미리보기 캐�
 v21의 `RUN_MONITOR_BATCH.cmd`는 이미 상세 확인한 `목록 감시` 후보를 이어 처리합니다.
 기존 v19 완료 파일을 읽기 전용으로 재검증해 새 저장 이력에 등록하고 재저장하지 않으며,
 새 네이티브 시도는 한 실행에 최대 두 번으로 제한합니다. 후보별 출력은 별도
-`ImageMonitorBatch`에 분리합니다. 새 파일은 아직 v20의 기존 미리보기에 연결하지 않았습니다.
-정기 감시가 새 후보를 계속 저장하는 전체 자동화와는 구분합니다.
+`ImageMonitorBatch`에 분리합니다. 사용자 v21 결과에서 이전 완료 한 건의 등록·재저장 건너뜀과
+다른 후보 한 건의 새 JPEG 저장·검증·확정·정상 종료를 확인했습니다. 새 후보 두 건을 한 실행에서
+저장한 근거는 아니며 정기 감시가 새 후보를 계속 저장하는 전체 자동화와 구분합니다.
+
+현재 v22는 **기존 완료 파일과 배치 완료 파일을 같은 저장 결과 화면에서 열람하는 연결**을
+추가하며 Windows 사용자 표시 확인은 대기 중입니다. 완료 원장에 등록된 기존 파일은 중복해서
+추가하지 않으며 서로 다른 게시글의 같은 `001.jpg`도 `저장 묶음 1`·`저장 묶음 2`로 구분합니다.
+이번 사용자 확인에서는 v19와 v21에서 저장한 서로 다른 두 이미지가 예상됩니다. 화면을 열면
+정지 상태에서 로컬 검증만 수행하며 목록·상세 탐색이나 네이티브 저장은 시작하지 않습니다.
 
 Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)에
 하나로 정리합니다. 기본 저장 시험과 게시글 저장·재개 명령도 유지합니다.
-개발용 패키징은 `python scripts/build_windows_bundle.py --version v21`이며 기존 ZIP을 덮어쓰지 않습니다.
+개발용 패키징은 `python scripts/build_windows_bundle.py --version v22`이며 기존 ZIP을 덮어쓰지 않습니다.
 
 ## 현재 구현
 
@@ -86,12 +96,16 @@ Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS
   서비스 대기·접근 차단과 탐색 진행 여부가 불명확한 상태는 현재 버전의 목록·상세·저장 진입점에
   함께 적용합니다. 삭제된 후보는 입력 전·빈 네이티브 DB·브라우저 종료·보류 없음이 입증된
   404/410에만 해당 후보를 소진하고 다음 후보로 넘어갑니다.
-- 로컬 화면의 저장 결과는 고정 선택과 현재 세션의 기존 DB·완료 저널·파일·메타데이터를 읽기
-  전용으로 대조합니다. Pillow와 배타적 해시 검증을 통과한 원본 파일 바이트만 메모리에 보관하며
-  새 이미지 수집·재인코딩·파일 변경은 없습니다. 정지 상태의 `저장 결과 새로 확인`으로 명시적으로
-  다시 읽을 수 있습니다. 미해결 네이티브 저장이 있거나 근거가 맞지 않으면 파일을 표시하지 않습니다.
-  JPEG·PNG·WEBP·GIF·BMP는 파일당 16MiB·전체 32MiB 이내에서 최대 두 개를 표시하고,
-  TIFF나 한도를 넘는 파일은 검증된 정보만 표시합니다. 전체 과거 저장 폴더를 탐색하는 기능은 아닙니다.
+- 로컬 화면의 저장 결과는 현재 세션의 기존 DB·완료 저널·파일·메타데이터를 읽기 전용으로
+  대조합니다. 배치 루트를 지정하면 원장의 완료 목록을 고정해 모든 완료 건의 원본 관찰·허가와
+  파일을 검증하고, 이력에 등록한 이전 단일 저장은 한 번만 포함합니다. 익명 저장 묶음으로 같은
+  파일명을 구분하며 검증 후 파일 정보 최대 20개를 표시합니다. Pillow와 배타적 해시 검증을
+  통과한 JPEG·PNG·WEBP·GIF·BMP 원본 바이트만 파일당 16MiB·전체 32MiB 이내에서 메모리에
+  보관합니다. TIFF나 미리보기 한도를 넘는 표시 항목은 검증된 정보만 보여주며 20개를 넘는
+  완료 파일도 검증 수와 생략 수에 반영합니다. 정지 상태의 `저장 결과 새로 확인`으로 다시 읽을 수
+  있습니다. 미해결 네이티브 저장이나 일치하지 않는 근거가 있으면 파일을 표시하지 않습니다.
+  열람은 목록·상세 탐색·네이티브 저장·원장 변경을 수행하지 않으며 새 이미지 수집·재인코딩·
+  파일 변경도 없습니다. 전체 과거 저장 폴더를 임의로 탐색하는 기능은 아닙니다.
 - 기존 후보의 저장 완료 보고서·고정 원본 관찰·완료 작업·확정 저널·파일 해시·Pillow 결과와
   메타데이터를 읽기 전용으로 대조하는 `candidate-finish`를 추가합니다. 전용 브라우저가 남아
   있으면 정확한 PID·생성 시각·프로필·세션·디버깅 포트 소유권을 확인한 뒤 정상 종료만 요청하고,
@@ -146,6 +160,7 @@ uv run --locked --extra windows image-monitor save-post --work-root C:/IMPost --
 uv run --locked --extra windows image-monitor watch-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor monitor --work-root C:/IMWatch
 uv run --locked --extra windows image-monitor monitor --work-root C:/IMWatch --save-root C:/IMMonitorSave
+uv run --locked --extra windows image-monitor monitor --work-root C:/IMWatch --save-root C:/IMMonitorSave --batch-root C:/IMMonitorBatch
 uv run --locked --extra windows image-monitor candidate-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor candidate-save-test --watch-root C:/IMWatch --work-root C:/IMCandidateSave --browser chrome
 uv run --locked --extra windows image-monitor candidate-finish --watch-root C:/IMWatch --work-root C:/IMCandidateSave
@@ -165,11 +180,12 @@ Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할
 가져오거나 초기화하지 않습니다. 화면을 열기만 해서는 사이트에 접속하지 않습니다.
 시작·대기·중지 상태와 새 후보 수를 로컬 화면에서 확인하고 종료하면 결과 TXT를 엽니다.
 일시정지·중지는 진행 중인 탐색을 즉시 강제 종료하지 않고 안전한 종료가 끝날 때까지 기다립니다.
-`RUN_MONITOR.cmd`는 기존 `ImageMonitorMonitorSave`를 열람 루트로 전달합니다. 저장 결과를
-사용하는 화면은 열자마자 정지 상태에서 로컬 검증을 한 번 시작합니다. 저장 결과 영역에서
-이미지를 확인한 뒤 `프로그램 종료`를 누르면 결과 TXT가 열립니다. 새 저장이나 감시 시작은
-필요하지 않으며 다른 작업을 계속할 수 있습니다. 개발용 `monitor --save-root`는 선택 옵션으로,
-생략하면 기존 감시 화면만 열고 저장 결과 검증은 시작하지 않습니다.
+`RUN_MONITOR.cmd`는 기존 `ImageMonitorMonitorSave`와 `ImageMonitorBatch`를 열람 루트로
+전달합니다. 화면은 열자마자 정지 상태에서 로컬 검증을 한 번 시작합니다. 저장 결과 영역에서
+서로 다른 두 이미지와 저장 묶음을 확인한 뒤 `프로그램 종료`를 누르면 결과 TXT가 열립니다.
+다른 작업을 계속할 수 있습니다. 개발용 `monitor --save-root`는 선택 옵션으로 생략하면 기존
+감시 화면만 열고 저장 결과 검증은 시작하지 않습니다. 추가 옵션 `--batch-root`는 `--save-root`를
+함께 지정해야 하며 생략하면 기존 단일 저장 결과만 검증합니다.
 기존 감시 후보의 내용만 확인하려면 `RUN_MONITOR.cmd`를 열고 정지 상태에서 `후보 내용 확인`을
 한 번 누릅니다. 완료 후 정지 상태가 되면 `프로그램 종료`를 눌러 자동으로 열린 결과 TXT를
 전달하면 됩니다. 이 동작은 새 목록 탐색·기준점 초기화·이미지 저장·목록 감시 자동 재개를
@@ -191,20 +207,22 @@ Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할
 근거와 종료 상태만 확인하는 별도 지원용 경로이며 기본 시험에 추가 실행을 요구하지 않습니다.
 
 `RUN_MONITOR_BATCH.cmd`는 같은 발견 루트와 기존 `ImageMonitorMonitorSave`, 새
-`ImageMonitorBatch`를 전달합니다. 기존 완료 한 건은 재검증 뒤 건너뛰므로 현재 사용자 데이터의
-남은 완료 상세 관찰 한 건만 새 Chrome에서 `저장 시작`을 누르는 대상입니다. 저장이 끝날 때까지
-그 창을 앞에 유지하면 결과 TXT가 자동으로 열립니다. 목록·상세 확인을 반복할 필요는 없습니다.
+`ImageMonitorBatch`를 전달합니다. 이전 완료 파일은 재검증 뒤 건너뛰고 아직 시도하지 않은
+완료 상세 관찰만 새 Chrome에서 `저장 시작`을 누르는 대상입니다. 저장이 끝날 때까지 그 창을
+앞에 유지하면 결과 TXT가 자동으로 열립니다. v21 사용자 결과에서는 남은 한 후보의 저장이
+완료됐으며 v22 열람 시험에는 이 실행기를 다시 실행할 필요가 없습니다.
 지원용 `RUN_MONITOR_BATCH_FINISH.cmd`는 완료 근거와 정확한 이전 브라우저 종료만 재확인하며
 새 입력·재다운로드를 하지 않습니다. 미해결 작업이 다른 Windows 세션에 속하면 처리하지 않습니다.
 
-기존 `RUN_MONITOR_SAVE.cmd`는 이전 한 후보에 고정된 동작을 유지합니다. v20의 기존 저장
-결과 화면도 이전 완료 파일을 보여주며 새 배치 출력은 아직 표시하지 않습니다.
+기존 `RUN_MONITOR_SAVE.cmd`는 이전 한 후보에 고정된 동작을 유지합니다. v20의 저장 결과
+화면은 이전 완료 파일만 읽었으며 v22에서는 배치 루트를 함께 지정해 새 완료 파일도 검증합니다.
 
 - [게시글 저장 작업자와 장애 복구](docs/native-post-save.md)
 - [검색 목록과 감시 기준점](docs/list-watch.md)
 - [본문 분석과 검증 범위](docs/post-inspection.md), [실사이트 관찰 근거](docs/live-dom-observations.md)
 - [SQLite 대기열과 확정 저널](docs/queue.md)
 - [Edge/Chrome 합성 이미지 기본 저장 시험](docs/native-probe.md)
+- [원 설계 대비 프로젝트 검토와 다음 우선순위](docs/project-review.md)
 
 중단 뒤 자동으로 재저장하거나 보류 상태를 초기화하지 않습니다. 명시적인 입력 전 재개는
 브라우저 종료와 로컬 기록을 대조해 검증한 실패 작업 하나만 다시 대기열에 넣고,

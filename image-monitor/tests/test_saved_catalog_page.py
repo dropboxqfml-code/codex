@@ -37,7 +37,9 @@ def ready_status(**changes):
             saved_status="ready",
             saved_reason=None,
             saved_error_type=None,
+            saved_groups_verified=1,
             saved_files_verified=1,
+            saved_files_omitted=0,
             saved_preview_count=1,
             saved_files=[saved_file()],
         )
@@ -150,7 +152,13 @@ def test_existing_original_is_displayed_with_metadata_without_starting_any_actio
     state, page = portal
     page.goto(BASE_URL)
     expect(page.locator("#saved-state")).to_have_text("검증 완료")
-    expect(page.locator("#saved-help")).to_have_text("검증한 파일 1개 · 미리보기 1개")
+    expect(page.locator("#saved-help")).to_have_text(
+        "검증한 묶음 1개 · 검증한 파일 1개 · 표시 1개 · 생략 0개 · 미리보기 1개"
+    )
+    expect(page.locator("#saved-limits")).to_have_text(
+        "파일 정보는 최대 20개 표시합니다. "
+        "미리보기 원본 캐시는 파일당 최대 16 MiB · 전체 최대 32 MiB입니다."
+    )
     expect(page.locator("#saved-files .saved-card")).to_have_count(1)
     expect(page.locator("#saved-files h3")).to_have_text("001.png")
     expect(page.locator("#saved-files .saved-caption p")).to_have_text(
@@ -180,6 +188,66 @@ def test_periodic_status_polls_keep_the_same_image_node_and_do_not_reload_bytes(
         page.evaluate("() => new Promise(requestAnimationFrame)")
     assert page.evaluate("window.savedOriginalNode === document.querySelector('#saved-files img')")
     assert state.image_requests == [BASE_URL + "images/" + FIRST_ID]
+
+
+def test_repeated_filenames_from_anonymous_groups_keep_separate_stable_originals(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    first_group, second_group = "c" * 32, "d" * 32
+    state.snapshot = ready_status(
+        saved_groups_verified=2,
+        saved_files_verified=2,
+        saved_preview_count=2,
+        saved_files=[
+            saved_file(
+                FIRST_ID,
+                saved_filename="001.jpg",
+                detected_format="JPEG",
+                group_id=first_group,
+                source_id="private-source-one",
+            ),
+            saved_file(
+                SECOND_ID,
+                saved_filename="001.jpg",
+                detected_format="JPEG",
+                group_id=second_group,
+                source_id="private-source-two",
+                source_root="C:/private/output",
+                sha256="private-image-hash",
+            ),
+        ],
+    )
+    page.goto(BASE_URL)
+    expect(page.locator("#saved-files h3")).to_have_text(
+        ["저장 묶음 1 · 001.jpg", "저장 묶음 2 · 001.jpg"]
+    )
+    page.wait_for_function(
+        "[...document.querySelectorAll('#saved-files img')].length === 2 && "
+        "[...document.querySelectorAll('#saved-files img')]"
+        ".every(image => image.naturalWidth === 4)"
+    )
+    assert state.image_requests == [
+        BASE_URL + "images/" + FIRST_ID,
+        BASE_URL + "images/" + SECOND_ID,
+    ]
+    expect(page.locator("#saved-help")).to_have_text(
+        "검증한 묶음 2개 · 검증한 파일 2개 · 표시 2개 · 생략 0개 · 미리보기 2개"
+    )
+    for private in (first_group, second_group, "private", "source_id", "sha256"):
+        assert private not in page.locator(".saved-panel").inner_html()
+    page.evaluate("window.savedBatchNodes = [...document.querySelectorAll('#saved-files img')]")
+    state.snapshot.update(saved_groups_verified=3, saved_files_verified=4, saved_files_omitted=2)
+    expect(page.locator("#saved-help")).to_have_text(
+        "검증한 묶음 3개 · 검증한 파일 4개 · 표시 2개 · 생략 2개 · 미리보기 2개"
+    )
+    assert page.evaluate(
+        "window.savedBatchNodes.every((image, index) => "
+        "image === document.querySelectorAll('#saved-files img')[index])"
+    )
+    assert len(state.image_requests) == 2
+    assert state.actions == []
+    assert all(url.startswith(BASE_URL) for url in state.requests)
 
 
 def test_refresh_invalidates_old_images_and_renders_new_snapshot_only_when_ready(portal):
@@ -290,8 +358,10 @@ def test_only_exact_local_image_ids_can_create_image_requests(portal):
     injected = '<img src="https://foreign.example/x" onerror="window.savedInjected=1">'
     state.snapshot.update(
         saved_files=[
-            saved_file("https://foreign.example/x", saved_filename=injected),
-            saved_file("../api/status", detected_format=injected, preview_url=injected),
+            saved_file("https://foreign.example/x", saved_filename=injected, group_id=injected),
+            saved_file(
+                "../api/status", detected_format=injected, preview_url=injected, group_id=injected
+            ),
         ]
     )
     page.goto(BASE_URL)
@@ -325,23 +395,50 @@ def test_metadata_only_results_and_long_row_payload_stay_bounded_at_mobile_width
 
     state, page = portal
     state.snapshot.update(
-        saved_files_verified=2,
+        saved_groups_verified=22,
+        saved_files_verified=22,
+        saved_files_omitted=2,
         saved_preview_count=1,
         saved_files=[
-            saved_file(),
+            saved_file(group_id=f"{20:032x}"),
             saved_file(
-                None, saved_filename="002.tiff", detected_format="TIFF", preview_available=False
+                None,
+                saved_filename="002.tiff",
+                detected_format="TIFF",
+                preview_available=False,
+                group_id=f"{21:032x}",
             ),
-            *[saved_file(SECOND_ID)] * 9,
+            *[
+                saved_file(
+                    None,
+                    group_id=f"{index:032x}",
+                    preview_available=False,
+                )
+                for index in range(20)
+            ],
         ],
     )
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(BASE_URL)
-    expect(page.locator("#saved-files .saved-card")).to_have_count(2)
+    expect(page.locator("#saved-files .saved-card")).to_have_count(20)
     expect(page.locator("#saved-files img")).to_have_count(1)
+    expect(page.locator("#saved-help")).to_have_text(
+        "검증한 묶음 22개 · 검증한 파일 22개 · 표시 20개 · 생략 2개 · 미리보기 1개"
+    )
     expect(page.locator("#saved-files .saved-caption").nth(1)).to_contain_text("TIFF")
     expect(page.locator("#saved-files .saved-fallback").nth(1)).to_be_visible()
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+@pytest.mark.parametrize("filename", ["001.jpeg", "001.tif", "001.PNG", "003.jpg", "001.svg"])
+def test_only_fixed_saved_filenames_are_shown(portal, filename):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    state.snapshot.update(saved_files=[saved_file(None, saved_filename=filename)])
+    page.goto(BASE_URL)
+    expect(page.locator("#saved-files h3")).to_have_text("저장 이미지")
+    assert state.image_requests == []
 
 
 def test_legacy_status_without_saved_fields_keeps_the_panel_inert(portal):

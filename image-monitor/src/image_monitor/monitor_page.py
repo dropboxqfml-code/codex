@@ -218,6 +218,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     <p class="saved-state" id="saved-state" data-state="disabled" role="status">
       저장 결과 확인 꺼짐</p>
     <p class="saved-help" id="saved-help">저장 결과 확인을 사용할 수 없습니다.</p>
+    <p class="saved-help" id="saved-limits">파일 정보는 최대 20개 표시합니다.
+      미리보기 원본 캐시는 파일당 최대 16 MiB · 전체 최대 32 MiB입니다.</p>
     <div class="saved-grid" id="saved-files"></div>
   </section>
 
@@ -385,12 +387,36 @@ input:disabled{background:#f4f6f4;color:#7d8985}
         '아직 내용을 확인한 후보가 없습니다.');
   }
   function renderSaved(state) {
+    const formats = ['JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'TIFF'];
+    const source = state.saved_status === 'ready' && Array.isArray(state.saved_files) ?
+      state.saved_files.slice(0, 20) : [];
+    const groups = new Map();
+    const files = source.filter(row => row && typeof row === 'object' && !Array.isArray(row))
+      .map(row => {
+        const groupId = typeof row.group_id === 'string' && /^[0-9a-f]{32}$/.test(row.group_id) ?
+          row.group_id : null;
+        if (!groups.has(groupId)) groups.set(groupId, groups.size + 1);
+        return {
+          name: typeof row.saved_filename === 'string' &&
+            /^00[12]\.(?:jpg|png|webp|gif|bmp|tiff)$/.test(row.saved_filename) ?
+            row.saved_filename : '저장 이미지',
+          group: groupId === null ? null : groups.get(groupId),
+          format: formats.includes(row.detected_format) ? row.detected_format : '형식 확인 필요',
+          size: count(row.file_size), width: count(row.width), height: count(row.height),
+          frames: count(row.frames),
+          id: row.preview_available === true && typeof row.preview_id === 'string' &&
+            /^[0-9a-f]{32}$/.test(row.preview_id) ? row.preview_id : null
+        };
+      });
     const savedStates = {
       disabled: ['저장 결과 확인 꺼짐', '저장 결과 확인을 사용할 수 없습니다.'],
       checking: ['저장 결과 확인 중',
         '기존 파일과 완료 기록을 확인하고 있습니다. 이미지를 다시 저장하지 않습니다.'],
       ready: ['검증 완료',
+        `검증한 묶음 ${state.saved_groups_verified === undefined ?
+          groups.size : count(state.saved_groups_verified)}개 · ` +
         `검증한 파일 ${count(state.saved_files_verified)}개 · ` +
+        `표시 ${files.length}개 · 생략 ${count(state.saved_files_omitted)}개 · ` +
         `미리보기 ${count(state.saved_preview_count)}개`],
       empty: ['저장 결과 없음', '완료된 감시 후보의 저장 결과가 아직 없습니다.'],
       busy: ['저장 중 또는 보류',
@@ -404,20 +430,6 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     text('saved-state', savedStates[status][0]);
     element('saved-state').dataset.state = status;
     text('saved-help', savedStates[status][1]);
-    const formats = ['JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'TIFF'];
-    const source = status === 'ready' && Array.isArray(state.saved_files) ?
-      state.saved_files.slice(0, 2) : [];
-    const files = source.filter(row => row && typeof row === 'object' && !Array.isArray(row))
-      .map(row => ({
-        name: typeof row.saved_filename === 'string' &&
-          /^[0-9]{3}\.(?:jpe?g|png|webp|gif|bmp|tiff?)$/i.test(row.saved_filename) ?
-          row.saved_filename : '저장 이미지',
-        format: formats.includes(row.detected_format) ? row.detected_format : '형식 확인 필요',
-        size: count(row.file_size), width: count(row.width), height: count(row.height),
-        frames: count(row.frames),
-        id: row.preview_available === true && typeof row.preview_id === 'string' &&
-          /^[0-9a-f]{32}$/.test(row.preview_id) ? row.preview_id : null
-      }));
     const signature = JSON.stringify(files);
     if (signature === savedSignature) return;
     savedSignature = signature;
@@ -434,7 +446,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       picture.appendChild(fallback);
       if (file.id !== null) {
         const image = document.createElement('img');
-        image.alt = `저장 이미지 ${file.name}`;
+        image.alt = file.group === null ? `저장 이미지 ${file.name}` :
+          `저장 묶음 ${file.group} · ${file.name}`;
         image.decoding = 'async';
         fallback.hidden = true;
         image.addEventListener('error', () => {
@@ -448,7 +461,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       const caption = document.createElement('div');
       caption.className = 'saved-caption';
       const name = document.createElement('h3');
-      name.textContent = file.name;
+      name.textContent = file.group === null ? file.name : `저장 묶음 ${file.group} · ${file.name}`;
       const metadata = document.createElement('p');
       const size = file.size >= 1024 * 1024 ?
         `${(file.size / (1024 * 1024)).toLocaleString('ko-KR', {maximumFractionDigits: 1})} MB` :

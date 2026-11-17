@@ -119,6 +119,7 @@ _SAVED_FILE_FIELDS = (
     "frames",
     "preview_id",
     "preview_available",
+    "group_id",
 )
 _MAX_PREVIEW_BYTES = 16 * 1024 * 1024
 _MAX_TOTAL_PREVIEW_BYTES = 32 * 1024 * 1024
@@ -164,8 +165,11 @@ class MonitorController:
         run_details=run_candidate_trial,
         clock=None,
         save_root=None,
+        batch_root=None,
         catalog_loader=_load_saved_catalog,
     ):
+        if batch_root is not None and save_root is None:
+            raise QueueError("Batch preview requires the legacy save root")
         self.work_root = _plain_path(Path(work_root).absolute()).resolve()
         if str(self.work_root).startswith("\\\\"):
             raise QueueError("A local monitor work root is required")
@@ -176,6 +180,7 @@ class MonitorController:
         self._run_cycle = run_cycle
         self._run_details = run_details
         self.save_root = Path(save_root) if save_root is not None else None
+        self.batch_root = Path(batch_root) if batch_root is not None else None
         self._catalog_loader = catalog_loader
         self._saved_images = {}
         settings = load_monitor_settings(self.work_root)
@@ -218,6 +223,8 @@ class MonitorController:
             "saved_error_type": None,
             "saved_files_verified": 0,
             "saved_preview_count": 0,
+            "saved_groups_verified": 0,
+            "saved_files_omitted": 0,
             "saved_files": [],
         }
         try:
@@ -313,6 +320,8 @@ class MonitorController:
                 saved_error_type=None,
                 saved_files_verified=0,
                 saved_preview_count=0,
+                saved_groups_verified=0,
+                saved_files_omitted=0,
                 saved_files=[],
             )
             self._stop.clear()
@@ -344,31 +353,42 @@ class MonitorController:
             raise QueueError("Saved catalog status is invalid")
         files = summary.get("files")
         verified, preview_count = summary.get("files_verified"), summary.get("preview_count")
+        groups = summary.get("groups_verified", 1 if files else 0)
+        omitted = summary.get("files_omitted", 0)
         if (
             not isinstance(files, list)
-            or not 0 <= len(files) <= 2
+            or not 0 <= len(files) <= 20
             or type(verified) is not int
-            or verified != len(files)
+            or not 0 <= verified <= 2000
+            or type(omitted) is not int
+            or omitted != verified - len(files)
+            or type(groups) is not int
+            or not 0 <= groups <= min(1000, verified)
+            or verified > 2 * groups
             or type(preview_count) is not int
-            or not 0 <= preview_count <= verified
+            or not 0 <= preview_count <= len(files)
             or len(images) != preview_count
             or status == "ready"
-            and not 1 <= verified <= 2
+            and (not files or not groups)
             or status != "ready"
-            and (files or images or verified or preview_count)
+            and (files or images or verified or preview_count or groups or omitted)
         ):
             raise QueueError("Saved catalog counts are invalid")
         safe_files, expected_ids, names = [], set(), set()
+        group_counts = {}
         total = 0
         for row in files:
             if not isinstance(row, dict):
                 raise QueueError("Saved catalog file metadata is invalid")
             name, detected = row.get("saved_filename"), row.get("detected_format")
             available, image_id = row.get("preview_available"), row.get("preview_id")
+            group_id = row.get("group_id")
             if (
                 not isinstance(name, str)
                 or not re.fullmatch(r"00[12]\.(?:jpg|png|webp|gif|bmp|tiff)", name)
-                or name in names
+                or group_id is not None
+                and (not isinstance(group_id, str) or not re.fullmatch(r"[0-9a-f]{32}", group_id))
+                or (group_id, name) in names
                 or detected not in _SAVED_EXTENSIONS
                 or not name.endswith("." + _SAVED_EXTENSIONS[detected])
                 or type(available) is not bool
@@ -378,7 +398,8 @@ class MonitorController:
                 )
             ):
                 raise QueueError("Saved catalog file metadata is invalid")
-            names.add(name)
+            names.add((group_id, name))
+            group_counts[group_id] = group_counts.get(group_id, 0) + 1
             if available:
                 if (
                     detected not in _SAVED_MIMES
@@ -401,8 +422,17 @@ class MonitorController:
                 total += len(value[1])
             elif image_id is not None:
                 raise QueueError("Unavailable previews cannot retain an image identity")
-            safe_files.append({key: row.get(key) for key in _SAVED_FILE_FIELDS})
-        if set(images) != expected_ids or total > _MAX_TOTAL_PREVIEW_BYTES:
+            safe_files.append({key: row[key] for key in _SAVED_FILE_FIELDS if key in row})
+        if (
+            set(images) != expected_ids
+            or total > _MAX_TOTAL_PREVIEW_BYTES
+            or len(group_counts) > groups
+            or any(count > 2 for count in group_counts.values())
+            or None in group_counts
+            and (len(group_counts) != 1 or groups != 1)
+            or not omitted
+            and len(group_counts) != groups
+        ):
             raise QueueError("Saved catalog preview cache is invalid")
         return {
             "saved_status": status,
@@ -410,14 +440,17 @@ class MonitorController:
             "saved_error_type": _safe_error_type(summary.get("error_type")),
             "saved_files_verified": verified,
             "saved_preview_count": preview_count,
+            "saved_groups_verified": groups,
+            "saved_files_omitted": omitted,
             "saved_files": safe_files,
         }, images.copy()
 
     def _work_saved(self):
         try:
-            snapshot = self._catalog_loader(
-                self.work_root, self.save_root, should_stop=self._requested_stop
-            )
+            options = {"should_stop": self._requested_stop}
+            if self.batch_root is not None:
+                options["batch_root"] = self.batch_root
+            snapshot = self._catalog_loader(self.work_root, self.save_root, **options)
             state, images = self._saved_snapshot(snapshot)
             with self._lock:
                 if self._requested_stop():

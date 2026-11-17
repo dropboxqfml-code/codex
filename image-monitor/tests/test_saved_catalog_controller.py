@@ -46,6 +46,25 @@ def snapshot(*, image_id=FIRST, data=b"verified fixture bytes", status="ready", 
     )
 
 
+def grouped_snapshot(count):
+    result = snapshot()
+    template = result.summary["files"][0]
+    rows, images = [], {}
+    for i in range(count):
+        image_id, group_id = f"{i + 1:032x}", f"{i + 100:032x}"
+        rows.append(dict(template, preview_id=image_id, group_id=group_id))
+        images[image_id] = ("image/jpeg", b"verified fixture bytes")
+    result.summary.update(
+        files=rows,
+        files_verified=count,
+        preview_count=count,
+        groups_verified=count,
+        files_omitted=0,
+    )
+    result.images = images
+    return result
+
+
 @pytest.fixture
 def controllers():
     values = []
@@ -357,3 +376,59 @@ def test_malformed_catalog_never_publishes_partial_or_unsafe_preview(tmp_path, c
     assert status["saved_files_verified"] == status["saved_preview_count"] == 0
     assert status["saved_files"] == [] and value.saved_image(FIRST) is None
     assert "private" not in json.dumps(status)
+
+
+def test_batch_loader_receives_roots_and_same_names_are_distinct_by_group(tmp_path, controllers):
+    loaded = grouped_snapshot(3)
+    batch = tmp_path / "batch"
+    calls = []
+
+    def load(watch, legacy, *, batch_root, should_stop):
+        calls.append((watch, legacy, batch_root))
+        assert not should_stop()
+        return loaded
+
+    value = create(controllers, tmp_path / "watch", load, batch_root=batch)
+    value.refresh_saved()
+    assert value.wait_stopped(3)
+    status = value.status()
+    assert status["saved_status"] == "ready"
+    assert status["saved_files_verified"] == status["saved_groups_verified"] == 3
+    assert status["saved_files_omitted"] == 0
+    assert [r["saved_filename"] for r in status["saved_files"]] == ["001.jpg"] * 3
+    assert len({r["group_id"] for r in status["saved_files"]}) == 3
+    assert calls == [(tmp_path / "watch", tmp_path / "saved-output", batch)]
+    assert not batch.exists()
+
+
+def test_bounded_batch_page_reports_omissions_without_losing_total_counts():
+    loaded = grouped_snapshot(20)
+    loaded.summary.update(files_verified=24, groups_verified=24, files_omitted=4)
+    status, images = MonitorController._saved_snapshot(loaded)
+    assert status["saved_files_verified"] == status["saved_groups_verified"] == 24
+    assert status["saved_files_omitted"] == 4
+    assert len(status["saved_files"]) == len(images) == 20
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda s: s.summary["files"][1].update(group_id=s.summary["files"][0]["group_id"]),
+        lambda s: s.summary["files"][1].pop("group_id"),
+        lambda s: s.summary["files"][1].update(group_id="../private"),
+        lambda s: s.summary.update(groups_verified=1),
+        lambda s: s.summary.update(files_omitted=1),
+        lambda s: s.summary.update(files_verified=2001, files_omitted=1999),
+    ],
+)
+def test_invalid_batch_group_or_count_cannot_publish_either_image(mutate):
+    loaded = grouped_snapshot(2)
+    mutate(loaded)
+    with pytest.raises(QueueError):
+        MonitorController._saved_snapshot(loaded)
+
+
+def test_batch_without_legacy_root_is_rejected_before_creating_watch_root(tmp_path):
+    with pytest.raises(QueueError):
+        MonitorController(tmp_path / "watch", batch_root=tmp_path / "batch")
+    assert not list(tmp_path.iterdir())

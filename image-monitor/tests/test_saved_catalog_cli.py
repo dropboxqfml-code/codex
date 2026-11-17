@@ -65,6 +65,7 @@ def test_preview_help_is_lazy_and_does_not_import_files_native_or_browser_code(m
     assert error.value.code == 0
     help_text = capsys.readouterr().out
     assert "--save-root" in help_text
+    assert "--batch-root" in help_text
     assert "existing monitor-saved images" in help_text
     for unsupported in ("--post-url", "--start", "--resume-preinput", "--recover-closed"):
         assert unsupported not in help_text
@@ -76,6 +77,7 @@ def test_preview_help_is_lazy_and_does_not_import_files_native_or_browser_code(m
         ["monitor", "--work-root", "watch", "--save-root"],
         ["monitor", "--save-root", "save"],
         ["monitor", "--work-root", "watch", "--save-root", "save", "--start"],
+        ["monitor", "--work-root", "watch", "--batch-root"],
         ["monitor", "--work-root", "watch", "--save-root", "save", "--post-url", "foreign"],
         ["monitor-finish", "--watch-root", "watch", "--work-root", "save", "--save-root", "extra"],
         ["candidate-test", "--work-root", "watch", "--save-root", "extra"],
@@ -91,6 +93,36 @@ def test_preview_option_does_not_enable_extra_actions_or_change_other_commands(
     with pytest.raises(SystemExit) as error:
         main()
     assert error.value.code == 2
+    assert not list(tmp_path.iterdir())
+
+
+def test_batch_preview_root_requires_legacy_root_without_opening_application(
+    tmp_path, monkeypatch, capsys
+):
+    install_app_stub(monkeypatch, run=lambda *_a, **_k: pytest.fail("Application started"))
+    monkeypatch.setattr(
+        sys, "argv", ["image-monitor", "monitor", "--work-root", "watch", "--batch-root", "batch"]
+    )
+    with pytest.raises(SystemExit) as error:
+        main()
+    assert error.value.code == 2
+    assert "ValueError" in capsys.readouterr().err
+    assert not list(tmp_path.iterdir())
+
+
+def test_batch_preview_roots_forwarded_without_creating_data(tmp_path, monkeypatch, capsys):
+    watch, save, batch = (tmp_path / name for name in ("watch", "legacy", "batch"))
+    calls = []
+
+    def run(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {"status": "monitor_closed"}
+
+    install_app_stub(monkeypatch, run=run)
+    monkeypatch.setattr(sys, "argv", [*options(watch, save), "--batch-root", str(batch)])
+    assert main() == 0
+    assert calls == [((watch,), {"save_root": save, "batch_root": batch})]
+    assert json.loads(capsys.readouterr().out)["status"] == "monitor_closed"
     assert not list(tmp_path.iterdir())
 
 

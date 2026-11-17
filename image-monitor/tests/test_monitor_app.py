@@ -577,3 +577,145 @@ def test_real_browser_controls_stay_local_and_never_execute_status_text(portal):
             assert portal.server.closing.is_set()
         finally:
             browser.close()
+
+
+def test_batch_catalog_root_is_forwarded_once_without_creating_output_directories(
+    app_module, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(app_module, "require_windows", lambda: None)
+    controller = FakeController()
+    events = []
+    _, _, server_factory = app_factories(events, controller=controller)
+    save_root = tmp_path / "saved-not-created"
+    batch_root = tmp_path / "batch-not-created"
+    calls = []
+
+    def refresh_saved():
+        controller.calls.append(("refresh_saved", threading.current_thread().name))
+        return controller.status()
+
+    controller.refresh_saved = refresh_saved
+
+    def factory(root, *, save_root, batch_root):
+        calls.append((root, save_root, batch_root))
+        return controller
+
+    report = app_module.run_monitor_app(
+        tmp_path / "watch",
+        save_root=save_root,
+        batch_root=batch_root,
+        controller_factory=factory,
+        server_factory=server_factory,
+        opener=lambda _: True,
+    )
+    assert report["status"] == "monitor_closed", report
+    assert calls == [(tmp_path / "watch", save_root, batch_root)]
+    assert [call[0] for call in controller.calls].count("refresh_saved") == 1
+    assert not any(call[0] == "start" for call in controller.calls)
+    assert not save_root.exists() and not batch_root.exists()
+
+
+def test_batch_catalog_root_requires_saved_results_before_creating_any_directory(
+    app_module, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(app_module, "require_windows", lambda: None)
+    with pytest.raises(app_module.NativeUIError):
+        app_module.run_monitor_app(
+            tmp_path / "watch",
+            batch_root=tmp_path / "batch",
+            controller_factory=lambda *_args, **_kwargs: pytest.fail("Controller created"),
+            opener=lambda _: pytest.fail("UI opened"),
+        )
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("other_root", ["work", "saved"])
+@pytest.mark.parametrize("relation", ["same", "child", "parent"])
+def test_batch_catalog_root_must_be_separate_from_work_and_saved_roots(
+    app_module, tmp_path, monkeypatch, other_root, relation
+):
+    monkeypatch.setattr(app_module, "require_windows", lambda: None)
+    work_root = tmp_path / "work" / "leaf"
+    save_root = tmp_path / "saved" / "leaf"
+    compared = work_root if other_root == "work" else save_root
+    batch_root = {
+        "same": compared,
+        "child": compared / "batch",
+        "parent": compared.parent,
+    }[relation]
+    with pytest.raises(app_module.NativeUIError):
+        app_module.run_monitor_app(
+            work_root,
+            save_root=save_root,
+            batch_root=batch_root,
+            controller_factory=lambda *_args, **_kwargs: pytest.fail("Controller created"),
+            opener=lambda _: pytest.fail("UI opened"),
+        )
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_batch_saved_projection_preserves_duplicate_filenames_and_bounded_anonymous_groups(
+    app_module,
+):
+    rows = [
+        {
+            "saved_filename": "001.jpg",
+            "detected_format": "JPEG",
+            "file_size": 123,
+            "width": 4,
+            "height": 3,
+            "frames": 1,
+            "preview_available": index != 1,
+            "preview_id": f"{100 + index:032x}",
+            "group_id": f"{index + 1:032x}",
+            "source_post_id": "private-post-id",
+            "post_url": "https://private.example/post",
+            "path": "C:/private/image.jpg",
+            "sha256": "private-file-hash",
+        }
+        for index in range(22)
+    ]
+    status = {
+        "saved_status": "ready",
+        "saved_files_verified": 2000,
+        "saved_groups_verified": 50,
+        "saved_files_omitted": 1980,
+        "saved_preview_count": 19,
+        "saved_files": rows,
+    }
+    local = app_module._public_status(status, include_preview_ids=True)
+    assert local["saved_files_verified"] == 2000
+    assert local["saved_groups_verified"] == 50
+    assert local["saved_files_omitted"] == 1980
+    assert len(local["saved_files"]) == 20
+    assert [row["saved_filename"] for row in local["saved_files"][:2]] == ["001.jpg"] * 2
+    assert [row["group_id"] for row in local["saved_files"]] == [
+        row["group_id"] for row in rows[:20]
+    ]
+    assert local["saved_files"][0]["preview_id"] == rows[0]["preview_id"]
+    assert "preview_id" not in local["saved_files"][1]
+
+    shared = app_module.share_monitor_report({"monitor_status": status})
+    assert len(shared["monitor_status"]["saved_files"]) == 20
+    serialized = json.dumps(shared)
+    for secret in ("group_id", "preview_id", "source_post_id", "post_url", "path", "sha256"):
+        assert secret not in serialized
+    for row in rows:
+        assert row["group_id"] not in serialized
+        assert row["preview_id"] not in serialized
+    for content in (json.dumps(local), serialized):
+        assert "private" not in content
+
+
+@pytest.mark.parametrize(
+    "group_id",
+    [None, False, 17, "a" * 31, "a" * 33, "A" * 32, "../private", "https://private.example"],
+)
+def test_saved_projection_rejects_invalid_group_ids_and_accepts_legacy_rows(app_module, group_id):
+    rows = [
+        {"saved_filename": "001.jpg", "group_id": group_id, "preview_available": False},
+        {"saved_filename": "002.jpg", "preview_available": False},
+    ]
+    local = app_module._public_status({"saved_files": rows}, include_preview_ids=True)
+    assert len(local["saved_files"]) == 2
+    assert all("group_id" not in row for row in local["saved_files"])

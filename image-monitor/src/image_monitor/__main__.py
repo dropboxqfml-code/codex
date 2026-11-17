@@ -53,6 +53,9 @@ def main() -> int:
     monitor.add_argument(
         "--save-root", type=Path, help="Read existing monitor-saved images for local preview"
     )
+    monitor.add_argument(
+        "--batch-root", type=Path, help="Also read completed batch images; requires --save-root"
+    )
     watch_test = commands.add_parser(
         "watch-test", help="Run a bounded public-list discovery trial; never save images"
     )
@@ -160,11 +163,14 @@ def main() -> int:
         try:
             from image_monitor.monitor_app import run_monitor_app, share_monitor_report
 
-            output = (
-                run_monitor_app(args.work_root, save_root=args.save_root)
-                if args.save_root is not None
-                else run_monitor_app(args.work_root)
-            )
+            options = {}
+            if args.save_root is not None:
+                options["save_root"] = args.save_root
+            if args.batch_root is not None:
+                if args.save_root is None:
+                    raise ValueError("Batch preview requires the legacy save root")
+                options["batch_root"] = args.batch_root
+            output = run_monitor_app(args.work_root, **options)
             public_report = share_monitor_report(output)
         except KeyboardInterrupt:
             parser.exit(130, "List monitoring cancelled.\n")

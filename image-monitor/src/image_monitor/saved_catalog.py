@@ -31,6 +31,7 @@ from image_monitor.watch_store import WatchScope
 MAX_PREVIEW_BYTES = 16 * 1024 * 1024
 MAX_TOTAL_PREVIEW_BYTES = 32 * 1024 * 1024
 MAX_PENDING_BYTES = 64 * 1024
+MAX_CATALOG_FILES = 20
 PREVIEW_CONTENT_TYPES = {
     "JPEG": "image/jpeg",
     "PNG": "image/png",
@@ -58,18 +59,18 @@ class _NativeBusy(Exception):
     pass
 
 
-def _snapshot(status, reason=None, *, error_type=None):
-    return CatalogSnapshot(
-        {
-            "status": status,
-            "reason": reason,
-            "error_type": error_type,
-            "files_verified": 0,
-            "preview_count": 0,
-            "files": [],
-        },
-        {},
-    )
+def _snapshot(status, reason=None, *, error_type=None, grouped=False):
+    summary = {
+        "status": status,
+        "reason": reason,
+        "error_type": error_type,
+        "files_verified": 0,
+        "preview_count": 0,
+        "files": [],
+    }
+    if grouped:
+        summary.update(groups_verified=0, files_omitted=0)
+    return CatalogSnapshot(summary, {})
 
 
 def _error_type(error):
@@ -178,13 +179,262 @@ def _pending_state():
     return PendingSave(path).read()
 
 
-def load_saved_catalog(watch_root, save_root, *, should_stop=None) -> CatalogSnapshot:
-    """Read only the selected completed monitor save; never collect or repair it.
+def _task_directories(batch_root):
+    """Check the bounded registry boundary without discovering images by scanning."""
+    from image_monitor.monitor_save_ledger import MAX_TASKS
 
-    Both databases and the selection must already exist. Local verification is
-    independent of network cooldowns and access blocks. The standard shared scan
-    lease can create its lock sidecar, but no data directories, database, image,
-    metadata, selection, or pending marker are created or modified.
+    directory = _plain_path(batch_root / "tasks")
+    if not _existing(directory, directory=True):
+        return set()
+    identifiers = set()
+    for index, child in enumerate(directory.iterdir()):
+        if index >= MAX_TASKS:
+            raise ValueError("The saved batch task range exceeds its metadata limit")
+        if not re.fullmatch(r"[0-9a-f]{32}", child.name) or not _existing(child, directory=True):
+            raise ValueError("The saved batch contains an unknown task directory")
+        identifiers.add(child.name)
+    return identifiers
+
+
+def _check_native_children(root, sessions, *, legacy=False):
+    """Refuse native output which has no frozen registry binding."""
+    from image_monitor.monitor_save_ledger import MAX_TASKS
+
+    if not _existing(root, directory=True):
+        return
+    expected = {f"session-{value}" for value in sessions}
+    for index, child in enumerate(root.iterdir()):
+        if index >= MAX_TASKS:
+            raise ValueError("The saved native output range exceeds its metadata limit")
+        child = _plain_path(child)
+        if child.name in expected and _existing(child, directory=True):
+            continue
+        if (
+            legacy
+            and not child.name.startswith("session-")
+            and child.name not in {"queue.sqlite", "images", "runs"}
+        ):
+            continue
+        raise ValueError("Saved native output has no frozen registry binding")
+
+
+def _verify_source(native_base, permit, should_stop):
+    """Return private proofs only after checking one exact frozen native root."""
+    native_base = _plain_path(native_base)
+    database = _plain_path(native_base / "queue.sqlite")
+    if not all(
+        (
+            _existing(native_base, directory=True),
+            _existing(native_base / "images", directory=True),
+            _existing(database),
+        )
+    ):
+        raise ValueError("A completed saved source is missing its native records")
+    _stop(should_stop)
+    with QueueStore(database, read_only=True) as store:
+        summary, proofs = verify_completed_candidate_files(store, permit, base=native_base)
+    if (
+        not isinstance(proofs, list)
+        or not 1 <= len(proofs) <= 2
+        or len(proofs) != permit.image_count
+        or not isinstance(summary.get("saved_files"), list)
+        or len(summary["saved_files"]) != len(proofs)
+    ):
+        raise ValueError("The saved-catalog verifier returned inconsistent files")
+    names = set()
+    for proof in proofs:
+        _stop(should_stop)
+        path = _plain_path(Path(proof["path"]))
+        name = proof["saved_filename"]
+        if (
+            not path.is_absolute()
+            or not path.is_relative_to(native_base / "images")
+            or path.name != name
+            or not isinstance(name, str)
+            or not re.fullmatch(r"00[12]\.(?:jpg|png|webp|gif|bmp|tiff)", name)
+            or name in names
+        ):
+            raise ValueError("A saved preview proof is outside its owned image root")
+        names.add(name)
+    return proofs
+
+
+def _legacy_source(watch_store, watch_base, output_base, should_stop):
+    """Allow an unregistered legacy save only before any batch registry/output."""
+    manifest = _plain_path(watch_base / MONITOR_MANIFEST_NAME)
+    native_base = _plain_path(output_base / f"session-{session_id()}")
+    if not all(
+        (
+            _existing(manifest),
+            _existing(output_base, directory=True),
+            _existing(native_base, directory=True),
+            _existing(native_base / "images", directory=True),
+            _existing(native_base / "queue.sqlite"),
+        )
+    ):
+        return []
+    if read_selection(manifest) is None:
+        return []
+    permit = select_candidate_save(watch_store, _MONITOR_SCOPE, manifest)
+    if permit is None:
+        raise ValueError("The saved monitor selection could not be verified")
+    return [(native_base, _verify_source(native_base, permit, should_stop))]
+
+
+def _grouped_snapshot(sources, should_stop):
+    """Publish a bounded first page only after every source has been verified."""
+    files, images, groups = [], {}, set()
+    total_bytes = 0
+    verified = sum(len(proofs) for _base, proofs in sources)
+    for _base, proofs in sources:
+        _stop(should_stop)
+        group_id = uuid.uuid4().hex
+        if group_id in groups or group_id in images:
+            raise ValueError("Saved group identities collided")
+        groups.add(group_id)
+        for proof in proofs:
+            _stop(should_stop)
+            if len(files) >= MAX_CATALOG_FILES:
+                continue
+            item = {key: proof[key] for key in _FILE_FIELDS}
+            item.update(group_id=group_id, preview_id=None, preview_available=False)
+            content_type = PREVIEW_CONTENT_TYPES.get(proof["detected_format"])
+            size = proof["file_size"]
+            if (
+                content_type is not None
+                and type(size) is int
+                and 0 < size <= MAX_PREVIEW_BYTES
+                and total_bytes + size <= MAX_TOTAL_PREVIEW_BYTES
+            ):
+                data = _read_preview(proof)
+                opaque_id = uuid.uuid4().hex
+                if opaque_id in images or opaque_id in groups:
+                    raise ValueError("Saved preview identities collided")
+                images[opaque_id] = (content_type, data)
+                item.update(preview_id=opaque_id, preview_available=True)
+                total_bytes += len(data)
+            files.append(item)
+    _stop(should_stop)
+    if _pending_state() is not None:
+        raise ValueError("Native-save state changed during local verification")
+    if not files:
+        return _snapshot("empty", "existing_saved_candidate_required", grouped=True)
+    omitted = verified - len(files)
+    return CatalogSnapshot(
+        {
+            "status": "ready",
+            "reason": "preview_limit" if omitted or len(images) != len(files) else None,
+            "error_type": None,
+            "files_verified": verified,
+            "groups_verified": len(sources),
+            "files_omitted": omitted,
+            "preview_count": len(images),
+            "files": files,
+        },
+        images,
+    )
+
+
+def _load_batch_catalog(watch_base, output_base, batch_base, should_stop):
+    from image_monitor.monitor_batch_runtime import reconstruct_permit
+    from image_monitor.monitor_save_ledger import (
+        LEDGER_NAME,
+        LedgerStore,
+        task_native_base,
+        task_work_root,
+    )
+
+    for root in (watch_base, output_base):
+        if root == batch_base or root.is_relative_to(batch_base) or batch_base.is_relative_to(root):
+            raise ValueError("Saved images require separate discovery, legacy and batch roots")
+    # Validate existing configured roots without creating empty output folders.
+    _existing(output_base, directory=True)
+    _existing(batch_base, directory=True)
+    database = _plain_path(watch_base / "watch.sqlite")
+    ledger_path = _plain_path(watch_base / LEDGER_NAME)
+    if not all((_existing(watch_base, directory=True), _existing(database))):
+        if _existing(ledger_path) or _task_directories(batch_base):
+            raise ValueError("Existing batch output lost its discovery records")
+        return _snapshot("empty", "existing_saved_candidate_required", grouped=True)
+    _stop(should_stop)
+    with watch_run_lock(database, DEFAULT_SCOPE), _native_lock():
+        _stop(should_stop)
+        if _pending_state() is not None:
+            return _snapshot("busy", "pending_save_requires_review", grouped=True)
+        directories = _task_directories(batch_base)
+        with QueueStore(database, read_only=True) as watch_store:
+            if watch_store.summary()["posts"] or watch_store.summary()["jobs"]:
+                raise ValueError("Saved-catalog discovery data contains image work")
+            if not _existing(ledger_path):
+                if directories:
+                    raise ValueError("Existing batch output lost its original save ledger")
+                return _grouped_snapshot(
+                    _legacy_source(watch_store, watch_base, output_base, should_stop), should_stop
+                )
+            with LedgerStore(
+                ledger_path,
+                watch_root=watch_base,
+                legacy_root=output_base,
+                batch_root=batch_base,
+                read_only=True,
+                create=False,
+            ) as ledger:
+                tasks = ledger.list_tasks()
+                managed_ids = {t["task_id"] for t in tasks if t["output_kind"] == "managed"}
+                if directories - managed_ids:
+                    raise ValueError("Existing batch output has no original task binding")
+                _check_native_children(
+                    output_base,
+                    {
+                        t["native_session"]
+                        for t in tasks
+                        if t["output_kind"] == "legacy" and t["native_session"] is not None
+                    },
+                    legacy=True,
+                )
+                sources, bases = [], set()
+                for task in tasks:
+                    _stop(should_stop)
+                    if task["output_kind"] == "managed":
+                        _check_native_children(
+                            _plain_path(task_work_root(task, batch_base, output_base)),
+                            set() if task["native_session"] is None else {task["native_session"]},
+                        )
+                    if task["status"] in {"started", "needs_review"}:
+                        raise ValueError("An unfinished batch save requires reconciliation")
+                    if task["status"] == "planned":
+                        root = _plain_path(task_work_root(task, batch_base, output_base))
+                        if _existing(root, directory=True) and any(root.iterdir()):
+                            raise ValueError("A planned batch task contains native output")
+                        continue
+                    if task["status"] == "unavailable":
+                        continue
+                    permit = reconstruct_permit(watch_store, task)
+                    native_base = _plain_path(task_native_base(task, batch_base, output_base))
+                    if native_base in bases:
+                        raise ValueError("Completed batch tasks share a native save root")
+                    bases.add(native_base)
+                    sources.append((native_base, _verify_source(native_base, permit, should_stop)))
+                # Registry rows are the only source list, including adopted legacy
+                # saves. Never append the standalone legacy selection a second time.
+                if ledger.list_tasks() != tasks or _task_directories(batch_base) != directories:
+                    raise ValueError("The batch registry changed during local verification")
+                return _grouped_snapshot(sources, should_stop)
+
+
+def load_saved_catalog(
+    watch_root, save_root, *, batch_root=None, should_stop=None
+) -> CatalogSnapshot:
+    """Verify completed local saves without collecting, adopting, or repairing.
+
+    Without a batch root, use the existing selection and current native session.
+    With a batch root, the existing validated ledger supplies every frozen native
+    session, including adopted legacy saves. Verify all completed sources before
+    publishing at most MAX_CATALOG_FILES rows and bounded original-byte buffers.
+    Local verification is independent of network cooldowns and access blocks.
+    No data directories, databases, images, metadata, selections, or pending
+    markers are created or modified; ownership uses the standard lease sidecars.
+    SQLite read-only WAL connections may create their WAL/SHM coordination files.
     """
     try:
         if should_stop is not None and not callable(should_stop):
@@ -197,6 +447,8 @@ def load_saved_catalog(watch_root, save_root, *, should_stop=None) -> CatalogSna
             or output_base.is_relative_to(watch_base)
         ):
             raise ValueError("Saved images require a separate output root")
+        if batch_root is not None:
+            return _load_batch_catalog(watch_base, output_base, _root(batch_root), should_stop)
         database = _plain_path(watch_base / "watch.sqlite")
         manifest = _plain_path(watch_base / MONITOR_MANIFEST_NAME)
         required = (
@@ -293,12 +545,15 @@ def load_saved_catalog(watch_root, save_root, *, should_stop=None) -> CatalogSna
                     images,
                 )
     except _Cancelled:
-        return _snapshot("cancelled", "requested_stop")
+        return _snapshot("cancelled", "requested_stop", grouped=batch_root is not None)
     except WatchRunBusy:
-        return _snapshot("busy", "another_scan_owns_this_scope")
+        return _snapshot("busy", "another_scan_owns_this_scope", grouped=batch_root is not None)
     except _NativeBusy:
-        return _snapshot("busy", "native_save_in_progress")
+        return _snapshot("busy", "native_save_in_progress", grouped=batch_root is not None)
     except Exception as error:
         return _snapshot(
-            "needs_review", "saved_catalog_requires_review", error_type=_error_type(error)
+            "needs_review",
+            "saved_catalog_requires_review",
+            error_type=_error_type(error),
+            grouped=batch_root is not None,
         )

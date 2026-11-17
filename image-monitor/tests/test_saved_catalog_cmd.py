@@ -24,7 +24,7 @@ def capture_monitor_launcher(folder):
             lines.append(line)
     assert matches == 1
     launcher = copy_launcher(folder, "\n".join(lines) + "\n")
-    capture = ["@echo off", *[f'echo ARG{index}="%~{index}"' for index in range(1, 7)]]
+    capture = ["@echo off", *[f'echo ARG{index}="%~{index}"' for index in range(1, 9)]]
     capture.append("exit /b 100")
     (folder / "capture.cmd").write_bytes(("\r\n".join(capture) + "\r\n").encode("ascii"))
     return launcher
@@ -37,13 +37,15 @@ def expected_arguments(local_root):
         f'ARG3="{local_root}\\ImageMonitorWatch"',
         'ARG4="--save-root"',
         f'ARG5="{local_root}\\ImageMonitorMonitorSave"',
-        'ARG6=""',
+        'ARG6="--batch-root"',
+        f'ARG7="{local_root}\\ImageMonitorBatch"',
+        'ARG8=""',
     ]
 
 
 @WINDOWS
 @pytest.mark.parametrize("chrome_first", [False, True])
-def test_monitor_passes_two_fixed_roots_as_single_arguments_without_starting_native_input(
+def test_monitor_passes_three_fixed_roots_as_single_arguments_without_starting_native_input(
     tmp_path, chrome_first
 ):
     launcher = capture_monitor_launcher(tmp_path / "monitor saved roots 한글 & space")
@@ -73,7 +75,10 @@ def test_normal_monitor_wrapper_uses_the_preview_root_and_preserves_exit_code(tm
 
 
 @WINDOWS
-@pytest.mark.parametrize("extra", [("--save-root", "C:/foreign"), ("--preview-id", "foreign")])
+@pytest.mark.parametrize(
+    "extra",
+    [("--save-root", "C:/foreign"), ("--batch-root", "C:/foreign"), ("--preview-id", "foreign")],
+)
 def test_windows_launcher_does_not_allow_users_to_replace_the_fixed_preview_root(tmp_path, extra):
     launcher = guarded_launcher(tmp_path / "guarded saved viewer")
     result = run_cmd(launcher, ("--monitor", "--chrome", *extra))

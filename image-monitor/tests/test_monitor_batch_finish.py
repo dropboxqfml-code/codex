@@ -6,7 +6,7 @@ import sqlite3
 import sys
 import tempfile
 import uuid
-from contextlib import nullcontext
+from contextlib import closing, nullcontext
 from copy import deepcopy
 from datetime import timedelta
 from pathlib import Path
@@ -487,11 +487,11 @@ def test_discovery_database_with_image_work_is_not_treated_as_separate_source(co
 def test_finished_task_is_an_inert_second_finish_without_browser_probe(completed_batch):
     assert finish(completed_batch)["status"] == "batch_finish_completed"
     before = preserve(completed_batch)
-    with sqlite3.connect(completed_batch.ledger_path) as connection:
+    with closing(sqlite3.connect(completed_batch.ledger_path)) as connection:
         ledger_before = tuple(connection.iterdump())
     report = finish(completed_batch, is_running=lambda _: pytest.fail("No unfinished attempt"))
     assert report["status"] == "batch_finish_no_pending"
-    with sqlite3.connect(completed_batch.ledger_path) as connection:
+    with closing(sqlite3.connect(completed_batch.ledger_path)) as connection:
         assert tuple(connection.iterdump()) == ledger_before
     assert_preserved(completed_batch, before)
 

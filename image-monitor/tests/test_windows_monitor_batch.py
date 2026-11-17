@@ -12,6 +12,7 @@ import test_windows_candidate_save as native_fixture
 from test_candidate_save_selection import selected
 from test_windows_post_pipeline import fixture_assets, serve_fixtures
 
+from image_monitor.artifact_files import _relative_path
 from image_monitor.candidate_policy import classify_candidate_detail
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.monitor_controller import MONITOR_SCOPE
@@ -285,7 +286,8 @@ def test_batch_saves_two_owned_posts_without_resaving_a_completed_task(monkeypat
             with QueueStore(native, read_only=True) as store:
                 assert store.summary()["posts"] == store.summary()["jobs"] == 1
                 assert store.list_jobs()[0]["status"] == "completed"
-                final = Path(store.list_artifacts()[0]["final_path"])
+                artifact = store.list_artifacts()[0]
+                final = _relative_path(Path(artifact["save_root"]), artifact["final_relative"])
                 assert (
                     hashlib.sha256(final.read_bytes()).hexdigest()
                     == hashlib.sha256(png[1]).hexdigest()

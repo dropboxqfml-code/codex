@@ -62,6 +62,7 @@ class Instrument:
         self.configured = False
         self._identified = False
         self.last_safety = None
+        self.last_calibration_status = None
         self.voltage_programmed = 0.0
         self.source_range_V = 100.0
         self.io_guard = None
@@ -283,6 +284,29 @@ class Instrument:
         if errors:
             raise ProtocolError(f"Instrument errors after {context}: {errors!r}")
 
+    def calibration_status(self):
+        """Rev. D 3-111/3-126: condition query, never clear or write calibration data."""
+        response = self._query(":STAT:QUES:COND?").strip()
+        if not re.fullmatch(r"\+?\d+", response) or not 0 <= int(response) <= 65535:
+            raise ProtocolError(f"Invalid Questionable condition response: {response!r}")
+        condition = int(response)
+        self.last_calibration_status = {
+            "questionable_condition": condition,
+            "calibration_summary_invalid": bool(condition & 256),
+        }
+        return dict(self.last_calibration_status)
+
+    def _check_calibration(self):
+        status = self.calibration_status()
+        if status["calibration_summary_invalid"] and not _get(
+            self.config, "calibration_diagnostic_only", False
+        ):
+            raise ProtocolError(
+                "교정 상수 이상(B8 / Calibration invalid): 정상 측정 ARM을 중단합니다. "
+                "장비 교정 상태를 점검하거나 고급 설정의 저전압 비교 진단을 선택하세요."
+            )
+        return status
+
     def _profile(self, items):
         for write, query, expected in items:
             self._write(write)
@@ -327,6 +351,7 @@ class Instrument:
         self.mode = _get(config, "mode", "FVMI_CURRENT")
         self.source_range_V = _get(config, "source_range_V", 100)
         self._check_errors("before configuration (existing instrument errors)")
+        calibration = self._check_calibration()
         self._set(":INIT:CONT", "OFF", False)
         self._write(":TSEQ:ABOR")
         self._write(":ABOR")
@@ -344,6 +369,8 @@ class Instrument:
         self.voltage_programmed = 0.0
         self._set(":SOUR:VOLT:RANG", self.source_range_V, self.source_range_V)
         ceiling = min(1000.0, _get(config, "voltage_ceiling_V", 10))
+        if _get(config, "calibration_diagnostic_only", False):
+            ceiling = min(ceiling, 1.0)
         if _get(config, "setup_policy") == "operator_low_voltage":
             ceiling = min(ceiling, 10.0)
         for name in ("sample_limit_V", "fixture_limit_V", "cable_limit_V"):
@@ -360,9 +387,26 @@ class Instrument:
         range_key = ":SENS:RES:MAN:CRANG" if native else ":SENS:CURR:RANG"
         auto = _get(config, "current_autorange", True)
         self._set(range_key + ":AUTO", "OFF", False)
+        auto_limits = None
+        if auto and not native:
+            lower = _get(config, "current_autorange_min_A", 20e-12)
+            upper = _get(config, "current_autorange_max_A", 20e-3)
+            before_limits = {
+                "lower": self._number(self._query(range_key + ":AUTO:LLIM?")),
+                "upper": self._number(self._query(range_key + ":AUTO:ULIM?")),
+            }
+            # First widen the old interval; a retained lower bound may exceed the new upper.
+            self._set(range_key + ":AUTO:ULIM", "0.02", 20e-3)
+            self._set(range_key + ":AUTO:LLIM", f"{lower:.12g}", lower)
+            self._set(range_key + ":AUTO:ULIM", f"{upper:.12g}", upper)
+            auto_limits = {"before_A": before_limits, "lower_A": lower, "upper_A": upper}
         # 2-60: zero correction survives uprange, requires re-zero on downrange.
-        # Start auto-ranging from the lowest 20 pA range so it never goes below zeroed range.
-        zero_range = 20e-12 if auto else _get(config, "current_range_A", 2e-9)
+        # Start at the configured AUTO floor so the run cannot downrange below its zeroed range.
+        zero_range = (
+            _get(config, "current_autorange_min_A", 20e-12)
+            if auto and not native
+            else (20e-12 if auto else _get(config, "current_range_A", 2e-9))
+        )
         self._set(range_key, zero_range, zero_range)
         zero_range_readback = self._number(self._query(range_key + "?"))
         self._profile(COMMON_PROFILE)
@@ -404,6 +448,9 @@ class Instrument:
             self._check_errors("zero correction retained after zero check OFF")
             zero_method = "enable_while_zero_check_on"
         self._set(range_key + ":AUTO", "ON" if auto else "OFF", auto)
+        if auto_limits is not None:
+            self._verify(range_key + ":AUTO:LLIM?", auto_limits["lower_A"])
+            self._verify(range_key + ":AUTO:ULIM?", auto_limits["upper_A"])
         self._verify(":SENS:RES:VSC?", "MAN")
         self._verify(":SOUR:VOLT?", 0)
         self._check_errors("final configuration")
@@ -425,6 +472,14 @@ class Instrument:
         self._configured_snapshot = _snapshot(config)
         return {
             "source_range_V": self.source_range_V,
+            "current_autorange": bool(auto),
+            "current_autorange_limits": auto_limits,
+            "current_autorange_min_A": auto_limits["lower_A"] if auto_limits else None,
+            "current_autorange_max_A": auto_limits["upper_A"] if auto_limits else None,
+            "calibration_status": calibration,
+            "questionable_condition": calibration["questionable_condition"],
+            "calibration_invalid": calibration["calibration_summary_invalid"],
+            "calibration_diagnostic_only": _get(config, "calibration_diagnostic_only", False),
             "voltage_ceiling_V": ceiling,
             "manual_vsource": True,
             "normal_resistance": True,
@@ -454,6 +509,7 @@ class Instrument:
         if not self.configured or self._configured_snapshot != _snapshot(config):
             raise RuntimeError("START requires the exact configured immutable snapshot")
         self._require_real_approval(config)
+        self._check_calibration()
         status = self.safety_status()
         if (
             status["output_state"] != "OFF"
@@ -496,6 +552,7 @@ class Instrument:
             raise RuntimeError("START safety checks failed")
         self._verify(":SOUR:VOLT?", 0)
         self._check_errors("output enable")
+        self._check_calibration()
         self.output_state = "UNKNOWN"
         self._write(":OUTP1 ON")
         self._verify(":OUTP1?", True)
@@ -508,6 +565,8 @@ class Instrument:
         if not math.isfinite(voltage):
             raise ValueError("Non-finite voltage")
         ceiling = min(1000.0, _get(self.config, "voltage_ceiling_V", 10))
+        if _get(self.config, "calibration_diagnostic_only", False):
+            ceiling = min(ceiling, 1.0)
         if _get(self.config, "setup_policy") == "operator_low_voltage":
             ceiling = min(ceiling, 10.0)
         for name in ("sample_limit_V", "fixture_limit_V", "cable_limit_V"):
@@ -521,6 +580,10 @@ class Instrument:
         status = self.safety_status()
         if status["interlock"] != 1 or status["current_limit"] or status["zero_check"]:
             raise RuntimeError("Voltage change blocked by safety status")
+        if status.get("calibration_summary_invalid") and not _get(
+            self.config, "calibration_diagnostic_only", False
+        ):
+            raise ProtocolError("교정 상수 이상(B8 / Calibration invalid): 전압 변경 중단")
         resolution = 0.005 if self.source_range_V == 100 else 0.05
         if hasattr(self.config, "quantize_voltage"):
             programmed = self.config.quantize_voltage(voltage)
@@ -553,6 +616,7 @@ class Instrument:
                 ":SENS:RES:MAN:CRANG?" if self.mode == "NATIVE_RESISTANCE" else ":SENS:CURR:RANG?"
             )
             current_range = self._number(self._query(range_query))
+            calibration = self.calibration_status()
         except Exception:
             self.output_state = "UNKNOWN"
             self.configured = False
@@ -566,6 +630,7 @@ class Instrument:
             "zero_check": zero_check,
             "zero_correct": zero_correct,
             "current_range": current_range,
+            **calibration,
             "query_start_monotonic_s": start,
             "query_end_monotonic_s": self.clock.monotonic(),
             "atomic_snapshot": False,
@@ -584,6 +649,7 @@ class Instrument:
     def read(self, mode=None):
         if not self.configured:
             raise RuntimeError("Configure before READ")
+        self._check_calibration()
         response = self._query(":READ?")
         parsed = parse_reading(response, mode or self.mode)
         if parsed.reading_number < 0:

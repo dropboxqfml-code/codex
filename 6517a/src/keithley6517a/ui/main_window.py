@@ -143,6 +143,9 @@ class InstrumentWorker(QObject):
                 "operator_setup_acknowledged": bool(
                     getattr(self.runner.config, "operator_setup_acknowledged", False)
                 ),
+                "calibration_diagnostic_only": bool(
+                    getattr(self.runner.config, "calibration_diagnostic_only", False)
+                ),
                 "commissioning": commissioning,
                 "fixture_commissioning": (
                     "SIMULATED · 실장비 인증 아님"
@@ -474,8 +477,26 @@ class MainWindow(QMainWindow):
         self.autorange = QCheckBox("전류 자동 범위")
         self.autorange.setChecked(True)
         advanced_form.addRow(self.autorange)
+        self.autorange_min = QLineEdit("2e-11")
+        self.autorange_max = QLineEdit("2e-2")
+        self.autorange_min.setToolTip("AUTO 전류 범위 하한을 A 단위로 입력합니다.")
+        self.autorange_max.setToolTip("AUTO 전류 범위 상한을 A 단위로 입력합니다.")
+        advanced_form.addRow("AUTO 하한 (A)", self.autorange_min)
+        advanced_form.addRow("AUTO 상한 (A)", self.autorange_max)
         self.current_range = QLineEdit("2e-9")
         advanced_form.addRow("고정 범위 (A)", self.current_range)
+        self.calibration_diagnostic_only = QCheckBox("저전압 비교 진단 (정확도 판정 제외)")
+        self.calibration_diagnostic_only.setToolTip(
+            "교정 이상 상태의 비교 진단 · 정확도 미검증. "
+            "교정 상수 복구 기능이 아니며 정상 정확도 판정을 대신하지 않습니다."
+        )
+        advanced_form.addRow(self.calibration_diagnostic_only)
+        self.comparison_preset_button = QPushButton("nA 범위 비교 진단값")
+        self.comparison_preset_button.setToolTip(
+            "AUTO 2 nA~200 nA · 0, 0.1, 0.5 V · 전압별 30 s · NPLC 10. "
+            "Software trip은 최대 10 nA로 낮추며 사용자 확인 항목은 자동 선택하지 않습니다."
+        )
+        advanced_form.addRow(self.comparison_preset_button)
         self.nplc = self._spin(0.01, 10, 10)
         self.interval = self._spin(0.001, 86400, 1)
         self.dwell = self._spin(0.001, 86400, 300)
@@ -515,6 +536,13 @@ class MainWindow(QMainWindow):
         self.workflow_label = QLabel()
         self.workflow_label.setWordWrap(True)
         self.workflow_label.setStyleSheet("font-weight:600;color:#176b88")
+        self.calibration_diagnostic_label = QLabel("비교 진단 · 정확도 미검증")
+        self.calibration_diagnostic_label.setWordWrap(True)
+        self.calibration_diagnostic_label.setStyleSheet("font-weight:600;color:#9b6817")
+        self.calibration_diagnostic_label.setToolTip(
+            "교정 이상 상태의 비교 진단입니다. 교정 상수 복구 기능이 아닙니다."
+        )
+        self.calibration_diagnostic_label.hide()
         self.setup_status_label = QLabel()
         self.setup_status_label.setWordWrap(True)
         self.blockers_label = QLabel()
@@ -523,6 +551,7 @@ class MainWindow(QMainWindow):
         self.repair_button.clicked.connect(self._repair_settings)
         for control in (
             self.workflow_label,
+            self.calibration_diagnostic_label,
             self.setup_status_label,
             self.blockers_label,
             self.repair_button,
@@ -699,7 +728,15 @@ class MainWindow(QMainWindow):
         self.profile.currentIndexChanged.connect(self._refresh_connection_guide)
         self.source_range.currentIndexChanged.connect(self._refresh_connection_guide)
         self.autorange.toggled.connect(self._refresh_connection_guide)
-        for control in (self.voltages, self.trip, self.current_range):
+        self.calibration_diagnostic_only.toggled.connect(self._refresh_connection_guide)
+        self.comparison_preset_button.clicked.connect(self._apply_comparison_diagnostic_preset)
+        for control in (
+            self.voltages,
+            self.trip,
+            self.current_range,
+            self.autorange_min,
+            self.autorange_max,
+        ):
             control.textChanged.connect(self._refresh_connection_guide)
         for control in (
             self.ceiling,
@@ -831,6 +868,10 @@ class MainWindow(QMainWindow):
     def _refresh_connection_guide(self) -> None:
         if self._loading_controls:
             return
+        diagnostic = self.calibration_diagnostic_only.isChecked()
+        if self._connected and "calibration_diagnostic_only" in self._last_worker_status:
+            diagnostic = self._last_worker_status["calibration_diagnostic_only"]
+        self.calibration_diagnostic_label.setVisible(bool(diagnostic))
         issues = []
         try:
             config = self.config_from_controls()
@@ -989,6 +1030,9 @@ class MainWindow(QMainWindow):
         self.trip.setText("" if data.get("current_trip_A") is None else str(data["current_trip_A"]))
         self.source_range.setCurrentText(str(int(data.get("source_range_V", 100))))
         self.autorange.setChecked(data.get("current_autorange", True))
+        self.autorange_min.setText(str(data.get("current_autorange_min_A", 20e-12)))
+        self.autorange_max.setText(str(data.get("current_autorange_max_A", 20e-3)))
+        self.calibration_diagnostic_only.setChecked(data.get("calibration_diagnostic_only", False))
         self.current_range.setText(str(data.get("current_range_A") or 2e-9))
         self.nplc.setValue(data.get("nplc", 10))
         self.interval.setValue(data.get("sample_interval_s", 1))
@@ -1022,7 +1066,10 @@ class MainWindow(QMainWindow):
             current_trip_A=float(self.trip.text()) if self.trip.text().strip() else None,
             source_range_V=float(self.source_range.currentText()),
             current_autorange=self.autorange.isChecked(),
+            current_autorange_min_A=float(self.autorange_min.text()),
+            current_autorange_max_A=float(self.autorange_max.text()),
             current_range_A=float(self.current_range.text()),
+            calibration_diagnostic_only=self.calibration_diagnostic_only.isChecked(),
             nplc=self.nplc.value(),
             sample_interval_s=self.interval.value(),
             dwell_s=self.dwell.value(),
@@ -1045,6 +1092,41 @@ class MainWindow(QMainWindow):
         )
         # RunConfig owns validation; GUI enablement cannot replace it.
         return RunConfig.from_dict(data)
+
+    def _apply_comparison_diagnostic_preset(self) -> None:
+        if self._connected or self._busy or self._closing:
+            return
+        trip_text = self.trip.text().strip()
+        try:
+            trip = float(trip_text) if trip_text else None
+            if trip is not None and (not math.isfinite(trip) or trip <= 0):
+                raise ValueError("Software trip에 0보다 큰 유한 값을 입력하세요.")
+        except ValueError as exc:
+            self._on_error(str(exc))
+            return
+        policy_changed = self.setup_policy.currentData() != "operator_low_voltage"
+        self._loading_controls = True
+        try:
+            self.setup_policy.setCurrentIndex(self.setup_policy.findData("operator_low_voltage"))
+            if policy_changed:
+                self.operator_setup_ack.setChecked(False)
+            self.mode.setCurrentText("FVMI_CURRENT")
+            self.profile.setCurrentIndex(0)
+            self.source_range.setCurrentText("100")
+            self.ceiling.setValue(min(self.ceiling.value(), 1))
+            self.autorange.setChecked(True)
+            self.autorange_min.setText("2e-9")
+            self.autorange_max.setText("2e-7")
+            self.voltages.setText("0, 0.1, 0.5")
+            self.dwell.setValue(30)
+            self.window.setValue(30)
+            self.nplc.setValue(10)
+            if trip is None or trip > 1e-8:
+                self.trip.setText("1e-8")
+            self.calibration_diagnostic_only.setChecked(True)
+        finally:
+            self._loading_controls = False
+        self._mode_changed()
 
     def load_config(self, path: str | Path) -> None:
         if self._connected or self._busy:
@@ -1467,8 +1549,15 @@ class MainWindow(QMainWindow):
             self.diagnose_button,
             self.off_check_button,
             self.setup_button,
+            self.comparison_preset_button,
         ):
             button.setEnabled(preparation)
+        for control in (
+            self.autorange_min,
+            self.autorange_max,
+            self.calibration_diagnostic_only,
+        ):
+            control.setEnabled(preparation)
         self.off_check_button.setEnabled(preparation and self.transport.currentData() == "visa")
         self.open_run_button.setEnabled(bool(self._last_run_directory) and not closing)
         review_ready = (

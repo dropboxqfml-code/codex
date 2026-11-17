@@ -1,14 +1,14 @@
 # Keithley 6517A · USB-GPIB 시험용 프로그램
 
-Windows 10/11 64-bit용 **v0.9.2 측정 응답 호환 수정 시험판**입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV·분석용 TXT 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
+Windows 10/11 64-bit용 **v0.9.3 AUTO 범위 비교 진단 시험판**입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV·분석용 TXT 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
 
-이번 수정 시험판은 ARM 통과 뒤 장비가 반환한 `rdng#` 읽기 번호 표기를 파서가 거부하던 문제를 수정합니다. 매뉴얼의 `rdg#`와 사용자 장비 화면에서 확인된 `rdng#` 두 표기를 대소문자 구분 없이 처리하며 원시 전류·전압·읽기 번호·응답 원문을 보존합니다. v0.9.1의 영점보정·ARM 실패 기록과 여러 결과 비교·예상 남은 시간·분석 설정·진단 ZIP 기능을 유지하며, v1.0.0은 사용자 시험을 반영할 정식 배포 버전으로 구분합니다.
+AUTO 전류 범위의 하한·상한을 명시적으로 설정하고 readback을 검사합니다. AUTO에서 약 158 pA에 머무는 사용자 관측을 비교할 수 있도록 **2 nA~200 nA·0/0.1/0.5 V 비교 진단값**을 추가했습니다. 교정 이상 상태의 비교 진단은 수치를 보존하면서 정확도 통계에서 제외하며 화면에 계속 표시합니다. 이 기능은 낮은 pA 범위를 사용하지 않는 진단 경로로, 교정 상수 복구나 실제 장비의 158 pA 현상 해소를 입증하지 않습니다. **v1.0.0 정식 배포와 구분하는 시험판**입니다.
 
 연결 구성은 사용자가 관리하는 **저전압 시험 모드**와 기존 **검증 fixture 모드**를 선택합니다. 시작 화면은 SIMULATION·0 V이며, REAL 준비도 0 V·trip 미설정·사용자 확인 미선택에서 시작합니다. 설정 불러오기·초안 적용·연결만으로 출력 ON을 하지 않습니다.
 
 ## Windows에서 실행
 
-[Windows ZIP 다운로드](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.2/6517A-USB-GPIB-Trial-0.9.2-Windows-x64.zip)와 [SHA-256](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.2/6517A-USB-GPIB-Trial-0.9.2-Windows-x64.zip.sha256)을 받습니다. 새 쓰기 가능한 폴더에 모두 풀고 **`Start-GUI.cmd` 하나만 실행**합니다. 시작 창이 **Bundle 파일 검사 → Simulation 동작 검사 → GUI**를 자동으로 진행하며, 두 검사를 통과하면 메인 화면을 엽니다. Python과 Python 의존성은 포함돼 있습니다. 호환되는 기존 NI-488.2·NI-VISA 64-bit 설치를 사용하며, 드라이버 설치 상태와 이 프로그램의 통신 결과는 구분합니다.
+[Windows ZIP 다운로드](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.3/6517A-USB-GPIB-Trial-0.9.3-Windows-x64.zip)와 [SHA-256](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.3/6517A-USB-GPIB-Trial-0.9.3-Windows-x64.zip.sha256)을 받습니다. 새 쓰기 가능한 폴더에 모두 풀고 **`Start-GUI.cmd` 하나만 실행**합니다. 시작 창이 **Bundle 파일 검사 → Simulation 동작 검사 → GUI**를 자동으로 진행하며, 두 검사를 통과하면 메인 화면을 엽니다. Python과 Python 의존성은 포함돼 있습니다. 호환되는 기존 NI-488.2·NI-VISA 64-bit 설치를 사용하며, 드라이버 설치 상태와 이 프로그램의 통신 결과는 구분합니다.
 
 시작 창에서 현재 단계와 진행 기록을 확인합니다. 검사 실패 시 실패 단계와 기록을 확인하고 재시도할 수 있습니다. 자동 Simulation은 장비 연결 없이 수행하며 결과는 `diagnostics/startup-simulation`에 저장합니다. `Verify-Bundle.cmd`와 `Test-Simulation.cmd`는 개별 점검용으로 계속 사용할 수 있습니다.
 
@@ -29,11 +29,19 @@ Windows 10/11 64-bit용 **v0.9.2 측정 응답 호환 수정 시험판**입니�
 
 ARM이 비활성화되면 준비 상태에 누락 설정 또는 장비 조건을 표시합니다. START는 ARM 완료 전에는 대기합니다. 연결 후 미완료 설정을 발견하면 출력 OFF 상태에서 **연결 종료 후 설정 수정**을 누릅니다. 연결 종료 뒤 설정 창을 열며, 수정 후 다시 연결 → ARM → START로 진행합니다.
 
-FVMI 전류 측정의 영점보정은 출력 OFF·고정 전류 범위·Zero Check ON에서 **Zero Correct ON → Zero Check OFF** 순서로 수행합니다. 매뉴얼 3-133의 전면 패널과 같은 방식이며, 보정 상태·완료 응답·오류 큐를 검사한 뒤 autorange를 복원합니다. 사용자는 v0.9.1 적용 후 ARM 통과를 보고했습니다. 이는 전체 측정·정확도 검증과 구분하며, `:SYST:ZCOR:ACQ`를 사용하던 방식의 `-200` 원인을 idle 상태나 오래된 판독으로 단정하지 않습니다. `+513 Calibration data lost` 등 장비 오류는 계속 ARM을 차단합니다.
-
-측정 응답은 매뉴얼의 `rdg#`와 사용자 장비의 `rdng#` 읽기 번호 표기를 모두 수용합니다. 세 필드 구조·상태·단위·수치 검사는 유지하며, 잘못된 응답이나 중복·역행 읽기 번호는 계속 중단 사유입니다. 화면에서 보고된 전류 `+064.8960E-12 A`는 **64.896 pA**로 그대로 해석하며, 명목 1 GΩ 값에 맞춰 판독을 바꾸지 않습니다.
+FVMI 전류 측정은 출력 OFF·AUTO OFF에서 선택한 AUTO 하한 범위 또는 고정 범위로 영점보정합니다. **Zero Check ON → Zero Correct ON → Zero Check OFF**와 보정 readback·완료 응답·오류 큐를 검사한 뒤 AUTO를 복원합니다. 측정 응답의 `rdg#`·`rdng#` 읽기 번호 표기를 지원하며, 원시 판독·단위·읽기 번호·응답 원문을 보존합니다. 잘못된 응답·중복/역행 읽기 번호·전압 불일치·trip은 계속 중단 사유입니다.
 
 측정 중에는 현재 전압 단계와 전체 진행률, **예상 남은 시간**을 표시합니다. 설정한 dwell·전압 목록·반복 횟수를 기준으로 계산하며, 아직 발생하지 않은 통신·판독 지연과 종료 처리 시간은 포함하지 않습니다. 남은 시간이 0이어도 출력 OFF·저장 완료가 확인될 때까지 종료 처리가 이어질 수 있습니다.
+
+## AUTO 범위와 저전압 비교 진단
+
+왼쪽 **고급**의 **AUTO 하한 (A)·AUTO 상한 (A)**에서 전류 범위를 지정합니다. 기본값은 **20 pA~20 mA**입니다. FVMI AUTO는 현재 설정을 조회한 뒤 두 한도를 쓰고 readback을 확인하며, 선택한 하한 범위에서 영점보정하고 AUTO를 켭니다.
+
+**nA 범위 비교 진단값**은 사용자 관리·FVMI, AUTO **2 nA~200 nA**, 전압 **0 → 0.1 → 0.5 V**·각 **30 s**, NPLC 10과 **저전압 비교 진단 (정확도 판정 제외)**를 준비합니다. 기존 software trip이 10 nA 이하이면 유지하며, 미설정이거나 더 크면 10 nA로 낮춥니다. 연결 관리·잔류 전압 확인·resistive-limit 정책은 사용자가 확인합니다. 버튼은 장비 연결·ARM·START를 실행하지 않습니다.
+
+정상 측정은 `:STAT:QUES:COND?`의 교정 이상 비트 B8(`256`)가 켜져 있으면 ARM을 차단합니다. 명시적으로 선택한 비교 진단은 **절대 전압 1 V 이하**에서 이를 기록하며 진행할 수 있습니다. 진단 판독은 `CALIBRATION_DIAGNOSTIC_ONLY`, 교정 이상 판독은 추가로 `CALIBRATION_INVALID`를 기록합니다. 전류·계산 저항은 보존하지만 `valid_for_summary=False`로 기록해 자동 요약과 저장 결과 분석 통계에서 제외합니다. 화면에 **비교 진단 · 정확도 미검증**을 계속 표시합니다.
+
+`+513 Calibration data lost`가 오류 큐에 남아 있거나 overflow·전류 trip·인터록/통신/출력 오류가 발생하면 비교 진단도 중단합니다. 프로그램은 `:CALibration` 쓰기를 하지 않으며, 고정 nA 범위에서 사용자 저항 100 MΩ이 110~120 MΩ로 관측된 사실도 정확도 합격으로 간주하지 않습니다. [AUTO 비교 진단 절차](docs/autorange_diagnostic.md)에 범위 설정·출력 OFF 스냅샷·자료 해석을 설명합니다.
 
 ## 시료 치수와 비저항
 
@@ -53,7 +61,7 @@ FVMI 전류 측정의 영점보정은 출력 OFF·고정 전류 범위·Zero Che
 
 ## 종료 상태와 저장 결과 분석
 
-v0.9.2는 **정상 완료·사용자 중지·장비/통신 오류**를 구분합니다. STOP 뒤 출력 OFF와 저장이 확인되면 `stopped`로 기록하며, 오류나 OFF 미확인은 별도로 표시합니다. 저장된 판독 수와 결과 폴더를 확인할 수 있습니다.
+프로그램은 **정상 완료·사용자 중지·장비/통신 오류**를 구분합니다. STOP 뒤 출력 OFF와 저장이 확인되면 `stopped`로 기록하며, 오류나 OFF 미확인은 별도로 표시합니다. 저장된 판독 수와 결과 폴더를 확인할 수 있습니다.
 
 **저장 결과 분석**에서 이전 결과 폴더의 `readings.csv`를 엽니다. 장비 연결 없이 I(t)·R(t)·ρ(t)를 다시 보고 시작·끝 시간(s)을 지정해 구간을 선택합니다. 전류·저항·비저항 각각의 유효 개수, 평균, 표본 표준편차를 표시합니다. 비저항은 CSV에 저장된 Ω·m 값을 사용하며 저장값이 없으면 새로 계산하지 않습니다. 값이 하나면 표준편차는 `—`입니다.
 
@@ -113,7 +121,7 @@ uv run --locked python -m keithley6517a.cli simulate --config examples/simulatio
 
 ## 연결 진단과 선택 NI-only 확장
 
-`Check-Connection.cmd`는 resource 목록 또는 선택 주소의 IDN-only 조회입니다. `Check-Output-Off.cmd`는 선택한 6517A에 보호 목적 OFF·abort를 요청하는 별도 동작입니다. 진단 결과와 원문 통신은 로컬에 저장합니다. 사용자 제공 기록에서 native NI-VISA 경로의 IDN과 보호 OFF 조회 `0`은 확인됐으며, 실제 전압 인가·current 수집 결과는 별도로 검증해야 합니다.
+`Check-Connection.cmd`는 resource 목록 또는 선택 주소의 IDN-only 조회입니다. `Check-Output-Off.cmd`는 선택한 6517A에 보호 목적 OFF·abort를 요청하고, OFF 확인 후 교정 condition·실제 AUTO 사용 여부·현재 range·AUTO 하한/상한을 조회해 저장합니다. 스냅샷 완료는 조회 성공이며 교정·측정 준비 합격을 뜻하지 않습니다. 진단 결과와 원문 통신은 로컬에 저장합니다. 사용자 제공 기록에서 native NI-VISA 경로의 IDN과 보호 OFF 조회 `0`은 확인됐으며, 실제 전압 인가·current 수집 결과는 별도로 검증해야 합니다.
 
 NI-VISA를 생략하는 `@py` 대안은 GUI를 닫고 `Enable-NI-Only.cmd`로 선택 확장을 설치한 뒤 명시적으로 선택합니다. 기본 ZIP에는 PyVISA-py·gpib-ctypes가 포함되지 않으며 NI-488.2 드라이버는 계속 필요합니다. [Windows VISA 안내](docs/windows_visa.md)를 참고하세요.
 
@@ -137,7 +145,7 @@ Time (s)	Resistance (Ohm)	Resistivity (Ohm m)	Voltage (V)	Current (A)
 
 헤더와 열 수는 실행 시작에 고정합니다. 완성된 기하조건에서 0 V 등으로 비저항이 계산되지 않은 행은 다섯 열을 유지하고 해당 비저항을 `nan`으로 기록합니다. 첫 행에만 물리량·단위를 쓰고 두 번째 행부터는 SI 단위의 숫자만 기록합니다. 시간은 측정 시작 후 경과 시간, 저항은 native 값이 있으면 그 값이고 그 외에는 원시 전류로 계산한 V/I, 전압은 source 설정 readback, 전류는 원시 판독입니다. 전압은 독립 측정한 시료 단자 전압이 아닙니다. 누락값은 `nan`으로 기록하며 역산 전류를 실제 판독처럼 채우지 않습니다.
 
-요약 제외·과도 구간을 포함해 `readings.csv`의 모든 판독을 같은 순서로 저장하므로 STOP 전에 취득한 데이터도 남습니다. 품질 플래그와 측정 조건은 기존 `readings.csv`·JSON에서 확인합니다. 그래프는 signed-linear/symlog 표시와 부호·0을 유지하고 smoothing을 적용하지 않습니다.
+요약 제외·과도 구간을 포함해 `readings.csv`의 모든 판독을 같은 순서로 저장하므로 STOP 전에 취득한 데이터도 남습니다. 품질 플래그와 측정 조건은 기존 `readings.csv`·JSON에서 확인합니다. 비교 진단의 경고나 설명을 TXT 헤더·데이터 행에 추가하지 않으며 네 열/다섯 열 형식을 유지합니다. 그래프는 signed-linear/symlog 표시와 부호·0을 유지하고 smoothing을 적용하지 않습니다.
 
 v0.8.2에서 저장한 비저항도 결과 분석 창에서 분석하고 다섯 열 TXT로 내보낼 수 있습니다. 이전 결과의 TXT를 자동 수정하지 않으며 새 이름으로 저장합니다. 이전 버전의 결과도 장비 연결 없이 변환할 수 있습니다. 기본 출력은 CSV와 같은 폴더의 `analysis.txt`이며 기존 파일은 덮어쓰지 않습니다.
 

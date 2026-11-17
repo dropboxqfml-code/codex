@@ -9,7 +9,7 @@
 - 입력 파일: 사용자 첨부 `6517A_900_01C.pdf`; 이번 작업의 로컬 경로는 `/workspace/attachments/a5a29c4a-7165-4410-9495-b9af191b68cd/6517A_900_01C.pdf`.
 - 아래 쪽수는 **PDF 뷰어 번호가 아닌 인쇄 쪽수**입니다.
 
-원문 확인은 실제 장비/firmware/USB-GPIB 시험이 아닙니다. 현재 연결의 출력 OFF·인터록 전이 및 물리적 정격·실험 승인을 검증한 `FVMI_CURRENT` 경로만 실장비 START 승인을 받을 수 있습니다. Native resistance 실장비 출력은 측정 전류 기반 trip을 검증하지 못해 차단합니다. JSON 승인값이나 원문의 존재만으로 START하지 않습니다.
+원문 확인은 실제 장비/firmware/USB-GPIB 시험이 아닙니다. 실장비 START는 선택한 운용 방식의 `FVMI_CURRENT` 경로에서 필수 설정·출력 OFF·실제 장비 상태를 검사하고 명시적 ARM·START를 거칩니다. 검증 fixture 방식은 정격·승인 및 현재 연결의 OFF 상태 인터록 전이를 확인하며 사용자 관리 저전압 방식은 별도 사용자 확인과 전압 한도를 사용합니다. Native resistance 실장비 출력은 측정 전류 기반 trip을 검증하지 못해 차단합니다. JSON 승인값이나 원문의 존재만으로 START하지 않습니다.
 
 ## 사용하는 명령
 
@@ -37,7 +37,9 @@
 | `:SYST:INT?` | Q·없음 | `0`/`1`; `1`은 케이블 미연결에서도 가능 | 3.22.16, 3-137 | 확인/미시험 |
 | `:SENS:FUNC 'CURR'/'RES'`, `?` | W/Q·측정 기능 | current/resistance 기능명; 따옴표·DC 표기 검사 | 3.19.2, 3-85 | 확인/미시험 |
 | `:SENS:CURR:RANG:AUTO <ON/OFF>`, `?` | W/Q·전류 autorange | `0`/`1`; Auto V-Source와 독립 | 3.19.6, 3-90~92; Table 3-10, 3-48 | 확인/미시험 |
+| `:SENS:CURR:RANG:AUTO:LLIM <A>`, `?`; `:SENS:CURR:RANG:AUTO:ULIM <A>`, `?` | W/Q·AUTO 전류 범위 하한/상한 | A 단위; FVMI AUTO에서 명시적 설정·readback 검사 | 3.19.6, 3-91~92 | 확인/미시험 |
 | `:SENS:CURR:RANG <A>`, `?` | W/Q·전류 범위 | 수치 A; 장비 선택 range readback 검사 | 3.19.6, 3-90~92 | 확인/미시험 |
+| `:STAT:QUES:COND?` | Q·현재 condition 조회 | 16-bit 정수; B8(`256`) Calibration Summary 검사, 비트 삭제 없음 | 3.21.1, 3-111; 3.21.5, 3-126 | 확인/미시험 |
 | `:SENS:CURR:NPLC <n>`, `?`; `:AUTO OFF`, `?` | W/Q·적분·자동 선택 | 0.01~10 NPLC; AUTO=`0` | 3.19.5, 3-89 | 확인/미시험 |
 | `:SENS:RES:VSC MAN`, `?` | W/Q·저항 V-source 제어 | `MAN`; AUTO는 40/400 V를 선택하므로 사용 안 함 | 3.19.16, 3-102 | 확인/미시험 |
 | `:SENS:RES:MSEL NORM`, `?` | W/Q·저항법 | `NORM`; normal resistance | 3.19.17, 3-103 | 확인/미시험 |
@@ -66,7 +68,7 @@
 - Arm layer 1은 delay를 사용하지 않습니다(3-143). 예전 provisional profile의 `:ARM:LAY1:DEL`을 제거했습니다. Layer 1은 `:ARM:SOUR`·`:ARM:COUN`, layer 2와 trigger만 `:DEL`을 사용합니다.
 - 전류·저항 기능의 `REF:STAT`와 ohms `IREF`를 명시적으로 해제합니다. CALC를 끄는 것만으로 REL이 꺼지는 것은 아닙니다.
 - Source current-limit 명령은 상세 명령 설명 3-108의 **`:SOUR:CURR:...` root 경로**를 사용합니다. Table 3-11의 시각적 들여쓰기만 보고 `:SOUR:VOLT:CURR:...`를 만들지 않습니다. 임의 nA/µA programmable compliance 쓰기는 없습니다.
-- 매뉴얼은 Zero Correct의 두 방법을 설명합니다(3-133~134). 첫 방법은 `ZCH ON → ZCOR ON`으로 전면 패널과 같은 보정을 수행한 뒤 ZCH를 OFF로 하는 방식입니다. 둘째 방법은 `ZCH ON → ZCOR:ACQ → ZCH OFF → ZCOR ON`입니다. v0.9.1의 FVMI 전류 경로는 사용자가 보고한 ACQ 단계 `-200`에 대응해 첫 방법을 사용하며, SIM Native 경로는 둘째 방법을 유지합니다. 두 방법 모두 보정 readback·완료·오류를 검사합니다. Autorange는 20 pA 범위에서 보정한 뒤 복원하고 고정 range는 해당 범위에서 보정합니다. 2-60은 uprange에서 zero가 유지되고 downrange에는 다시 zero해야 한다고 설명합니다. 보정 range·시각을 기록하지만 모든 range에서 정격 정확도를 인증하지는 않습니다. 정격의 “properly zeroed” 조건은 2.13.4의 별도 절차와 실제 시료 조건도 검토해야 합니다.
+- 매뉴얼은 Zero Correct의 두 방법을 설명합니다(3-133~134). 첫 방법은 `ZCH ON → ZCOR ON`으로 전면 패널과 같은 보정을 수행한 뒤 ZCH를 OFF로 하는 방식입니다. 둘째 방법은 `ZCH ON → ZCOR:ACQ → ZCH OFF → ZCOR ON`입니다. v0.9.1의 FVMI 전류 경로는 사용자가 보고한 ACQ 단계 `-200`에 대응해 첫 방법을 사용하며, SIM Native 경로는 둘째 방법을 유지합니다. 두 방법 모두 보정 readback·완료·오류를 검사합니다. v0.9.3 FVMI AUTO는 명시적으로 설정한 하한 범위에서 보정한 뒤 AUTO를 복원하고 고정 range는 해당 범위에서 보정합니다. 기본 AUTO 하한은 20 pA이며 비교 진단값의 하한은 2 nA입니다. 2-60은 uprange에서 zero가 유지되고 downrange에는 다시 zero해야 한다고 설명합니다. 보정 range·시각을 기록하지만 모든 range에서 정격 정확도를 인증하지는 않습니다. 정격의 “properly zeroed” 조건은 2.13.4의 별도 절차와 실제 시료 조건도 검토해야 합니다.
 - `READ?`는 ABOR/INIT/FETCH를 수행합니다. 세 layer의 source/count와 실제 존재하는 delay를 명시해 one-shot을 구성합니다. `FETCH?`만 반복하면 old reading이 재반환될 수 있으므로 정상 수집에 사용하지 않습니다. `CONF`/`MEAS`를 매 sample 호출하지 않습니다.
 - `*OPC?`는 continuous operation에서 무조건적인 안전 동기화 수단이 아닙니다. 3-32는 continuous initiation 뒤 *OPC?가 장비를 대기 상태에 묶을 수 있다고 설명합니다. 본 구성의 idle·continuous OFF 조건에서만 완료 응답을 검증합니다.
 
@@ -75,6 +77,16 @@
 `Instrument errors after zero correction acquire`는 ACQ·완료 조회 뒤 오류 큐에서 오류를 발견했다는 뜻입니다. 매뉴얼에는 이 단계의 `-200`이 idle 상태나 오래된 판독 때문에 발생한다고 명시돼 있지 않으므로 그 원인을 확정하지 않습니다. 첫 영점보정 방식으로의 전환 뒤 사용자가 ARM 통과를 보고했습니다. 사용자 보고는 전체 firmware 명령·측정 정확도 검증과 구분합니다.
 
 구성 시작의 기존 오류 큐를 별도로 확인하고, 오류가 있으면 원문을 보존해 중단합니다. 오류를 지우고 계속 진행하는 `*CLS`·reset·자동 fallback은 사용하지 않습니다. `+513 Calibration data lost`(Table 2-5, 2-7) 등 교정 오류도 계속 중단 사유입니다. Zero Correct는 오프셋 보정이며 교정 데이터 유실의 복구가 아닙니다. 구성 실패 시 보호 OFF 처리 후 저장하는 `arm-failures` 진단에는 원래 오류·설정·통신 기록이 포함됩니다.
+
+## AUTO 한도와 교정 condition 비교 진단
+
+3-91~92는 `AUTO:LLIMit`·`AUTO:ULIMit`으로 사용할 AUTO 범위를 제한할 수 있다고 설명합니다. v0.9.3의 FVMI AUTO는 기존 한도를 조회하고 AUTO OFF에서 상한을 20 mA로 넓힌 뒤 요청한 하한·상한을 각각 설정·조회합니다. 선택한 하한에서 영점보정한 뒤 AUTO ON을 복원하므로 이전 장비 설정에 남은 한도를 그대로 사용하지 않습니다. `current_autorange_min_A`·`current_autorange_max_A` 기본값은 20 pA·20 mA입니다.
+
+3-111의 Questionable B8 Calibration Summary는 전원 투입 시 유효하지 않은 교정 상수가 검출됐음을 나타내며, 매뉴얼은 이 경우 기본 교정 상수를 사용하고 성공적인 교정 후 오류가 해소된다고 설명합니다. `:STAT:QUES:COND?`는 현재 condition을 읽는 조회이며 교정 복구나 비트 삭제를 수행하지 않습니다.
+
+정상 측정은 B8(`condition & 256`)이 켜지면 ARM을 차단합니다. 명시적 `calibration_diagnostic_only=True`는 사용자 관리·FVMI·source 100 V 범위·절대 1 V 이하의 비교 진단에 한해 이 상태를 기록하며 진행할 수 있습니다. 모든 진단 판독에 `CALIBRATION_DIAGNOSTIC_ONLY`, 교정 이상 판독에 `CALIBRATION_INVALID`를 기록하고 정확도용 요약·저장 결과 분석 통계에서 제외합니다. 다른 오류가 없는 판독의 전류·계산 저항 수치는 보존합니다.
+
+기존 오류 큐의 `+513`, overflow·sentinel·전류 trip과 인터록/통신/출력 오류 차단은 유지합니다. `:CALibration` 쓰기는 추가하지 않았으며 실제 158 pA 현상 해소·교정 복구·고정 nA 범위 정확도는 검증하지 않았습니다. [AUTO 비교 진단 절차](autorange_diagnostic.md)에 UI 설정과 출력 OFF 스냅샷을 설명합니다. 스냅샷은 위 condition과 실제 AUTO·현재 range·하한/상한을 조회하며, 조회 완료와 교정 정상 여부를 구분합니다.
 
 ## ASCII parser와 fixture의 출처
 

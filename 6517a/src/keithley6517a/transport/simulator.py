@@ -14,6 +14,8 @@ from .base import CommunicationError
 
 class SimulatorTransport:
     is_simulation = True
+    CURRENT_RANGES_A = (2e-11, 2e-10, 2e-9, 2e-8, 2e-7, 2e-6, 2e-5, 2e-4, 2e-3, 2e-2)
+    CURRENT_RANGE_KEYS = (":SENS:CURR:RANG", ":SENS:RES:MAN:CRANG")
 
     def __init__(
         self,
@@ -54,6 +56,8 @@ class SimulatorTransport:
             ":SOUR:CURR:RLIM:STAT": "0",
             ":SENS:FUNC": "CURR",
             ":SENS:CURR:RANG:AUTO": "1",
+            ":SENS:CURR:RANG:AUTO:LLIM": "2e-11",
+            ":SENS:CURR:RANG:AUTO:ULIM": "2e-2",
             ":SENS:CURR:RANG": "2e-9",
             ":SENS:CURR:NPLC": "10",
             ":SENS:CURR:NPLC:AUTO": "0",
@@ -125,6 +129,32 @@ class SimulatorTransport:
     def _canonical(self, command):
         return command.strip().upper()
 
+    def _range_for_expected_current(self, value):
+        """Resolve a numeric expected reading to a nominal current range (Rev. D 3-90)."""
+        try:
+            expected = float(value)
+        except ValueError as exc:
+            raise CommunicationError("Invalid simulator current range") from exc
+        if not math.isfinite(expected) or not 0 <= expected <= 21e-3:
+            raise CommunicationError("Simulator current range must be between 0 and 21 mA")
+        return next(
+            (rng for rng in self.CURRENT_RANGES_A if expected <= 1.05 * rng),
+            self.CURRENT_RANGES_A[-1],
+        )
+
+    def _measurement_range(self, current, native):
+        """Idealized range selection; does not model hardware settling or calibration faults."""
+        key = ":SENS:RES:MAN:CRANG" if native else ":SENS:CURR:RANG"
+        if self.values[key + ":AUTO"] == "1":
+            lower, upper = self.CURRENT_RANGES_A[0], self.CURRENT_RANGES_A[-1]
+            if not native:
+                lower = float(self.values[key + ":AUTO:LLIM"])
+                upper = float(self.values[key + ":AUTO:ULIM"])
+            allowed = [rng for rng in self.CURRENT_RANGES_A if lower <= rng <= upper]
+            selected = next((rng for rng in allowed if abs(current) <= 1.05 * rng), allowed[-1])
+            self.values[key] = str(selected)
+        return float(self.values[key])
+
     def write(self, command):
         self._owned()
         command = self._canonical(command)
@@ -170,6 +200,20 @@ class SimulatorTransport:
         value = {"ON": "1", "OFF": "0", "MANUAL": "MAN", "NORMAL": "NORM", "ASCII": "ASC"}.get(
             value, value
         )
+        if key in self.CURRENT_RANGE_KEYS:
+            self.values[key] = str(self._range_for_expected_current(value))
+            self.values[key + ":AUTO"] = "0"
+            return
+        if key in (":SENS:CURR:RANG:AUTO:LLIM", ":SENS:CURR:RANG:AUTO:ULIM"):
+            selected = self._range_for_expected_current(value)
+            other_key = key.rsplit(":", 1)[0] + (":ULIM" if key.endswith(":LLIM") else ":LLIM")
+            other = float(self.values[other_key])
+            if (key.endswith(":LLIM") and selected > other) or (
+                key.endswith(":ULIM") and selected < other
+            ):
+                raise CommunicationError("Simulator autorange lower limit exceeds upper limit")
+            self.values[key] = str(selected)
+            return
         self.values[key] = value.strip("'\"")
 
     def query(self, command):
@@ -192,6 +236,12 @@ class SimulatorTransport:
             return str(int(active or (at is not None and self.read_count >= at)))
         if command == ":SYST:INT?":
             return str(self.faults.get("interlock", 1))
+        if command == ":STAT:QUES:COND?":
+            return str(
+                self.faults.get(
+                    "questionable_condition", 256 if self.faults.get("calibration_invalid") else 0
+                )
+            )
         if command == ":SYST:ERR?":
             return self.errors.pop(0) if self.errors else '0,"No error"'
         if command == ":READ?":
@@ -241,7 +291,11 @@ class SimulatorTransport:
             current *= -1
         if self.faults.get("zero_current_at_read") == n:
             current = 0.0
+        native = self.values[":SENS:FUNC"].startswith("RES")
+        selected_range = self._measurement_range(current, native)
         status = "N"
+        if abs(current) > 1.05 * selected_range:
+            status = "U" if native else "O"
         if self.faults.get("reference"):
             status = "R"
         if self.values[":SYST:ZCH"] == "1" or self.faults.get("zero_check"):
@@ -252,7 +306,6 @@ class SimulatorTransport:
             status = "U"
         if self.faults.get("out_of_limit_at_read") == n:
             status = "L"
-        native = self.values[":SENS:FUNC"].startswith("RES")
         value = (volts / current if current and volts else 9.9e37) if native else current
         if status in {"O", "L"}:
             value = 9.9e37

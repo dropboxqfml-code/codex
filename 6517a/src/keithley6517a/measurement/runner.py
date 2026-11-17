@@ -366,6 +366,12 @@ class MeasurementRunner:
                 simulation_truth=getattr(self.instrument.transport, "truth", None),
                 settings=self.config.to_dict(),
                 settings_readback=settings_readback,
+                calibration_status=settings_readback.get("calibration_status"),
+                measurement_purpose=(
+                    "comparison_diagnostic_not_accuracy_validated"
+                    if self.config.calibration_diagnostic_only
+                    else "measurement"
+                ),
                 transport_runtime=getattr(self.instrument.transport, "runtime_info", None),
             )
             self.writer = self.writer_factory(self._armed_config, metadata)
@@ -504,6 +510,11 @@ class MeasurementRunner:
             raise MeasurementError("Source current limit active or unknown")
         if status.get("zero_check") is not False:
             raise MeasurementError("Zero Check active or unknown")
+        if (
+            status.get("calibration_summary_invalid")
+            and not self.config.calibration_diagnostic_only
+        ):
+            raise MeasurementError("교정 상수 이상(B8 / Calibration invalid)")
 
     def start(self):
         self._check_owner()
@@ -617,6 +628,14 @@ class MeasurementRunner:
             after = self.instrument.safety_status()
             self.output_state = after.get("output_state", "UNKNOWN")
             flags = list(parsed.flags)
+            if self.config.calibration_diagnostic_only:
+                flags.append("CALIBRATION_DIAGNOSTIC_ONLY")
+            if before.get("calibration_summary_invalid") or after.get(
+                "calibration_summary_invalid"
+            ):
+                flags.append("CALIBRATION_INVALID")
+                if not self.config.calibration_diagnostic_only:
+                    raise MeasurementError("교정 상수 이상(B8 / Calibration invalid)")
             trip_current = parsed.value
             if self.config.mode == "NATIVE_RESISTANCE":
                 trip_current = programmed / parsed.value if parsed.value not in (None, 0) else None
@@ -703,6 +722,8 @@ class MeasurementRunner:
                 voltage_reported_by_instrument_V=parsed.voltage_reported,
                 **analysis,
                 current_range_A=current_range,
+                questionable_condition=after.get("questionable_condition"),
+                calibration_invalid=after.get("calibration_summary_invalid"),
                 source_range_V=self.config.source_range_V,
                 nplc=self.config.nplc,
                 source_output_state=self.output_state,
@@ -746,6 +767,13 @@ class MeasurementRunner:
         self._event("step_summary", **summary)
 
     def _record_error_sample(self, reason):
+        flags = ["RUN_ABORTED", reason]
+        if self.config.calibration_diagnostic_only:
+            flags.append("CALIBRATION_DIAGNOSTIC_ONLY")
+        if (getattr(self.instrument, "last_calibration_status", None) or {}).get(
+            "calibration_summary_invalid"
+        ):
+            flags.append("CALIBRATION_INVALID")
         row = dict(
             sample_id=self.config.sample_id,
             mode=self.config.mode,
@@ -753,7 +781,7 @@ class MeasurementRunner:
             wall_time_iso8601=self.clock.wall_time(),
             elapsed_s=self.clock.monotonic() - self._start_time,
             valid_for_summary=False,
-            quality_flags=["RUN_ABORTED", reason],
+            quality_flags=flags,
             source_output_state=self.output_state,
         )
         self.rows.append(row)
@@ -767,6 +795,8 @@ class MeasurementRunner:
     def _finalize(self, result, reason):
         saved = dict(
             reading_count=self._saved_reading_count,
+            calibration_diagnostic_only=self.config.calibration_diagnostic_only,
+            calibration_status=getattr(self.instrument, "last_calibration_status", None),
             elapsed_s=(
                 None
                 if self._start_time is None

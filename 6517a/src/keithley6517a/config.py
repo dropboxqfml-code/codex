@@ -79,6 +79,9 @@ class RunConfig:
     nplc: float = 10.0
     line_frequency_hz: float = 60.0
     current_autorange: bool = True
+    current_autorange_min_A: float = 20e-12
+    current_autorange_max_A: float = 20e-3
+    calibration_diagnostic_only: bool = False
     current_range_A: float = 2e-9
     current_trip_A: float | None = None
     power_limit_W: float | None = None
@@ -287,6 +290,7 @@ class RunConfig:
             "send_end",
             "simulation",
             "current_autorange",
+            "calibration_diagnostic_only",
             "background_approved",
             "bipolar_authorized",
             "residual_warning_ack",
@@ -357,6 +361,8 @@ class RunConfig:
             "nplc",
             "line_frequency_hz",
             "current_range_A",
+            "current_autorange_min_A",
+            "current_autorange_max_A",
             "current_trip_A",
             "power_limit_W",
             "current_floor_A",
@@ -453,6 +459,15 @@ class RunConfig:
             raise ConfigurationError("line_frequency_hz must be explicitly 50 or 60 Hz")
         if self.current_range_A > 0.02:
             raise ConfigurationError("current_range_A exceeds 20 mA")
+        current_ranges = (20e-12, 200e-12, 2e-9, 20e-9, 200e-9, 2e-6, 20e-6, 200e-6, 2e-3, 20e-3)
+        if (
+            self.current_autorange_min_A not in current_ranges
+            or self.current_autorange_max_A not in current_ranges
+            or self.current_autorange_min_A > self.current_autorange_max_A
+        ):
+            raise ConfigurationError(
+                "AUTO limits must be ordered 6517A current ranges (20 pA..20 mA)"
+            )
         if self.min_dwell_s > self.dwell_s or self.exclude_initial_s > self.dwell_s:
             raise ConfigurationError("Dwell cannot be shorter than minimum/excluded interval")
         if self.summary_window_s > self.dwell_s:
@@ -493,6 +508,16 @@ class RunConfig:
                 )
         if self.dwell_s * len(self.voltages) * self.cycles > self.max_total_duration_s:
             raise ConfigurationError("Plan exceeds maximum total duration")
+        if self.calibration_diagnostic_only and (
+            self.mode != "FVMI_CURRENT"
+            or self.setup_policy != "operator_low_voltage"
+            or self.source_range_V != 100
+            or any(abs(v) > 1 for v in self.voltages)
+        ):
+            raise ConfigurationError(
+                "Calibration comparison diagnosis requires FVMI, "
+                "operator low-voltage mode and <=1 V"
+            )
         if for_arm:
             if self.current_trip_A is None:
                 raise ConfigurationError("Explicit software current trip is required to ARM")

@@ -12,6 +12,7 @@ import json
 import math
 import os
 import platform
+import re
 import struct
 import time
 import uuid
@@ -193,6 +194,72 @@ def _backend_path(transport):
     return str(getattr(library, "library_path", library))
 
 
+def _autorange_off_snapshot(instrument, issues):
+    """Read existing current settings only after identification and confirmed OFF.
+
+    A complete snapshot means that its queries succeeded, not that calibration
+    or measurement readiness was verified. A set calibration bit is diagnostic
+    evidence and does not prevent these read-only queries.
+    """
+    snapshot = {
+        "status": "failed",
+        "captured_at": _wall_time(),
+        "output_OFF_confirmed": True,
+        "scope": "read-only settings snapshot; not calibration or measurement readiness",
+        "measurement_readiness_verified": False,
+        "questionable_condition": None,
+        "calibration_invalid": None,
+        "current_autorange": None,
+        "current_range_A": None,
+        "current_autorange_min_A": None,
+        "current_autorange_max_A": None,
+        "queries": {},
+    }
+    queries = (
+        (":STAT:QUES:COND?", "questionable_condition", "condition"),
+        (":SENS:CURR:RANG:AUTO?", "current_autorange", "boolean"),
+        (":SENS:CURR:RANG?", "current_range_A", "range"),
+        (":SENS:CURR:RANG:AUTO:LLIM?", "current_autorange_min_A", "range"),
+        (":SENS:CURR:RANG:AUTO:ULIM?", "current_autorange_max_A", "range"),
+    )
+    succeeded = 0
+    for command, field, kind in queries:
+        reading = {"ok": False, "raw": None, "value": None}
+        snapshot["queries"][command] = reading
+        try:
+            response = instrument._query(command)
+            reading["raw"] = response
+            if not isinstance(response, str):
+                raise ValueError(f"Invalid text response for {command}: {response!r}")
+            text = response.strip()
+            if kind == "condition":
+                if not re.fullmatch(r"\+?[0-9]+", text) or not 0 <= int(text) <= 65535:
+                    raise ValueError(f"Invalid Questionable condition response: {response!r}")
+                value = int(text)
+            elif kind == "boolean":
+                if text.upper() not in {"0", "1", "OFF", "ON"}:
+                    raise ValueError(f"Invalid autorange boolean response: {response!r}")
+                value = text.upper() in {"1", "ON"}
+            else:
+                value = float(text)
+                if not math.isfinite(value) or value <= 0:
+                    raise ValueError(f"Invalid positive current range response: {response!r}")
+            reading.update(ok=True, value=value)
+            snapshot[field] = value
+            if kind == "condition":
+                snapshot["calibration_invalid"] = bool(value & 256)
+            succeeded += 1
+        except Exception as exc:
+            reading["error"] = f"{type(exc).__name__}: {exc}"
+            issue = _issue(exc, "autorange_off_snapshot")
+            issue["command"] = command
+            issues.append(issue)
+    snapshot["status"] = (
+        "complete" if succeeded == len(queries) else ("partial" if succeeded else "failed")
+    )
+    return snapshot
+
+
 def run_diagnostics(
     *,
     resource=None,
@@ -211,6 +278,8 @@ def run_diagnostics(
     measurement readiness. Even a confirmed output OFF leaves residual charge
     UNVERIFIED. A successful IDN-only probe leaves output state UNKNOWN.
     Test-injected transports are explicitly labelled in every report/transcript.
+    An OFF snapshot can report calibration_invalid=True while ok=True: the
+    selected diagnostic completed, but calibration/measurement readiness was not certified.
     """
     diagnostic_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S") + "_" + uuid.uuid4().hex
     report = {
@@ -247,6 +316,7 @@ def run_diagnostics(
         "report_saved": False,
         "output_ON_sent": False,
         "measurement_started": False,
+        "autorange_snapshot": None,
     }
     transcript = []
     transport = instrument = None
@@ -311,6 +381,12 @@ def run_diagnostics(
                 report["output_state"] = instrument.output_state
                 report["output_OFF_confirmed"] = report["output_state"] == "OFF"
                 report["ok"] = report["output_OFF_confirmed"]
+                if report["output_OFF_confirmed"]:
+                    report["stage"] = "autorange_off_snapshot"
+                    report["autorange_snapshot"] = _autorange_off_snapshot(
+                        instrument, report["issues"]
+                    )
+                    report["ok"] = report["autorange_snapshot"]["status"] == "complete"
             else:
                 transport.open()
                 report["backend_library"] = _backend_path(transport)

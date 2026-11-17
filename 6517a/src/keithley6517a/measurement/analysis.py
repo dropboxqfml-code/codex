@@ -60,6 +60,8 @@ def analyze_reading(
         "AFTER_DWELL",
         "SETTLING_EXCLUDED",
         "RANGE_CHANGE_TIMING_UNCERTAIN",
+        "CALIBRATION_DIAGNOSTIC_ONLY",
+        "CALIBRATION_INVALID",
     }
     invalid_flags = (
         set(quality)

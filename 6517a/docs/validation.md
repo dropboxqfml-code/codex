@@ -4,6 +4,16 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.9.3 AUTO 범위·저전압 비교 진단
+
+검증 대상은 FVMI AUTO 하한·상한의 명시적 설정과 readback, 선택 하한에서의 영점보정, AUTO 복원입니다. 기본값은 20 pA~20 mA이며 nA 비교 진단값은 2 nA~200 nA·0/0.1/0.5 V 각 30 s·NPLC 10입니다. 유효한 기존 trip이 10 nA 이하이면 유지하고 미설정/더 큰 값만 10 nA로 낮추며, 사용자 확인 항목을 자동 승인하거나 장비를 자동 연결·ARM·START하지 않는지 검사합니다.
+
+정상 모드의 교정 condition B8(`256`) ARM 차단, 명시적 사용자 관리 FVMI 비교 진단의 절대 1 V 한도, 교정 이상·진단 목적 플래그와 화면 경고를 검증합니다. 다른 오류가 없는 진단 판독의 원시 전류·저항 수치를 보존하면서 `valid_for_summary=False`, 자동 요약 유효 개수 0, 저장 결과 분석 통계 제외를 확인합니다. `analysis.txt`는 기존 네 열/다섯 열 헤더·숫자 행을 유지하며 경고를 삽입하지 않아야 합니다. 오류 큐 `+513`·overflow·전류 trip·인터록/출력/통신 오류는 계속 중단 사유입니다.
+
+출력 OFF 진단은 보호 OFF 확인 뒤 condition·실제 AUTO·현재 range·하한/상한의 조회 원문과 부분 실패를 보존하는지 검사합니다. 스냅샷 조회 성공과 `calibration_invalid`를 별도로 기록하며 교정·측정 준비 합격으로 표시하지 않아야 합니다. 프로그램은 `:CALibration` 쓰기를 수행하지 않습니다.
+
+이 절은 v0.9.3의 검사 대상과 범위를 기록합니다. 시험 수와 Windows 실행 결과는 [v0.9.3 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.9.3)의 JUnit·build report에서 확인합니다. 소프트웨어 재현은 실제 장비의 약 158 pA 관측 해소나 교정 상수 복구를 증명하지 않습니다. 사용자 관측인 100 MΩ→110~120 MΩ도 고정 nA 범위의 정확도 합격으로 분류하지 않습니다. [진단 절차](autorange_diagnostic.md)는 비교 관측 자료와 정확도 통계를 구분합니다.
+
 ## v0.9.2 실제 장비 읽기 번호 표기 호환
 
 사용자는 v0.9.1 적용 뒤 ARM 통과를 보고했으며, 측정 중 `Malformed ASCII response` 화면을 제공했습니다. 화면에서 전사한 응답은 `+064.8960E-12NADC,+01122rdng#,+0001.000Vsrc`입니다. v0.9.1까지의 파서는 매뉴얼 Figure 3-19의 `rdg#`만 허용해 이 `rdng#` 표기를 거부했습니다. v0.9.2는 읽기 번호의 정확한 두 별칭 `rdg#`·`rdng#`를 대소문자 구분 없이 수용합니다.

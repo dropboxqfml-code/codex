@@ -147,6 +147,11 @@ class SavedResultDialog(QDialog):
         self.path_label.setTextFormat(Qt.TextFormat.PlainText)
         self.path_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         root.addWidget(self.path_label)
+        self.calibration_notice = QLabel("비교 진단 자료 · 교정 정확도 미검증 · 정상 통계에서 제외")
+        self.calibration_notice.setWordWrap(True)
+        self.calibration_notice.setStyleSheet("color:#a32e28")
+        self.calibration_notice.hide()
+        root.addWidget(self.calibration_notice)
 
         interval = QGroupBox("분석 시간 구간 · 각 실행의 측정 시작 기준")
         controls = QHBoxLayout(interval)
@@ -284,6 +289,7 @@ class SavedResultDialog(QDialog):
 
     def _reset(self):
         self.saved_runs = []
+        self.calibration_notice.hide()
         self.active_index = -1
         self.saved_run = None
         self.selected_rows = []
@@ -532,6 +538,17 @@ class SavedResultDialog(QDialog):
 
     def _render_selection(self):
         self.selected_rows = self.selected_rows_by_run[self.active_index]
+        diagnostic = any(
+            bool(run.settings.get("calibration_diagnostic_only"))
+            or any(
+                {"CALIBRATION_DIAGNOSTIC_ONLY", "CALIBRATION_INVALID"}.intersection(
+                    row.get("quality_flags", ())
+                )
+                for row in run.rows
+            )
+            for run in self.saved_runs
+        )
+        self.calibration_notice.setVisible(diagnostic)
         self.statistics = self.comparison_statistics[self.active_index]
         self._display_statistics(self.statistics)
         self._draw(self.selected_rows)

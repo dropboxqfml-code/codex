@@ -34,13 +34,30 @@ _STATUS_FIELDS = (
     "error_type",
     "browser_closed",
     "settings_editable",
+    "task_kind",
+    "detail_count",
+    "detail_pending_count",
+    "detail_completed_count",
+    "detail_failed_count",
 )
+
+_DETAIL_FIELDS = ("order", "status", "time_status", "reason", "image_count", "pending_images")
 
 
 def _public_status(status):
     if not isinstance(status, dict):
         raise ValueError("A monitor status object is required")
-    return {key: status[key] for key in _STATUS_FIELDS if key in status}
+    result = {key: status[key] for key in _STATUS_FIELDS if key in status}
+    # Detail rows are anonymous structure summaries, never private observations.
+    # Bound and project these separately so a future controller field cannot
+    # accidentally expose a post URL, title, filename, or local path.
+    if isinstance(status.get("details"), list):
+        result["details"] = [
+            {key: row[key] for key in _DETAIL_FIELDS if key in row}
+            for row in status["details"][:10]
+            if isinstance(row, dict)
+        ]
+    return result
 
 
 def _unique_object(pairs):
@@ -208,7 +225,9 @@ class _MonitorHandler(BaseHTTPRequestHandler):
                     or not 60 <= interval <= 300
                 ):
                     raise ValueError("Invalid interval")
-            elif name not in {"start", "pause", "stop", "exit"} or set(action) != {"action"}:
+            elif name not in {"start", "pause", "stop", "exit", "inspect_candidates"} or set(
+                action
+            ) != {"action"}:
                 raise ValueError("Invalid action")
         except (ValueError, UnicodeError, RecursionError, OSError):
             self._respond(400, {"error": "invalid_action"})
@@ -226,6 +245,8 @@ class _MonitorHandler(BaseHTTPRequestHandler):
                 controller.stop()
             elif name == "configure":
                 controller.configure(action["interval_seconds"])
+            elif name == "inspect_candidates":
+                controller.inspect_candidates()
             else:
                 controller.stop()
                 self.server._exit_reply_pending.set()

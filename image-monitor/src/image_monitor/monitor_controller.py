@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from image_monitor.artifact_files import _plain_path
+from image_monitor.candidate_runtime import run_candidate_trial
 from image_monitor.monitor_settings import (
     load_monitor_settings,
     save_monitor_settings,
@@ -32,6 +33,34 @@ from image_monitor.watch_store import WatchScope, WatchStore
 MONITOR_SCOPE = WatchScope("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
 MIN_FREE_BYTES = 256 * 1024 * 1024
 BUSY_BACKOFF_SECONDS = 15
+MAX_DETAIL_BATCH = 2
+_SCOPE_WHERE = "watch_name=? AND gallery_type=? AND gallery_id=? AND keyword=? AND search_type=?"
+_TIME_STATUSES = {"unknown", "before_baseline", "at_or_after_baseline"}
+_DETAIL_REASONS = {
+    "header_unconfirmed",
+    "observation_time_unavailable",
+    "observation_before_baseline",
+    "published_at_missing",
+    "published_at_unparseable",
+    "publication_time_inconsistent",
+    "published_after_observation",
+    "published_before_baseline",
+    "published_at_or_after_baseline",
+    "candidate_unavailable",
+    "candidate_deleted",
+    "detail_inspection_failed",
+    "candidate_identity_or_baseline_invalid",
+}
+_DETAIL_STATUSES = {
+    "candidate_test_completed",
+    "candidate_test_partial",
+    "candidate_test_failed",
+    "candidate_test_cancelled",
+    "candidate_waiting",
+    "candidate_busy",
+    "candidate_no_baseline",
+    "candidate_no_pending",
+}
 _GAP_REASONS = {
     "excluded_rows_unverified",
     "order_unverified",
@@ -82,7 +111,14 @@ class MonitorController:
     advances a controlled clock without real minute-long waits.
     """
 
-    def __init__(self, work_root: Path, *, run_cycle=run_watch_trial, clock=None):
+    def __init__(
+        self,
+        work_root: Path,
+        *,
+        run_cycle=run_watch_trial,
+        run_details=run_candidate_trial,
+        clock=None,
+    ):
         self.work_root = _plain_path(Path(work_root).absolute()).resolve()
         if str(self.work_root).startswith("\\\\"):
             raise QueueError("A local monitor work root is required")
@@ -91,6 +127,7 @@ class MonitorController:
         self._clock = clock or _Clock()
         _stamp(self._clock.now())
         self._run_cycle = run_cycle
+        self._run_details = run_details
         settings = load_monitor_settings(self.work_root)
         self._lock = threading.RLock()
         self._wake = threading.Event()
@@ -99,10 +136,12 @@ class MonitorController:
         self._thread = None
         self._extra_due = None
         self._last_finished = None
+        self._last_detail_finished = None
         self._seen_database = self.database.exists()
         self._state = {
             "scope_label": "만화 · ai · 제목+내용",
             "phase": "stopped",
+            "task_kind": "list",
             "browser": "chrome",
             "interval_seconds": settings["interval_seconds"],
             "completed_cycles": 0,
@@ -119,6 +158,11 @@ class MonitorController:
             "error_type": None,
             "browser_closed": True,
             "settings_editable": True,
+            "detail_count": 0,
+            "detail_pending_count": 0,
+            "detail_completed_count": 0,
+            "detail_failed_count": 0,
+            "details": [],
         }
         try:
             self._read_source()
@@ -136,6 +180,7 @@ class MonitorController:
     def status(self):
         with self._lock:
             result = self._state.copy()
+            result["details"] = [row.copy() for row in result["details"]]
             result["settings_editable"] = result["phase"] == "stopped" and not self.is_alive()
             due = result["next_eligible_at"]
             result["remaining_seconds"] = (
@@ -170,20 +215,46 @@ class MonitorController:
 
     def start(self):
         with self._lock:
+            if self._state["phase"] == "needs_review":
+                raise QueueError("The monitor requires review before another start")
             if self.is_alive():
                 if self._pause.is_set() and not self._stop.is_set():
                     self._pause.clear()
                     self._wake.set()
                     self._state.update(phase="starting", reason=None)
                 return self.status()
-            if self._state["phase"] == "needs_review":
-                raise QueueError("The monitor requires review before another start")
             self._stop.clear()
             self._pause.clear()
             self._wake.clear()
-            self._state.update(phase="starting", reason=None, error_type=None)
+            self._state.update(phase="starting", task_kind="list", reason=None, error_type=None)
             self._thread = threading.Thread(
                 target=self._work, name="image-monitor-discovery", daemon=True
+            )
+            self._thread.start()
+            return self.status()
+
+    def inspect_candidates(self):
+        """Inspect an existing, bounded batch without starting list discovery."""
+        with self._lock:
+            if (
+                self.is_alive()
+                or self._state["phase"] != "stopped"
+                or self._state["browser_closed"] is not True
+            ):
+                raise QueueError("Stop the monitor before inspecting existing candidates")
+            self._state.update(task_kind="details", reason=None, error_type=None)
+            if not self._state["baseline_initialized"]:
+                self._state["reason"] = "existing_baseline_required"
+                return self.status()
+            if self._state["detail_pending_count"] == 0:
+                self._state["reason"] = "no_unattempted_candidates"
+                return self.status()
+            self._stop.clear()
+            self._pause.clear()
+            self._wake.clear()
+            self._state["phase"] = "starting"
+            self._thread = threading.Thread(
+                target=self._work_details, name="image-monitor-details", daemon=True
             )
             self._thread.start()
             return self.status()
@@ -193,7 +264,8 @@ class MonitorController:
             if self.is_alive() and not self._stop.is_set():
                 self._pause.set()
                 self._wake.set()
-                self._state["phase"] = "pausing"
+                if self._state["phase"] != "needs_review":
+                    self._state["phase"] = "pausing"
             return self.status()
 
     def stop(self):
@@ -201,8 +273,9 @@ class MonitorController:
             if self.is_alive():
                 self._stop.set()
                 self._wake.set()
-                self._state["phase"] = "stopping"
-            elif self._state["browser_closed"] is True:
+                if self._state["phase"] != "needs_review":
+                    self._state["phase"] = "stopping"
+            elif self._state["browser_closed"] is True and self._state["phase"] != "needs_review":
                 self._state["phase"] = "stopped"
             return self.status()
 
@@ -216,6 +289,89 @@ class MonitorController:
         else:
             wait_for(self._wake, seconds)
         self._wake.clear()
+
+    def _read_details(self, queue, candidate_count):
+        """Read bounded, anonymous metadata; never retain a private DOM result."""
+        if queue.schema_version < 5:
+            return {
+                "detail_count": 0,
+                "detail_pending_count": candidate_count,
+                "detail_completed_count": 0,
+                "detail_failed_count": 0,
+                "details": [],
+            }
+        totals = queue.connection.execute(
+            "SELECT COUNT(*),COALESCE(SUM(status='completed'),0),"
+            "COALESCE(SUM(status IN ('failed','started')),0) FROM candidate_details WHERE "
+            + _SCOPE_WHERE,
+            MONITOR_SCOPE.key(),
+        ).fetchone()
+        pending = queue.connection.execute(
+            "SELECT COUNT(*) FROM watch_candidates c WHERE "
+            "c.watch_name=? AND c.gallery_type=? AND c.gallery_id=? AND c.keyword=? "
+            "AND c.search_type=? AND NOT EXISTS (SELECT 1 FROM candidate_details d WHERE "
+            "d.watch_name=c.watch_name AND d.gallery_type=c.gallery_type AND "
+            "d.gallery_id=c.gallery_id AND d.keyword=c.keyword AND "
+            "d.search_type=c.search_type AND d.post_id=c.post_id)",
+            MONITOR_SCOPE.key(),
+        ).fetchone()[0]
+        # JSON paths select only small scalar values, not the multi-megabyte snapshot.
+        rows = queue.connection.execute(
+            "SELECT status,json_extract(result_json,'$.classification.time_status'),"
+            "json_extract(result_json,'$.classification.reason'),"
+            "json_extract(result_json,'$.private_observation.snapshot.image_counts.included_unique'),"
+            "json_extract(result_json,'$.private_observation.snapshot.image_counts.pending'),"
+            "json_extract(result_json,'$.private_observation.http_status') "
+            "FROM candidate_details WHERE "
+            + _SCOPE_WHERE
+            + " ORDER BY started_at DESC,attempt_id DESC LIMIT 10",
+            MONITOR_SCOPE.key(),
+        ).fetchall()
+        details = []
+        for index, row in enumerate(reversed(rows), start=max(1, totals[0] - len(rows) + 1)):
+            status, time_status, reason, image_count, pending_images, http_status = row
+            if status not in {"started", "completed", "failed"}:
+                raise QueueError("Stored detail status is invalid")
+            details.append(
+                {
+                    "order": index,
+                    "status": status,
+                    "time_status": time_status if time_status in _TIME_STATUSES else "unknown",
+                    "reason": (
+                        "candidate_deleted"
+                        if http_status in {404, 410}
+                        else reason
+                        if reason in _DETAIL_REASONS
+                        else None
+                    ),
+                    "image_count": (
+                        image_count
+                        if type(image_count) is int and 0 <= image_count <= 1000
+                        else None
+                    ),
+                    "pending_images": (
+                        pending_images
+                        if type(pending_images) is int and 0 <= pending_images <= 1000
+                        else None
+                    ),
+                }
+            )
+        finished = queue.connection.execute(
+            "SELECT json_extract(result_json,'$.control.finished_at') FROM candidate_details WHERE "
+            + _SCOPE_WHERE
+            + " AND json_extract(result_json,'$.control.finished_at') IS NOT NULL "
+            "ORDER BY julianday(json_extract(result_json,'$.control.finished_at')) DESC LIMIT 1",
+            MONITOR_SCOPE.key(),
+        ).fetchone()
+        if finished is not None:
+            self._last_detail_finished = _stored_time(finished[0])
+        return {
+            "detail_count": totals[0],
+            "detail_pending_count": pending,
+            "detail_completed_count": totals[1],
+            "detail_failed_count": totals[2],
+            "details": details,
+        }
 
     def _read_source(self):
         now = self._clock.now()
@@ -254,7 +410,16 @@ class MonitorController:
                 ).fetchone()[0]
             latest = state["latest_scan"]
             result = latest["result"] if latest else {}
+            detail_status = self._read_details(queue, count)
+            if self._last_detail_finished is not None and due is not None:
+                due = max(
+                    due,
+                    next_poll_at(
+                        self._last_detail_finished, interval_seconds=self._state["interval_seconds"]
+                    ),
+                )
             self._set(
+                **detail_status,
                 candidate_count=count,
                 baseline_initialized=state["baseline"] is not None,
                 last_scan_at=_stamp(self._last_finished) if finished is not None else None,
@@ -345,6 +510,131 @@ class MonitorController:
             error_type=report.get("error_type"),
         )
         return False
+
+    def _after_detail(self, report):
+        if not isinstance(report, dict) or report.get("status") not in _DETAIL_STATUSES:
+            raise QueueError("The detail inspection did not return a valid report")
+        status = report["status"]
+        processed = report.get("candidates_completed", 0)
+        if type(processed) is not int or not 0 <= processed <= 1:
+            raise QueueError("The detail inspection has invalid counts")
+        self._set(browser_closed=report.get("browser_closed"))
+        eligibility, _ = self._read_source()
+        summaries = report.get("details") or []
+        if not isinstance(summaries, list) or len(summaries) > 1:
+            raise QueueError("The detail inspection has invalid summaries")
+        if (processed == 1 and (len(summaries) != 1 or not isinstance(summaries[0], dict))) or (
+            processed == 0 and summaries
+        ):
+            raise QueueError("The detail inspection summaries do not match its counts")
+        if (
+            eligibility == "blocked"
+            or report.get("reason") == "access_block_requires_review"
+            or any(
+                isinstance(row, dict) and row.get("http_status") in {401, 403} for row in summaries
+            )
+        ):
+            self._review("access_block_requires_review", error_type=report.get("error_type"))
+            return False, processed
+        if report.get("browser_closed") is not True:
+            self._review("owned_browser_cleanup_unconfirmed", error_type=report.get("error_type"))
+            return False, processed
+        if status == "candidate_busy":
+            self._extra_due = self._clock.now() + timedelta(seconds=BUSY_BACKOFF_SECONDS)
+            self._set(reason="another_worker_active", next_eligible_at=_stamp(self._extra_due))
+            return True, processed
+        due = report.get("next_eligible_at_local")
+        if due is not None:
+            self._extra_due = _stored_time(due)
+            self._set(next_eligible_at=_stamp(self._extra_due))
+        if processed:
+            summary = summaries[0]
+            http_status = summary.get("http_status")
+            if http_status in {429, 503}:
+                if due is None:
+                    raise QueueError("The deferred detail inspection has no next time")
+                self._set(reason="service_retry_after")
+                return False, processed
+            if http_status not in {404, 410} and not (
+                summary.get("status") == "observed"
+                and type(http_status) is int
+                and 200 <= http_status < 400
+                and summary.get("time_status") in {"before_baseline", "at_or_after_baseline"}
+            ):
+                self._review("detail_requires_review", error_type=report.get("error_type"))
+                return False, processed
+        if status == "candidate_no_pending":
+            self._set(reason="no_unattempted_candidates")
+            return False, processed
+        if status == "candidate_no_baseline":
+            self._review("existing_baseline_required")
+            return False, processed
+        if status == "candidate_waiting":
+            if due is None:
+                raise QueueError("The waiting detail inspection has no next time")
+            self._set(reason="persisted_cooldown")
+            return True, processed
+        if status == "candidate_test_completed":
+            if processed != 1 or due is None:
+                raise QueueError("The completed detail inspection has invalid evidence")
+            self._set(reason=None)
+            return True, processed
+        if status == "candidate_test_cancelled" and self._requested_stop():
+            return True, processed
+        self._review("detail_requires_review", error_type=report.get("error_type"))
+        return False, processed
+
+    def _work_details(self):
+        processed = 0
+        try:
+            while processed < MAX_DETAIL_BATCH and not self._stop.is_set():
+                if self._pause.is_set():
+                    self._set(phase="paused")
+                    self._wait(60)
+                    continue
+                eligibility, due = self._read_source()
+                if eligibility == "blocked":
+                    self._review("access_block_requires_review")
+                    break
+                if not self._state["baseline_initialized"]:
+                    self._review("existing_baseline_required")
+                    break
+                if self._state["detail_pending_count"] == 0:
+                    self._set(reason="no_unattempted_candidates")
+                    break
+                if self._extra_due is not None:
+                    due = max(due, self._extra_due)
+                self._set(next_eligible_at=_stamp(due))
+                remaining = (due - self._clock.now()).total_seconds()
+                if remaining > 0:
+                    self._set(phase="waiting")
+                    self._wait(remaining)
+                    continue
+                if self._requested_stop():
+                    continue
+                if shutil.disk_usage(self.work_root).free < MIN_FREE_BYTES:
+                    self._review("insufficient_free_space")
+                    break
+                self._set(phase="inspecting", reason=None, browser_closed=None)
+                report = self._run_details(
+                    self.work_root,
+                    "chrome",
+                    scope=MONITOR_SCOPE,
+                    max_candidates=1,
+                    interval_seconds=self._state["interval_seconds"],
+                    should_stop=self._requested_stop,
+                    clock=self._clock,
+                )
+                keep_going, count = self._after_detail(report)
+                processed += count
+                if not keep_going:
+                    break
+        except BaseException as error:
+            self._review("detail_stopped_for_review", error_type=type(error).__name__)
+        finally:
+            with self._lock:
+                if self._state["phase"] != "needs_review":
+                    self._state["phase"] = "stopped"
 
     def _work(self):
         try:

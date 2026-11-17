@@ -88,6 +88,19 @@ input:disabled{background:#f4f6f4;color:#7d8985}
 .notice{border:1px solid #e1e7db;border-radius:12px;padding:14px 20px;margin-top:16px;
   background:#edf1e7;font-size:13px;color:#536553;line-height:1.8}
 .notice strong{font-weight:650;color:#304d3c}
+.details-panel{margin-top:18px;padding:21px 25px}
+.details-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.details-heading h2{font-size:18px;margin:2px 0 0;letter-spacing:-.5px}
+.details-help{color:var(--muted);font-size:13px;margin:12px 0 8px}
+.details-counts{color:var(--teal);font-size:13px;margin:0 0 15px}
+.details-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px;text-align:left}
+.details-table th{color:var(--muted);font-weight:600;font-size:12px;padding:8px 7px;
+  border-block:1px solid #e6ebe6}
+.details-table td{padding:11px 7px;border-bottom:1px solid #edf0ee;vertical-align:top;
+  overflow-wrap:anywhere}
+.details-table th:first-child{width:26%}.details-table th:nth-child(2){width:43%}
+.details-table td small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.details-empty{color:var(--muted);font-size:13px;margin:15px 0 0}
 .message{font-size:13px;color:var(--teal);min-height:25px;padding:0 2px;margin:13px 0 0}
 .message[data-kind="error"]{color:var(--red)}
 .footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:19px;
@@ -97,6 +110,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   .connection{font-size:11px}.main-grid{grid-template-columns:1fr}.metrics{gap:9px}
   .metric{padding:16px 13px}.metric-value{font-size:26px}.metric-label{font-size:11px}
   h1{font-size:26px}.monitor-panel{padding:23px 20px}.settings{padding:21px}
+  .details-panel{padding:21px 20px}
   .setting-label{margin-top:17px}
   .settings form{display:grid;grid-template-columns:1fr 140px;gap:0 15px;align-items:end}
   .settings .setting-label,.settings .setting-help{grid-column:1/-1}
@@ -181,6 +195,23 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     </aside>
   </div>
 
+  <section class="panel details-panel" aria-labelledby="details-title">
+    <div class="details-heading">
+      <div><p class="section-label">기록된 후보의 내용</p>
+        <h2 id="details-title">작성 시각과 본문 이미지를 확인합니다.</h2></div>
+      <button class="button" id="inspect-candidates" type="button" disabled>후보 내용 확인</button>
+    </div>
+    <p class="details-help">감시를 중지한 상태에서 기존 후보를 최대 두 개 확인합니다.
+      이미지 개수와 작성 시각 판정만 기록하며, 끝나면 멈춥니다.</p>
+    <p class="details-counts" id="details-counts">완료 0개 · 확인 필요 0개 · 미시도 0개</p>
+    <table class="details-table" aria-label="최근 후보 내용 확인 결과" id="details-table" hidden>
+      <thead><tr><th scope="col">확인 기록</th><th scope="col">작성 시각 판정</th>
+        <th scope="col">본문 이미지</th></tr></thead>
+      <tbody id="detail-rows"></tbody>
+    </table>
+    <p class="details-empty" id="details-empty">아직 내용을 확인한 후보가 없습니다.</p>
+  </section>
+
   <div class="notice">
     <strong>감시 시작 이후의 새 글부터 기록합니다.</strong><br>
     이전 시험 기록과 저장 파일은 유지됩니다. 이미지 자동 저장은 아직 연결하지 않았습니다.
@@ -209,6 +240,10 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       detail: '기존 기록과 다음 확인 시각을 살펴봅니다.', tone: 'active'},
     scanning: {title: '목록을 확인하고 있습니다.',
       detail: '이번에 발견한 후보를 기록하고 있습니다.', tone: 'active'},
+    inspecting: {title: '후보 내용을 확인하고 있습니다.',
+      detail: '기존 후보의 작성 시각과 본문 이미지 정보를 읽고 있습니다. ' +
+        '이미지 저장은 하지 않습니다.',
+      tone: 'active'},
     waiting: {title: '다음 확인을 기다리고 있습니다.',
       detail: '앞 확인을 마친 뒤 정해진 간격만큼 기다립니다.', tone: 'active'},
     pausing: {title: '일시정지를 준비하고 있습니다.',
@@ -241,7 +276,12 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     pagination_ambiguous: '다음 목록을 확실히 구분하지 못해 멈췄습니다. 이전 기록은 유지됩니다.',
     pagination_unverified: '다음 목록을 확인하지 못해 멈췄습니다. 이전 기록은 유지됩니다.',
     excluded_rows_unverified: '목록의 일부 행을 구분하지 못해 멈췄습니다. 이전 기록은 유지됩니다.',
-    order_unverified: '목록 순서를 확인하지 못해 멈췄습니다. 이전 기록은 유지됩니다.'
+    order_unverified: '목록 순서를 확인하지 못해 멈췄습니다. 이전 기록은 유지됩니다.',
+    detail_inspection_failed: '후보 내용을 확인하지 못해 멈췄습니다. 결과 TXT를 보내주세요.',
+    candidate_identity_or_baseline_invalid: '기존 후보의 기준 정보를 확인하지 못했습니다. ' +
+      '기록을 유지하고 확인을 멈췄습니다.',
+    no_unattempted_candidates: '아직 내용을 확인하지 않은 후보가 없습니다.',
+    candidate_unavailable: '해당 후보가 삭제되었거나 더 이상 공개되어 있지 않습니다.'
   };
   let current = null;
   let requesting = false;
@@ -270,10 +310,82 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     text('connection-text', value);
     element('connection').dataset.state = lost ? 'lost' : 'ready';
   }
+  function renderDetails(state) {
+    const pending = count(state.detail_pending_count);
+    text('details-counts', `완료 ${count(state.detail_completed_count)}개 · ` +
+      `확인 필요 ${count(state.detail_failed_count)}개 · 미시도 ${pending}개`);
+    const rows = Array.isArray(state.details) ? state.details.slice(0, 10) : [];
+    const body = element('detail-rows');
+    body.replaceChildren();
+    const timeLabels = {
+      at_or_after_baseline: '감시 기준 시각 이후',
+      before_baseline: '감시 기준 시각 이전',
+      unknown: '확인 못함'
+    };
+    const statusLabels = {completed: '확인 완료', failed: '확인 필요', started: '확인 미완료'};
+    for (const row of rows) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+      const line = document.createElement('tr');
+      const orderCell = document.createElement('td');
+      orderCell.textContent = `확인 ${count(row.order)}`;
+      const label = document.createElement('small');
+      label.textContent = Object.hasOwn(statusLabels, row.status) ?
+        statusLabels[row.status] : '확인 필요';
+      orderCell.appendChild(label);
+      const timeCell = document.createElement('td');
+      timeCell.textContent = row.reason === 'candidate_deleted' ? '삭제되었거나 공개되지 않음' :
+        Object.hasOwn(timeLabels, row.time_status) ?
+          timeLabels[row.time_status] : timeLabels.unknown;
+      const imageCell = document.createElement('td');
+      imageCell.textContent = Number.isSafeInteger(row.image_count) && row.image_count >= 0 ?
+        `${row.image_count}개` : '확인 못함';
+      if (Number.isSafeInteger(row.pending_images) && row.pending_images > 0) {
+        const pendingLabel = document.createElement('small');
+        pendingLabel.textContent = `로딩 미완료 ${row.pending_images}개`;
+        imageCell.appendChild(pendingLabel);
+      }
+      line.append(orderCell, timeCell, imageCell);
+      body.appendChild(line);
+    }
+    element('details-table').hidden = !body.childElementCount;
+    element('details-empty').hidden = !!body.childElementCount;
+    text('details-empty', count(state.candidate_count) === 0 ?
+      '기록된 후보가 없습니다. 감시에서 새 후보를 찾은 뒤 확인할 수 있습니다.' :
+      pending > 0 ? '확인할 후보가 있습니다. 감시를 중지한 뒤 후보 내용 확인을 눌러 주세요.' :
+        '아직 내용을 확인한 후보가 없습니다.');
+  }
   function render(state) {
     current = state;
     const phase = typeof state.phase === 'string' ? state.phase : 'unknown';
-    const info = phases[phase] || phases.unknown;
+    const detailTask = state.task_kind === 'details';
+    let info = phases[phase] || phases.unknown;
+    if (detailTask) {
+      const detailPhases = {
+        starting: {title: '후보 내용 확인을 준비하고 있습니다.',
+          detail: '기존 후보와 필요한 대기 시간을 살펴봅니다.', tone: 'active'},
+        waiting: {title: '다음 후보 확인을 기다리고 있습니다.',
+          detail: '앞 확인이 끝난 뒤의 간격을 지킵니다. ' +
+            '최대 두 개를 확인한 뒤 멈춥니다.', tone: 'active'},
+        paused: {title: '후보 내용 확인을 잠시 멈췄습니다.',
+          detail: '내용 확인 계속을 누르면 남은 대기를 지켜 이어갑니다.', tone: ''},
+        stopped: {title: '후보 내용 확인을 마쳤습니다.',
+          detail: '아래 결과를 확인할 수 있습니다. ' +
+            '목록 감시는 자동으로 다시 시작하지 않습니다.', tone: ''}
+      };
+      info = detailPhases[phase] || info;
+      if (phase === 'stopped' && state.reason === 'service_retry_after') {
+        info = {title: '후보 내용 확인을 멈췄습니다.',
+          detail: '서버 요청으로 내용 확인을 멈췄습니다. 기존 기록과 대기 시간을 유지합니다.',
+          tone: ''};
+      } else if (phase === 'stopped' && state.reason === 'no_unattempted_candidates') {
+        info = {title: '확인할 후보가 없습니다.',
+          detail: '아직 내용을 확인하지 않은 후보가 없습니다. 기존 확인 기록은 유지됩니다.',
+          tone: ''};
+      } else if (phase === 'stopped' && state.reason === 'existing_baseline_required') {
+        info = {title: '기존 감시 기준점이 필요합니다.',
+          detail: '감시에서 기준점과 새 후보를 기록한 뒤 내용을 확인할 수 있습니다.', tone: ''};
+      }
+    }
     const editable = state.settings_editable === true ||
       (state.settings_editable === undefined && phase === 'stopped');
     text('candidate-count', count(state.candidate_count).toLocaleString('ko-KR'));
@@ -297,15 +409,19 @@ input:disabled{background:#f4f6f4;color:#7d8985}
         Number.isSafeInteger(state.interval_seconds)) {
       element('interval').value = String(state.interval_seconds);
     }
-    text('start', phase === 'paused' ? '계속 감시' : '감시 시작');
+    text('start', phase === 'paused' ? (detailTask ? '내용 확인 계속' : '계속 감시') : '감시 시작');
     element('start').disabled = requesting || closing || !['stopped', 'paused'].includes(phase);
     element('pause').disabled = requesting || closing ||
-      !['starting', 'scanning', 'waiting'].includes(phase);
+      !['starting', 'scanning', 'inspecting', 'waiting'].includes(phase);
     element('stop').disabled = requesting || closing ||
       ['stopped', 'stopping', 'unknown'].includes(phase);
     element('interval').disabled = requesting || closing || !editable;
     element('apply').disabled = requesting || closing || !editable || !dirtyInterval;
     element('exit').disabled = requesting || closing;
+    element('inspect-candidates').disabled = requesting || closing || phase !== 'stopped' ||
+      state.settings_editable !== true || state.browser_closed !== true ||
+      count(state.candidate_count) === 0 || count(state.detail_pending_count) === 0;
+    renderDetails(state);
   }
   function finishScreen() {
     ended = true;
@@ -316,7 +432,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       '이 창은 닫아도 됩니다.');
     element('status-mark').className = 'status-mark';
     text('countdown', '');
-    for (const id of ['start', 'pause', 'stop', 'apply', 'exit', 'interval']) {
+    const controls = ['start', 'pause', 'stop', 'apply', 'exit', 'interval', 'inspect-candidates'];
+    for (const id of controls) {
       element(id).disabled = true;
     }
   }
@@ -389,6 +506,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     }
   }
   element('start').addEventListener('click', () => action('start'));
+  element('inspect-candidates').addEventListener('click', () => action('inspect_candidates'));
   element('pause').addEventListener('click', () => action('pause'));
   element('stop').addEventListener('click', () => action('stop'));
   element('exit').addEventListener('click', () => action('exit'));

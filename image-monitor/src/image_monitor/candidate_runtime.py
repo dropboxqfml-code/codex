@@ -1,5 +1,6 @@
 """Inspect at most two persisted list candidates; never create image work."""
 
+import time
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -24,7 +25,13 @@ from image_monitor.watch_runtime import (
     _stamp,
     _stored_time,
 )
-from image_monitor.watch_store import WatchStore
+from image_monitor.watch_store import WatchScope, WatchStore
+
+_MONITOR_SCOPE = WatchScope("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
+
+
+class _RequestedStop(Exception):
+    """Finish a requested stop after committing any completed observation."""
 
 
 def _safe_count(value):
@@ -123,6 +130,8 @@ def run_candidate_trial(
     interval_seconds=60,
     backend_factory=HeadlessCandidateBrowser,
     clock=None,
+    scope=DEFAULT_SCOPE,
+    should_stop=None,
 ):
     require_windows()
     if browser not in {"chrome", "edge"}:
@@ -131,6 +140,10 @@ def run_candidate_trial(
         raise NativeUIError("Choose one or two candidate inspections")
     if type(interval_seconds) is not int or not 60 <= interval_seconds <= 300:
         raise NativeUIError("The candidate interval must be an integer from 60 to 300 seconds")
+    if not isinstance(scope, WatchScope) or scope not in (DEFAULT_SCOPE, _MONITOR_SCOPE):
+        raise NativeUIError("Candidate inspection requires an existing reviewed watch scope")
+    if should_stop is not None and not callable(should_stop):
+        raise NativeUIError("The candidate stop condition must be callable")
     clock = clock or _Clock()
     _stamp(clock.now())
     base = Path(work_root).resolve()
@@ -160,11 +173,35 @@ def run_candidate_trial(
     }
     backend = None
     try:
+
+        def stopped():
+            if should_stop is None:
+                return False
+            value = should_stop()
+            if type(value) is not bool:
+                raise QueueError("The candidate stop condition must return a boolean")
+            return value
+
+        def stop_if_requested():
+            if stopped():
+                raise _RequestedStop
+
+        def wait_until(due):
+            if should_stop is None:
+                clock.wait(max(0, (due - clock.now()).total_seconds()))
+                return
+            while (remaining := (due - clock.now()).total_seconds()) > 0:
+                stop_if_requested()
+                wait = getattr(clock, "wait", time.sleep)
+                wait(min(remaining, 0.1))
+            stop_if_requested()
+
         if not database.is_file():
             report.update(status="candidate_no_baseline", reason="existing_watch_database_required")
         else:
+            # All reviewed scopes share this scan lease with discovery and saving.
             with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
-                state = WatchStore(queue).get_state(DEFAULT_SCOPE)
+                state = WatchStore(queue).get_state(scope)
                 if queue.summary()["posts"] or queue.summary()["jobs"]:
                     raise QueueError("Candidate inspection requires the separate watch database")
                 baseline = state["baseline"]
@@ -177,11 +214,13 @@ def run_candidate_trial(
                     store = CandidateDetailStore(queue)
                     if eligibility == "blocked":
                         report.update(reason="access_block_requires_review", last_stage="blocked")
+                    elif stopped():
+                        raise _RequestedStop
                     elif eligibility == "waiting":
                         report.update(status="candidate_waiting", reason="persisted_cooldown")
                         _deadline(report, due)
                     else:
-                        batch = store.list_pending(DEFAULT_SCOPE, limit=max_candidates)
+                        batch = store.list_pending(scope, limit=max_candidates)
                         report["candidates_selected"] = len(batch)
                         if not batch:
                             report.update(
@@ -201,12 +240,13 @@ def run_candidate_trial(
                                     raise QueueError(
                                         "Candidate identity does not match its stored URL"
                                     )
+                            stop_if_requested()
                             backend = backend_factory(browser, now=clock.now)
                             with backend:
                                 report["browser_closed"] = False
                                 report["browser_version"] = backend.browser_version
                                 for index, candidate in enumerate(batch):
-                                    state = WatchStore(queue).get_state(DEFAULT_SCOPE)
+                                    state = WatchStore(queue).get_state(scope)
                                     eligibility, due = _eligibility(queue, state, clock.now())
                                     if eligibility == "blocked":
                                         report.update(
@@ -214,6 +254,7 @@ def run_candidate_trial(
                                             last_stage="blocked",
                                         )
                                         break
+                                    stop_if_requested()
                                     if eligibility == "waiting":
                                         remaining = (due - clock.now()).total_seconds()
                                         _deadline(report, due)
@@ -225,17 +266,26 @@ def run_candidate_trial(
                                             break
                                         report["last_stage"] = "waiting_between_candidates"
                                         write_report(report_path, report)
-                                        clock.wait(max(0, remaining))
-                                        eligibility, due = _eligibility(queue, state, clock.now())
+                                        wait_until(due)
+                                        eligibility, due = _eligibility(
+                                            queue, WatchStore(queue).get_state(scope), clock.now()
+                                        )
+                                        if eligibility == "blocked":
+                                            report.update(
+                                                reason="access_block_requires_review",
+                                                last_stage="blocked",
+                                            )
+                                            break
                                         if eligibility != "ready":
                                             report.update(
                                                 status="candidate_waiting",
                                                 reason="cooldown_not_elapsed",
                                             )
                                             break
+                                    stop_if_requested()
                                     observed_at = clock.now()
                                     attempt = store.start(
-                                        DEFAULT_SCOPE,
+                                        scope,
                                         candidate["post_id"],
                                         expected_first_scan_id=candidate["first_scan_id"],
                                         baseline_observed_at=_stored_time(baseline["observed_at"]),
@@ -317,6 +367,7 @@ def run_candidate_trial(
                                             last_stage="blocked",
                                         )
                                         break
+                                    stop_if_requested()
                                     if http_status in {429, 503}:
                                         report.update(
                                             status="candidate_waiting", reason="service_retry_after"
@@ -340,6 +391,8 @@ def run_candidate_trial(
                                         )
                 if queue.summary()["posts"] or queue.summary()["jobs"]:
                     raise QueueError("Candidate inspection unexpectedly created image work")
+    except _RequestedStop:
+        report.update(status="candidate_test_cancelled", error_type=None, reason="requested_stop")
     except WatchRunBusy:
         report.update(status="candidate_busy", reason="another_scan_owns_this_scope")
     except KeyboardInterrupt:

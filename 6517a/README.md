@@ -1,14 +1,14 @@
 # Keithley 6517A · USB-GPIB 시험용 프로그램
 
-Windows 10/11 64-bit용 **v0.9.0 기본 기능 통합 시험판**입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV·분석용 TXT 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
+Windows 10/11 64-bit용 **v0.9.1 ARM 영점보정 수정 시험판**입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV·분석용 TXT 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
 
-이번 시험판은 여러 결과 비교, 예상 남은 시간, 분석 설정 저장·다시 열기와 진단 ZIP 저장을 통합합니다. v1.0.0은 시험 결과를 반영할 정식 배포 버전으로 구분합니다.
+이번 수정 시험판은 ARM의 `zero correction acquire` 단계에서 보고된 `-200 Execution error`에 대응해 FVMI 영점보정을 매뉴얼의 전면 패널 방식으로 전환하고, ARM 실패 통신 기록을 파일로 보존합니다. 여러 결과 비교·예상 남은 시간·분석 설정·진단 ZIP 기능을 유지하며, v1.0.0은 사용자 시험을 반영할 정식 배포 버전으로 구분합니다.
 
 연결 구성은 사용자가 관리하는 **저전압 시험 모드**와 기존 **검증 fixture 모드**를 선택합니다. 시작 화면은 SIMULATION·0 V이며, REAL 준비도 0 V·trip 미설정·사용자 확인 미선택에서 시작합니다. 설정 불러오기·초안 적용·연결만으로 출력 ON을 하지 않습니다.
 
 ## Windows에서 실행
 
-[Windows ZIP 다운로드](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.0/6517A-USB-GPIB-Trial-0.9.0-Windows-x64.zip)와 [SHA-256](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.0/6517A-USB-GPIB-Trial-0.9.0-Windows-x64.zip.sha256)을 받습니다. 새 쓰기 가능한 폴더에 모두 풀고 **`Start-GUI.cmd` 하나만 실행**합니다. 시작 창이 **Bundle 파일 검사 → Simulation 동작 검사 → GUI**를 자동으로 진행하며, 두 검사를 통과하면 메인 화면을 엽니다. Python과 Python 의존성은 포함돼 있습니다. 호환되는 기존 NI-488.2·NI-VISA 64-bit 설치를 사용하며, 드라이버 설치 상태와 이 프로그램의 통신 결과는 구분합니다.
+[Windows ZIP 다운로드](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.1/6517A-USB-GPIB-Trial-0.9.1-Windows-x64.zip)와 [SHA-256](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.1/6517A-USB-GPIB-Trial-0.9.1-Windows-x64.zip.sha256)을 받습니다. 새 쓰기 가능한 폴더에 모두 풀고 **`Start-GUI.cmd` 하나만 실행**합니다. 시작 창이 **Bundle 파일 검사 → Simulation 동작 검사 → GUI**를 자동으로 진행하며, 두 검사를 통과하면 메인 화면을 엽니다. Python과 Python 의존성은 포함돼 있습니다. 호환되는 기존 NI-488.2·NI-VISA 64-bit 설치를 사용하며, 드라이버 설치 상태와 이 프로그램의 통신 결과는 구분합니다.
 
 시작 창에서 현재 단계와 진행 기록을 확인합니다. 검사 실패 시 실패 단계와 기록을 확인하고 재시도할 수 있습니다. 자동 Simulation은 장비 연결 없이 수행하며 결과는 `diagnostics/startup-simulation`에 저장합니다. `Verify-Bundle.cmd`와 `Test-Simulation.cmd`는 개별 점검용으로 계속 사용할 수 있습니다.
 
@@ -28,6 +28,8 @@ Windows 10/11 64-bit용 **v0.9.0 기본 기능 통합 시험판**입니다. NI G
 4. ARM이 완료되면 **4. START**로 전압 인가와 수집을 시작합니다. 전압·전류·저항과 그래프를 확인하고 필요할 때 **STOP**을 누릅니다.
 
 ARM이 비활성화되면 준비 상태에 누락 설정 또는 장비 조건을 표시합니다. START는 ARM 완료 전에는 대기합니다. 연결 후 미완료 설정을 발견하면 출력 OFF 상태에서 **연결 종료 후 설정 수정**을 누릅니다. 연결 종료 뒤 설정 창을 열며, 수정 후 다시 연결 → ARM → START로 진행합니다.
+
+FVMI 전류 측정의 영점보정은 출력 OFF·고정 전류 범위·Zero Check ON에서 **Zero Correct ON → Zero Check OFF** 순서로 수행합니다. 매뉴얼 3-133의 전면 패널과 같은 방식이며, 보정 상태·완료 응답·오류 큐를 검사한 뒤 autorange를 복원합니다. `:SYST:ZCOR:ACQ`를 사용하던 방식의 `-200` 원인을 idle 상태나 오래된 판독으로 단정하지 않으며, 실제 6517A에서 ARM 재시험이 필요합니다. `+513 Calibration data lost` 등 장비 오류는 계속 ARM을 차단합니다.
 
 측정 중에는 현재 전압 단계와 전체 진행률, **예상 남은 시간**을 표시합니다. 설정한 dwell·전압 목록·반복 횟수를 기준으로 계산하며, 아직 발생하지 않은 통신·판독 지연과 종료 처리 시간은 포함하지 않습니다. 남은 시간이 0이어도 출력 OFF·저장 완료가 확인될 때까지 종료 처리가 이어질 수 있습니다.
 
@@ -49,7 +51,7 @@ ARM이 비활성화되면 준비 상태에 누락 설정 또는 장비 조건을
 
 ## 종료 상태와 저장 결과 분석
 
-v0.9.0은 **정상 완료·사용자 중지·장비/통신 오류**를 구분합니다. STOP 뒤 출력 OFF와 저장이 확인되면 `stopped`로 기록하며, 오류나 OFF 미확인은 별도로 표시합니다. 저장된 판독 수와 결과 폴더를 확인할 수 있습니다.
+v0.9.1은 **정상 완료·사용자 중지·장비/통신 오류**를 구분합니다. STOP 뒤 출력 OFF와 저장이 확인되면 `stopped`로 기록하며, 오류나 OFF 미확인은 별도로 표시합니다. 저장된 판독 수와 결과 폴더를 확인할 수 있습니다.
 
 **저장 결과 분석**에서 이전 결과 폴더의 `readings.csv`를 엽니다. 장비 연결 없이 I(t)·R(t)·ρ(t)를 다시 보고 시작·끝 시간(s)을 지정해 구간을 선택합니다. 전류·저항·비저항 각각의 유효 개수, 평균, 표본 표준편차를 표시합니다. 비저항은 CSV에 저장된 Ω·m 값을 사용하며 저장값이 없으면 새로 계산하지 않습니다. 값이 하나면 표준편차는 `—`입니다.
 
@@ -114,6 +116,8 @@ uv run --locked python -m keithley6517a.cli simulate --config examples/simulatio
 NI-VISA를 생략하는 `@py` 대안은 GUI를 닫고 `Enable-NI-Only.cmd`로 선택 확장을 설치한 뒤 명시적으로 선택합니다. 기본 ZIP에는 PyVISA-py·gpib-ctypes가 포함되지 않으며 NI-488.2 드라이버는 계속 필요합니다. [Windows VISA 안내](docs/windows_visa.md)를 참고하세요.
 
 **진단·상세 기록 → 진단 ZIP 저장**은 최근 측정·연결 진단·시작 검사 요약, 화면 로그와 프로그램 정보를 지정한 로컬 ZIP으로 묶습니다. 측정·준비 작업 중과 ARMED 상태에서는 저장 버튼을 비활성화합니다. 원본은 변경하지 않으며 기존 ZIP을 덮어쓰거나 자동 업로드하지 않습니다. ZIP에는 시료 정보·장비 일련번호·로컬 경로·통신 원문이 포함될 수 있습니다. 포함·누락한 파일과 이유는 ZIP의 `manifest.json`에 기록합니다. 파일당 64 MiB·자료 합계 128 MiB까지 수집하며 화면 로그는 최근 1 MiB를 보관합니다.
+
+ARM 설정이 실패해 일반 run 폴더가 만들어지지 않아도 보호 OFF 처리 뒤 저장 폴더의 `arm-failures/<UTC시각_고유ID>/diagnostic.json`과 `raw_io.jsonl`에 오류·설정·통신 기록을 보관합니다. GUI는 저장된 ARM 실패 기록을 최근 진단으로 선택하므로 작업 종료 후 같은 **진단 ZIP 저장**으로 묶을 수 있습니다. 기록 저장 실패는 별도로 표시하며 원래 ARM 오류와 출력 상태는 유지합니다.
 
 ## 데이터와 검증
 

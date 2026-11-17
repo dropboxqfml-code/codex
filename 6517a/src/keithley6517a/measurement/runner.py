@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
+import os
 import subprocess
 import threading
+import uuid
 from collections import deque
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .. import __version__
@@ -44,6 +48,7 @@ class MeasurementRunner:
         self.residual_voltage_state = "UNVERIFIED"
         self.identity = {}
         self.run_directory = None
+        self.last_arm_failure_report = {}
         self.rows = []
         self._saved_reading_count = 0
         self.summaries = []
@@ -233,6 +238,7 @@ class MeasurementRunner:
         self._next_safety_poll = 0.0
         self.writer = None
         self.run_directory = None
+        self.last_arm_failure_report = {}
         self.rows.clear()
         self._saved_reading_count = 0
         self.summaries.clear()
@@ -276,6 +282,7 @@ class MeasurementRunner:
         self._check_owner()
         if self.state != "OUTPUT_OFF_CONFIRMED" or self._started:
             raise MeasurementError("ARM requires a fresh connection with confirmed output OFF")
+        self.last_arm_failure_report = {}
         self.config.validate(for_arm=True)
         try:
             self._checkpoint()
@@ -378,7 +385,92 @@ class MeasurementRunner:
             self._safe_off()
             self._state("FAULT" if self.output_state == "OFF" else "HV_STATE_UNKNOWN")
             self._finalize("aborted", str(exc))
+            self._save_arm_failure(exc)
             raise
+
+    def _save_arm_failure(self, error):
+        """Preserve failed preparation only after protective OFF and writer cleanup.
+
+        Configuration may fail before a normal RunWriter exists. This separate
+        diagnostic snapshot retains its original command/reply sequence without
+        creating a measurement run, issuing I/O, or replacing the ARM exception.
+        """
+        report = dict(
+            schema_version=1,
+            stage="arm_configuration",
+            ok=False,
+            software_version=__version__,
+            error=str(error),
+            exception_type=type(error).__name__,
+            state=self.state,
+            output_state=self.output_state,
+            residual_voltage_state="UNVERIFIED",
+            simulation=self.config.simulation,
+            hardware_verified=False,
+            raw_io_entries=len(self._transcript),
+            raw_io_capacity=self._transcript.maxlen,
+            raw_io_may_be_truncated=len(self._transcript) == self._transcript.maxlen,
+            events_may_be_truncated=len(self.events) == self.events.maxlen,
+            run_directory=str(self.run_directory) if self.run_directory else None,
+            report_saved=False,
+            report_path=None,
+            raw_io_path=None,
+        )
+        self.last_arm_failure_report = report
+        directory = None
+        directory_created = False
+        created_files = []
+        try:
+            # Validate all JSON before creating files. No exception here may
+            # obscure the original instrument/configuration failure.
+            report.update(
+                identity=dict(self.identity),
+                settings=self.config.to_dict(),
+                events=list(self.events),
+                failed_at=self.clock.wall_time(),
+            )
+            encoded_io = [
+                json.dumps(item, ensure_ascii=False, allow_nan=False) + "\n"
+                for item in self._transcript
+            ]
+            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%f")
+            directory = (
+                Path(self.config.output_directory).expanduser().resolve()
+                / "arm-failures"
+                / f"{stamp}_{uuid.uuid4().hex}"
+            )
+            diagnostic_path = directory / "diagnostic.json"
+            raw_path = directory / "raw_io.jsonl"
+            saved = dict(
+                report,
+                report_saved=True,
+                report_path=str(diagnostic_path),
+                raw_io_path=str(raw_path),
+            )
+            encoded_report = json.dumps(saved, ensure_ascii=False, allow_nan=False, indent=2)
+            directory.mkdir(parents=True)  # UUID collision must never replace an existing report.
+            directory_created = True
+            for path, contents in ((raw_path, encoded_io), (diagnostic_path, [encoded_report])):
+                with path.open("x", encoding="utf-8", newline="") as stream:
+                    created_files.append(path)
+                    stream.writelines(contents)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            self.last_arm_failure_report = saved
+        except Exception as exc:
+            report["report_error"] = f"{type(exc).__name__}: {exc}"
+            # Remove only files created by this attempt. A complete existing
+            # report, including an unlikely UUID collision, remains untouched.
+            for path in reversed(created_files):
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            if directory_created:
+                try:
+                    directory.rmdir()
+                except OSError:
+                    pass
 
     def request_stop(self, reason="user stop"):
         """Only cross-thread operation; never opens a second VISA session or performs I/O."""

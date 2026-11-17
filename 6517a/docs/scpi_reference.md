@@ -50,8 +50,8 @@
 | `:CALC:STAT OFF`, `?`; `:CALC2:STAT OFF`, `?` | W/Q·계산 | `0`; CALC1 math와 CALC2 buffer 계산 해제 | 3.13.1~2, 3-63/3-65 | 확인/미시험 |
 | `:CALC3:LIM1:STAT OFF`, `?`; `:CALC3:LIM2:STAT OFF`, `?` | W/Q·장비 limit test | `0`; software trip·source limit와 구분 | 3.13.3, 3-68 | 확인/미시험 |
 | `:SYST:ZCH ON/OFF`, `?` | W/Q·Zero Check | `0`/`1`; 정상 수집 전 OFF 확인 | 3.22.12, 3-133 | 확인/미시험 |
-| `:SYST:ZCOR:ACQ` | W·내부 영점 획득 | 응답 없음; 출력 OFF·ZCH ON일 때만 | 3.22.12, 3-134 | 확인/미시험 |
-| `:SYST:ZCOR ON`, `?` | W/Q·Zero Correct | `1`; 획득 후 ZCH OFF → ZCOR ON 순서 | 3.22.12, 3-133~134 | 확인/미시험 |
+| `:SYST:ZCOR:ACQ` | W·내부 영점 획득 | 응답 없음; 출력 OFF·ZCH ON; 현재는 SIM Native 경로에서 사용 | 3.22.12, 3-134 | 확인/미시험 |
+| `:SYST:ZCOR ON`, `?` | W/Q·Zero Correct | `1`; FVMI는 ZCH ON에서 직접 보정 후 ZCH OFF | 3.22.12, 3-133~134 | 확인/미시험 |
 | `:FORM:DATA ASC`, `?` | W/Q·데이터 형식 | `ASC`; 선택 형식 검사 | 3.16, 3-75 | 확인/미시험 |
 | `:FORM:ELEM READ,STAT,UNIT,RNUM,VSO`, `?` | W/Q·포함 요소 | 같은 요소 집합; 응답 순서는 Figure 3-19 고정 | 3.16, 3-76~78 | 확인/미시험 |
 | `:ARM:SOUR IMM`, `?`; `:ARM:COUN 1`, `?` | W/Q·arm layer 1 | `IMM`, `1`; **delay 항목 없음** | 3.24.4~6, 3-143~144 | 확인/미시험 |
@@ -66,9 +66,15 @@
 - Arm layer 1은 delay를 사용하지 않습니다(3-143). 예전 provisional profile의 `:ARM:LAY1:DEL`을 제거했습니다. Layer 1은 `:ARM:SOUR`·`:ARM:COUN`, layer 2와 trigger만 `:DEL`을 사용합니다.
 - 전류·저항 기능의 `REF:STAT`와 ohms `IREF`를 명시적으로 해제합니다. CALC를 끄는 것만으로 REL이 꺼지는 것은 아닙니다.
 - Source current-limit 명령은 상세 명령 설명 3-108의 **`:SOUR:CURR:...` root 경로**를 사용합니다. Table 3-11의 시각적 들여쓰기만 보고 `:SOUR:VOLT:CURR:...`를 만들지 않습니다. 임의 nA/µA programmable compliance 쓰기는 없습니다.
-- Zero correction acquire 방식은 출력 OFF에서 ZCH ON → ACQ → ZCH OFF → ZCOR ON입니다(3-133~134). Autorange 구성 시 최소 전류 range에서 먼저 zero correction을 획득한 뒤 autorange를 적용하고, 고정 range면 그 range에서 획득합니다. 2-60은 uprange에서 zero가 유지되고 downrange에는 다시 zero해야 한다고 설명합니다. 획득 range·시각을 기록하며 이 절차가 모든 range에서 정격 정확도를 인증한다는 뜻은 아닙니다. 정격의 “properly zeroed” 조건은 2.13.4의 별도 절차와 실제 시료 조건도 검토해야 합니다.
+- 매뉴얼은 Zero Correct의 두 방법을 설명합니다(3-133~134). 첫 방법은 `ZCH ON → ZCOR ON`으로 전면 패널과 같은 보정을 수행한 뒤 ZCH를 OFF로 하는 방식입니다. 둘째 방법은 `ZCH ON → ZCOR:ACQ → ZCH OFF → ZCOR ON`입니다. v0.9.1의 FVMI 전류 경로는 사용자가 보고한 ACQ 단계 `-200`에 대응해 첫 방법을 사용하며, SIM Native 경로는 둘째 방법을 유지합니다. 두 방법 모두 보정 readback·완료·오류를 검사합니다. Autorange는 20 pA 범위에서 보정한 뒤 복원하고 고정 range는 해당 범위에서 보정합니다. 2-60은 uprange에서 zero가 유지되고 downrange에는 다시 zero해야 한다고 설명합니다. 보정 range·시각을 기록하지만 모든 range에서 정격 정확도를 인증하지는 않습니다. 정격의 “properly zeroed” 조건은 2.13.4의 별도 절차와 실제 시료 조건도 검토해야 합니다.
 - `READ?`는 ABOR/INIT/FETCH를 수행합니다. 세 layer의 source/count와 실제 존재하는 delay를 명시해 one-shot을 구성합니다. `FETCH?`만 반복하면 old reading이 재반환될 수 있으므로 정상 수집에 사용하지 않습니다. `CONF`/`MEAS`를 매 sample 호출하지 않습니다.
 - `*OPC?`는 continuous operation에서 무조건적인 안전 동기화 수단이 아닙니다. 3-32는 continuous initiation 뒤 *OPC?가 장비를 대기 상태에 묶을 수 있다고 설명합니다. 본 구성의 idle·continuous OFF 조건에서만 완료 응답을 검증합니다.
+
+## ARM 오류의 해석
+
+`Instrument errors after zero correction acquire`는 ACQ·완료 조회 뒤 오류 큐에서 오류를 발견했다는 뜻입니다. 매뉴얼에는 이 단계의 `-200`이 idle 상태나 오래된 판독 때문에 발생한다고 명시돼 있지 않으므로 그 원인을 확정하지 않습니다. 첫 영점보정 방식으로의 전환은 매뉴얼에 근거하지만 실제 6517A firmware에서 ARM 재시험이 필요합니다.
+
+구성 시작의 기존 오류 큐를 별도로 확인하고, 오류가 있으면 원문을 보존해 중단합니다. 오류를 지우고 계속 진행하는 `*CLS`·reset·자동 fallback은 사용하지 않습니다. `+513 Calibration data lost`(Table 2-5, 2-7) 등 교정 오류도 계속 중단 사유입니다. Zero Correct는 오프셋 보정이며 교정 데이터 유실의 복구가 아닙니다. 구성 실패 시 보호 OFF 처리 후 저장하는 `arm-failures` 진단에는 원래 오류·설정·통신 기록이 포함됩니다.
 
 ## ASCII parser와 fixture의 출처
 

@@ -326,6 +326,7 @@ class Instrument:
         self.config = config
         self.mode = _get(config, "mode", "FVMI_CURRENT")
         self.source_range_V = _get(config, "source_range_V", 100)
+        self._check_errors("before configuration (existing instrument errors)")
         self._set(":INIT:CONT", "OFF", False)
         self._write(":TSEQ:ABOR")
         self._write(":ABOR")
@@ -376,11 +377,32 @@ class Instrument:
         self._settle(settle_s)
         self._verify(":OUTP1?", False)
         self._verify(":SYST:ZCH?", True)
-        self._write(":SYST:ZCOR:ACQ")
-        self._verify("*OPC?", 1)
-        self._check_errors("zero correction acquire")
-        self._set(":SYST:ZCH", "OFF", False)
-        self._set(":SYST:ZCOR", "ON", True)
+        self._verify(":SYST:ZCOR?", False)
+        self._verify(range_key + ":AUTO?", False)
+        self._verify(range_key + "?", zero_range_readback)
+        self._check_errors("before zero correction")
+        if native:
+            # Retain the acquire/apply profile for simulated native resistance.
+            # Real native resistance is blocked by _require_real_approval().
+            self._write(":SYST:ZCOR:ACQ")
+            self._verify("*OPC?", 1)
+            self._check_errors("zero correction acquire")
+            self._set(":SYST:ZCH", "OFF", False)
+            self._set(":SYST:ZCOR", "ON", True)
+            zero_method = "acquire_then_enable"
+        else:
+            # Rev. D 3-133 method 1 / 2-60 front-panel sequence: enabling
+            # Zero Correct while Zero Check is ON captures the internal offset.
+            # Do not substitute a missing correction or retry a rejected acquire.
+            self._write(":SYST:ZCOR ON")
+            self._verify("*OPC?", 1)
+            self._check_errors("zero correction enable with zero check ON")
+            self._verify(":SYST:ZCOR?", True)
+            self._check_errors("zero correction readback")
+            self._set(":SYST:ZCH", "OFF", False)
+            self._verify(":SYST:ZCOR?", True)
+            self._check_errors("zero correction retained after zero check OFF")
+            zero_method = "enable_while_zero_check_on"
         self._set(range_key + ":AUTO", "ON" if auto else "OFF", auto)
         self._verify(":SENS:RES:VSC?", "MAN")
         self._verify(":SOUR:VOLT?", 0)
@@ -407,6 +429,7 @@ class Instrument:
             "manual_vsource": True,
             "normal_resistance": True,
             "zero_correct_range_A": zero_range_readback,
+            "zero_correct_method": zero_method,
             "zero_settle_requested_s": settle_s,
             "zero_correct_time_monotonic_s": self.clock.monotonic(),
             "zero_correct_temperature_C": _get(config, "temperature_C"),

@@ -575,6 +575,127 @@ def saved_result_review_smoke(directory: Path, output: Path, dialog_factory=None
             dialog.close()
 
 
+def zero_correction_compatibility_smoke(output_directory: Path):
+    """Prove direct zero correction and retained fault transcripts with an ACQ-rejecting mock."""
+    from keithley6517a.clock import FakeClock
+    from keithley6517a.config import RunConfig
+    from keithley6517a.driver.instrument import Instrument
+    from keithley6517a.driver.parser import ProtocolError
+    from keithley6517a.measurement.runner import MeasurementRunner
+    from keithley6517a.transport.simulator import SimulatorTransport
+
+    class AcquireRejectingDevice(SimulatorTransport):
+        def __init__(self, clock, enable_error=None):
+            super().__init__(clock, resistance_ohm=1e9)
+            self.enable_error = enable_error
+            self.captures = []
+
+        def write(self, command):
+            if command == ":SYST:ZCOR:ACQ":
+                self._owned()
+                self.commands.append(command)
+                self.errors.append('-200,"Execution error"')
+                return
+            if command == ":SYST:ZCOR ON":
+                capture = (
+                    self.values[":SENS:FUNC"],
+                    float(self.values[":SENS:CURR:RANG"]),
+                    self.values[":SENS:CURR:RANG:AUTO"],
+                    self.values[":SYST:ZCH"],
+                    self.output,
+                )
+                self.captures.append(capture)
+                if capture != ("CURR", 20e-12, "0", "1", False):
+                    raise RuntimeError("Zero correction used the wrong function/range/check/output")
+                if self.enable_error:
+                    self.commands.append(command)
+                    self.errors.append(self.enable_error)
+                    return
+            super().write(command)
+
+    for name, enable_error, existing_error in (
+        ("acquire-rejected-compatible", None, None),
+        ("enable-rejected", '-200,"Execution error"', None),
+        ("calibration-lost", None, '+513,"Calibration data lost"'),
+    ):
+        clock = FakeClock()
+        device = AcquireRejectingDevice(clock, enable_error)
+        config = replace(
+            RunConfig(),
+            output_directory=str(output_directory / name),
+            voltages=(1,),
+            current_trip_A=1e-8,
+            residual_warning_ack=True,
+            simulation_resistance_ohm=1e9,
+            dwell_s=0.5,
+            summary_window_s=0.5,
+            nplc=0.1,
+            sample_interval_s=0.1,
+        )
+        runner = MeasurementRunner(config, Instrument(device, clock), clock)
+        try:
+            runner.connect()
+            if existing_error:
+                device.errors.append(existing_error)
+            expected_error = enable_error or existing_error
+            try:
+                runner.arm()
+            except ProtocolError as exc:
+                if expected_error is None or expected_error not in str(exc):
+                    raise
+                if runner.state != "FAULT" or runner.output_state != "OFF" or runner.can_start:
+                    raise RuntimeError(
+                        "Zero-correction fault did not block ARM and confirm OFF"
+                    ) from exc
+                if ":OUTP1 ON" in device.commands or ":SYST:ZCOR:ACQ" in device.commands:
+                    raise RuntimeError(
+                        "A failed zero correction retried ACQ or enabled output"
+                    ) from exc
+                report = runner.last_arm_failure_report
+                if report.get("report_saved") is not True:
+                    raise RuntimeError("ARM failure did not persist its diagnostic") from exc
+                saved = json.loads(Path(report["report_path"]).read_text(encoding="utf-8"))
+                transcript = [
+                    json.loads(line)
+                    for line in Path(report["raw_io_path"]).read_text(encoding="utf-8").splitlines()
+                ]
+                if saved.get("output_state") != "OFF" or not any(
+                    row.get("response") == expected_error for row in transcript
+                ):
+                    raise RuntimeError(
+                        "ARM failure diagnostic lost the output state or SCPI error"
+                    ) from exc
+                if existing_error and device.captures:
+                    raise RuntimeError(
+                        "A prior calibration error was ignored during configuration"
+                    ) from exc
+            else:
+                if expected_error is not None:
+                    raise RuntimeError("A device error was ignored instead of blocking ARM")
+                commands = device.commands
+                if (
+                    device.captures != [("CURR", 20e-12, "0", "1", False)]
+                    or ":SYST:ZCOR:ACQ" in commands
+                    or ":OUTP1 ON" in commands
+                    or commands.index(":SYST:ZCOR ON") >= commands.index(":SYST:ZCH OFF")
+                ):
+                    raise RuntimeError("FVMI did not use the documented front-panel zero method")
+                result = runner.start()
+                if result.get("status") != "completed" or result.get("output_state") != "OFF":
+                    raise RuntimeError("Compatible zero correction did not support a synthetic run")
+                metadata = json.loads(
+                    (runner.run_directory / "metadata.json").read_text(encoding="utf-8")
+                )
+                if (
+                    metadata.get("settings_readback", {}).get("zero_correct_method")
+                    != "enable_while_zero_check_on"
+                ):
+                    raise RuntimeError("Run metadata did not record its zero-correction method")
+        finally:
+            runner.shutdown()
+    return {"zero_correction_compatibility_verified": True}
+
+
 def analysis_comparison_session_smoke(first: Path, second: Path, output: Path, dialog_factory=None):
     """Verify actual overlaid curves and a restored analysis session against two CSVs."""
     from PySide6.QtWidgets import QApplication
@@ -879,6 +1000,7 @@ def main(argv=None) -> int:
     user_stop_smoke(root / "native-smoke-results/user-stop")
     geometry_run = sample_geometry_resistivity_smoke(root / "native-smoke-results/sample-geometry")
     adaptive_resistivity_analysis_smoke(root / "native-smoke-results/adaptive-analysis")
+    zero_correction_compatibility_smoke(root / "native-smoke-results/zero-correction")
     if not args.skip_optional_installer:
         optional_installer_smoke(root)
     from PySide6.QtCore import QTimer
@@ -926,6 +1048,7 @@ def main(argv=None) -> int:
                 "analysis_comparison_session_verified": True,
                 "estimated_progress_verified": True,
                 "diagnostic_zip_export_verified": True,
+                "zero_correction_compatibility_verified": True,
             }
         )
     )

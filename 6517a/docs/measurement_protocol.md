@@ -16,6 +16,14 @@
 
 대기 중 stop event는 0.05 s 단위로 확인하고 safety 상태는 0.25 s 단위와 I/O 소요 시간으로 polling합니다. Software current trip은 전류 sample cadence와 I/O 지연에 영향을 받습니다. 이미 진행 중인 하나의 I/O뿐 아니라 한 묶음의 상태 query와 protective OFF 절차의 각 call에도 timeout이 적용될 수 있으므로, 총 stop 시간은 timeout 한 번과 같지 않습니다. Timeout은 소프트웨어 I/O 대기의 제한이며 어댑터·OS 정지나 실제 출력 차단의 보증이 아닙니다. 이는 Linux fake-clock/모의 transport에서 검증한 구현 동작이며 실장비 지연 상한이나 실제 보호 성능을 보장하지 않습니다.
 
+## ARM 영점보정과 오류 기록
+
+v0.9.1의 `FVMI_CURRENT`는 매뉴얼 3-133, §3.22.12의 첫 번째 영점보정 방식과 2-60, §2.13.3의 V/I 전면 패널 절차를 사용합니다. 출력 OFF·Zero Check ON·선택한 고정 전류 범위에서 settling 후 `:SYST:ZCOR ON`을 적용하고 보정 readback·완료 응답·오류 큐를 확인한 다음 `:SYST:ZCH OFF`와 autorange 복원을 진행합니다. Autorange는 기존처럼 20 pA 범위에서 보정하고 고정 범위는 해당 범위에서 보정합니다. `SIMULATION` Native 저항 모드는 기존 `ZCH ON → ZCOR:ACQ → ZCH OFF → ZCOR ON` 방식을 유지하며 실장비 Native 출력은 계속 차단합니다.
+
+이는 Zero Correct를 생략하거나 오류를 무시하는 처리가 아닙니다. `zero correction acquire`에서 보고된 `-200`의 실제 원인을 idle·판독 시점 등으로 확정하지 않았으며, 전면 패널 방식의 firmware별 동작과 정확도는 실제 장비 시험으로 확인해야 합니다. `+513 Calibration data lost` 등 오류는 중단 사유로 유지하고, Zero Correct를 유실 교정 상수의 복구 절차로 사용하지 않습니다. ARM 구성 시작에 기존 오류 큐도 원문으로 확인해 새 설정에서 검출한 오류와 구분합니다.
+
+ARM 설정 예외는 기존 보호 OFF·종료 처리 뒤 저장 폴더의 `arm-failures/<UTC시각_고유ID>`에 별도 기록합니다. `diagnostic.json`에는 원래 예외·설정·identity·event·종료 출력 상태를, `raw_io.jsonl`에는 명령·응답 순서를 저장하므로 일반 run이 생성되기 전의 실패도 추적할 수 있습니다. 메모리 기록의 보관 수와 잘림 가능성은 진단 JSON에 표시합니다. 정상 ARM과 사용자 ARM 취소는 이 예외 기록을 만들지 않습니다. 기록 저장 실패는 `report_saved=false`와 저장 오류로 구분하고 원래 예외·FAULT·출력 정리 결과를 대체하지 않습니다. GUI의 최근 진단과 진단 ZIP은 저장된 ARM 실패 기록도 사용합니다.
+
 ## 데이터의 의미
 
 `FVMI_CURRENT`에서 `current_raw_A`는 설정 NPLC/filter를 통과한 장비 판독의 원문 수치입니다. 무처리 ADC raw data가 아닙니다. `voltage_programmed_readback_V`는 source 설정값 조회이며 DUT 양단 전압 측정이 아닙니다. `resistance_apparent_ohm=V_programmed/I_raw`는 해당 배선의 겉보기 저항입니다. `native_r_ohm`에는 값을 채우지 않습니다.

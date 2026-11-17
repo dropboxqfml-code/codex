@@ -117,12 +117,13 @@ def test_manual_profile_has_no_fictitious_arm_layer_one_delay():
 def test_manual_zero_correction_sequence_and_lowest_autorange_calibration():
     _, transport, _, readback = armed()
     commands = transport.commands
-    acquisition = commands.index(":SYST:ZCOR:ACQ")
     check_off = commands.index(":SYST:ZCH OFF")
     correct_on = commands.index(":SYST:ZCOR ON")
-    assert acquisition < check_off < correct_on < commands.index(":SENS:CURR:RANG:AUTO ON")
-    assert commands[acquisition + 1] == "*OPC?"
+    assert ":SYST:ZCOR:ACQ" not in commands
+    assert correct_on < check_off < commands.index(":SENS:CURR:RANG:AUTO ON")
+    assert commands[correct_on + 1] == "*OPC?"
     assert readback["zero_correct_range_A"] == 20e-12
+    assert readback["zero_correct_method"] == "enable_while_zero_check_on"
     assert readback["zero_correct_valid_for_uprange_per_manual"]
 
 

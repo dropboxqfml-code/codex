@@ -96,8 +96,13 @@ class InstrumentWorker(QObject):
         self.runner: Any = None
         self._active_action: str | None = None
         self._run_result: dict = {}
+        self._arm_failure_report: dict = {}
 
     def snapshot(self) -> None:
+        if self.runner is not None:
+            self._arm_failure_report = dict(
+                getattr(self.runner, "last_arm_failure_report", None) or {}
+            )
         if self.runner is None:
             self.status.emit(
                 {
@@ -107,6 +112,7 @@ class InstrumentWorker(QObject):
                     "can_start": False,
                     "worker_busy": self._active_action is not None,
                     "run_result": dict(self._run_result),
+                    "arm_failure_report": dict(self._arm_failure_report),
                 }
             )
             return
@@ -131,6 +137,7 @@ class InstrumentWorker(QObject):
                 "run_started": bool(getattr(self.runner, "_started", False)),
                 "worker_busy": self._active_action is not None,
                 "run_result": dict(self._run_result),
+                "arm_failure_report": dict(self._arm_failure_report),
                 "interlock_query": safety.get("interlock", "UNKNOWN"),
                 "setup_policy": setup_policy,
                 "operator_setup_acknowledged": bool(
@@ -179,6 +186,7 @@ class InstrumentWorker(QObject):
                 if self.runner is not None:
                     raise RuntimeError("Disconnect before replacing the configuration")
                 self._run_result = {}
+                self._arm_failure_report = {}
                 self.runner = self.runner_factory(
                     config, on_sample=self.sample.emit, on_event=self.handle_event
                 )
@@ -294,6 +302,7 @@ class MainWindow(QMainWindow):
         self._commissioning = {}
         self._last_run_directory = None
         self._last_diagnostic_directory = None
+        self._last_arm_failure_report: dict = {}
         self._loading_controls = False
         self._last_worker_status: dict = {}
         self._last_run_result: dict = {}
@@ -1337,6 +1346,18 @@ class MainWindow(QMainWindow):
         if status.get("run_directory"):
             self.path_label.setText("Run 폴더: " + status["run_directory"])
             self._last_run_directory = status["run_directory"]
+        arm_failure = status.get("arm_failure_report") or {}
+        if arm_failure != self._last_arm_failure_report:
+            self._last_arm_failure_report = dict(arm_failure)
+            if arm_failure.get("report_saved") and arm_failure.get("report_path"):
+                report_path = str(arm_failure["report_path"])
+                self._last_diagnostic_directory = str(Path(report_path).parent)
+                self.diagnostic_label.setText("ARM 실패 기록 저장 · " + report_path)
+            elif arm_failure.get("report_saved") is False:
+                self.diagnostic_label.setText(
+                    "ARM 실패 기록 저장 실패: "
+                    + str(arm_failure.get("report_error") or "저장 경로를 확인하세요.")
+                )
         result = status.get("run_result")
         if result:
             self._last_run_result = dict(result)

@@ -4,6 +4,18 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.9.1 ARM 영점보정·실패 통신 기록
+
+사용자는 ARM에서 `Instrument errors after zero correction acquire`와 `-200 Execution error`가 발생했다고 보고했습니다. FVMI 전류 경로를 매뉴얼 3-133, §3.22.12의 첫 번째 방법과 2-60, §2.13.3의 V/I 전면 패널 순서인 `ZCH ON → ZCOR ON → ZCH OFF`로 전환합니다. 고정 전류 범위·출력 OFF·settling 상태에서 보정 readback·완료 응답·오류를 확인한 뒤 autorange를 복원합니다. SIM Native의 기존 ACQ 방식과 실장비 Native 출력 차단을 유지합니다.
+
+검증 대상은 ACQ만 실패하는 모의 장비에서 새 FVMI 경로가 ACQ를 전송하지 않는지, 같은 고정 범위와 순서를 유지하는지, ZCOR ON 오류·거짓 readback·통신 실패·기존 `+513`에서는 ARM·START를 차단하고 OFF 처리하는지입니다. 구성 시작의 기존 오류 큐와 새 설정 중 발견한 오류를 구분하며 오류 무시·reset·자동 재시도 fallback을 추가하지 않습니다.
+
+ARM 구성 실패 기록은 기존 보호 OFF·종료 처리 뒤 `arm-failures/<UTC시각_고유ID>/diagnostic.json`과 `raw_io.jsonl`로 보존합니다. 일반 run 생성 전 실패의 원래 예외·설정·장비 식별·event·SCPI 순서, GUI의 최근 진단 선택과 실제 ZIP 포함 여부를 확인합니다. 저장 오류가 원래 ARM 예외나 출력 정리를 덮지 않아야 하며 정상 ARM·사용자 취소는 별도 오류 기록을 만들지 않아야 합니다.
+
+2026-11-17(한국 시간) Linux 개발 환경에서 전체 **810개**, Ruff·포맷 검사를 통과했습니다. 독립적인 장비 모형으로 보정 순간 CURR·정확한 고정 range·AUTO OFF·ZCH ON·출력 OFF를 확인했습니다. 신규 배포 검사는 ACQ 거부 모형에서 정상 가상 측정을 완료하고, 직접 보정 실패와 기존 `+513`에서는 ARM 차단·출력 OFF·오류 원문 파일 보존을 검증합니다. Native Windows·재추출 검사와 게시 단계는 `zero_correction_compatibility_verified=true`를 요구합니다.
+
+이 수정은 매뉴얼의 다른 영점보정 방식과 소프트웨어 오류 추적을 적용한 시험판입니다. `-200`의 실제 원인을 idle 상태·오래된 판독으로 확정하지 않으며 `+513 Calibration data lost`의 교정 데이터를 복구하지 않습니다. 실제 장비의 ARM 재시험과 교정·정확도 확인은 별도입니다. Windows 결과는 [v0.9.1 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.9.1)의 JUnit·build report에 기록합니다.
+
 ## v0.9.0 기본 기능 통합 시험판
 
 여러 실행의 I(t)·R(t)·ρ(t)를 각 측정 시작 후 경과 시간에서 겹쳐 비교하고, 공통 구간을 활성 파일에 적용해 통계·선택 TXT를 제공합니다. 원본 저장값·단위·오류 판독 제외 규칙과 네 열/다섯 열 TXT 형식을 유지합니다. 파일 간 보간·정규화·데이터 합침은 적용하지 않습니다.

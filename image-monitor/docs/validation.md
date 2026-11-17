@@ -26,9 +26,9 @@ v14 상세 확인·v15 후보 저장·v16 기존 파일 재검증과 완료 정�
 
 | 검사 | 결과 |
 | --- | --- |
-| Linux / CPython 3.12.14 `pytest -q` | 2065 passed, 257 skipped; Windows 전용·경로 대소문자 시험 건너뜀 |
+| Linux / CPython 3.12.14 `pytest -q` | 2203 passed, 262 skipped; Windows 전용·경로 대소문자 시험 건너뜀 |
 | Ruff lint / format | 통과 |
-| [Windows CI #40](https://github.com/dropboxqfml-code/codex/actions/runs/44061251492) · Ruff / pytest | 2318 passed, 4 skipped; 새 감시 후보 네이티브 저장·완료 정리·CMD와 기존 목록/상세 감시·Edge/Chrome 저장 |
+| [Windows CI #41](https://github.com/dropboxqfml-code/codex/actions/runs/44077645028) · Ruff / pytest | 2461 passed, 4 skipped; 저장 파일 검증·로컬 HTTP·실제 이미지 표시와 기존 감시·네이티브 저장·완료 정리 |
 | 관리형 Python / Windows 의존성 잠금 설치 | Windows CI와 사용자 TXT에서 성공 확인 |
 | 실제 Windows CMD의 uv 검색 | 한글·공백·앰퍼샌드 경로와 새 사용자 PATH 검색 통과 |
 | 기존 Image Duplicate Finder 테스트 | 57 passed, 1 skipped; 기존 앱 수정 없음 |
@@ -772,6 +772,26 @@ TIFF나 한도를 넘는 파일은 검증된 파일 정보만 제공합니다. H
 사용자 확인은 압축을 풀고 `RUN_MONITOR.cmd`를 연 뒤 저장 결과 이미지를 확인하고
 `프로그램 종료`로 TXT 하나를 받는 절차입니다. 감시 시작·후보 내용 확인·저장 시작을 다시
 실행할 필요는 없으며 새 열람의 사용자 인수는 위 v19 실제 저장 결과와 구분합니다.
+
+v20 Linux 전체 검사는 2,203개 통과·262개 건너뜀이며 Ruff lint/format도 통과했습니다.
+실제 Chromium·로컬 HTTP 서버·컨트롤러·완료 파일 검증기를 연결해 PNG가 화면에 표시되고
+원본 파일과 응답 바이트·해시가 일치하는 것을 확인했습니다. 서버 차단과 장기 대기 중에도
+로컬 이미지를 보여주며 외부 요청·다운로드·목록/상세 탐색·추가 저장이 없는 것을 대조했습니다.
+이미지 GET에서 경로를 다시 열지 않는 것도 확인했습니다. 기존 DB·선택·이미지·메타데이터와
+보류 상태를 보존하고, 검증 도중 종료 요청의 즉시 응답·취소 후 부분 캐시 미공개를 검사했습니다.
+
+공통 검증기 분리 뒤에도 기존 완료 정리의 보류·보고서 검사를 유지했습니다. 읽기 전용 선택
+검사 도중 선택 파일이 사라져도 새 선택을 쓰지 않는 경쟁 조건 검사도 추가했습니다. HTTP의
+고정 래스터 형식·용량·불투명 ID·Host/Origin·Range 거부·보고서 정보 제외, 화면의 원문 비실행·
+캐시 갱신·반복 이미지 요청 방지·390px 레이아웃은 로컬/브라우저 검사로 통과했습니다.
+합성 fixture의 결과이며 사용자 실사이트 파일 표시 성공은 새 TXT와 화면 확인으로 구분합니다.
+
+[Windows CI #41](https://github.com/dropboxqfml-code/codex/actions/runs/44077645028)는
+2,461개 통과·4개 건너뜀으로 종료됐고 실패·오류는 0개였습니다. 공통 완료 파일 검증기와
+로컬 캐시·실제 HTTP 서버·브라우저 표시, 취소·파일 변경·원본 정보 제외 검사 및 새 CMD의
+두 루트 전달을 통과했습니다. 기존 목록/상세 감시·영어/한국어 Edge/Chrome 네이티브 저장·
+재개·완료 파일 정리도 함께 통과했습니다. 검증한 소스는
+`caf35ded14d244fbb5a05433f4d0557ffeb1d6db`입니다. 사용자 파일의 새 열람 연결은 별도 결과로 확인합니다.
 
 ## 남은 작업
 

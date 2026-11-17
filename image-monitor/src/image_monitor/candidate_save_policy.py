@@ -12,6 +12,7 @@ from image_monitor.dcinside import _shared_no_identity, validate_post_url
 
 MAX_PERMIT_BYTES = 4 * 1024 * 1024
 REVIEWED_SCOPE = ("검색 감시 시험", "normal", "comic_new6", "ai", "search_subject_memo")
+MONITOR_SCOPE = ("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
 SCOPE_FIELDS = ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type")
 _HEADER_FIELDS = ("title", "nickname", "ip_display", "published_at_raw")
 _EXCLUSION_REASONS = {
@@ -212,9 +213,10 @@ def _validate_payload(payload):
         all(isinstance(value, dict) for value in (candidate, baseline, detail)),
         "Candidate permit evidence is invalid",
     )
+    candidate_scope = tuple(candidate.get(key) for key in SCOPE_FIELDS)
+    detail_scope = tuple(detail.get(key) for key in SCOPE_FIELDS)
     _require(
-        tuple(candidate.get(key) for key in SCOPE_FIELDS) == REVIEWED_SCOPE
-        and tuple(detail.get(key) for key in SCOPE_FIELDS) == REVIEWED_SCOPE,
+        candidate_scope in (REVIEWED_SCOPE, MONITOR_SCOPE) and detail_scope == candidate_scope,
         "Candidate permit scope is outside this pilot",
     )
     try:

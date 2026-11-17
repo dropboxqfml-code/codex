@@ -60,17 +60,21 @@ def main() -> int:
     )
     candidate_test.add_argument("--work-root", type=Path, required=True)
     candidate_test.add_argument("--browser", choices=("chrome", "edge"), default="chrome")
-    candidate_save = commands.add_parser(
-        "candidate-save-test", help="Review and natively save one previously inspected candidate"
-    )
-    candidate_save.add_argument("--watch-root", type=Path, required=True)
-    candidate_save.add_argument("--work-root", type=Path, required=True)
-    candidate_save.add_argument("--browser", choices=("chrome",), default="chrome")
-    candidate_finish = commands.add_parser(
-        "candidate-finish", help="Verify completed candidate files and resolve a closed save"
-    )
-    candidate_finish.add_argument("--watch-root", type=Path, required=True)
-    candidate_finish.add_argument("--work-root", type=Path, required=True)
+    for name, description in (
+        ("candidate-save-test", "Review and natively save one previously inspected candidate"),
+        ("monitor-save-test", "Natively save one inspected candidate from the local monitor"),
+    ):
+        candidate_save = commands.add_parser(name, help=description)
+        candidate_save.add_argument("--watch-root", type=Path, required=True)
+        candidate_save.add_argument("--work-root", type=Path, required=True)
+        candidate_save.add_argument("--browser", choices=("chrome",), default="chrome")
+    for name, description in (
+        ("candidate-finish", "Verify completed candidate files and resolve a closed save"),
+        ("monitor-finish", "Verify completed monitor-candidate files without downloading again"),
+    ):
+        candidate_finish = commands.add_parser(name, help=description)
+        candidate_finish.add_argument("--watch-root", type=Path, required=True)
+        candidate_finish.add_argument("--work-root", type=Path, required=True)
     site = commands.add_parser(
         "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
     )
@@ -116,14 +120,20 @@ def main() -> int:
         ):
             return 130
         return 0 if output.get("status") in {"monitor_closed", "monitor_busy"} else 2
-    if args.command == "candidate-finish":
+    if args.command in {"candidate-finish", "monitor-finish"}:
         try:
             from image_monitor.candidate_finish_runtime import (
                 run_candidate_finish_trial,
                 share_candidate_finish_report,
             )
 
-            output = run_candidate_finish_trial(args.watch_root, args.work_root)
+            if args.command == "monitor-finish":
+                from image_monitor.watch_store import WatchScope
+
+                scope = WatchScope("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
+                output = run_candidate_finish_trial(args.watch_root, args.work_root, scope=scope)
+            else:
+                output = run_candidate_finish_trial(args.watch_root, args.work_root)
             public_report = share_candidate_finish_report(output)
         except KeyboardInterrupt:
             parser.exit(130, "Completed candidate verification cancelled.\n")
@@ -145,14 +155,22 @@ def main() -> int:
             }
             else 2
         )
-    if args.command == "candidate-save-test":
+    if args.command in {"candidate-save-test", "monitor-save-test"}:
         try:
             from image_monitor.candidate_save_runtime import (
                 run_candidate_save_trial,
                 share_candidate_save_report,
             )
 
-            output = run_candidate_save_trial(args.watch_root, args.work_root, args.browser)
+            if args.command == "monitor-save-test":
+                from image_monitor.watch_store import WatchScope
+
+                scope = WatchScope("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
+                output = run_candidate_save_trial(
+                    args.watch_root, args.work_root, args.browser, scope=scope
+                )
+            else:
+                output = run_candidate_save_trial(args.watch_root, args.work_root, args.browser)
             public_report = share_candidate_save_report(output)
         except KeyboardInterrupt:
             parser.exit(130, "Candidate native saving cancelled. Inspect the dedicated browser.\n")

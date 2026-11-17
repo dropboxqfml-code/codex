@@ -16,14 +16,19 @@ v17은 **목록 감시를 시작·일시정지·중지하는 로컬 상태 화�
 이후 실행은 그 범위의 기준점과 후보를 이어갑니다. 장시간 실행·일시정지/재개 수동 조작·
 재시작 후 보존은 이번 사용자 결과의 검증 범위에 포함하지 않습니다.
 
-v18은 같은 화면의 정지 상태에서 **후보 내용 확인**을 누르면 이미 기록한 미시도 후보를
-최대 두 개 확인합니다. 새 목록을 읽거나 기준점을 초기화하지 않으며 작성 시각의 기준점 비교와
-본문 이미지 개수를 익명 결과 표에 표시합니다. 확인을 마쳐도 목록 감시를 자동으로 재개하지
-않습니다. 모든 후보의 이미지 자동 저장과 다중 갤러리 설정은 아직 없습니다.
+v18에서는 같은 화면의 정지 상태에서 기존 후보 두 개의 내용을 읽고 정상 종료한 사용자
+결과를 확인했습니다. 두 후보 모두 기준점 이후 작성 시각과 로딩된 본문 이미지 1개를 보고했습니다.
+새 목록을 읽거나 기준점을 초기화하지 않으며 작성 시각의 기준점 비교와 본문 이미지 개수를
+익명 결과 표에 표시합니다. 확인을 마쳐도 목록 감시를 자동으로 재개하지 않습니다.
+
+v19의 별도 `RUN_MONITOR_SAVE.cmd`는 이 `목록 감시` 범위의 완료 상세 관찰에서 후보 하나를
+고정해 기존 Chrome 네이티브 저장 작업자에 연결합니다. 전용 Chrome에서 `저장 시작`을 누른 뒤
+그 창을 앞에 유지해야 합니다. 이전 후보 시험의 선택·저장 위치와 분리하며 모든 후보의 이미지
+자동 저장과 다중 갤러리 설정은 아직 없습니다.
 
 Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)에
 하나로 정리합니다. 기본 저장 시험과 게시글 저장·재개 명령도 유지합니다.
-개발용 패키징은 `python scripts/build_windows_bundle.py --version v18`이며 기존 ZIP을 덮어쓰지 않습니다.
+개발용 패키징은 `python scripts/build_windows_bundle.py --version v19`이며 기존 ZIP을 덮어쓰지 않습니다.
 
 ## 현재 구현
 
@@ -53,6 +58,11 @@ Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS
   본문 이미지가 없는 후보는 건너뛰고 로딩된 이미지 1~2개·기준점 이후 작성 시각을 확인한 대상을
   고정합니다. 별도 네이티브 DB와 출력 루트에서 기존 저장 작업자를 사용하며 발견 DB의 이미지
   작업은 0개로 유지합니다. 다시 실행해도 같은 선택과 완료 파일을 유지합니다.
+- `monitor-save-test`는 `목록 감시` 범위에만 묶인 완료 관찰에서 선택을 고정하고 별도
+  `monitor-save-selection.json`과 `ImageMonitorMonitorSave` 출력 루트를 사용합니다.
+  이전 `검색 감시 시험`의 선택·저장 파일은 유지하며 범위가 다른 관찰을 섞지 않습니다.
+  목록·상세 확인을 반복하지 않고 전용 Chrome의 현재 헤더·이미지 집합을 허가와 다시 대조합니다.
+  로컬 감시 화면의 백그라운드 작업에 네이티브 저장을 넣지 않고 별도 실행기의 주 스레드에서 처리합니다.
 - 기존 후보의 저장 완료 보고서·고정 원본 관찰·완료 작업·확정 저널·파일 해시·Pillow 결과와
   메타데이터를 읽기 전용으로 대조하는 `candidate-finish`를 추가합니다. 전용 브라우저가 남아
   있으면 정확한 PID·생성 시각·프로필·세션·디버깅 포트 소유권을 확인한 뒤 정상 종료만 요청하고,
@@ -109,6 +119,8 @@ uv run --locked --extra windows image-monitor monitor --work-root C:/IMWatch
 uv run --locked --extra windows image-monitor candidate-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor candidate-save-test --watch-root C:/IMWatch --work-root C:/IMCandidateSave --browser chrome
 uv run --locked --extra windows image-monitor candidate-finish --watch-root C:/IMWatch --work-root C:/IMCandidateSave
+uv run --locked --extra windows image-monitor monitor-save-test --watch-root C:/IMWatch --work-root C:/IMMonitorSave --browser chrome
+uv run --locked --extra windows image-monitor monitor-finish --watch-root C:/IMWatch --work-root C:/IMMonitorSave
 uv run --locked pytest -q
 uv run --locked ruff check .
 uv run --locked ruff format --check .
@@ -132,6 +144,14 @@ Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할
 선택은 발견 루트의 `candidate-save-selection.json`에 고정합니다. 후보 시험에는 기존 v9용
 `--resume-preinput`을 적용하지 않습니다. `candidate-finish`도 같은 두 루트와 고정 선택을 사용하며
 완료된 파일의 읽기 전용 확인과 종료 정리만 수행합니다. 새 브라우저·게시글 탐색·네이티브 입력은 없습니다.
+
+`monitor-save-test`는 같은 발견 루트에서 `목록 감시`의 완료 관찰을 사용합니다. Windows 실행기
+`RUN_MONITOR_SAVE.cmd`는 별도 `%LOCALAPPDATA%/ImageMonitorMonitorSave`를 출력 루트로
+사용하고 발견 루트의 `monitor-save-selection.json`에 한 후보를 고정합니다. 기본 사용자 시험은
+이 실행기를 더블클릭한 뒤 열린 전용 Chrome에서 `저장 시작`을 한 번 누르는 절차입니다.
+저장이 끝날 때까지 그 창을 앞에 두면 결과 TXT 하나가 자동으로 열립니다. 목록 감시나 후보 내용
+확인을 다시 실행할 필요가 없습니다. `monitor-finish`와 `RUN_MONITOR_FINISH.cmd`는 완료 파일의
+근거와 종료 상태만 확인하는 별도 지원용 경로이며 기본 시험에 추가 실행을 요구하지 않습니다.
 
 - [게시글 저장 작업자와 장애 복구](docs/native-post-save.md)
 - [검색 목록과 감시 기준점](docs/list-watch.md)

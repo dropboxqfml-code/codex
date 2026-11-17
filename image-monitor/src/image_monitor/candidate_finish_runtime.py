@@ -5,7 +5,11 @@ from pathlib import Path
 
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_finish import finish_completed_candidate, read_completed_report
-from image_monitor.candidate_save_selection import read_selection, select_candidate_save
+from image_monitor.candidate_save_selection import (
+    read_selection,
+    select_candidate_save,
+    selection_manifest_name,
+)
 from image_monitor.completed_browser_close import close_completed_browser
 from image_monitor.native_probe import write_report
 from image_monitor.native_state import (
@@ -48,8 +52,10 @@ def run_candidate_finish_trial(
     *,
     is_running=browser_still_running,
     close_owned=close_completed_browser,
+    scope=DEFAULT_SCOPE,
 ):
     require_windows()
+    manifest_name = selection_manifest_name(scope)
     watch_base = _plain_path(Path(watch_root).absolute()).resolve()
     output_base = _plain_path(Path(work_root).absolute()).resolve()
     if any(str(root).startswith("\\\\") for root in (watch_base, output_base)):
@@ -63,7 +69,7 @@ def run_candidate_finish_trial(
     native_base = output_base / f"session-{session_id()}"
     database = _plain_path(watch_base / "watch.sqlite")
     native_database = _plain_path(native_base / "queue.sqlite")
-    manifest = _plain_path(watch_base / "candidate-save-selection.json")
+    manifest = _plain_path(watch_base / manifest_name)
     run_directory = output_base / "candidate-finish-runs" / uuid.uuid4().hex
     run_directory.mkdir(parents=True)
     report_path = run_directory / "report.json"
@@ -106,7 +112,7 @@ def run_candidate_finish_trial(
                 report["last_stage"] = "completed_report_check"
                 previous = read_completed_report(native_base, pending)
                 with QueueStore(database, read_only=True) as watch_store:
-                    permit = select_candidate_save(watch_store, DEFAULT_SCOPE, manifest)
+                    permit = select_candidate_save(watch_store, scope, manifest)
                 if permit is None:
                     raise NativeUIError("The original saved candidate could not be verified")
                 report["last_stage"] = "local_file_verification"

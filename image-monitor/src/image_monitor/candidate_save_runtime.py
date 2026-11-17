@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_save_selection import (
     select_candidate_save,
+    selection_manifest_name,
     write_selection_control,
 )
 from image_monitor.native_probe import write_report
@@ -27,16 +28,18 @@ class _Clock:
 
 
 class _NavigationObserver:
-    def __init__(self, queue, manifest, clock):
+    def __init__(self, queue, manifest, clock, *, scope=DEFAULT_SCOPE):
+        selection_manifest_name(scope)
         self.queue = queue
         self.manifest = manifest
         self.clock = clock
+        self.scope = scope
         self.http_status = None
         self.next_at = None
         self.blocked = False
 
     def before(self):
-        state = WatchStore(self.queue).get_state(DEFAULT_SCOPE)
+        state = WatchStore(self.queue).get_state(self.scope)
         eligibility, due = _eligibility(self.queue, state, self.clock.now())
         if eligibility != "ready":
             raise NativeUIError("Candidate navigation requires service eligibility")
@@ -142,8 +145,10 @@ def run_candidate_save_trial(
     *,
     clock=None,
     save_runner=run_post_save,
+    scope=DEFAULT_SCOPE,
 ):
     require_windows()
+    manifest_name = selection_manifest_name(scope)
     if browser != "chrome":
         raise NativeUIError("Candidate native saving is verified for Chrome only")
     clock = clock or _Clock()
@@ -161,7 +166,7 @@ def run_candidate_save_trial(
     _plain_path(watch_base)
     _plain_path(output_base)
     database = _plain_path(watch_base / "watch.sqlite")
-    manifest = _plain_path(watch_base / "candidate-save-selection.json")
+    manifest = _plain_path(watch_base / manifest_name)
     run_directory = output_base / "candidate-save-runs" / uuid.uuid4().hex
     run_directory.mkdir(parents=True)
     report_path = run_directory / "report.json"
@@ -186,7 +191,7 @@ def run_candidate_save_trial(
             with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
                 if queue.summary()["posts"] or queue.summary()["jobs"]:
                     raise QueueError("Image jobs must remain separate from the discovery database")
-                state = WatchStore(queue).get_state(DEFAULT_SCOPE)
+                state = WatchStore(queue).get_state(scope)
                 eligibility, due = _eligibility(queue, state, clock.now())
                 if eligibility == "blocked":
                     report.update(reason="access_block_requires_review", last_stage="blocked")
@@ -196,14 +201,14 @@ def run_candidate_save_trial(
                         ZoneInfo("Asia/Seoul")
                     ).isoformat()
                 else:
-                    permit = select_candidate_save(queue, DEFAULT_SCOPE, manifest)
+                    permit = select_candidate_save(queue, scope, manifest)
                     if permit is None:
                         report.update(
                             status="candidate_save_no_candidate",
                             reason="no_reviewed_image_candidate",
                         )
                     else:
-                        observer = _NavigationObserver(queue, manifest, clock)
+                        observer = _NavigationObserver(queue, manifest, clock, scope=scope)
                         report["image_count"] = permit.image_count
                         report["last_stage"] = "native_post_worker"
                         # The worker may reject an existing pending save before

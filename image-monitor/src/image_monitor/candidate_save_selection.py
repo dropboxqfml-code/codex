@@ -15,6 +15,8 @@ from pathlib import Path
 from image_monitor.artifact_files import ArtifactError, _plain_path, _sync_directory
 from image_monitor.candidate_policy import CandidatePolicyError, classify_candidate_detail
 from image_monitor.candidate_save_policy import (
+    MONITOR_SCOPE,
+    REVIEWED_SCOPE,
     CandidateSavePermit,
     CandidateSavePolicyError,
     make_candidate_save_permit,
@@ -24,6 +26,7 @@ from image_monitor.queue import QueueError, QueueStore, _json_data
 from image_monitor.watch_store import WatchScope, WatchStore, _record, _scope
 
 MANIFEST_NAME = "candidate-save-selection.json"
+MONITOR_MANIFEST_NAME = "monitor-save-selection.json"
 MAX_SELECTION_BYTES = 64 * 1024
 _MODE = "single_reviewed_candidate_native_save"
 _SCOPE_KEYS = ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type")
@@ -39,12 +42,24 @@ _FIELDS = {
 }
 
 
+def selection_manifest_name(scope: WatchScope) -> str:
+    """Map only the two reviewed scopes to separate fixed selection files."""
+    if not isinstance(scope, WatchScope):
+        raise QueueError("Candidate selection requires a reviewed watch scope")
+    key = scope.key()
+    if key == REVIEWED_SCOPE:
+        return MANIFEST_NAME
+    if key == MONITOR_SCOPE:
+        return MONITOR_MANIFEST_NAME
+    raise QueueError("Candidate selection scope is outside the reviewed pilots")
+
+
 def _path(value):
     try:
         path = _plain_path(Path(value))
     except (ArtifactError, TypeError, ValueError) as error:
         raise QueueError("Candidate selection path must be local and plain") from error
-    if path.name != MANIFEST_NAME or str(path).startswith("\\\\"):
+    if path.name not in {MANIFEST_NAME, MONITOR_MANIFEST_NAME} or str(path).startswith("\\\\"):
         raise QueueError("Candidate selection must use its dedicated local filename")
     return path
 
@@ -113,7 +128,7 @@ def _validate(value):
     if not isinstance(scope, dict) or set(scope) != set(_SCOPE_KEYS):
         raise QueueError("Candidate selection watch scope is invalid")
     try:
-        WatchScope(**scope).key()
+        selection_manifest_name(WatchScope(**scope))
     except (TypeError, ValueError) as error:
         raise QueueError("Candidate selection watch scope is invalid") from error
     if not isinstance(value.get("post_id"), str) or not re.fullmatch(
@@ -153,7 +168,10 @@ def _read(path):
         value = json.loads(data.decode("utf-8"), object_pairs_hook=_unique_object)
     except (UnicodeDecodeError, ValueError, RecursionError) as error:
         raise QueueError("Candidate selection JSON is invalid") from error
-    return _validate(value), after
+    _validate(value)
+    if path.name != selection_manifest_name(WatchScope(**value["scope"])):
+        raise QueueError("Candidate selection filename does not match its watch scope")
+    return value, after
 
 
 def read_selection(path: Path) -> dict | None:
@@ -163,6 +181,8 @@ def read_selection(path: Path) -> dict | None:
 
 def _write(path, value, expected=None):
     _validate(value)
+    if _path(path).name != selection_manifest_name(WatchScope(**value["scope"])):
+        raise QueueError("Candidate selection filename does not match its watch scope")
     data = (_json_data(value, "Candidate selection") + "\n").encode("utf-8")
     if len(data) > MAX_SELECTION_BYTES:
         raise QueueError("Candidate selection exceeds its metadata limit")
@@ -222,8 +242,11 @@ def _database_path(queue):
 
 def selection_service_blocked(queue: QueueStore) -> bool:
     """Honor a persisted native-navigation block for every watch scope in this DB."""
-    value = read_selection(_database_path(queue).parent / MANIFEST_NAME)
-    return value is not None and value["control"]["blocked"]
+    root = _database_path(queue).parent
+    # Read both even when one is already blocked: malformed evidence in either
+    # pilot is preserved and prevents navigation for every scope in this DB.
+    values = [read_selection(root / name) for name in (MANIFEST_NAME, MONITOR_MANIFEST_NAME)]
+    return any(value is not None and value["control"]["blocked"] for value in values)
 
 
 def _candidate(queue, scope, post_id):
@@ -261,9 +284,9 @@ def select_candidate_save(
     queue: QueueStore, scope: WatchScope, manifest_path: Path
 ) -> CandidateSavePermit | None:
     """Freeze one eligible completed detail; repeat calls must retain that exact binding."""
-    scope.key()
+    name = selection_manifest_name(scope)
     path = _path(manifest_path)
-    if path != _database_path(queue).parent / MANIFEST_NAME:
+    if path != _database_path(queue).parent / name:
         raise QueueError("Candidate selection must stay beside its watch database")
     existing = read_selection(path)
     baseline = WatchStore(queue).get_state(scope)["baseline"]

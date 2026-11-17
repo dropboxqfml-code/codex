@@ -575,6 +575,111 @@ def saved_result_review_smoke(directory: Path, output: Path, dialog_factory=None
             dialog.close()
 
 
+def device_ascii_compatibility_smoke(output_directory: Path):
+    """Check both RNUM spellings, screenshot values and full synthetic acquisition."""
+    from keithley6517a.clock import FakeClock
+    from keithley6517a.config import RunConfig
+    from keithley6517a.driver.instrument import Instrument
+    from keithley6517a.driver.parser import ProtocolError, parse_reading
+    from keithley6517a.measurement.runner import MeasurementRunner
+    from keithley6517a.transport.simulator import SimulatorTransport
+
+    screenshot = "+064.8960E-12NADC,+01122rdng#,+0001.000Vsrc"
+    amps = 6.4896e-11
+    for suffix in ("rdg#", "rdng#"):
+        raw = screenshot.replace("rdng#", suffix)
+        parsed = parse_reading(raw, "FVMI_CURRENT")
+        if (
+            parsed.value != amps
+            or parsed.reading_number != 1122
+            or parsed.voltage_reported != 1
+            or parsed.flags
+            or parsed.raw != raw
+        ):
+            raise RuntimeError("Device ASCII values or original response were altered")
+    try:
+        parse_reading(screenshot.replace("rdng#", "rdnng#"), "FVMI_CURRENT")
+    except ProtocolError:
+        pass
+    else:
+        raise RuntimeError("Device ASCII compatibility accepted an unsupported RNUM spelling")
+
+    class DeviceSpellingTransport(SimulatorTransport):
+        def __init__(self, clock, suffix, *, duplicate=False):
+            super().__init__(clock, resistance_ohm=1e9)
+            self.suffix = suffix
+            self.duplicate = duplicate
+
+        def _reading(self):
+            super()._reading()
+            number = 1122 if self.duplicate else 1121 + self.read_count
+            self.last_response = f"+064.8960E-12NADC,{number:+06d}{self.suffix},+0001.000Vsrc"
+            return self.last_response
+
+    for suffix, geometry, duplicate in (
+        ("rdg#", False, False),
+        ("rdng#", False, False),
+        ("rdng#", True, False),
+        ("rdng#", False, True),
+    ):
+        clock = FakeClock()
+        device = DeviceSpellingTransport(clock, suffix, duplicate=duplicate)
+        config = replace(
+            RunConfig(),
+            output_directory=str(output_directory),
+            voltages=(1,),
+            current_trip_A=1e-8,
+            residual_warning_ack=True,
+            simulation_resistance_ohm=1e9,
+            current_autorange=False,
+            current_range_A=2e-9,
+            dwell_s=0.3,
+            summary_window_s=0.3,
+            nplc=0.1,
+            sample_interval_s=0.1,
+            sample_length_mm=20 if geometry else None,
+            sample_width_mm=10 if geometry else None,
+            sample_depth_mm=2 if geometry else None,
+            current_path_axis="D" if geometry else None,
+        )
+        runner = MeasurementRunner(config, Instrument(device, clock), clock)
+        try:
+            runner.connect()
+            runner.arm()
+            result = runner.start()
+            if result.get("output_state") != "OFF":
+                raise RuntimeError("Device ASCII acquisition did not confirm final output OFF")
+            if duplicate:
+                if result.get("status") != "aborted" or "STALE_READING" not in result["reason"]:
+                    raise RuntimeError("Device RNUM compatibility disabled duplicate detection")
+            elif result.get("status") != "completed":
+                raise RuntimeError("Device ASCII response did not support a complete acquisition")
+            with (runner.run_directory / "readings.csv").open(
+                encoding="utf-8", newline=""
+            ) as stream:
+                readings = list(csv.DictReader(stream))
+            normal = [row for row in readings if row["phase"] != "ERROR"]
+            if not normal:
+                raise RuntimeError("Device ASCII acquisition saved no valid readings")
+            for index, row in enumerate(normal):
+                if (
+                    float(row["current_raw_A"]) != amps
+                    or float(row["voltage_programmed_readback_V"]) != 1
+                    or int(row["reading_number"]) != 1122 + index
+                    or suffix not in row["raw_response"]
+                    or not math.isclose(
+                        float(row["resistance_apparent_ohm"]), 1 / amps, rel_tol=1e-12
+                    )
+                ):
+                    raise RuntimeError(
+                        "Device ASCII stored values differ from the supplied response"
+                    )
+            analysis_export_smoke(runner.run_directory)
+        finally:
+            runner.shutdown()
+    return {"device_ascii_compatibility_verified": True}
+
+
 def zero_correction_compatibility_smoke(output_directory: Path):
     """Prove direct zero correction and retained fault transcripts with an ACQ-rejecting mock."""
     from keithley6517a.clock import FakeClock
@@ -1001,6 +1106,7 @@ def main(argv=None) -> int:
     geometry_run = sample_geometry_resistivity_smoke(root / "native-smoke-results/sample-geometry")
     adaptive_resistivity_analysis_smoke(root / "native-smoke-results/adaptive-analysis")
     zero_correction_compatibility_smoke(root / "native-smoke-results/zero-correction")
+    device_ascii_compatibility_smoke(root / "native-smoke-results/device-ascii")
     if not args.skip_optional_installer:
         optional_installer_smoke(root)
     from PySide6.QtCore import QTimer
@@ -1049,6 +1155,7 @@ def main(argv=None) -> int:
                 "estimated_progress_verified": True,
                 "diagnostic_zip_export_verified": True,
                 "zero_correction_compatibility_verified": True,
+                "device_ascii_compatibility_verified": True,
             }
         )
     )

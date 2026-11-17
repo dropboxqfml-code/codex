@@ -159,6 +159,7 @@ def verify_relocated_bundle(archive: Path) -> dict:
             or summary.get("estimated_progress_verified") is not True
             or summary.get("diagnostic_zip_export_verified") is not True
             or summary.get("zero_correction_compatibility_verified") is not True
+            or summary.get("device_ascii_compatibility_verified") is not True
         ):
             raise RuntimeError("Relocated synthetic CLI/GUI did not confirm success")
 
@@ -224,6 +225,7 @@ def verify_relocated_bundle(archive: Path) -> dict:
             "estimated_progress_verified": True,
             "diagnostic_zip_export_verified": True,
             "zero_correction_compatibility_verified": True,
+            "device_ascii_compatibility_verified": True,
             "regenerated_bytecode_files": generated,
             "integrity_after_cache_generation_passed": True,
             "source_and_dll_tampering_rejected": True,

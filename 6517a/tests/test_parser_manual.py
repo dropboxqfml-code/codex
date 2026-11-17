@@ -56,7 +56,7 @@ def test_inconsistent_sentinel_and_status_remain_explicitly_invalid():
 @pytest.mark.parametrize(
     "raw",
     [
-        "+1E-11NADC,+00001RDNG#,+0010.000Vsrc",  # former provisional typo
+        "+1E-11NADC,+00001RDNNG#,+0010.000Vsrc",  # outside both supported spellings
         "+1E-11NADC,+00001,+0010.000Vsrc",  # units required by configured format
         "+1E-11NADC,+00001rdg#,+0010.000VSO",  # element name is not the unit
         "+1E-11,N,ADC,+00001rdg#,+0010.000Vsrc",

@@ -72,7 +72,7 @@
 
 ## ARM 오류의 해석
 
-`Instrument errors after zero correction acquire`는 ACQ·완료 조회 뒤 오류 큐에서 오류를 발견했다는 뜻입니다. 매뉴얼에는 이 단계의 `-200`이 idle 상태나 오래된 판독 때문에 발생한다고 명시돼 있지 않으므로 그 원인을 확정하지 않습니다. 첫 영점보정 방식으로의 전환은 매뉴얼에 근거하지만 실제 6517A firmware에서 ARM 재시험이 필요합니다.
+`Instrument errors after zero correction acquire`는 ACQ·완료 조회 뒤 오류 큐에서 오류를 발견했다는 뜻입니다. 매뉴얼에는 이 단계의 `-200`이 idle 상태나 오래된 판독 때문에 발생한다고 명시돼 있지 않으므로 그 원인을 확정하지 않습니다. 첫 영점보정 방식으로의 전환 뒤 사용자가 ARM 통과를 보고했습니다. 사용자 보고는 전체 firmware 명령·측정 정확도 검증과 구분합니다.
 
 구성 시작의 기존 오류 큐를 별도로 확인하고, 오류가 있으면 원문을 보존해 중단합니다. 오류를 지우고 계속 진행하는 `*CLS`·reset·자동 fallback은 사용하지 않습니다. `+513 Calibration data lost`(Table 2-5, 2-7) 등 교정 오류도 계속 중단 사유입니다. Zero Correct는 오프셋 보정이며 교정 데이터 유실의 복구가 아닙니다. 구성 실패 시 보호 OFF 처리 후 저장하는 `arm-failures` 진단에는 원래 오류·설정·통신 기록이 포함됩니다.
 
@@ -84,7 +84,15 @@ Figure 3-19(3-76)는 reading/status/unit이 붙은 token을 보여줍니다. 선
 +1.00000000E-11NADC,+00001rdg#,+0010.000Vsrc
 ```
 
-이 예는 **매뉴얼 도식에서 구성한 합성 fixture**이며 실장비 transcript가 아닙니다. 정확한 unit suffix는 current `ADC`, resistance `OHM`, reading number **`rdg#`**입니다. 예전 simulator의 `RDNG#` suffix는 원문과 달라 수정했습니다. 전체 FORMAT 요소를 어떤 순서로 나열해도 wire 순서는 reading → timestamp → reading number → channel → external temperature → humidity → V-source 순서입니다. 이 driver는 timestamp·channel·온습도 요소를 선택하지 않으며 선택 밖 형식은 조용히 추정하지 않습니다.
+이 예는 **매뉴얼 도식에서 구성한 합성 fixture**이며 실장비 transcript가 아닙니다. Unit suffix는 current `ADC`, resistance `OHM`이며, Figure 3-19의 읽기 번호 표기는 `rdg#`입니다. 사용자가 제공한 실제 장비 오류 화면에서는 다음 응답의 `rdng#` 표기가 확인됐습니다.
+
+```text
++064.8960E-12NADC,+01122rdng#,+0001.000Vsrc
+```
+
+위 문자열은 **사용자 화면에서 전사한 응답**이며 전체 실측 파일이나 완성된 측정 검증 기록이 아닙니다. v0.9.2 파서는 읽기 번호의 `rdg#`·`rdng#` 두 별칭을 대소문자 구분 없이 수용합니다. `rdng#`가 항상 잘못된 표기라는 종전 설명을 바로잡습니다. 전류 64.896 pA·읽기 번호 1122·source 보고 1 V와 응답 원문을 보존하며, 명목 저항에 맞춰 전류를 재구성하지 않습니다.
+
+전체 FORMAT 요소를 어떤 순서로 나열해도 wire 순서는 reading → timestamp → reading number → channel → external temperature → humidity → V-source 순서입니다. 이 driver는 timestamp·channel·온습도 요소를 선택하지 않으며 세 필드 구조·상태·단위·유한 수치 검사를 유지합니다. 지정한 두 별칭 이외의 읽기 번호 suffix는 거부하고, 중복·역행 판독과 전압 불일치·trip에 대한 측정 중단도 유지합니다.
 
 Status는 `N` 정상, `Z` zero check, `O` overflow, `U` underflow, `R` reference/REL, `L` out-of-limit입니다. `R`은 저항 단위가 아닙니다. 3-77의 sentinel은 overflow/out-of-limit `+9.9E37`, zero check `+9.91E37`, underflow `0.00E00`입니다. 해당 상태/sentinel을 유효 측정이나 평균으로 쓰지 않고 원문·flag를 보존합니다.
 
@@ -98,4 +106,4 @@ RNUM counter는 전원 투입 또는 `:SYST:RNUM:RES` 후 0부터 시작합니�
 
 2-49는 resistive-limit **20 MΩ**, 3-108은 **1 MΩ**를 기재합니다. 또 2-46/2-49는 범위별 source current limit를 100 V에서 10 mA, 1000 V에서 1 mA로 설명하지만 3-108의 query 설명은 1 mA만 언급합니다. 어느 저항값도 보정 상수·안전 보증치로 채택하지 않았으며 실제 revision·제조사 확인이 필요합니다.
 
-매뉴얼에서 확인한 명령이어도 firmware별 readback·ASCII 표현·trigger freshness, adapter EOI/terminator·timeout/lock, zero correction와 range 유효성, 실제 인터록·출력 차단·방전은 아직 실장비에서 시험하지 않았습니다. [Commissioning 기록지](commissioning_checklist.md)에 단계별 결과와 실제 transcript를 보존해야 합니다. OFF 확인은 방전 확인이 아닙니다.
+사용자는 v0.9.1 뒤 ARM 통과와 측정 중 `rdng#` 응답 화면을 보고했습니다. 이 제한된 사용자 보고 이외의 firmware별 readback·trigger freshness, adapter EOI/terminator·timeout/lock, zero correction와 range 유효성, 실제 인터록·출력 차단·방전은 별도 실장비 검증이 필요합니다. [Commissioning 기록지](commissioning_checklist.md)에 단계별 결과와 실제 transcript를 보존해야 합니다. OFF 확인은 방전 확인이 아닙니다.

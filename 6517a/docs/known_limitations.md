@@ -1,8 +1,8 @@
-# v0.9.1 구현 범위와 알려진 제한
+# v0.9.2 구현 범위와 알려진 제한
 
-v0.9.1은 기본 기능 통합 시험판의 ARM 영점보정과 실패 기록을 보완한 수정 시험판입니다. 사용자 시험 결과를 반영한 v1.0.0 정식 배포와 구분합니다.
+v0.9.2는 측정 응답의 `rdng#` 읽기 번호를 지원하는 파서 수정 시험판입니다. v0.9.1의 ARM 영점보정과 실패 기록 및 기본 통합 기능을 유지하며, 사용자 시험 결과를 반영한 v1.0.0 정식 배포와 구분합니다.
 
-제공된 6517A 매뉴얼 원문으로 명령·trigger·ASCII parser를 개발했습니다. 사용자 제공 기록에서 native NI-VISA 경로의 실제 6517A IDN과 보호 OFF 조회 `0`은 확인됐습니다. 실제 전압 인가·current 수집·인터록 차단·방전은 별도 검증 대상입니다. Windows 소프트웨어 실행과 실제 장비 결과는 [검증 기록](validation.md)에 구분합니다.
+제공된 6517A 매뉴얼 원문으로 명령·trigger·ASCII parser를 개발했습니다. 사용자 제공 기록에서 native NI-VISA 경로의 실제 6517A IDN과 보호 OFF 조회 `0`은 확인됐으며, v0.9.1 적용 후 ARM 통과와 측정 중 `rdng#` 응답 화면이 보고됐습니다. 이 보고는 완성된 측정 파일·정확도·인터록 차단·방전 검증과 구분합니다. Windows 소프트웨어 실행과 실제 장비 결과는 [검증 기록](validation.md)에 구분합니다.
 
 ## 운용 방식과 실행 경계
 
@@ -43,7 +43,7 @@ START 권한은 정확한 설정 snapshot과 연결에 묶여 한 번 소비됩�
 | Native 저항 판독 | 시뮬레이션만; native R와 역산 전류를 실제 measured current로 표시하지 않음 |
 | Native VISA USB-GPIB | 해당 사용자 PC의 발견·IDN·보호 OFF 기록 확인; 전체 제품·driver 조합 인증은 아님 |
 | NI-488.2 only `@py` | 선택 확장 필요; NI-VISA 생략 가능, NI-488.2는 계속 필요; 실제 조합 미시험 |
-| SCPI/ASCII parser·freshness | 매뉴얼 fixture·소프트웨어 시험; 실제 전압 인가 뒤 reading-number·상태·단위 transcript는 별도 검증 |
+| SCPI/ASCII parser·freshness | 매뉴얼 `rdg#`·사용자 화면의 `rdng#` 두 별칭 지원; 전체 실측 transcript·freshness 검증은 별도 |
 | STOP·fault latch·저장 | 단일 I/O worker, 유한 timeout, 오류 시 OFF 시도 |
 | 잔류 전압·하드웨어 emergency stop | 외부 장치 제어 미구현; residual은 UNVERIFIED |
 | Background·geometry·bipolar | 명시적 값·가정이 필요한 선택 기능; 물리적 타당성 자동 검증 없음 |
@@ -58,7 +58,9 @@ START 권한은 정확한 설정 snapshot과 연결에 묶여 한 번 소비됩�
 
 ## 측정·중지·데이터의 한계
 
-FVMI 영점보정은 v0.9.1에서 매뉴얼의 전면 패널 방식인 `ZCH ON → ZCOR ON → ZCH OFF`를 사용합니다. 출력 OFF·고정 범위·settling 후 보정 상태·완료·오류를 검사하고 autorange를 복원합니다. ACQ 단계에서 보고된 `-200 Execution error`의 원인을 idle·판독 시점으로 확정하지 않았으며 실제 firmware에서 재시험해야 합니다. SIM Native는 기존 ACQ 방식을 유지하고 실장비 Native는 계속 차단합니다.
+FVMI 영점보정은 v0.9.1부터 매뉴얼의 전면 패널 방식인 `ZCH ON → ZCOR ON → ZCH OFF`를 사용합니다. 출력 OFF·고정 범위·settling 후 보정 상태·완료·오류를 검사하고 autorange를 복원합니다. ACQ 단계에서 보고된 `-200 Execution error`의 원인을 idle·판독 시점으로 확정하지 않았습니다. 사용자는 ARM 통과를 보고했으며 전체 교정·정확도 검증은 별도입니다. SIM Native는 기존 ACQ 방식을 유지하고 실장비 Native는 계속 차단합니다.
+
+ASCII 읽기 번호는 매뉴얼의 `rdg#`와 사용자 장비 화면에서 보고된 `rdng#` 두 표기만 대소문자 구분 없이 수용합니다. 화면 전사 문자열을 재현 입력으로 사용하며, 전체 실장비 수집을 완료했다고 주장하지 않습니다. 단위·상태·유한 수치·필드 수·읽기 번호의 중복/역행·전압 불일치·trip 검사는 유지합니다. 전류·전압과 응답 원문을 보존하고 1 GΩ preset의 명목값으로 실제 판독을 대체하지 않습니다.
 
 구성 시작 전에 남아 있는 오류 큐를 확인하며 `+513 Calibration data lost` 등 장비 오류를 무시하지 않습니다. Zero Correct는 유실 교정 상수의 복구가 아닙니다. ARM 설정 실패 통신 기록은 보호 OFF 처리 뒤 `arm-failures/<UTC시각_고유ID>`에 보존하고 GUI의 최근 진단·진단 ZIP에서 사용할 수 있습니다. 저장 실패는 따로 표시되며 원래 ARM 오류와 출력 정리 결과를 유지합니다. 사용자 ARM 취소는 기존 stopped 분류를 유지합니다.
 
@@ -88,7 +90,7 @@ v0.4.6부터 소스 기반 `__pycache__/*.pyc`를 manifest·ZIP에서 제외하�
 기본 ZIP에는 NI driver·native VISA·선택 `@py` 패키지가 포함되지 않습니다. 선택 installer는 명시적 INSTALL 후 hash-pinned pure wheel만 설치하고, 기존 불완전·변경된 확장 폴더를 덮어쓰지 않습니다. 해당 확장을 포함한 배포본의 라이선스 조건은 별도 검토하며 app·NI driver 라이선스를 자동 변경하지 않습니다.
 
 
-## v0.9.1 저장 결과 분석 범위
+## v0.9.2 저장 결과 분석 범위
 
 저장 결과 분석은 최대 64개 실행의 `readings.csv` 또는 해당 폴더를 읽어 I(t)·R(t)·ρ(t)를 겹쳐 표시합니다. 각 실행의 시작 후 경과 시간을 공통 축으로 사용하며 보간·시간 이동·정규화를 하지 않습니다. 전체 구간은 모든 파일의 시간 범위를 포함합니다. 선택한 공통 구간에서 활성 파일의 통계와 선택 TXT를 제공하며 서로 다른 파일의 행을 한 TXT로 합치지 않습니다. 분석은 저장값·품질 플래그를 사용하며 원본 결과를 수정하지 않습니다.
 

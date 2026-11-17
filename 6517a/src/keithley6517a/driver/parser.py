@@ -2,8 +2,10 @@
 
 The configured element set is READing, STATus, UNITs, RNUMber, VSOurce.
 The manual fixes their returned order independent of the command argument order.
-Status and unit attach to the reading. RNUM uses ``rdg#`` (not ``RDNG#``).
-Fixtures follow the manufacturer's format; no real-device transcript is claimed.
+Status and unit attach to the reading. Accept the manual's ``rdg#`` and the
+``rdng#`` spelling reported in a user's device screenshot. Other field spelling,
+units, statuses and numeric validation remain strict. Synthetic test fixtures
+are separate from that user-reported example and from hardware validation.
 """
 
 import math
@@ -18,7 +20,7 @@ class ProtocolError(RuntimeError):
 
 NUMBER = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?"
 READING = re.compile(rf"(?P<value>{NUMBER})(?P<status>[NZOURL])(?P<unit>ADC|OHM)")
-RNUM = re.compile(r"([+-]?\d+)rdg#", re.IGNORECASE)
+RNUM = re.compile(r"([+-]?\d+)(?:rdg#|rdng#)", re.IGNORECASE)
 VSOURCE = re.compile(rf"({NUMBER})Vsrc", re.IGNORECASE)
 
 

@@ -4,6 +4,16 @@
 
 현재 설치하여 검사한 버전은 Python 3.12.14, PySide6-Essentials 6.12.0, pyqtgraph 0.14.0, PyVISA 1.16.2, numpy 2.5.4, pytest 9.2.0, pytest-qt 4.5.0, Ruff 0.17.4입니다. 재현 버전은 이 프로젝트의 `uv.lock`에 기록합니다. 이 버전 확인은 adapter driver나 VISA shared library의 설치·동작 검증이 아닙니다.
 
+## v0.9.2 실제 장비 읽기 번호 표기 호환
+
+사용자는 v0.9.1 적용 뒤 ARM 통과를 보고했으며, 측정 중 `Malformed ASCII response` 화면을 제공했습니다. 화면에서 전사한 응답은 `+064.8960E-12NADC,+01122rdng#,+0001.000Vsrc`입니다. v0.9.1까지의 파서는 매뉴얼 Figure 3-19의 `rdg#`만 허용해 이 `rdng#` 표기를 거부했습니다. v0.9.2는 읽기 번호의 정확한 두 별칭 `rdg#`·`rdng#`를 대소문자 구분 없이 수용합니다.
+
+검증 대상은 화면 전사 입력에서 전류 `6.4896×10⁻¹¹ A`·읽기 번호 1122·source 보고 1 V·원문을 보존하는지, 기존 단위·상태·sentinel·유한 수치·세 필드 구조와 잘못된 suffix 거부를 유지하는지입니다. 모의 측정에서는 `rdng#` 응답의 ARM→START→취득·CSV·4열/5열 TXT 저장과 중복 판독·전압 불일치·trip·잘못된 응답의 중단·출력 OFF를 확인합니다. 명목 1 GΩ나 가상 모델 전류로 실제 판독을 바꾸지 않습니다.
+
+2026-11-17(한국 시간) Linux 개발 환경에서 전체 **875개**, Ruff·포맷 검사를 통과했습니다. Native Windows와 재추출 번들은 화면 전사값과 두 suffix를 파싱하고, 해당 형식의 합성 장비로 전체 취득·원문/CSV·4열/5열 TXT 보존 및 중복 번호 중단을 검사합니다. 게시 단계는 기존 검증에 더해 `device_ascii_compatibility_verified=true`를 요구합니다.
+
+v0.9.1의 영점보정과 ARM 실패 기록을 유지합니다. 화면 전사 재현은 사용자가 보고한 응답 형식에 대한 소프트웨어 검사이며, 전체 실제 장비 측정 완료·교정·정확도·물리 차단 검증이 아닙니다. Windows 실행 결과는 [v0.9.2 Release](https://github.com/dropboxqfml-code/codex/releases/tag/6517a-v0.9.2)의 JUnit·build report에서 구분합니다.
+
 ## v0.9.1 ARM 영점보정·실패 통신 기록
 
 사용자는 ARM에서 `Instrument errors after zero correction acquire`와 `-200 Execution error`가 발생했다고 보고했습니다. FVMI 전류 경로를 매뉴얼 3-133, §3.22.12의 첫 번째 방법과 2-60, §2.13.3의 V/I 전면 패널 순서인 `ZCH ON → ZCOR ON → ZCH OFF`로 전환합니다. 고정 전류 범위·출력 OFF·settling 상태에서 보정 readback·완료 응답·오류를 확인한 뒤 autorange를 복원합니다. SIM Native의 기존 ACQ 방식과 실장비 Native 출력 차단을 유지합니다.

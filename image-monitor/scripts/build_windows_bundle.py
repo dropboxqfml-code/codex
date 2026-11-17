@@ -31,6 +31,8 @@ def main():
         "RUN_MONITOR.cmd",
         "RUN_MONITOR_SAVE.cmd",
         "RUN_MONITOR_FINISH.cmd",
+        "RUN_MONITOR_BATCH.cmd",
+        "RUN_MONITOR_BATCH_FINISH.cmd",
         "RUN_POST_SAVE_TEST.cmd",
         "RETRY_POST_SAVE_TEST.cmd",
         "WINDOWS_TEST_GUIDE.txt",

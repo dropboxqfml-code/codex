@@ -286,6 +286,38 @@ JPEG·PNG·WEBP·GIF·BMP는 이 범위에서 미리보기를 제공하고 TIFF�
 이번 사용자 확인은 실행기를 열고 저장 결과 이미지를 본 뒤 `프로그램 종료`를 눌러 열린 TXT를
 전달하는 절차이며, 사용자 환경의 새 열람 결과는 별도로 확인합니다.
 
+## v21 완료 상세 관찰의 후보별 연속 저장
+
+`monitor-save-batch`와 `RUN_MONITOR_BATCH.cmd`는 이미 보존된 `목록 감시` 범위의 완료
+상세 관찰만 사용합니다. 새 목록·후보 상세를 읽거나 기준점을 초기화하지 않습니다. 후보마다
+같은 다섯 범위 필드·최초 발견과 기준점·기준점 이후 작성 시각·유일한 헤더/본문·로딩된 이미지
+1~2개와 미해결 0개를 검증해 불변 허가를 만들며, 실제 저장 전 현재 헤더와 원본 URL·크기·
+출현·제외 근거를 다시 대조합니다. 전체 갤러리의 저장 프로필을 승격하지 않습니다.
+
+발견 루트의 새 `monitor-save-ledger.sqlite`는 별도 스키마 1입니다. `watch.sqlite`의 스키마 5,
+기준점·목록·후보·상세와 이미지 작업 0개는 유지합니다. 기존 v19의 단일 선택과 완료 파일은
+읽기 전용으로 재검증한 뒤 새 이력에 원자적으로 완료 등록하며, 그 이전 출력 루트에 저장
+작업자를 다시 실행하지 않습니다. 새 시도마다 `ImageMonitorBatch/tasks/<작업ID>/session-<세션>`
+아래 한 게시글 전용 DB와 출력을 사용합니다.
+
+이력의 `planned` 작업은 네이티브 작업자를 부르기 전에 `started`로 커밋합니다. 한 실행의 새
+네이티브 시도는 최대 두 번입니다. 중단된 `started`나 `needs_review`는 근거 대조 없이 다시
+실행하지 않으며 미해결 작업이 있으면 새 네이티브 시도도 멈춥니다. 서비스 최소 대기·서버의
+`Retry-After`·접근 차단과 탐색 진행이 불명확한 상태는 같은 버전의 목록·상세·단일 저장에도
+적용합니다. 404/410은 입력 전 중단·빈 네이티브 DB·브라우저 종료·보류 없음이 모두 입증됐을
+때에만 해당 후보의 종료로 기록하고 다음 후보를 처리합니다.
+
+기본 사용자 절차는 `RUN_MONITOR_BATCH.cmd`를 열고 새 전용 Chrome의 `저장 시작`을 누른 뒤
+저장 완료까지 그 창을 앞에 유지해 자동으로 열린 결과 TXT를 전달하는 것입니다. 현재 사용자
+자료에서는 이전 완료 한 건을 건너뛰고 남은 완료 상세 관찰 한 건을 저장하므로 목록·상세
+확인을 반복할 필요가 없습니다. 지원용 `RUN_MONITOR_BATCH_FINISH.cmd`는 이미 완료된 파일의
+읽기 전용 재검증·정확한 전용 브라우저 정상 종료·보류 근거 대조만 수행합니다. 다른 Windows
+세션의 미해결 작업을 정리하거나 미완료 이미지를 다시 저장하지 않습니다.
+
+기존 `RUN_MONITOR_SAVE.cmd`의 한 후보 고정과 v20의 이전 완료 파일 미리보기는 유지합니다.
+새 배치 저장 결과는 아직 그 미리보기에 표시하지 않습니다. 이 한정 배치는 정기 목록 감시가
+모든 새 후보의 이미지를 계속 저장하는 기능과 구분하며 실제 사용자 인수는 새 TXT로 확인합니다.
+
 ## 영구 기록과 개발 명령
 
 별도 `watch.sqlite`의 `watch_*` 테이블에 기준점·후보·관찰·미확인 이력을
@@ -303,6 +335,7 @@ uv run --locked --extra windows image-monitor monitor --work-root C:/IMWatch --s
 uv run --locked --extra windows image-monitor candidate-test --work-root C:/IMWatch --browser chrome
 uv run --locked --extra windows image-monitor candidate-save-test --watch-root C:/IMWatch --work-root C:/IMCandidateSave --browser chrome
 uv run --locked --extra windows image-monitor monitor-save-test --watch-root C:/IMWatch --work-root C:/IMMonitorSave --browser chrome
+uv run --locked --extra windows image-monitor monitor-save-batch --watch-root C:/IMWatch --legacy-root C:/IMMonitorSave --work-root C:/IMMonitorBatch
 ```
 
 한정 `watch-test` CLI는 주기 수나 대기 간격을 바꾸는 옵션을 제공하지 않습니다. `monitor`의

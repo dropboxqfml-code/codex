@@ -33,9 +33,18 @@ v20은 `RUN_MONITOR.cmd`의 같은 로컬 화면에 **저장 결과**를 추가�
 내용 확인·네이티브 저장을 다시 실행할 필요가 없습니다. 현재 Windows 세션에 저장한 한 고정
 후보의 결과를 읽는 기능이며 원본 사이트 접속·이미지 재저장·자동 복구는 하지 않습니다.
 
+v20 사용자 TXT에서는 기존 JPEG 한 개의 재검증과 미리보기 캐시 준비·정상 종료를
+확인했습니다. 브라우저의 실제 이미지 표시나 육안 확인을 입증한 결과와는 구분합니다.
+
+v21의 `RUN_MONITOR_BATCH.cmd`는 이미 상세 확인한 `목록 감시` 후보를 이어 처리합니다.
+기존 v19 완료 파일을 읽기 전용으로 재검증해 새 저장 이력에 등록하고 재저장하지 않으며,
+새 네이티브 시도는 한 실행에 최대 두 번으로 제한합니다. 후보별 출력은 별도
+`ImageMonitorBatch`에 분리합니다. 새 파일은 아직 v20의 기존 미리보기에 연결하지 않았습니다.
+정기 감시가 새 후보를 계속 저장하는 전체 자동화와는 구분합니다.
+
 Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS_TEST_GUIDE.txt)에
 하나로 정리합니다. 기본 저장 시험과 게시글 저장·재개 명령도 유지합니다.
-개발용 패키징은 `python scripts/build_windows_bundle.py --version v20`이며 기존 ZIP을 덮어쓰지 않습니다.
+개발용 패키징은 `python scripts/build_windows_bundle.py --version v21`이며 기존 ZIP을 덮어쓰지 않습니다.
 
 ## 현재 구현
 
@@ -70,6 +79,13 @@ Windows 실행 절차와 결과 확인은 ZIP 안의 [짧은 TXT 안내](WINDOWS
   이전 `검색 감시 시험`의 선택·저장 파일은 유지하며 범위가 다른 관찰을 섞지 않습니다.
   목록·상세 확인을 반복하지 않고 전용 Chrome의 현재 헤더·이미지 집합을 허가와 다시 대조합니다.
   로컬 감시 화면의 백그라운드 작업에 네이티브 저장을 넣지 않고 별도 실행기의 주 스레드에서 처리합니다.
+- `monitor-save-batch`는 기존 완료 상세 관찰만 사용하고 별도 `monitor-save-ledger.sqlite`
+  스키마 1에 후보별 진행 상태를 기록합니다. 기존 `watch.sqlite`의 스키마 5와 단일 저장 선택은
+  유지합니다. 이전 완료 파일을 재검증해 등록한 뒤 새 후보마다 UUID 작업 루트와 세션을 고정하며
+  작업자 호출 전에 `started`를 커밋합니다. 중단·검토 상태는 자동 재시도하지 않습니다.
+  서비스 대기·접근 차단과 탐색 진행 여부가 불명확한 상태는 현재 버전의 목록·상세·저장 진입점에
+  함께 적용합니다. 삭제된 후보는 입력 전·빈 네이티브 DB·브라우저 종료·보류 없음이 입증된
+  404/410에만 해당 후보를 소진하고 다음 후보로 넘어갑니다.
 - 로컬 화면의 저장 결과는 고정 선택과 현재 세션의 기존 DB·완료 저널·파일·메타데이터를 읽기
   전용으로 대조합니다. Pillow와 배타적 해시 검증을 통과한 원본 파일 바이트만 메모리에 보관하며
   새 이미지 수집·재인코딩·파일 변경은 없습니다. 정지 상태의 `저장 결과 새로 확인`으로 명시적으로
@@ -135,6 +151,8 @@ uv run --locked --extra windows image-monitor candidate-save-test --watch-root C
 uv run --locked --extra windows image-monitor candidate-finish --watch-root C:/IMWatch --work-root C:/IMCandidateSave
 uv run --locked --extra windows image-monitor monitor-save-test --watch-root C:/IMWatch --work-root C:/IMMonitorSave --browser chrome
 uv run --locked --extra windows image-monitor monitor-finish --watch-root C:/IMWatch --work-root C:/IMMonitorSave
+uv run --locked --extra windows image-monitor monitor-save-batch --watch-root C:/IMWatch --legacy-root C:/IMMonitorSave --work-root C:/IMMonitorBatch
+uv run --locked --extra windows image-monitor monitor-batch-finish --watch-root C:/IMWatch --legacy-root C:/IMMonitorSave --work-root C:/IMMonitorBatch
 uv run --locked pytest -q
 uv run --locked ruff check .
 uv run --locked ruff format --check .
@@ -171,6 +189,16 @@ Linux에서는 로컬 정책·검증·대기열·DOM fixture 시험을 실행할
 저장이 끝날 때까지 그 창을 앞에 두면 결과 TXT 하나가 자동으로 열립니다. 목록 감시나 후보 내용
 확인을 다시 실행할 필요가 없습니다. `monitor-finish`와 `RUN_MONITOR_FINISH.cmd`는 완료 파일의
 근거와 종료 상태만 확인하는 별도 지원용 경로이며 기본 시험에 추가 실행을 요구하지 않습니다.
+
+`RUN_MONITOR_BATCH.cmd`는 같은 발견 루트와 기존 `ImageMonitorMonitorSave`, 새
+`ImageMonitorBatch`를 전달합니다. 기존 완료 한 건은 재검증 뒤 건너뛰므로 현재 사용자 데이터의
+남은 완료 상세 관찰 한 건만 새 Chrome에서 `저장 시작`을 누르는 대상입니다. 저장이 끝날 때까지
+그 창을 앞에 유지하면 결과 TXT가 자동으로 열립니다. 목록·상세 확인을 반복할 필요는 없습니다.
+지원용 `RUN_MONITOR_BATCH_FINISH.cmd`는 완료 근거와 정확한 이전 브라우저 종료만 재확인하며
+새 입력·재다운로드를 하지 않습니다. 미해결 작업이 다른 Windows 세션에 속하면 처리하지 않습니다.
+
+기존 `RUN_MONITOR_SAVE.cmd`는 이전 한 후보에 고정된 동작을 유지합니다. v20의 기존 저장
+결과 화면도 이전 완료 파일을 보여주며 새 배치 출력은 아직 표시하지 않습니다.
 
 - [게시글 저장 작업자와 장애 복구](docs/native-post-save.md)
 - [검색 목록과 감시 기준점](docs/list-watch.md)

@@ -78,6 +78,17 @@ def main() -> int:
         candidate_finish = commands.add_parser(name, help=description)
         candidate_finish.add_argument("--watch-root", type=Path, required=True)
         candidate_finish.add_argument("--work-root", type=Path, required=True)
+    for name, description in (
+        (
+            "monitor-save-batch",
+            "Save at most two inspected monitor candidates, skipping completed work",
+        ),
+        ("monitor-batch-finish", "Reconcile completed monitor batch files without saving again"),
+    ):
+        monitor_batch = commands.add_parser(name, help=description)
+        monitor_batch.add_argument("--watch-root", type=Path, required=True)
+        monitor_batch.add_argument("--legacy-root", type=Path, required=True)
+        monitor_batch.add_argument("--work-root", type=Path, required=True)
     site = commands.add_parser(
         "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
     )
@@ -106,6 +117,45 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command in {"monitor-save-batch", "monitor-batch-finish"}:
+        try:
+            if args.command == "monitor-save-batch":
+                from image_monitor.monitor_batch_runtime import (
+                    run_monitor_batch,
+                    share_batch_report,
+                )
+
+                output = run_monitor_batch(args.watch_root, args.legacy_root, args.work_root)
+                public_report = share_batch_report(output)
+            else:
+                from image_monitor.monitor_batch_finish import (
+                    run_monitor_batch_finish,
+                    share_batch_finish_report,
+                )
+
+                output = run_monitor_batch_finish(args.watch_root, args.legacy_root, args.work_root)
+                public_report = share_batch_finish_report(output)
+        except KeyboardInterrupt:
+            parser.exit(130, "Monitor batch operation cancelled. Inspect existing save state.\n")
+        except Exception as error:
+            parser.exit(2, f"Monitor batch operation stopped ({type(error).__name__}).\n")
+        print(json.dumps(public_report, ensure_ascii=False, indent=2))
+        if output.get("error_type") == "KeyboardInterrupt" or output.get("status") in {
+            "monitor_batch_cancelled",
+            "batch_finish_cancelled",
+        }:
+            return 130
+        allowed = (
+            {
+                "monitor_batch_completed",
+                "monitor_batch_waiting",
+                "monitor_batch_busy",
+                "monitor_batch_no_candidates",
+            }
+            if args.command == "monitor-save-batch"
+            else {"batch_finish_completed", "batch_finish_no_pending", "batch_finish_busy"}
+        )
+        return 0 if output.get("status") in allowed else 2
     if args.command == "monitor":
         try:
             from image_monitor.monitor_app import run_monitor_app, share_monitor_report

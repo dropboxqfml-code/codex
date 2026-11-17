@@ -100,13 +100,15 @@ def _list_service_blocked(queue):
 
 
 def _eligibility(queue, state, now):
-    from image_monitor.candidate_save_selection import selection_service_blocked
+    from image_monitor.candidate_save_selection import _database_path, selection_service_blocked
     from image_monitor.candidate_store import detail_service_blocked
+    from image_monitor.monitor_save_ledger import batch_service_blocked
 
     if (
         detail_service_blocked(queue)
         or selection_service_blocked(queue)
         or _list_service_blocked(queue)
+        or batch_service_blocked(_database_path(queue))
     ):
         return "blocked", None
     control = _control(state)

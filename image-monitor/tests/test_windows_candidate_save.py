@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -45,12 +46,13 @@ pytestmark = windows_ci_only
 class CandidatePageView:
     """Expose an invented logical identity while all real requests stay on loopback."""
 
-    def __init__(self, page):
+    def __init__(self, page, *, post_url=None):
         self._page = page
+        self._post_url = post_url or POST_URL
 
     @property
     def url(self):
-        return POST_URL
+        return self._post_url
 
     def __getattr__(self, name):
         return getattr(self._page, name)
@@ -69,7 +71,7 @@ def inspect_unverified_candidate(page, observed_at):
             assert entry["excluded_reason"] is None
             image.scroll_into_view_if_needed(timeout=15_000)
             entry.update(image.evaluate(LOAD_JS, 15_000))
-        return parse_snapshot(raw, expected_url=POST_URL, observed_at=observed_at)
+        return parse_snapshot(raw, expected_url=page.url, observed_at=observed_at)
     finally:
         for handle in [*handles, root]:
             handle.dispose()
@@ -125,6 +127,28 @@ def frozen_candidate_permit(snapshot):
 
 
 def test_owned_candidate_permit_saves_ambiguous_name_as_generic_png_without_resaving(monkeypatch):
+    run_owned_candidate_native(monkeypatch)
+
+
+def run_owned_candidate_native(
+    monkeypatch,
+    *,
+    root=None,
+    post_url=None,
+    permit_factory=None,
+    header=None,
+    fixtures=None,
+    page_path="/post",
+    queue_name="q.sqlite",
+    navigation_observer=None,
+    allowed_requests=None,
+):
+    """Reuse the real owned saver with optional durable batch-fixture storage.
+
+    Only this CI fixture adapter can substitute a logical post identity or
+    approve its owned browser. Production origin and foreground rules are
+    unchanged. A supplied root remains owned by the caller after this returns.
+    """
     import psutil
     import pywinauto  # noqa: F401
     from playwright.sync_api import sync_playwright
@@ -140,7 +164,7 @@ def test_owned_candidate_permit_saves_ambiguous_name_as_generic_png_without_resa
     date = (datetime.now(ZoneInfo("Asia/Seoul")) - timedelta(minutes=1)).strftime(
         "%Y.%m.%d %H:%M:%S"
     )
-    header = {
+    header = header or {
         "title": "Invented candidate native save",
         "nickname": "fixture-author",
         "published_at_raw": date,
@@ -159,13 +183,22 @@ def test_owned_candidate_permit_saves_ambiguous_name_as_generic_png_without_resa
         '<img src="/render-first.png" style="width:240px;height:180px"></div>'
     ).encode()
     assets = {"/post": ("text/html; charset=utf-8", html), "/render-first.png": png}
+    post_url = post_url or POST_URL
+    permit_factory = permit_factory or frozen_candidate_permit
+    directory_context = (
+        tempfile.TemporaryDirectory(prefix="imc-", dir=os.environ["RUNNER_TEMP"])
+        if root is None
+        else nullcontext(str(root))
+    )
+    fixture_context = serve_fixtures(assets) if fixtures is None else nullcontext(fixtures)
     with (
-        tempfile.TemporaryDirectory(prefix="imc-", dir=os.environ["RUNNER_TEMP"]) as directory,
-        serve_fixtures(assets) as (origin, requested),
+        directory_context as directory,
+        fixture_context as (origin, requested),
         NativeSaveLock(),
     ):
         root = Path(directory)
-        database, save_root, profile = root / "q.sqlite", root / "images", root / "profile"
+        root.mkdir(parents=True, exist_ok=True)
+        database, save_root, profile = root / queue_name, root / "images", root / "profile"
         profile.mkdir()
         process = subprocess.Popen(
             [
@@ -193,16 +226,26 @@ def test_owned_candidate_permit_saves_ambiguous_name_as_generic_png_without_resa
             cleanup_session = browser.new_browser_cdp_session()
             context = browser.contexts[0]
             actual_page = context.pages[0] if context.pages else context.new_page()
-            actual_page.goto(origin + "/post", wait_until="load", timeout=30_000)
-            assert actual_page.url == origin + "/post"
-            page = CandidatePageView(actual_page)
+            if navigation_observer is not None:
+                navigation_observer.before()
+            try:
+                response = actual_page.goto(origin + page_path, wait_until="load", timeout=30_000)
+            except BaseException as error:
+                if navigation_observer is not None:
+                    navigation_observer.after(None, error)
+                raise
+            else:
+                if navigation_observer is not None:
+                    navigation_observer.after(response, None)
+            assert actual_page.url == origin + page_path
+            page = CandidatePageView(actual_page, post_url=post_url)
             snapshot = inspect_unverified_candidate(page, datetime.now(UTC))
             assert snapshot["layout_status"] == "unverified"
             assert snapshot["queue_eligible"] is False
             image = snapshot["images"][0]
             assert image["original_filename_match_status"] == "ambiguous"
             assert image["original_attachment_filename"] is None
-            permit, first_seen = frozen_candidate_permit(snapshot)
+            permit, first_seen = permit_factory(snapshot)
             authorized = permit.authorize_snapshot(snapshot)
             assert authorized["layout_status"] == "candidate_reviewed"
             nonce, _ = post_worker.install_approval(page, authorized, save_root)
@@ -231,7 +274,7 @@ def test_owned_candidate_permit_saves_ambiguous_name_as_generic_png_without_resa
                     saved = native_body.save_body_image(
                         page,
                         ui,
-                        post_url=POST_URL,
+                        post_url=post_url,
                         image=image,
                         staging_directory=staging,
                         before_native_input=arm_input,
@@ -280,7 +323,19 @@ def test_owned_candidate_permit_saves_ambiguous_name_as_generic_png_without_resa
                 assert datetime.fromisoformat(post["first_seen_at"]) == first_seen
                 assert final_file.read_bytes() == png[1]
                 assert metadata_file.read_bytes() == metadata_bytes
-            assert set(requested) <= {"/post", "/render-first.png", "/favicon.ico"}
+            assert set(requested) <= (
+                allowed_requests or {"/post", "/render-first.png", "/favicon.ico"}
+            )
+            return {
+                "status": "post_completed",
+                "browser_closed": True,
+                "shared_pending_retained": False,
+                "last_stage": "complete",
+                "error_type": None,
+                "job_counts": {"observed": 1, "completed": 1, "unresolved": 0},
+                "saved_files": [{"saved_filename": final_file.name, **verified}],
+                "output_directory": str(save_root),
+            }
         finally:
             close_ci_browser(process, owned_process, created_at, cleanup_session, ui)
             if driver is not None:

@@ -5,6 +5,7 @@ import shutil
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -340,6 +341,76 @@ def test_two_candidates_share_one_owned_session_and_keep_their_identity(browser_
     browser_session[2].close.assert_called_once()
 
 
+def _safe_lifecycle_diagnostics(error, owned):
+    error_types = {
+        "Error",
+        "TimeoutError",
+        "TargetClosedError",
+        "NativeUIError",
+        "RuntimeError",
+        "FileNotFoundError",
+        "PermissionError",
+        "OSError",
+        "ImportError",
+        "ModuleNotFoundError",
+        "NotImplementedError",
+        "ValueError",
+        "TypeError",
+        "AttributeError",
+        "KeyError",
+        "ConnectionError",
+        "BrokenPipeError",
+    }
+    error_codes = {
+        "ERR_TUNNEL_CONNECTION_FAILED",
+        "ERR_NAME_NOT_RESOLVED",
+        "ERR_CONNECTION_RESET",
+        "ERR_CONNECTION_REFUSED",
+        "Timeout",
+    }
+
+    def safe_type(value):
+        if value is None:
+            return None
+        return value if isinstance(value, str) and value in error_types else "other"
+
+    code = getattr(error, "error_code", None)
+    closed = owned.browser_closed
+    return {
+        "error_type": safe_type(getattr(error, "error_type", None)),
+        "error_code": code if isinstance(code, str) and code in error_codes else None,
+        "browser_closed": closed if type(closed) is bool else None,
+        "cleanup_error_type": safe_type(owned.cleanup_error_type),
+    }
+
+
+def test_real_fixture_lifecycle_diagnostics_preserve_known_failure_and_cleanup_state():
+    error = lifecycle.WatchBrowserError("private lifecycle message", TimeoutError("private URL"))
+    owned = SimpleNamespace(browser_closed=False, cleanup_error_type="TargetClosedError")
+    assert _safe_lifecycle_diagnostics(error, owned) == {
+        "error_type": "TimeoutError",
+        "error_code": "Timeout",
+        "browser_closed": False,
+        "cleanup_error_type": "TargetClosedError",
+    }
+
+
+def test_real_fixture_lifecycle_diagnostics_omit_external_messages_and_unknown_values():
+    error = SimpleNamespace(
+        error_type="/private/browser/path",
+        error_code="https://private.example/?token=secret",
+    )
+    owned = SimpleNamespace(browser_closed="private state", cleanup_error_type={"private": 1})
+    diagnostics = _safe_lifecycle_diagnostics(error, owned)
+    assert diagnostics == {
+        "error_type": "other",
+        "error_code": None,
+        "browser_closed": None,
+        "cleanup_error_type": "other",
+    }
+    assert "private" not in json.dumps(diagnostics)
+
+
 def test_real_owned_browser_inspects_only_routed_candidate_dom(tmp_path, monkeypatch):
     pytest.importorskip("playwright.sync_api")
     if sys.platform != "win32":
@@ -365,10 +436,18 @@ def test_real_owned_browser_inspects_only_routed_candidate_dom(tmp_path, monkeyp
         else:
             pytest.fail("Candidate inspection must not navigate attachment links")
 
-    with backend.HeadlessCandidateBrowser(now=lambda: NOW) as owned:
-        browser = owned._owned_browser
-        owned._page.context.route("**/*", route_document)
-        result = owned.inspect(CANDIDATE, NOW)
+    owned = backend.HeadlessCandidateBrowser(now=lambda: NOW)
+    try:
+        with owned:
+            browser = owned._owned_browser
+            owned._page.context.route("**/*", route_document)
+            result = owned.inspect(CANDIDATE, NOW)
+    except lifecycle.WatchBrowserError as error:
+        pytest.fail(
+            "Owned candidate browser lifecycle failed: "
+            + json.dumps(_safe_lifecycle_diagnostics(error, owned), sort_keys=True),
+            pytrace=False,
+        )
     assert result["status"] == "observed"
     assert result["navigation_attempts"] == 1
     assert result["snapshot"]["published_at"] == "2026-11-16T13:00:00+09:00"

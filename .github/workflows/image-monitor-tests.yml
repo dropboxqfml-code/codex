@@ -49,7 +49,7 @@ jobs:
         run: |
           $PSNativeCommandUseErrorActionPreference = $false
           New-Item -ItemType Directory -Force reports | Out-Null
-          .venv/Scripts/python.exe -m pytest -q --junitxml=reports/windows-pytest.xml *> reports/pytest-output.txt
+          .venv/Scripts/python.exe -m pytest -q --maxfail=1 --junitxml=reports/windows-pytest.xml *> reports/pytest-output.txt
           $pytestExit = $LASTEXITCODE
           Get-Content -LiteralPath reports/pytest-output.txt
           $annotations = 0

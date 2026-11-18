@@ -123,6 +123,27 @@ _SAVED_FILE_FIELDS = (
 )
 _MAX_PREVIEW_BYTES = 16 * 1024 * 1024
 _MAX_TOTAL_PREVIEW_BYTES = 32 * 1024 * 1024
+_OPERATION_COUNTS = (
+    "candidate_uninspected",
+    "save_ready",
+    "save_planned",
+    "save_active",
+    "save_completed",
+    "save_unavailable",
+    "save_needs_review",
+)
+
+
+def _load_operations(*args, **kwargs):
+    from image_monitor.monitor_operations import load_monitor_operations
+
+    return load_monitor_operations(*args, **kwargs)
+
+
+def _finish_completed(*args, **kwargs):
+    from image_monitor.monitor_finish_action import run_completed_finish
+
+    return run_completed_finish(*args, **kwargs)
 
 
 def _load_saved_catalog(*args, **kwargs):
@@ -167,6 +188,8 @@ class MonitorController:
         save_root=None,
         batch_root=None,
         catalog_loader=_load_saved_catalog,
+        operations_loader=_load_operations,
+        finish_runner=_finish_completed,
     ):
         if batch_root is not None and save_root is None:
             raise QueueError("Batch preview requires the legacy save root")
@@ -182,6 +205,8 @@ class MonitorController:
         self.save_root = Path(save_root) if save_root is not None else None
         self.batch_root = Path(batch_root) if batch_root is not None else None
         self._catalog_loader = catalog_loader
+        self._operations_loader = operations_loader
+        self._finish_runner = finish_runner
         self._saved_images = {}
         settings = load_monitor_settings(self.work_root)
         self._lock = threading.RLock()
@@ -226,6 +251,19 @@ class MonitorController:
             "saved_groups_verified": 0,
             "saved_files_omitted": 0,
             "saved_files": [],
+            "operations_status": "disabled" if self.batch_root is None else "empty",
+            "operations_reason": None,
+            "operations_error_type": None,
+            "operations_counts": dict.fromkeys(_OPERATION_COUNTS, 0),
+            "operations_rows": [],
+            "operations_rows_omitted": 0,
+            "operations_wait_until": None,
+            "operations_remaining_seconds": 0,
+            "operations_can_finish": False,
+            "operations_finish_status": None,
+            "operations_finish_reason": None,
+            "operations_finish_error_type": None,
+            "operations_finish_files_verified": 0,
         }
         try:
             self._read_source()
@@ -245,6 +283,14 @@ class MonitorController:
             result = self._state.copy()
             result["details"] = [row.copy() for row in result["details"]]
             result["saved_files"] = [row.copy() for row in result["saved_files"]]
+            result["operations_rows"] = [row.copy() for row in result["operations_rows"]]
+            result["operations_counts"] = result["operations_counts"].copy()
+            operation_due = result["operations_wait_until"]
+            result["operations_remaining_seconds"] = (
+                max(0, math.ceil((_stored_time(operation_due) - self._clock.now()).total_seconds()))
+                if operation_due is not None
+                else 0
+            )
             result["settings_editable"] = result["phase"] == "stopped" and not self.is_alive()
             due = result["next_eligible_at"]
             result["remaining_seconds"] = (
@@ -282,7 +328,7 @@ class MonitorController:
             if self._state["phase"] == "needs_review":
                 raise QueueError("The monitor requires review before another start")
             if self.is_alive():
-                if self._state["task_kind"] == "saved":
+                if self._state["task_kind"] in {"saved", "operations", "overview", "finish"}:
                     return self.status()
                 if self._pause.is_set() and not self._stop.is_set():
                     self._pause.clear()
@@ -339,6 +385,268 @@ class MonitorController:
             return None
         with self._lock:
             return self._saved_images.get(image_id)
+
+    def refresh_operations(self):
+        return self._begin_operations("operations")
+
+    def refresh_overview(self):
+        if self.batch_root is None:
+            return self.refresh_saved()
+        return self._begin_operations("overview")
+
+    def finish_completed(self):
+        """Request existing completed-file reconciliation; never retry a save."""
+        return self._begin_operations("finish")
+
+    def _begin_operations(self, kind):
+        with self._lock:
+            if self.is_alive() or self._state["phase"] not in {"stopped", "needs_review"}:
+                raise QueueError("Stop the monitor before reviewing local work")
+            if self.batch_root is None:
+                if kind == "finish":
+                    raise QueueError("Completed reconciliation requires configured batch roots")
+                return self.status()
+            if kind == "finish" and (
+                self._state["operations_can_finish"] is not True
+                or self._state["browser_closed"] is not True
+            ):
+                raise QueueError("Completed files must be reviewed before reconciliation")
+            review = self._state["phase"] == "needs_review"
+            self._state.update(
+                task_kind=kind,
+                phase={
+                    "operations": "verifying_operations",
+                    "overview": "verifying_overview",
+                    "finish": "finishing_completed",
+                }[kind],
+                operations_status="checking",
+                operations_reason=None,
+                operations_error_type=None,
+                operations_can_finish=False,
+                operations_counts=dict.fromkeys(_OPERATION_COUNTS, 0),
+                operations_rows=[],
+                operations_rows_omitted=0,
+                operations_wait_until=None,
+            )
+            if kind in {"overview", "finish"}:
+                self._saved_images = {}
+                self._state.update(
+                    saved_status="checking",
+                    saved_reason=None,
+                    saved_error_type=None,
+                    saved_files_verified=0,
+                    saved_preview_count=0,
+                    saved_groups_verified=0,
+                    saved_files_omitted=0,
+                    saved_files=[],
+                )
+            if kind == "finish":
+                self._state.update(
+                    operations_finish_status=None,
+                    operations_finish_reason=None,
+                    operations_finish_error_type=None,
+                    operations_finish_files_verified=0,
+                )
+            self._stop.clear()
+            self._pause.clear()
+            self._wake.clear()
+            self._thread = threading.Thread(
+                target=self._work_operations,
+                args=(kind, review),
+                name="image-monitor-local-work",
+                daemon=True,
+            )
+            self._thread.start()
+            return self.status()
+
+    @staticmethod
+    def _operations_snapshot(snapshot):
+        from image_monitor.monitor_operations import (
+            OPERATIONS_REASONS,
+            OPERATIONS_ROW_STATUSES,
+            ROW_REASONS,
+        )
+
+        if not isinstance(snapshot, dict):
+            raise QueueError("Local work did not return a snapshot")
+        status, reason = snapshot.get("status"), snapshot.get("reason")
+        counts = {key: snapshot.get(key) for key in _OPERATION_COUNTS}
+        rows, omitted = snapshot.get("rows"), snapshot.get("rows_omitted", 0)
+        can_finish, due = snapshot.get("can_finish"), snapshot.get("wait_until")
+        if (
+            status not in {"ready", "empty", "busy", "needs_review", "cancelled"}
+            or reason is not None
+            and reason not in OPERATIONS_REASONS
+            or any(type(n) is not int or not 0 <= n <= 2**31 - 1 for n in counts.values())
+            or not isinstance(rows, list)
+            or len(rows) > 20
+            or type(omitted) is not int
+            or not 0 <= omitted <= 2**31 - 1
+            or type(can_finish) is not bool
+            or can_finish
+            and (
+                status not in {"ready", "needs_review"}
+                or counts["save_active"] + counts["save_needs_review"] != 1
+            )
+            or due is not None
+            and (not isinstance(due, str) or len(due) > 64)
+        ):
+            raise QueueError("Local work summary is invalid")
+        if due is not None:
+            due = _stamp(_stored_time(due))
+        safe_rows, orders = [], set()
+        for row in rows:
+            if not isinstance(row, dict):
+                raise QueueError("Local work row is invalid")
+            order, image_count = row.get("order"), row.get("image_count")
+            if (
+                type(order) is not int
+                or not 1 <= order <= 2**31 - 1
+                or order in orders
+                or row.get("status") not in OPERATIONS_ROW_STATUSES
+                or row.get("reason") is not None
+                and row.get("reason") not in ROW_REASONS
+                or image_count is not None
+                and (type(image_count) is not int or not 0 <= image_count <= 1000)
+            ):
+                raise QueueError("Local work row is invalid")
+            orders.add(order)
+            safe_rows.append(
+                {key: row.get(key) for key in ("order", "status", "reason", "image_count")}
+            )
+        return {
+            "operations_status": status,
+            "operations_reason": reason,
+            "operations_error_type": _safe_error_type(snapshot.get("error_type")),
+            "operations_counts": counts,
+            "operations_rows": safe_rows,
+            "operations_rows_omitted": omitted,
+            "operations_wait_until": due,
+            "operations_can_finish": can_finish,
+        }
+
+    def _operations_state(self):
+        return self._operations_snapshot(
+            self._operations_loader(
+                self.work_root,
+                self.save_root,
+                self.batch_root,
+                now=self._clock.now(),
+                should_stop=self._requested_stop,
+            )
+        )
+
+    def _catalog_state(self):
+        options = {"should_stop": self._requested_stop}
+        if self.batch_root is not None:
+            options["batch_root"] = self.batch_root
+        snapshot = self._catalog_loader(
+            self.work_root,
+            self.save_root,
+            **options,
+        )
+        return self._saved_snapshot(snapshot)
+
+    def _finish_state(self, report):
+        from image_monitor.monitor_finish_action import (
+            FINISH_ACTION_REASONS,
+            FINISH_ACTION_STATUSES,
+        )
+
+        if (
+            not isinstance(report, dict)
+            or report.get("status") not in FINISH_ACTION_STATUSES
+            or report.get("reason") not in FINISH_ACTION_REASONS
+            or type(report.get("files_verified")) is not int
+            or not 0 <= report["files_verified"] <= 2
+        ):
+            raise QueueError("Completed reconciliation returned an invalid report")
+        return {
+            "operations_finish_status": report["status"],
+            "operations_finish_reason": report["reason"],
+            "operations_finish_error_type": _safe_error_type(report.get("error_type")),
+            "operations_finish_files_verified": report["files_verified"],
+        }
+
+    def _work_operations(self, kind, review):
+        try:
+            state = self._operations_state()
+            if kind == "finish" and not self._requested_stop():
+                if state["operations_can_finish"] is not True:
+                    raise QueueError("The completed reconciliation authorization changed")
+                result = self._finish_state(
+                    self._finish_runner(
+                        self.work_root,
+                        self.save_root,
+                        self.batch_root,
+                        should_stop=self._requested_stop,
+                    )
+                )
+                # A late stop cannot erase an already completed reconciliation.
+                self._set(**result)
+                if not self._requested_stop():
+                    state = self._operations_state()
+            images = None
+            if kind in {"overview", "finish"} and not self._requested_stop():
+                saved, images = self._catalog_state()
+                state.update(saved)
+            with self._lock:
+                if self._requested_stop():
+                    self._state.update(
+                        operations_status="cancelled",
+                        operations_reason="requested_stop",
+                        operations_can_finish=False,
+                    )
+                    if kind in {"overview", "finish"}:
+                        self._state.update(saved_status="cancelled", saved_reason="requested_stop")
+                else:
+                    self._state.update(state)
+                    if images is not None:
+                        self._saved_images = images
+        except BaseException as error:
+            with self._lock:
+                self._state.update(
+                    operations_status="cancelled" if self._requested_stop() else "needs_review",
+                    operations_reason="requested_stop"
+                    if self._requested_stop()
+                    else "operations_require_review",
+                    operations_error_type=_safe_error_type(type(error).__name__),
+                    operations_can_finish=False,
+                )
+                if kind in {"overview", "finish"}:
+                    self._saved_images = {}
+                    self._state.update(
+                        saved_status="cancelled" if self._requested_stop() else "needs_review",
+                        saved_reason="requested_stop"
+                        if self._requested_stop()
+                        else "saved_catalog_requires_review",
+                    )
+                if kind == "finish" and self._state["operations_finish_status"] is None:
+                    self._state.update(
+                        operations_finish_status="batch_finish_cancelled"
+                        if self._requested_stop()
+                        else "batch_finish_manual_review",
+                        operations_finish_reason="cancelled"
+                        if self._requested_stop()
+                        else "completed_batch_requires_review",
+                        operations_finish_error_type=_safe_error_type(type(error).__name__),
+                    )
+        finally:
+            with self._lock:
+                if (
+                    kind == "finish"
+                    and self._state["operations_finish_status"] is None
+                    and self._requested_stop()
+                ):
+                    self._state.update(
+                        operations_finish_status="batch_finish_cancelled",
+                        operations_finish_reason="cancelled",
+                    )
+                self._state["phase"] = (
+                    "needs_review"
+                    if review or self._state["phase"] == "needs_review"
+                    else "stopped"
+                )
 
     @staticmethod
     def _saved_snapshot(snapshot):

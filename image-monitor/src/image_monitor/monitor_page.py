@@ -40,6 +40,31 @@ h1{font-size:28px;line-height:1.4;letter-spacing:-1.3px;margin:0 0 6px;font-weig
 .scope{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:5px 12px;
   border:1px solid #d4dfd9;border-radius:8px;background:#edf2eb;font-size:13px;font-weight:600}
 .scope-dot{height:6px;width:6px;border-radius:50%;background:var(--teal)}
+.operations-panel{padding:17px 21px;margin-bottom:20px}
+.operations-panel[hidden]{display:none}
+.operations-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.operations-heading h2{font-size:18px}
+.operations-actions{display:flex;gap:8px;flex-wrap:wrap}
+.operations-actions .button{font-size:12px;min-height:37px;padding:7px 11px}
+.operations-state{margin:9px 0 3px;color:var(--teal);font-size:13px;font-weight:650}
+.operations-state[data-state="needs_review"],.operations-state[data-state="busy"]{color:var(--amber)}
+.operations-help,.operations-finish{margin:0;color:var(--muted);font-size:13px;line-height:1.65}
+.operations-counts{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;
+  margin:12px 0 9px}
+.operations-count{padding:7px 9px;background:#f3f6f2;border-radius:7px;min-width:0}
+.operations-count dt{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.operations-count dd{font-size:20px;font-weight:700;margin:1px 0 0;line-height:1.3;
+  overflow-wrap:anywhere}
+.operations-count:first-child,.operations-count:nth-child(5){background:var(--teal-soft)}
+.operations-wait{font-size:12px;color:var(--amber);margin:5px 0 0}
+.operations-wait:empty,.operations-finish:empty{display:none}
+.operations-records{font-size:12px;color:var(--muted);margin-top:8px}
+.operations-records summary{cursor:pointer}
+.operations-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px;text-align:left}
+.operations-table th,.operations-table td{padding:7px 5px;border-bottom:1px solid #edf0ee;
+  overflow-wrap:anywhere;vertical-align:top}
+.operations-table th:first-child{width:15%}.operations-table th:nth-child(2){width:23%}
+.operations-table th:last-child{width:15%}
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0 16px}
 .metric{border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:15px 22px}
 .metric-label{color:var(--muted);font-size:13px;margin-bottom:8px}
@@ -130,12 +155,19 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   .settings .setting-label,.settings .setting-help{grid-column:1/-1}
   .settings .setting-help{margin-bottom:2px}.settings .button{grid-column:2;grid-row:2}
   .browser-note{margin-top:17px}.footer{align-items:flex-start}}
+@media(max-width:900px){.operations-counts{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:420px){.connection{max-width:88px;line-height:1.5}.metrics{grid-template-columns:1fr}
   .header-actions{flex-direction:column;align-items:flex-end;gap:6px}
   .metric{display:flex;align-items:center;justify-content:space-between}.metric-label{margin:0;font-size:13px}
   .metric-value{font-size:25px}.times{grid-template-columns:1fr;gap:13px}.controls{gap:7px}
   .controls .button{flex:1;padding-inline:10px}.footer{font-size:11px}
-  .settings form{grid-template-columns:1fr 120px}}
+  .settings form{grid-template-columns:1fr 120px}
+  .operations-panel{padding:14px;margin-bottom:18px}.operations-heading{gap:9px}
+  .operations-actions{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:6px}
+  .operations-actions .button{font-size:11px;padding:7px 5px;min-width:0}
+  .operations-counts{gap:5px}.operations-count{padding:6px}
+  .operations-count dt{font-size:10px}.operations-count dd{font-size:18px}
+  .operations-help,.operations-finish{font-size:12px}}
 </style>
 </head>
 <body>
@@ -154,6 +186,47 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       <button class="button" id="exit" type="button">프로그램 종료</button>
     </div>
   </header>
+
+  <section class="panel operations-panel" id="operations-panel"
+    aria-labelledby="operations-title" hidden>
+    <div class="operations-heading">
+      <h2 id="operations-title">작업 현황</h2>
+      <div class="operations-actions">
+        <button class="button" id="refresh-operations" type="button" disabled>
+          작업 현황 새로 확인</button>
+        <button class="button" id="finish-completed" type="button" disabled>
+          완료 상태 다시 확인</button>
+      </div>
+    </div>
+    <p class="operations-state" id="operations-state" data-state="disabled" role="status">
+      현황 확인 준비 중</p>
+    <p class="operations-help" id="operations-help"></p>
+    <dl class="operations-counts" aria-label="기존 작업별 개수">
+      <div class="operations-count"><dt>내용 미확인</dt>
+        <dd id="operation-candidate-uninspected">0</dd></div>
+      <div class="operations-count"><dt>저장 가능</dt><dd id="operation-save-ready">0</dd></div>
+      <div class="operations-count"><dt>저장 계획됨</dt><dd id="operation-save-planned">0</dd></div>
+      <div class="operations-count"><dt>저장 진행 중</dt><dd id="operation-save-active">0</dd></div>
+      <div class="operations-count"><dt>저장 완료</dt><dd id="operation-save-completed">0</dd></div>
+      <div class="operations-count"><dt>저장 불가</dt>
+        <dd id="operation-save-unavailable">0</dd></div>
+      <div class="operations-count"><dt>저장 확인 필요</dt>
+        <dd id="operation-save-needs-review">0</dd></div>
+    </dl>
+    <p class="operations-help">현황 확인은 기존 기록을 읽습니다.
+      완료 상태 확인은 이미 저장한 파일을 검증하고,
+      조건이 맞으면 기록된 작업의 Chrome을 정상 종료합니다. 이미지를 새로 저장하지 않습니다.</p>
+    <p class="operations-wait" id="operations-wait" role="status"></p>
+    <p class="operations-finish" id="operations-finish" role="status"></p>
+    <details class="operations-records" id="operations-records" hidden>
+      <summary>최근 작업 기록 · 최대 20개</summary>
+      <table class="operations-table" aria-label="익명 작업 현황">
+        <thead><tr><th scope="col">순서</th><th scope="col">상태</th>
+          <th scope="col">사유</th><th scope="col">이미지</th></tr></thead>
+        <tbody id="operations-rows"></tbody>
+      </table>
+    </details>
+  </section>
 
   <section class="intro" aria-labelledby="page-title">
     <p class="eyebrow">목록 감시</p>
@@ -275,6 +348,13 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     verifying_saved: {title: '저장 결과를 확인하고 있습니다.',
       detail: '이 PC에 저장된 파일과 완료 기록을 읽고 있습니다. ' +
         '목록 확인이나 이미지 저장은 시작하지 않습니다.', tone: 'active'},
+    verifying_operations: {title: '작업 현황을 확인하고 있습니다.',
+      detail: '기존 후보와 저장 기록, 대기 사유를 읽고 있습니다.', tone: 'active'},
+    verifying_overview: {title: '작업 현황과 저장 결과를 확인하고 있습니다.',
+      detail: '기존 기록과 저장 파일을 읽고 있습니다. 확인을 마치면 멈춥니다.', tone: 'active'},
+    finishing_completed: {title: '완료 상태를 다시 확인하고 있습니다.',
+      detail: '이미 저장한 파일을 검증하고 기록된 작업의 종료 상태를 확인합니다. ' +
+        '이미지를 새로 저장하지 않습니다.', tone: 'active'},
     waiting: {title: '다음 확인을 기다리고 있습니다.',
       detail: '앞 확인을 마친 뒤 정해진 간격만큼 기다립니다.', tone: 'active'},
     pausing: {title: '일시정지를 준비하고 있습니다.',
@@ -341,6 +421,101 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   function connection(value, lost = false) {
     text('connection-text', value);
     element('connection').dataset.state = lost ? 'lost' : 'ready';
+  }
+  function renderOperations(state) {
+    const labels = {
+      candidate_uninspected: '내용 미확인', save_ready: '저장 가능', save_planned: '저장 계획됨',
+      save_active: '저장 진행 중', save_completed: '저장 완료', save_unavailable: '저장 불가',
+      save_needs_review: '저장 확인 필요'
+    };
+    const rowLabels = {...labels, candidate_detail_needs_review: '내용 확인 필요'};
+    const reasons = {
+      no_existing_work: '기록된 후보나 저장 작업이 없습니다.',
+      candidate_detail_required: '내용을 확인하지 않은 후보가 있습니다. ' +
+        '감시를 중지한 뒤 후보 내용 확인에서 확인할 수 있습니다.',
+      candidate_detail_requires_review: '이전 후보 내용 확인을 마치지 못했습니다. ' +
+        '기존 기록을 유지했습니다. 결과 TXT를 보내주세요.',
+      save_ready: '내용 확인을 마쳐 저장할 수 있는 후보입니다.',
+      save_planned: '저장 계획이 기록되어 있습니다. 현황 확인으로 저장을 시작하지 않습니다.',
+      save_completed: '저장 완료 기록이 있습니다. 아래에서 저장 결과를 확인할 수 있습니다.',
+      save_unavailable: '삭제되었거나 저장 조건을 충족하지 않는 후보입니다.',
+      save_requires_review: '이전 저장 결과를 확인해야 합니다. 결과 TXT를 보내주세요.',
+      pending_save_requires_review: '이전 저장의 보류 사유를 확인해야 합니다. ' +
+        '기존 파일은 유지됩니다. 결과 TXT를 보내주세요.',
+      completed_save_can_finish: '이전 저장의 완료 기록이 있습니다. ' +
+        '완료 상태 다시 확인으로 파일과 종료 상태를 검증할 수 있습니다.',
+      service_cooldown: '서버가 요청한 대기 시간이 남아 있습니다. ' +
+        '표시된 시각 이후에 확인할 수 있습니다.',
+      service_access_blocked: '접근 제한이 확인되었습니다. 기존 기록을 유지하고 확인을 멈췄습니다.',
+      navigation_in_progress: '다른 목록 또는 내용 확인이 진행 중입니다.',
+      another_scan_owns_this_scope: '다른 확인 작업이 끝나기를 기다리고 있습니다.',
+      native_save_in_progress: '다른 저장 작업이 진행 중입니다. 완료될 때까지 기다려 주세요.',
+      operations_require_review: '기존 작업 기록을 확인해야 합니다. 결과 TXT를 보내주세요.',
+      requested_stop: '현황 확인을 중지했습니다. 기존 기록과 파일은 유지됩니다.'
+    };
+    const states = {
+      disabled: '현황 확인 꺼짐', empty: '기존 작업 없음', checking: '작업 현황 확인 중',
+      ready: '작업 현황 확인 완료', busy: '다른 작업 또는 대기 사유 있음',
+      needs_review: '기존 작업 확인 필요', cancelled: '작업 현황 확인 중지'
+    };
+    const status = typeof state.operations_status === 'string' &&
+      Object.hasOwn(states, state.operations_status) ? state.operations_status : 'disabled';
+    element('operations-panel').hidden = status === 'disabled';
+    text('operations-state', states[status]);
+    element('operations-state').dataset.state = status;
+    const reason = typeof state.operations_reason === 'string' &&
+      Object.hasOwn(reasons, state.operations_reason) ? state.operations_reason : null;
+    text('operations-help', status === 'checking' ? '기존 기록과 대기 사유를 확인하고 있습니다.' :
+      reason ? reasons[reason] : status === 'empty' ? reasons.no_existing_work :
+        status === 'needs_review' ? reasons.operations_require_review :
+          '아래 개수는 내용 확인과 저장 작업의 현재 기록입니다.');
+    const counts = state.operations_counts && typeof state.operations_counts === 'object' &&
+      !Array.isArray(state.operations_counts) ? state.operations_counts : {};
+    for (const key of Object.keys(labels)) {
+      text('operation-' + key.replaceAll('_', '-'), count(counts[key]).toLocaleString('ko-KR'));
+    }
+    const remaining = count(state.operations_remaining_seconds);
+    text('operations-wait', remaining > 0 ?
+      `다음 확인 가능: ${formatTime(state.operations_wait_until, '시각 확인 중')} · ` +
+        (remaining < 60 ? `${remaining}초 후` :
+          `${Math.floor(remaining / 60)}분 ${remaining % 60}초 후`) : '');
+    const finishLabels = {
+      batch_finish_completed: '완료 상태를 확인했습니다. ' +
+        `파일 ${count(state.operations_finish_files_verified)}개를 검증하고 ` +
+        '저장 완료 기록을 정리했습니다.',
+      batch_finish_no_pending: '다시 확인할 미완료 저장 기록이 없습니다.',
+      batch_finish_busy: '다른 작업이 진행 중이라 완료 상태를 확인하지 못했습니다.',
+      batch_finish_cancelled: '완료 상태 확인을 중지했습니다. 기존 파일은 유지됩니다.',
+      batch_finish_manual_review: '완료 상태를 확인하지 못했습니다. ' +
+        '기존 파일을 유지했습니다. 결과 TXT를 보내주세요.'
+    };
+    text('operations-finish', typeof state.operations_finish_status === 'string' &&
+      Object.hasOwn(finishLabels, state.operations_finish_status) ?
+        finishLabels[state.operations_finish_status] : '');
+    const body = element('operations-rows');
+    body.replaceChildren();
+    const rows = Array.isArray(state.operations_rows) ? state.operations_rows.slice(0, 20) : [];
+    for (const row of rows) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+      const line = document.createElement('tr');
+      const values = [String(count(row.order)),
+        typeof row.status === 'string' && Object.hasOwn(rowLabels, row.status) ?
+          rowLabels[row.status] : '확인 필요',
+        typeof row.reason === 'string' && Object.hasOwn(reasons, row.reason) ?
+          reasons[row.reason] : '기록 확인 필요',
+        Number.isSafeInteger(row.image_count) && row.image_count >= 0 ?
+          `${row.image_count}개` : '미확인'];
+      for (const value of values) {
+        const cell = document.createElement('td');
+        cell.textContent = value;
+        line.appendChild(cell);
+      }
+      body.appendChild(line);
+    }
+    element('operations-records').hidden = !body.childElementCount;
+    const omitted = count(state.operations_rows_omitted);
+    element('operations-records').querySelector('summary').textContent =
+      '최근 작업 기록 · 최대 20개' + (omitted > 0 ? ` · 생략 ${omitted}개` : '');
   }
   function renderDetails(state) {
     const pending = count(state.detail_pending_count);
@@ -480,6 +655,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     const phase = typeof state.phase === 'string' ? state.phase : 'unknown';
     const detailTask = state.task_kind === 'details';
     const savedTask = state.task_kind === 'saved';
+    const localTask = savedTask || ['operations', 'finish', 'overview'].includes(state.task_kind);
     let info = phases[phase] || phases.unknown;
     if (detailTask) {
       const detailPhases = {
@@ -508,6 +684,12 @@ input:disabled{background:#f4f6f4;color:#7d8985}
           detail: '감시에서 기준점과 새 후보를 기록한 뒤 내용을 확인할 수 있습니다.', tone: ''};
       }
     }
+    if (['operations', 'finish', 'overview'].includes(state.task_kind) && phase === 'stopped') {
+      info = {title: state.task_kind === 'finish' ? '완료 상태 확인을 마쳤습니다.' :
+        '기존 작업 확인을 마쳤습니다.',
+      detail: '위 작업 현황에서 결과와 대기 사유를 확인할 수 있습니다. 확인을 마치고 멈췄습니다.',
+      tone: ''};
+    }
     const editable = state.settings_editable === true ||
       (state.settings_editable === undefined && phase === 'stopped');
     text('candidate-count', count(state.candidate_count).toLocaleString('ko-KR'));
@@ -533,8 +715,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     }
     text('start', phase === 'paused' ? (detailTask ? '내용 확인 계속' : '계속 감시') : '감시 시작');
     element('start').disabled = requesting || closing || !['stopped', 'paused'].includes(phase) ||
-      (savedTask && phase === 'paused');
-    element('pause').disabled = requesting || closing || savedTask ||
+      (localTask && phase === 'paused');
+    element('pause').disabled = requesting || closing || localTask ||
       !['starting', 'scanning', 'inspecting', 'waiting'].includes(phase);
     element('stop').disabled = requesting || closing ||
       ['stopped', 'stopping', 'unknown'].includes(phase);
@@ -548,6 +730,15 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       .includes(state.saved_status);
     element('refresh-saved').disabled = requesting || closing || phase !== 'stopped' ||
       state.settings_editable !== true || state.browser_closed !== true || !savedConfigured;
+    const operationsConfigured = ['checking', 'ready', 'empty', 'busy', 'needs_review', 'cancelled']
+      .includes(state.operations_status);
+    element('refresh-operations').disabled = requesting || closing ||
+      !['stopped', 'needs_review'].includes(phase) || !operationsConfigured;
+    element('finish-completed').disabled = requesting || closing ||
+      !['stopped', 'needs_review'].includes(phase) || state.browser_closed !== true ||
+      !operationsConfigured ||
+      state.operations_can_finish !== true;
+    renderOperations(state);
     renderDetails(state);
     renderSaved(state);
   }
@@ -561,7 +752,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     element('status-mark').className = 'status-mark';
     text('countdown', '');
     const controls = ['start', 'pause', 'stop', 'apply', 'exit', 'interval',
-      'inspect-candidates', 'refresh-saved'];
+      'inspect-candidates', 'refresh-saved', 'refresh-operations', 'finish-completed'];
     for (const id of controls) {
       element(id).disabled = true;
     }
@@ -641,6 +832,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   element('start').addEventListener('click', () => action('start'));
   element('inspect-candidates').addEventListener('click', () => action('inspect_candidates'));
   element('refresh-saved').addEventListener('click', () => action('refresh_saved'));
+  element('refresh-operations').addEventListener('click', () => action('refresh_operations'));
+  element('finish-completed').addEventListener('click', () => action('finish_completed'));
   element('pause').addEventListener('click', () => action('pause'));
   element('stop').addEventListener('click', () => action('stop'));
   element('exit').addEventListener('click', () => action('exit'));

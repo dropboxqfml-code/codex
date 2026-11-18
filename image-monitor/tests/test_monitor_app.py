@@ -615,6 +615,97 @@ def test_batch_catalog_root_is_forwarded_once_without_creating_output_directorie
     assert not save_root.exists() and not batch_root.exists()
 
 
+@pytest.mark.parametrize("phase", ["stopped", "needs_review"])
+def test_configured_startup_reads_one_overview_without_finishing_or_starting_work(
+    app_module, tmp_path, monkeypatch, phase
+):
+    monkeypatch.setattr(app_module, "require_windows", lambda: None)
+    controller = FakeController()
+    controller.snapshot.update(phase=phase, settings_editable=phase == "stopped")
+    calls = []
+
+    def overview():
+        calls.append("refresh_overview")
+        return controller.status()
+
+    controller.refresh_overview = overview
+    controller.refresh_saved = lambda: pytest.fail("A second startup worker was requested")
+    controller.finish_completed = lambda: pytest.fail("Startup attempted completion reconciliation")
+
+    class Server:
+        url = "http://127.0.0.1:39999/owned-overview-test/"
+
+        def __init__(self, supplied):
+            assert supplied is controller
+
+        def serve(self):
+            assert calls == ["refresh_overview"]
+            assert controller.status()["phase"] == phase
+
+        def server_close(self):
+            pass
+
+    report = app_module.run_monitor_app(
+        tmp_path / "watch",
+        save_root=tmp_path / "saved",
+        batch_root=tmp_path / "batch",
+        controller_factory=lambda *_args, **_kwargs: controller,
+        server_factory=Server,
+        opener=lambda _: True,
+    )
+    assert report["status"] == "monitor_closed", report
+    assert calls == ["refresh_overview"]
+    assert not any(call[0] == "start" for call in controller.calls)
+    assert not (tmp_path / "saved").exists()
+    assert not (tmp_path / "batch").exists()
+
+
+@pytest.mark.parametrize("with_save_root", [False, True])
+def test_startup_overview_requires_both_explicit_saved_roots(
+    app_module, tmp_path, monkeypatch, with_save_root
+):
+    monkeypatch.setattr(app_module, "require_windows", lambda: None)
+    controller = FakeController()
+    controller.refresh_overview = lambda: pytest.fail("Legacy startup requested an overview")
+    controller.refresh_saved = lambda: controller.calls.append(("refresh_saved",))
+    _, _, server_factory = app_factories([], controller=controller)
+    report = app_module.run_monitor_app(
+        tmp_path / "watch",
+        save_root=tmp_path / "saved" if with_save_root else None,
+        controller_factory=lambda *_args, **_kwargs: controller,
+        server_factory=server_factory,
+        opener=lambda _: True,
+    )
+    assert report["status"] == "monitor_closed", report
+    assert [call[0] for call in controller.calls].count("refresh_saved") == int(with_save_root)
+
+
+def test_operations_projection_keeps_the_service_contract_and_rejects_unknown_nested_values(
+    app_module,
+):
+    from image_monitor.monitor_operations import OPERATIONS_REASONS, OPERATIONS_ROW_STATUSES
+
+    assert app_module._OPERATIONS_REASONS == OPERATIONS_REASONS
+    assert app_module._OPERATIONS_ROW_STATES == OPERATIONS_ROW_STATUSES
+    private = {"path": "C:/private/image.jpg"}
+    source = {
+        "operations_status": private,
+        "operations_counts": {"save_completed": True, "save_ready": -1, "save_planned": 2**31},
+        "operations_remaining_seconds": private,
+        "operations_can_finish": 1,
+        "operations_wait_until": "C:/private/image.jpg",
+        "operations_error_type": "C:/private/error",
+        "operations_rows": [{"status": private, "reason": private}],
+    }
+    public = app_module._public_status(source)
+    assert public["operations_status"] == "needs_review"
+    assert all(value == 0 for value in public["operations_counts"].values())
+    assert public["operations_can_finish"] is False
+    assert public["operations_wait_until"] is None
+    assert public["operations_error_type"] is None
+    assert "private" not in json.dumps(public)
+
+
 def test_batch_catalog_root_requires_saved_results_before_creating_any_directory(
     app_module, tmp_path, monkeypatch
 ):

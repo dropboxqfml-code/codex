@@ -5,6 +5,7 @@ import re
 import secrets
 import threading
 import uuid
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -61,12 +62,137 @@ _SAVED_FIELDS = (
 )
 _IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp"}
 _PREVIEW_LIMIT = 16 * 1024 * 1024
+_OPERATIONS_COUNTS = (
+    "candidate_uninspected",
+    "save_ready",
+    "save_planned",
+    "save_active",
+    "save_completed",
+    "save_unavailable",
+    "save_needs_review",
+)
+_OPERATIONS_STATES = {"disabled", "empty", "checking", "ready", "busy", "needs_review", "cancelled"}
+_OPERATIONS_ROW_STATES = {*_OPERATIONS_COUNTS, "candidate_detail_needs_review"}
+_OPERATIONS_REASONS = {
+    "no_existing_work",
+    "candidate_detail_required",
+    "candidate_detail_requires_review",
+    "save_ready",
+    "save_planned",
+    "save_completed",
+    "save_unavailable",
+    "save_requires_review",
+    "pending_save_requires_review",
+    "completed_save_can_finish",
+    "service_cooldown",
+    "service_access_blocked",
+    "navigation_in_progress",
+    "another_scan_owns_this_scope",
+    "native_save_in_progress",
+    "operations_require_review",
+    "requested_stop",
+}
+_OPERATIONS_FINISH_STATES = {
+    "batch_finish_completed",
+    "batch_finish_no_pending",
+    "batch_finish_busy",
+    "batch_finish_cancelled",
+    "batch_finish_manual_review",
+}
+_OPERATIONS_FINISH_REASONS = {
+    "no_unfinished_batch_tasks",
+    "completed_files_reverified_and_batch_resolved",
+    "another_scan_owns_this_scope",
+    "cancelled",
+    "completed_batch_requires_review",
+    "completed_finish_action_failed",
+    "requested_stop",
+    "operations_require_review",
+}
+
+
+def _public_count(value):
+    return value if type(value) is int and 0 <= value <= 2**31 - 1 else 0
+
+
+def _public_reason(value, allowed):
+    if value is None or isinstance(value, str) and value in allowed:
+        return value
+    return "operations_require_review"
+
+
+def _public_operations(status):
+    """Project only fixed, bounded local-work summaries; never copy nested state."""
+    if "operations_status" not in status:
+        return {}
+    state = status.get("operations_status")
+    valid_state = isinstance(state, str) and state in _OPERATIONS_STATES
+    result = {"operations_status": state if valid_state else "needs_review"}
+    result["operations_reason"] = _public_reason(
+        status.get("operations_reason"), _OPERATIONS_REASONS
+    )
+    for key in ("operations_error_type", "operations_finish_error_type"):
+        value = status.get(key)
+        result[key] = (
+            value
+            if isinstance(value, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,79}", value)
+            else None
+        )
+    counts = status.get("operations_counts")
+    result["operations_counts"] = {
+        key: _public_count(counts.get(key)) if isinstance(counts, dict) else 0
+        for key in _OPERATIONS_COUNTS
+    }
+    result["operations_remaining_seconds"] = _public_count(
+        status.get("operations_remaining_seconds")
+    )
+    result["operations_finish_files_verified"] = _public_count(
+        status.get("operations_finish_files_verified")
+    )
+    result["operations_rows_omitted"] = _public_count(status.get("operations_rows_omitted"))
+    result["operations_can_finish"] = status.get("operations_can_finish") is True
+    result["operations_wait_until"] = None
+    deadline = status.get("operations_wait_until")
+    if isinstance(deadline, str) and len(deadline) <= 40:
+        try:
+            parsed = datetime.fromisoformat(deadline)
+            if parsed.tzinfo is not None:
+                result["operations_wait_until"] = parsed.isoformat()
+        except ValueError:
+            pass
+    finish = status.get("operations_finish_status")
+    result["operations_finish_status"] = (
+        finish if (isinstance(finish, str) and finish in _OPERATIONS_FINISH_STATES) else None
+    )
+    result["operations_finish_reason"] = _public_reason(
+        status.get("operations_finish_reason"), _OPERATIONS_FINISH_REASONS
+    )
+    result["operations_rows"] = []
+    rows = status.get("operations_rows")
+    for row in rows[:20] if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        row_state = row.get("status")
+        result["operations_rows"].append(
+            {
+                "order": _public_count(row.get("order")),
+                "status": row_state
+                if isinstance(row_state, str) and row_state in (_OPERATIONS_ROW_STATES)
+                else "save_needs_review",
+                "reason": _public_reason(row.get("reason"), _OPERATIONS_REASONS),
+                "image_count": _public_count(row["image_count"])
+                if (type(row.get("image_count")) is int and 0 <= row["image_count"] <= 2**31 - 1)
+                else None,
+            }
+        )
+    return result
 
 
 def _public_status(status, *, include_preview_ids=False):
     if not isinstance(status, dict):
         raise ValueError("A monitor status object is required")
     result = {key: status[key] for key in _STATUS_FIELDS if key in status}
+    result.update(_public_operations(status))
     # Detail rows are anonymous structure summaries, never private observations.
     # Bound and project these separately so a future controller field cannot
     # accidentally expose a post URL, title, filename, or local path.
@@ -297,6 +423,8 @@ class _MonitorHandler(BaseHTTPRequestHandler):
                 "exit",
                 "inspect_candidates",
                 "refresh_saved",
+                "refresh_operations",
+                "finish_completed",
             } or set(action) != {"action"}:
                 raise ValueError("Invalid action")
         except (ValueError, UnicodeError, RecursionError, OSError):
@@ -319,6 +447,10 @@ class _MonitorHandler(BaseHTTPRequestHandler):
                 controller.inspect_candidates()
             elif name == "refresh_saved":
                 controller.refresh_saved()
+            elif name == "refresh_operations":
+                controller.refresh_operations()
+            elif name == "finish_completed":
+                controller.finish_completed()
             else:
                 controller.stop()
                 self.server._exit_reply_pending.set()
@@ -426,7 +558,15 @@ def run_monitor_app(
                 if opener(server.url) is False:
                     raise NativeUIError("The local monitoring status window could not be opened")
                 report["ui_opened"] = True
-                if saved_base is not None and controller.status().get("phase") == "stopped":
+                startup_phase = controller.status().get("phase")
+                overview = getattr(controller, "refresh_overview", None)
+                if (
+                    batch_base is not None
+                    and callable(overview)
+                    and startup_phase in {"stopped", "needs_review"}
+                ):
+                    overview()
+                elif saved_base is not None and startup_phase == "stopped":
                     controller.refresh_saved()
                 report["last_stage"] = "status_window"
                 server.serve()

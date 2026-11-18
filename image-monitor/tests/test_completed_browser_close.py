@@ -95,6 +95,19 @@ def assert_no_connection_or_close(owned):
     owned.process.kill.assert_not_called()
 
 
+@pytest.fixture
+def clock(monkeypatch):
+    state = SimpleNamespace(now=0.0, sleeps=[])
+
+    def sleep(seconds):
+        state.sleeps.append(seconds)
+        state.now += seconds
+
+    monkeypatch.setattr(recovery.time, "monotonic", lambda: state.now)
+    monkeypatch.setattr(recovery.time, "sleep", sleep)
+    return state
+
+
 def test_exact_owned_listener_is_rechecked_and_closed_without_launch_or_native_input(owned):
     assert recovery.close_completed_browser(owned.pending) is True
     owned.connect.assert_called_once_with(owned.driver, PORT)
@@ -112,10 +125,61 @@ def test_exact_owned_listener_is_rechecked_and_closed_without_launch_or_native_i
     owned.process.kill.assert_not_called()
 
 
-def test_profile_remaining_after_process_close_is_not_success(owned):
+def test_profile_remaining_after_process_close_is_not_success(owned, clock):
     owned.running.return_value = True
     assert recovery.close_completed_browser(owned.pending) is False
     owned.close.assert_called_once()
+    owned.driver.stop.assert_called_once()
+    assert sum(clock.sleeps) == pytest.approx(5)
+    assert all(0 < seconds <= 0.1 for seconds in clock.sleeps)
+    owned.process.terminate.assert_not_called()
+    owned.process.kill.assert_not_called()
+
+
+def test_lingering_profile_must_be_observed_absent_after_root_exit_and_disconnect(owned, clock):
+    states = iter([True, True, False])
+
+    def running(pending):
+        assert pending is owned.pending
+        owned.close.assert_called_once()
+        owned.driver.stop.assert_called_once()
+        return next(states)
+
+    owned.running.side_effect = running
+    assert recovery.close_completed_browser(owned.pending) is True
+    assert owned.running.call_count == 3
+    assert clock.sleeps == [0.1, 0.1]
+    owned.close.assert_called_once()
+    owned.connect.assert_called_once()
+    owned.process.terminate.assert_not_called()
+    owned.process.kill.assert_not_called()
+
+
+@pytest.mark.parametrize("unknown", [None, 0, 1, "running"])
+def test_unknown_profile_state_after_linger_never_counts_as_absence(owned, clock, unknown):
+    owned.running.side_effect = [True, unknown]
+    with pytest.raises(NativeUIError, match="state is unknown"):
+        recovery.close_completed_browser(owned.pending)
+    assert clock.sleeps == [0.1]
+    owned.driver.stop.assert_called_once()
+
+
+def test_profile_inspection_error_after_linger_remains_a_failure(owned, clock):
+    failure = NativeUIError("Profile use cannot be independently verified")
+    owned.running.side_effect = [True, failure]
+    with pytest.raises(NativeUIError) as failed:
+        recovery.close_completed_browser(owned.pending)
+    assert failed.value is failure
+    assert clock.sleeps == [0.1]
+    owned.driver.stop.assert_called_once()
+
+
+def test_failed_transport_disconnect_never_uses_root_exit_as_success(owned):
+    owned.driver.stop.side_effect = RuntimeError("Private transport details")
+    with pytest.raises(NativeUIError, match="did not disconnect") as failed:
+        recovery.close_completed_browser(owned.pending)
+    assert "Private" not in str(failed.value)
+    owned.running.assert_not_called()
     owned.driver.stop.assert_called_once()
 
 
@@ -127,6 +191,7 @@ def test_missing_or_reused_pid_never_reconnects_to_a_stale_port(owned, missing):
         owned.process.create_time.return_value = 9999
     assert recovery.close_completed_browser(owned.pending) is False
     assert_no_connection_or_close(owned)
+    owned.running.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -277,6 +342,7 @@ def test_port_reuse_during_attach_never_sends_a_close_to_the_new_browser(owned):
     owned.connect.assert_called_once()
     owned.close.assert_not_called()
     owned.driver.stop.assert_called_once()
+    owned.running.assert_not_called()
 
 
 def test_listener_disappearing_during_attach_never_sends_browser_close(owned):

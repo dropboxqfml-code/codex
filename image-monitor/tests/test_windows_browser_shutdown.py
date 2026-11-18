@@ -30,6 +30,15 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _completed_close_diagnostics(process, pending):
+    diagnostics = {"registered_process_exited": process.poll() is not None}
+    try:
+        diagnostics["registered_profile_in_use"] = browser_still_running(pending)
+    except Exception as error:
+        diagnostics["profile_check_error_type"] = type(error).__name__
+    return diagnostics
+
+
 @pytest.mark.parametrize("reconnect_completed", [False, True])
 def test_production_shutdown_exits_owned_process_and_releases_exact_profile(
     monkeypatch, reconnect_completed
@@ -108,7 +117,8 @@ def test_production_shutdown_exits_owned_process_and_releases_exact_profile(
                 driver = None
                 assert process.poll() is None
                 assert browser_still_running(pending)
-                assert close_completed_browser(pending) is True
+                completed_close = close_completed_browser(pending)
+                assert completed_close is True, _completed_close_diagnostics(process, pending)
             else:
                 close_probe_browser(browser, process)
 

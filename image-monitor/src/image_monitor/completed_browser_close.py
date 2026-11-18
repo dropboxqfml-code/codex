@@ -11,6 +11,7 @@ import re
 import socket
 import stat
 import subprocess
+import time
 from pathlib import Path
 
 from image_monitor.artifact_files import ArtifactError, _plain_path
@@ -23,6 +24,8 @@ _BROWSER_PATH = re.compile(
     r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
 _MAX_PORT_FILE_BYTES = 4096
+_PROFILE_EXIT_TIMEOUT_SECONDS = 5
+_PROFILE_EXIT_POLL_SECONDS = 0.1
 
 
 def _psutil():
@@ -208,6 +211,23 @@ class _WaitForOwnedProcess:
             raise NativeUIError("The completed browser exit cannot be verified") from error
 
 
+def _wait_for_profile_absence(pending):
+    # Waiting for the registered root process does not establish that its exact
+    # profile has left every same-session Chrome process. Windows process-list
+    # visibility can also briefly lag a signaled process handle. Keep the full
+    # independent liveness check and allow its ordinary shutdown to settle.
+    deadline = time.monotonic() + _PROFILE_EXIT_TIMEOUT_SECONDS
+    while True:
+        running = browser_still_running(pending)
+        _require(type(running) is bool, "The completed browser profile state is unknown")
+        if not running:
+            return True
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        time.sleep(min(_PROFILE_EXIT_POLL_SECONDS, remaining))
+
+
 def close_completed_browser(pending: dict) -> bool:
     """Close only an unchanged registered Chrome owning its exact local CDP port.
 
@@ -234,6 +254,7 @@ def close_completed_browser(pending: dict) -> bool:
     endpoint = _endpoint(profile)
     _listens_on(process, endpoint[0], psutil)
     driver = _playwright().start()
+    disconnect_attempted = False
     failure = None
     try:
         browser = connect_owned_browser(driver, endpoint[0])
@@ -245,7 +266,15 @@ def close_completed_browser(pending: dict) -> bool:
         _require(_endpoint(profile) == endpoint, "The completed browser endpoint changed")
         _listens_on(process, endpoint[0], psutil)
         close_probe_browser(browser, _WaitForOwnedProcess(process, psutil))
-        return not browser_still_running(pending)
+        # Release this reconnecting client before independently waiting for all
+        # use of the exact registered profile to disappear. This is only a
+        # transport disconnect, never evidence of browser/profile absence.
+        disconnect_attempted = True
+        try:
+            driver.stop()
+        except Exception as error:
+            raise NativeUIError("The completed browser inspection did not disconnect") from error
+        return _wait_for_profile_absence(pending)
     except NativeUIError as error:
         failure = error
         raise
@@ -256,10 +285,11 @@ def close_completed_browser(pending: dict) -> bool:
         failure = error
         raise
     finally:
-        try:
-            driver.stop()
-        except Exception as error:
-            if failure is None:
-                raise NativeUIError(
-                    "The completed browser inspection did not disconnect"
-                ) from error
+        if not disconnect_attempted:
+            try:
+                driver.stop()
+            except Exception as error:
+                if failure is None:
+                    raise NativeUIError(
+                        "The completed browser inspection did not disconnect"
+                    ) from error

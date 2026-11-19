@@ -10,7 +10,11 @@ from zoneinfo import ZoneInfo
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_browser import HeadlessCandidateBrowser
-from image_monitor.candidate_policy import CandidatePolicyError, classify_candidate_detail
+from image_monitor.candidate_policy import (
+    CandidatePolicyError,
+    classify_candidate_detail,
+    unobserved_detail,
+)
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.dcinside import HEADER_FIELD_COUNTS, validate_post_url
 from image_monitor.native_probe import write_report
@@ -85,18 +89,6 @@ def _detail_summary(outcome, classification, *, order):
     }
 
 
-def _unknown(reason):
-    return {
-        "time_status": "unknown",
-        "reason": reason,
-        "header_observed": False,
-        "published_at": None,
-        "layout_status": "unverified",
-        "save_approved": False,
-        "queue_eligible": False,
-    }
-
-
 def _deadline(report, due):
     report["next_eligible_at_local"] = due.astimezone(ZoneInfo("Asia/Seoul")).isoformat()
 
@@ -129,15 +121,22 @@ def share_candidate_report(report):
 
 
 @contextmanager
-def _inspection_queue(database, scope, clock, *, recent_scan_only, wait_until):
+def _inspection_queue(database, scope, clock, *, recent_scan_only, recent_target, wait_until):
     with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
         state = WatchStore(queue).get_state(scope)
+        if recent_target is not None and (
+            state["latest_scan"] is None or state["latest_scan"]["scan_id"] != recent_target[0]
+        ):
+            yield None, None, True
+            return
         deadline = None
         if recent_scan_only and state["baseline"] is not None:
             now = clock.now()
             eligibility, due = _eligibility(queue, state, now)
             if eligibility == "waiting" and 0 < (due - now).total_seconds() <= 60:
-                _, pending = recent_scan_candidate(queue, scope, state)
+                _, pending = recent_scan_candidate(
+                    queue, scope, state, post_id=recent_target[1] if recent_target else None
+                )
                 if pending:
                     deadline = due
         if deadline is None:
@@ -170,6 +169,7 @@ def run_candidate_trial(
     should_stop=None,
     expected_scan_id=None,
     recent_scan_only=False,
+    recent_target=None,
 ):
     require_windows()
     if browser not in {"chrome", "edge"}:
@@ -187,6 +187,13 @@ def run_candidate_trial(
         raise NativeUIError("Recent-scan continuation requires one candidate in the trial scope")
     if should_stop is not None and not callable(should_stop):
         raise NativeUIError("The candidate stop condition must be callable")
+    if recent_target is not None and (
+        not recent_scan_only
+        or not isinstance(recent_target, tuple)
+        or len(recent_target) != 2
+        or not all(isinstance(key, str) and key for key in recent_target)
+    ):
+        raise NativeUIError("A pinned recent candidate requires its scan and post identities")
     clock = clock or _Clock()
     _stamp(clock.now())
     base = Path(work_root).resolve()
@@ -246,7 +253,12 @@ def run_candidate_trial(
         else:
             # All reviewed scopes share this scan lease with discovery and saving.
             with _inspection_queue(
-                database, scope, clock, recent_scan_only=recent_scan_only, wait_until=wait_until
+                database,
+                scope,
+                clock,
+                recent_scan_only=recent_scan_only,
+                recent_target=recent_target,
+                wait_until=wait_until,
             ) as (queue, state, source_changed):
                 if source_changed:
                     report.update(status="candidate_scan_unverified", reason="source_scan_changed")
@@ -281,7 +293,10 @@ def run_candidate_trial(
                     else:
                         if recent_scan_only:
                             report["source_scan"], batch = recent_scan_candidate(
-                                queue, scope, state
+                                queue,
+                                scope,
+                                state,
+                                post_id=recent_target[1] if recent_target else None,
                             )
                         else:
                             batch = store.list_pending(scope, limit=max_candidates)
@@ -391,7 +406,7 @@ def run_candidate_trial(
                                         if server_due is not None:
                                             next_at = max(next_at, server_due)
                                         queue.defer_service(SERVICE_SCOPE, next_at)
-                                    classification = _unknown(
+                                    classification = unobserved_detail(
                                         "candidate_unavailable"
                                         if deleted
                                         else "detail_inspection_failed"
@@ -403,7 +418,7 @@ def run_candidate_trial(
                                                 candidate, baseline, outcome["snapshot"]
                                             )
                                         except CandidatePolicyError:
-                                            classification = _unknown(
+                                            classification = unobserved_detail(
                                                 "candidate_identity_or_baseline_invalid"
                                             )
                                     result = {

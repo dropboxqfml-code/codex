@@ -289,8 +289,15 @@ def select_candidate_save(
     if path != _database_path(queue).parent / name:
         raise QueueError("Candidate selection must stay beside its watch database")
     existing = read_selection(path)
+    claims = set()
+    if not queue.read_only:
+        from image_monitor.monitor_save_ledger import recent_save_claims
+
+        claims = recent_save_claims(_database_path(queue))
     baseline = WatchStore(queue).get_state(scope)["baseline"]
     if existing is not None:
+        if existing["post_id"] in claims:
+            raise QueueError("The frozen post has already been claimed by a recent save")
         if existing["scope"] != dict(zip(_SCOPE_KEYS, scope.key(), strict=True)):
             raise QueueError("The frozen candidate selection belongs to another watch scope")
         candidate = _candidate(queue, scope, existing["post_id"])
@@ -313,6 +320,8 @@ def select_candidate_save(
         scope.key(),
     )
     for row in rows:
+        if row["post_id"] in claims:
+            continue
         detail = CandidateDetailStore(queue).get(row["attempt_id"])
         result = detail["result"]
         observation = result.get("private_observation") if isinstance(result, dict) else None

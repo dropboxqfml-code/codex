@@ -235,3 +235,49 @@ def test_watch_detail_opens_one_result_and_preserves_the_cli_exit_code(tmp_path,
         assert json.dumps(expected_args, ensure_ascii=False) in content
         assert "Watch detail exit code: 2" in content
         assert "RESULT: STOPPED - WATCH_DETAIL" in content
+
+
+@WINDOWS
+@pytest.mark.parametrize("code", [0, 2])
+def test_watch_images_uses_exact_roots_and_opens_one_result(tmp_path, code):
+    central = launcher_after_setup('if "%WATCH_IMAGES%"=="1" goto start_watch_images')
+    invocation = (
+        '"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 '
+        "--managed-python image-monitor watch-images"
+    )
+    assert central.count(invocation) == 1
+    folder = tmp_path / "watch images"
+    copy_launcher(folder, central.replace(invocation, '"%FIXTURE_PYTHON%" args_fixture.py'))
+    wrapper = folder / "RUN_WATCH_IMAGES.cmd"
+    wrapper.write_bytes((PROJECT / wrapper.name).read_bytes())
+    (folder / "args_fixture.py").write_text(
+        "import json, sys\nprint(json.dumps(sys.argv[1:], ensure_ascii=False))\n"
+        f"sys.exit({code})\n",
+        encoding="ascii",
+    )
+    env = os.environ.copy()
+    env["FIXTURE_PYTHON"] = sys.executable
+    appdata = tmp_path / "local 한글 & space"
+    env["LOCALAPPDATA"] = str(appdata)
+
+    result = run_cmd(wrapper, [], environment=env)
+    assert result.returncode == code, result.stderr
+    [log] = folder.glob("WINDOWS_TEST_RESULT-*.txt")
+    assert [line for line in result.stdout.splitlines() if line.startswith("OPEN_RESULT=")] == [
+        f'OPEN_RESULT="{log}"'
+    ]
+    content = log.read_text("utf-8")
+    expected_args = [
+        "--watch-root",
+        str(appdata / "ImageMonitorWatch"),
+        "--legacy-root",
+        str(appdata / "ImageMonitorCandidateSave"),
+        "--work-root",
+        str(appdata / "ImageMonitorWatchImages"),
+        "--browser",
+        "chrome",
+    ]
+    assert json.dumps(expected_args, ensure_ascii=False) in content
+    assert "STAGE: watch_images" in content and "STAGE: watch_detail" not in content
+    assert f"Watch images exit code: {code}" in content
+    assert ("RESULT: WATCH_IMAGES" if code == 0 else "RESULT: STOPPED - WATCH_IMAGES") in content

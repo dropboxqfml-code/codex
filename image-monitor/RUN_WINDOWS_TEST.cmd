@@ -24,6 +24,8 @@ set "POST_SAVE_RESUME_ARGUMENT="
 set "CHECK_LABEL=Windows native-save test"
 set "MONITOR_DIAGNOSIS=0"
 set "WATCH_DETAIL=0"
+set "WATCH_IMAGES=0"
+if /i "%~1"=="--watch-images" goto watch_images_arguments
 if /i "%~1"=="--watch-detail" goto watch_detail_arguments
 if /i "%~1"=="--monitor-diagnosis" goto diagnosis_arguments
 
@@ -48,11 +50,20 @@ if /i "%~1"=="--resume-preinput" goto option_resume_preinput
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
 exit /b 2
 
+:watch_images_arguments
+if not "%~2"=="" exit /b 2
+set "CHECK_LABEL=recent watch images"
+set "WATCH_IMAGES=1"
+set "WATCH_RESULT=WATCH_IMAGES"
+set "WATCH_EXIT_CODE="
+goto new_log
+
 :watch_detail_arguments
 if not "%~2"=="" exit /b 2
 set "CHECK_LABEL=watch candidate detail"
 set "WATCH_DETAIL=1"
-set "WATCH_DETAIL_CODE="
+set "WATCH_RESULT=WATCH_DETAIL"
+set "WATCH_EXIT_CODE="
 goto new_log
 
 :diagnosis_arguments
@@ -323,6 +334,8 @@ set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
+if "%WATCH_IMAGES%"=="1" >>"%LOG_FILE%" echo Check up to three pending recent posts and offer one eligible post for saving in dedicated Chrome.
+if "%WATCH_IMAGES%"=="1" goto check_project
 if "%WATCH_DETAIL%"=="1" >>"%LOG_FILE%" echo Inspect at most one pending post from the last verified list scan in headless Chrome.
 if "%WATCH_DETAIL%"=="1" goto check_project
 if "%MONITOR_DIAGNOSIS%"=="1" >>"%LOG_FILE%" echo Checking the last stored list failure. The monitor site and saved images are not opened.
@@ -399,6 +412,7 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+if "%WATCH_IMAGES%"=="1" goto start_watch_images
 if "%WATCH_DETAIL%"=="1" goto start_watch_detail
 if "%MONITOR_DIAGNOSIS%"=="1" goto read_monitor_diagnosis
 if "%MONITOR_SAVE_BATCH%"=="1" goto start_monitor_save_batch
@@ -534,23 +548,33 @@ echo Monitor candidate verification finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
+:start_watch_images
+echo Checking stored recent posts. If the dedicated Chrome window opens, click Save Start and keep it in front until finished.
+>>"%LOG_FILE%" echo STAGE: watch_images
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor watch-images --watch-root "%LOCALAPPDATA%\ImageMonitorWatch" --legacy-root "%LOCALAPPDATA%\ImageMonitorCandidateSave" --work-root "%LOCALAPPDATA%\ImageMonitorWatchImages" --browser chrome >>"%LOG_FILE%" 2>&1
+set "WATCH_EXIT_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Watch images exit code: %WATCH_EXIT_CODE%
+goto finish_watch_result
+
 :start_watch_detail
 echo Checking the most recent list scan and its pending candidate in headless Chrome.
 >>"%LOG_FILE%" echo STAGE: watch_detail
 "%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor watch-detail --work-root "%LOCALAPPDATA%\ImageMonitorWatch" --browser chrome >>"%LOG_FILE%" 2>&1
-set "WATCH_DETAIL_CODE=%ERRORLEVEL%"
->>"%LOG_FILE%" echo Watch detail exit code: %WATCH_DETAIL_CODE%
-if not "%WATCH_DETAIL_CODE%"=="0" goto watch_detail_failed
->>"%LOG_FILE%" echo RESULT: WATCH_DETAIL
-goto open_watch_detail_result
+set "WATCH_EXIT_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Watch detail exit code: %WATCH_EXIT_CODE%
 
-:watch_detail_failed
->>"%LOG_FILE%" echo RESULT: STOPPED - WATCH_DETAIL
-if not defined WATCH_DETAIL_CODE set "WATCH_DETAIL_CODE=1"
+:finish_watch_result
+if not "%WATCH_EXIT_CODE%"=="0" goto watch_result_failed
+>>"%LOG_FILE%" echo RESULT: %WATCH_RESULT%
+goto open_watch_result
 
-:open_watch_detail_result
+:watch_result_failed
+>>"%LOG_FILE%" echo RESULT: STOPPED - %WATCH_RESULT%
+if not defined WATCH_EXIT_CODE set "WATCH_EXIT_CODE=1"
+
+:open_watch_result
 start "" notepad.exe "%LOG_FILE%"
-exit /b %WATCH_DETAIL_CODE%
+exit /b %WATCH_EXIT_CODE%
 
 :read_monitor_diagnosis
 >>"%LOG_FILE%" echo STAGE: stored_list_diagnosis
@@ -654,7 +678,8 @@ goto failed
 >>"%LOG_FILE%" echo uv is not installed and WinGet is unavailable. Send this file for help.
 goto failed
 :failed
-if "%WATCH_DETAIL%"=="1" goto watch_detail_failed
+if "%WATCH_IMAGES%"=="1" goto watch_result_failed
+if "%WATCH_DETAIL%"=="1" goto watch_result_failed
 if "%MONITOR_DIAGNOSIS%"=="1" goto diagnosis_failed
 if "%MONITOR_SAVE_BATCH%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - MONITOR_BATCH_NATIVE_SAVE. No automatic retry or recovery was performed.
 if "%MONITOR_SAVE_BATCH%"=="1" >>"%LOG_FILE%" echo Send this TXT for diagnosis. Preserve the pending browser, attempt ledger, and all existing files.

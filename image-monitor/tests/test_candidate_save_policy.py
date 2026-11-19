@@ -8,10 +8,11 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from image_monitor.candidate_policy import classify_candidate_detail
+from image_monitor.candidate_policy import classify_candidate_detail, unobserved_detail
 from image_monitor.candidate_save_policy import (
     CandidateSavePermit,
     CandidateSavePolicyError,
+    classify_stored_candidate_image,
     make_candidate_save_permit,
 )
 from image_monitor.dcinside import HEADER_FIELD_COUNTS, SITE_VERIFIED_POST, parse_snapshot
@@ -125,6 +126,113 @@ def candidate_evidence(*, image_count=2, excluded=False):
 
 def snapshot_from(detail):
     return detail["result"]["private_observation"]["snapshot"]
+
+
+@pytest.mark.parametrize(
+    ("count", "excluded", "expected"),
+    [
+        (0, False, "no_body_images_observed"),
+        (0, True, "excluded_body_images_only"),
+        (1, False, "save_ready"),
+        (2, True, "save_ready"),
+        (3, False, "outside_save_limit"),
+    ],
+)
+def test_search_classifies_only_observed_body_elements(count, excluded, expected):
+    evidence = candidate_evidence(image_count=count, excluded=excluded)
+    snapshot = snapshot_from(evidence[2])
+    assert len(snapshot["attachment_inventory"]) == 1
+    assert snapshot["layout_status"] == "unverified"
+    outcome, permit = classify_stored_candidate_image(*evidence)
+    assert outcome == expected
+    if outcome == "save_ready":
+        assert permit == make_candidate_save_permit(*evidence)
+    else:
+        assert permit is None
+        with pytest.raises(CandidateSavePolicyError):
+            make_candidate_save_permit(*evidence)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda s: s["image_counts"].update(body_occurrences=1),
+        lambda s: s["image_counts"].update(pending=False),
+        lambda s: s.update(pending_images=[{"reason": "image_not_loaded"}]),
+        lambda s: s.pop("images"),
+        lambda s: s["diagnostics"]["counts"].update({".write_div": 2}),
+        lambda s: s["diagnostics"].update(image_shapes=[{"tag": "IMG"}]),
+        lambda s: s.update(post_url="https://gall.dcinside.com/board/view/?id=comic_new6&no=7"),
+    ],
+)
+def test_search_keeps_conflicting_empty_body_evidence_for_review(change):
+    evidence = candidate_evidence(image_count=0)
+    change(snapshot_from(evidence[2]))
+    assert classify_stored_candidate_image(*evidence) == ("needs_review", None)
+
+
+def test_search_reviews_an_unresolved_image_even_when_over_the_save_limit():
+    evidence = candidate_evidence(image_count=3)
+    snapshot_from(evidence[2])["images"][-1]["natural_width"] = 0
+    assert classify_stored_candidate_image(*evidence) == ("needs_review", None)
+
+
+def unavailable_evidence(code):
+    candidate, baseline, detail = candidate_evidence()
+    result = detail["result"]
+    observation = result["private_observation"]
+    del observation["snapshot"]
+    observation.update(status="http_error", error_type="HTTPStatusError", http_status=code)
+    result["control"]["http_status"] = code
+    result["classification"] = unobserved_detail("candidate_unavailable")
+    return candidate, baseline, detail
+
+
+@pytest.mark.parametrize("code", [404, 410])
+def test_search_skips_a_confirmed_unavailable_candidate_without_saving(code):
+    evidence = unavailable_evidence(code)
+    assert classify_stored_candidate_image(*evidence) == ("unavailable", None)
+    with pytest.raises(CandidateSavePolicyError):
+        make_candidate_save_permit(*evidence)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda r: r["control"].update(blocked=True),
+        lambda r: r["control"].update(http_status=410),
+        lambda r: r["private_observation"].update(
+            url="https://gall.dcinside.com/board/view/?id=comic_new6&no=7"
+        ),
+        lambda r: r["private_observation"].update(navigation_attempts=2),
+        lambda r: r["private_observation"].update(status="network_error"),
+        lambda r: r["private_observation"].update(snapshot={}),
+        lambda r: r["classification"].update(reason="detail_inspection_failed"),
+    ],
+)
+def test_search_keeps_unproven_unavailability_for_review(change):
+    evidence = unavailable_evidence(404)
+    change(evidence[2]["result"])
+    assert classify_stored_candidate_image(*evidence) == ("needs_review", None)
+
+
+@pytest.mark.parametrize("code", [403, 429, 500, 503])
+def test_other_response_errors_cannot_skip_a_candidate(code):
+    assert classify_stored_candidate_image(*unavailable_evidence(code)) == ("needs_review", None)
+
+
+def test_search_uses_recomputed_publication_time_before_skipping_a_post():
+    candidate, baseline, detail = candidate_evidence()
+    snapshot = snapshot_from(detail)
+    published = (NOW - timedelta(days=1)).astimezone(ZoneInfo("Asia/Seoul"))
+    snapshot.update(
+        published_at=published.isoformat(), published_at_raw=published.strftime("%Y.%m.%d %H:%M:%S")
+    )
+    assert classify_stored_candidate_image(candidate, baseline, detail) == ("needs_review", None)
+    detail["result"]["classification"] = classify_candidate_detail(candidate, baseline, snapshot)
+    assert classify_stored_candidate_image(candidate, baseline, detail) == ("before_baseline", None)
+    with pytest.raises(CandidateSavePolicyError):
+        make_candidate_save_permit(candidate, baseline, detail)
 
 
 def test_one_detail_permit_preserves_url_identity_and_ambiguous_names():

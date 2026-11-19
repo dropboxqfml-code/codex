@@ -16,10 +16,12 @@ from datetime import datetime
 from pathlib import Path
 
 from image_monitor.artifact_files import _plain_path
-from image_monitor.candidate_save_policy import MONITOR_SCOPE, CandidateSavePermit
+from image_monitor.candidate_save_policy import MONITOR_SCOPE, REVIEWED_SCOPE, CandidateSavePermit
 from image_monitor.queue import QueueError, _json_data, _matches_schema, _schema_objects, _time
 
 LEDGER_NAME = "monitor-save-ledger.sqlite"
+RECENT_LEDGER_NAME = "watch-save-ledger.sqlite"
+_LEDGER_NAMES = {MONITOR_SCOPE: LEDGER_NAME, REVIEWED_SCOPE: RECENT_LEDGER_NAME}
 SCHEMA_VERSION = 1
 APPLICATION_ID = 0x494D424C
 MAX_JSON_BYTES = 64 * 1024
@@ -244,13 +246,26 @@ def task_native_base(task, batch_root, legacy_root):
 class LedgerStore:
     """Keep immutable candidate bindings and committed attempt transitions."""
 
-    def __init__(self, path, *, watch_root, legacy_root, batch_root, read_only=False, create=True):
+    def __init__(
+        self,
+        path,
+        *,
+        watch_root,
+        legacy_root,
+        batch_root,
+        read_only=False,
+        create=True,
+        scope=MONITOR_SCOPE,
+    ):
         self.watch_root, self.legacy_root, self.batch_root = _roots(
             watch_root, legacy_root, batch_root
         )
         self.path = _plain_path(Path(path).absolute())
+        _require(scope in _LEDGER_NAMES, "Unknown save ledger scope")
+        self.scope = scope
         _require(
-            self.path == self.watch_root / LEDGER_NAME, "Ledger must stay beside its watch database"
+            self.path == self.watch_root / _LEDGER_NAMES[scope],
+            "Ledger must stay beside its watch database with the scoped filename",
         )
         _require(
             self.watch_root.is_dir() and stat.S_ISDIR(self.watch_root.lstat().st_mode),
@@ -285,7 +300,7 @@ class LedgerStore:
                         self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                         self.connection.execute(
                             "INSERT INTO ledger_meta VALUES(1,?,?,?,?)",
-                            (*self._root_values(), json.dumps(MONITOR_SCOPE, ensure_ascii=False)),
+                            (*self._root_values(), json.dumps(self.scope, ensure_ascii=False)),
                         )
             self._check_schema()
             self._check_meta()
@@ -320,7 +335,7 @@ class LedgerStore:
             raise QueueError("Ledger root metadata is invalid") from error
         _require(
             stored == (self.watch_root, self.legacy_root, self.batch_root)
-            and scope == list(MONITOR_SCOPE),
+            and scope == list(self.scope),
             "Ledger roots or monitor scope changed",
         )
 
@@ -373,15 +388,14 @@ class LedgerStore:
             ).fetchone()
         )
 
-    @staticmethod
-    def _binding(candidate, detail, permit, output_kind, now):
+    def _binding(self, candidate, detail, permit, output_kind, now):
         _require(isinstance(permit, CandidateSavePermit), "A frozen candidate permit is required")
         frozen, _baseline, frozen_detail, _snapshot = permit._evidence()
         _require(
             isinstance(candidate, dict)
             and isinstance(detail, dict)
-            and tuple(candidate.get(key) for key in _SCOPE_FIELDS) == MONITOR_SCOPE
-            and tuple(detail.get(key) for key in _SCOPE_FIELDS) == MONITOR_SCOPE
+            and tuple(candidate.get(key) for key in _SCOPE_FIELDS) == self.scope
+            and tuple(detail.get(key) for key in _SCOPE_FIELDS) == self.scope
             and all(candidate.get(key) == frozen[key] for key in frozen)
             and detail == frozen_detail,
             "Ledger planning requires the exact frozen monitor observation",
@@ -587,9 +601,36 @@ def batch_service_blocked(watch_database: Path) -> bool:
     """Read every fixed ledger block without creating or repairing any data."""
     database = _plain_path(Path(watch_database).absolute())
     _require(database.name == "watch.sqlite", "Batch control requires its watch database")
-    path = _plain_path(database.parent / LEDGER_NAME)
+    return any(
+        task["control"]["blocked"] or task["control"].get("in_flight") is True
+        for scope in _LEDGER_NAMES
+        for task in _ledger_records(database, scope)
+    )
+
+
+def monitor_save_claims(watch_database):
+    """Return posts already reserved in the other reviewed pilot for this same gallery."""
+    return {
+        task["post_id"]
+        for task in _ledger_records(_plain_path(Path(watch_database).absolute()), MONITOR_SCOPE)
+    }
+
+
+def recent_save_claims(watch_database):
+    """Keep older native pilots from duplicating or bypassing a recent save."""
+    tasks = _ledger_records(_plain_path(Path(watch_database).absolute()), REVIEWED_SCOPE)
+    _require(
+        not any(t["status"] in {"started", "needs_review"} for t in tasks),
+        "An unfinished recent save requires review",
+    )
+    return {task["post_id"] for task in tasks}
+
+
+def _ledger_records(database, scope):
+    name = _LEDGER_NAMES[scope]
+    path = _plain_path(database.parent / name)
     if not path.exists():
-        return False
+        return []
     _regular(path)
     try:
         connection = sqlite3.connect(
@@ -613,16 +654,11 @@ def batch_service_blocked(watch_database: Path) -> bool:
         _require(
             _root(row["watch_root"]) == database.parent, "Ledger belongs to another watch root"
         )
-        _require(
-            json.loads(row["scope_json"]) == list(MONITOR_SCOPE), "Ledger monitor scope is invalid"
-        )
+        _require(json.loads(row["scope_json"]) == list(scope), "Ledger monitor scope is invalid")
         _roots(row["watch_root"], row["legacy_root"], row["batch_root"])
         count = connection.execute("SELECT COUNT(*) FROM save_tasks").fetchone()[0]
         _require(count <= MAX_TASKS, "Monitor save ledger exceeds its task limit")
-        tasks = [_record(row) for row in connection.execute("SELECT * FROM save_tasks")]
-        return any(
-            task["control"]["blocked"] or task["control"].get("in_flight") is True for task in tasks
-        )
+        return [_record(row) for row in connection.execute("SELECT * FROM save_tasks")]
     except (sqlite3.Error, ValueError, TypeError) as error:
         raise QueueError("Monitor save ledger control is invalid; navigation refused") from error
     finally:

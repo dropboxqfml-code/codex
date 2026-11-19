@@ -1,6 +1,8 @@
-﻿저장된 목록의 게시글 본문 확인 (0.4.0-alpha.5)
+﻿최근 게시글 본문 이미지 저장 시험 (0.4.0-alpha.6)
 
-1. ZIP을 새 폴더에 풀고 image-monitor 폴더의 RUN_WATCH_DETAIL.cmd를 더블클릭하세요.
-2. 메모장이 자동으로 열리면 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개만 보내주세요.
+1. ZIP을 새 폴더에 풀고 image-monitor 폴더의 RUN_WATCH_IMAGES.cmd를 더블클릭하세요.
+2. 전용 Chrome에 ‘저장 시작’이 나타나면 한 번 누르고, 저장이 끝날 때까지 그 창을 앞에 두세요.
+3. 메모장이 자동으로 열리면 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개만 보내주세요.
 
-이전 목록 시험에서 발견한 후보 중 최대 한 건의 본문을 Chrome에서 확인합니다. 목록 시험 직후에는 최대 1분 기다렸다가 확인합니다. 기다리는 동안 다른 일을 하셔도 됩니다.
+새로 확인하는 글은 최대 3개이며, 확인 사이에는 약 1분씩 기다립니다. 저장할 이미지가 없어도 결과 TXT가 열립니다.
+저장된 파일은 %LOCALAPPDATA%\ImageMonitorWatchImages\tasks 아래의 작업별 images 폴더에서 확인할 수 있습니다.

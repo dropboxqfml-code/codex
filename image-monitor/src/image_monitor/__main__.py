@@ -98,11 +98,15 @@ def main() -> int:
         ),
         ("monitor-save-one", "Run one native save requested by the local monitor"),
         ("monitor-batch-finish", "Reconcile completed monitor batch files without saving again"),
+        ("watch-images", "Check recent posts for body images and offer to save one post in Chrome"),
+        ("watch-images-finish", "Verify a pending recent-post save using completed local files"),
     ):
         monitor_batch = commands.add_parser(name, help=description)
         monitor_batch.add_argument("--watch-root", type=Path, required=True)
         monitor_batch.add_argument("--legacy-root", type=Path, required=True)
         monitor_batch.add_argument("--work-root", type=Path, required=True)
+        if name == "watch-images":
+            monitor_batch.add_argument("--browser", choices=("chrome",), default="chrome")
     site = commands.add_parser(
         "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
     )
@@ -163,7 +167,20 @@ def main() -> int:
         )
         print(json.dumps(output))
         return save_exit_code(output)
-    if args.command in {"monitor-save-batch", "monitor-batch-finish"}:
+    if args.command == "watch-images":
+        try:
+            from image_monitor.watch_images import run_watch_images, watch_images_exit_code
+
+            output = run_watch_images(
+                args.watch_root, args.legacy_root, args.work_root, args.browser
+            )
+        except KeyboardInterrupt:
+            parser.exit(130, "Recent-post image check cancelled.\n")
+        except Exception as error:
+            parser.exit(2, f"Recent-post image check stopped ({type(error).__name__}).\n")
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+        return watch_images_exit_code(output)
+    if args.command in {"monitor-save-batch", "monitor-batch-finish", "watch-images-finish"}:
         try:
             if args.command == "monitor-save-batch":
                 from image_monitor.monitor_batch_runtime import (
@@ -179,7 +196,10 @@ def main() -> int:
                     share_batch_finish_report,
                 )
 
-                output = run_monitor_batch_finish(args.watch_root, args.legacy_root, args.work_root)
+                options = {"recent": True} if args.command == "watch-images-finish" else {}
+                output = run_monitor_batch_finish(
+                    args.watch_root, args.legacy_root, args.work_root, **options
+                )
                 public_report = share_batch_finish_report(output)
         except KeyboardInterrupt:
             parser.exit(130, "Monitor batch operation cancelled. Inspect existing save state.\n")

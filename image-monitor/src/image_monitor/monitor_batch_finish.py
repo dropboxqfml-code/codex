@@ -19,7 +19,12 @@ from image_monitor.candidate_finish import (
     verify_completed_candidate_files,
 )
 from image_monitor.completed_browser_close import close_completed_browser
-from image_monitor.monitor_save_ledger import LEDGER_NAME, LedgerStore, task_native_base
+from image_monitor.monitor_save_ledger import (
+    LEDGER_NAME,
+    RECENT_LEDGER_NAME,
+    LedgerStore,
+    task_native_base,
+)
 from image_monitor.native_probe import write_report
 from image_monitor.native_state import (
     PendingSave,
@@ -31,6 +36,7 @@ from image_monitor.native_ui import NativeSaveLock, NativeUIError, require_windo
 from image_monitor.queue import QueueStore
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import DEFAULT_SCOPE
+from image_monitor.watch_store import MONITOR_SCOPE, WatchScope
 
 _UNFINISHED = {"started", "needs_review"}
 _BINDING_FIELDS = (
@@ -81,7 +87,7 @@ def _permit(watch, ledger, original):
         and all(latest.get(key) == original.get(key) for key in _BINDING_FIELDS),
         "The attempted batch binding changed during verification",
     )
-    return reconstruct_permit(watch, latest)
+    return reconstruct_permit(watch, latest, WatchScope(*ledger.scope))
 
 
 def _record_verified(report, verified):
@@ -233,17 +239,21 @@ def run_monitor_batch_finish(
     *,
     is_running=browser_still_running,
     close_owned=close_completed_browser,
+    recent=False,
 ):
     require_windows()
+    scope = DEFAULT_SCOPE if recent else MONITOR_SCOPE
     watch_base, legacy_base, batch_base = _roots(watch_root, legacy_root, batch_root)
     database = _plain_path(watch_base / "watch.sqlite")
-    ledger_path = _plain_path(watch_base / LEDGER_NAME)
+    ledger_path = _plain_path(watch_base / (RECENT_LEDGER_NAME if recent else LEDGER_NAME))
     run_directory = batch_base / "batch-finish-runs" / uuid.uuid4().hex
     run_directory.mkdir(parents=True)
     report_path = run_directory / "report.json"
     report = {
         "schema_version": 1,
-        "mode": "completed_monitor_batch_local_finish",
+        "mode": "recent_candidate_local_finish"
+        if recent
+        else "completed_monitor_batch_local_finish",
         "status": "batch_finish_manual_review",
         "last_stage": "pending_check",
         "error_type": None,
@@ -282,6 +292,7 @@ def run_monitor_batch_finish(
                     legacy_root=legacy_base,
                     batch_root=batch_base,
                     create=False,
+                    scope=scope.key(),
                 ) as ledger,
             ):
                 tasks = [task for task in ledger.list_tasks() if task["status"] in _UNFINISHED]

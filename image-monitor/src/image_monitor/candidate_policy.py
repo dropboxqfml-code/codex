@@ -15,6 +15,18 @@ class CandidatePolicyError(ValueError):
     """Candidate identity or immutable baseline evidence is inconsistent."""
 
 
+def unobserved_detail(reason):
+    return {
+        "time_status": "unknown",
+        "reason": reason,
+        "header_observed": False,
+        "published_at": None,
+        "layout_status": "unverified",
+        "save_approved": False,
+        "queue_eligible": False,
+    }
+
+
 def _identity(value, description):
     if not isinstance(value, dict):
         raise CandidatePolicyError(f"{description} identity is invalid")

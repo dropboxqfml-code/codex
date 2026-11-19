@@ -338,6 +338,14 @@ uv run --locked --extra windows image-monitor monitor-save-test --watch-root C:/
 uv run --locked --extra windows image-monitor monitor-save-batch --watch-root C:/IMWatch --legacy-root C:/IMMonitorSave --work-root C:/IMMonitorBatch
 ```
 
+최근 후보 저장 시험은 `watch-images`로 실행합니다. 예시의 `--legacy-root`는 같은 후보를
+다시 저장하지 않도록 이전 후보 시험의 작업 폴더를 가리킵니다. 저장이 끝난 뒤 결과 기록만
+중단됐을 때는 같은 세 경로로 `watch-images-finish`를 실행해 기존 파일과 기록을 대조할 수 있습니다.
+
+```powershell
+uv run --locked --extra windows image-monitor watch-images --watch-root C:/IMWatch --legacy-root C:/IMCandidateSave --work-root C:/IMWatchImages
+```
+
 한정 `watch-test` CLI는 주기 수나 대기 간격을 바꾸는 옵션을 제공하지 않습니다. `monitor`의
 간격은 정지한 로컬 화면에서만 설정합니다. 사용자용 실행기와 결과 확인은
 위 TXT 안내에만 정리합니다. 실제 사이트를 읽지 않는 새 DB 합성 통합 시험도 유지합니다.

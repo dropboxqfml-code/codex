@@ -7,10 +7,15 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 
-from image_monitor.candidate_policy import CandidatePolicyError, classify_candidate_detail
+from image_monitor.candidate_policy import (
+    CandidatePolicyError,
+    classify_candidate_detail,
+    unobserved_detail,
+)
 from image_monitor.dcinside import _shared_no_identity, validate_post_url
 
 MAX_PERMIT_BYTES = 4 * 1024 * 1024
+MAX_SAVE_IMAGES = 2
 REVIEWED_SCOPE = ("검색 감시 시험", "normal", "comic_new6", "ai", "search_subject_memo")
 MONITOR_SCOPE = ("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
 SCOPE_FIELDS = ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type")
@@ -63,7 +68,7 @@ def _uuid(value):
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{32}", value) is not None
 
 
-def _image_signature(snapshot):
+def _image_signature(snapshot, *, inspection_only=False):
     _require(isinstance(snapshot, dict), "A candidate snapshot is required")
     diagnostics = snapshot.get("diagnostics")
     _require(
@@ -77,10 +82,11 @@ def _image_signature(snapshot):
     excluded = snapshot.get("excluded_images")
     pending = snapshot.get("pending_images")
     counts = snapshot.get("image_counts")
-    _require(
-        isinstance(images, list) and 1 <= len(images) <= 2,
-        "This pilot requires one or two candidate images",
-    )
+    _require(isinstance(images, list) and len(images) <= 500, "Invalid candidate image inventory")
+    if not inspection_only:
+        _require(
+            1 <= len(images) <= MAX_SAVE_IMAGES, "This pilot requires one or two candidate images"
+        )
     _require(
         isinstance(excluded, list) and len(excluded) <= 500, "Candidate exclusions are invalid"
     )
@@ -203,12 +209,7 @@ def _image_signature(snapshot):
     return signatures, excluded_signature
 
 
-def _validate_payload(payload):
-    _require(
-        isinstance(payload, dict) and set(payload) == {"candidate", "baseline", "detail"},
-        "Candidate permit payload is invalid",
-    )
-    candidate, baseline, detail = (payload[key] for key in ("candidate", "baseline", "detail"))
+def _confirmed_detail(candidate, baseline, detail):
     _require(
         all(isinstance(value, dict) for value in (candidate, baseline, detail)),
         "Candidate permit evidence is invalid",
@@ -254,9 +255,7 @@ def _validate_payload(payload):
     control = result.get("control")
     _require(
         isinstance(observation, dict)
-        and observation.get("status") == "observed"
         and type(observation.get("http_status")) is int
-        and 200 <= observation["http_status"] < 300
         and observation.get("url") == candidate["post_url"]
         and type(observation.get("navigation_attempts")) is int
         and observation["navigation_attempts"] == 1,
@@ -268,6 +267,7 @@ def _validate_payload(payload):
     )
     _require(
         _time(control.get("finished_at")) == finished
+        and type(control.get("http_status")) is int
         and control.get("http_status") == observation["http_status"],
         "Candidate detail response timing conflicts",
     )
@@ -279,8 +279,21 @@ def _validate_payload(payload):
         "Candidate detail cooldown is invalid",
     )
     snapshot = observation.get("snapshot")
+    if observation["http_status"] in {404, 410}:
+        _require(
+            observation.get("status") == "http_error"
+            and observation.get("error_type") == "HTTPStatusError"
+            and observation.get("error_code") is None
+            and snapshot is None
+            and result.get("classification") == unobserved_detail("candidate_unavailable"),
+            "Candidate unavailability was not confirmed",
+        )
+        return None, "unavailable"
     _require(
-        isinstance(snapshot, dict) and snapshot.get("post_url") == candidate["post_url"],
+        observation.get("status") == "observed"
+        and 200 <= observation["http_status"] < 300
+        and isinstance(snapshot, dict)
+        and snapshot.get("post_url") == candidate["post_url"],
         "Candidate detail snapshot is missing",
     )
     _require(
@@ -294,15 +307,29 @@ def _validate_payload(payload):
             "Candidate detail identity or baseline is invalid"
         ) from error
     _require(
-        classification["time_status"] == "at_or_after_baseline"
+        classification["time_status"] in {"at_or_after_baseline", "before_baseline"}
         and classification["header_observed"] is True
         and result.get("classification") == classification,
-        "Candidate publication time was not confirmed after the baseline",
+        "Candidate publication time was not confirmed",
     )
     ip = snapshot.get("ip_display")
     _require(
         ip is None or isinstance(ip, str) and bool(ip.strip()),
         "Candidate public IP display is invalid",
+    )
+    return snapshot, classification["time_status"]
+
+
+def _validate_payload(payload):
+    _require(
+        isinstance(payload, dict) and set(payload) == {"candidate", "baseline", "detail"},
+        "Candidate permit payload is invalid",
+    )
+    candidate, baseline, detail = (payload[key] for key in ("candidate", "baseline", "detail"))
+    snapshot, time_status = _confirmed_detail(candidate, baseline, detail)
+    _require(
+        time_status == "at_or_after_baseline",
+        "Candidate publication time was not confirmed after the baseline",
     )
     _image_signature(snapshot)
     return candidate, baseline, detail, snapshot
@@ -427,3 +454,25 @@ def make_candidate_save_permit(candidate, baseline, detail):
     return CandidateSavePermit(
         _canonical({"candidate": candidate, "baseline": baseline, "detail": detail})
     )
+
+
+def classify_stored_candidate_image(candidate, baseline, detail):
+    """Identify what this completed observation proves for the bounded body-image search."""
+    try:
+        snapshot, time_status = _confirmed_detail(candidate, baseline, detail)
+        if time_status in {"unavailable", "before_baseline"}:
+            return time_status, None
+        images = snapshot.get("images")
+        if isinstance(images, list) and not 1 <= len(images) <= MAX_SAVE_IMAGES:
+            # A listed attachment never establishes that an image appeared in the body.
+            # Check every occurrence, including unresolved loads and excluded elements.
+            included, excluded = _image_signature(snapshot, inspection_only=True)
+            if included:
+                return "outside_save_limit", None
+            if not excluded and snapshot["diagnostics"].get("image_shapes"):
+                # An earlier sample of this document already saw a body image.
+                return "needs_review", None
+            return ("excluded_body_images_only" if excluded else "no_body_images_observed"), None
+        return "save_ready", make_candidate_save_permit(candidate, baseline, detail)
+    except CandidateSavePolicyError:
+        return "needs_review", None

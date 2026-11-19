@@ -32,6 +32,7 @@ def main():
         "RUN_SITE_INSPECTION.cmd",
         "RUN_LIST_INSPECTION.cmd",
         "RUN_WATCH_TEST.cmd",
+        "RUN_WATCH_DETAIL.cmd",
         "RUN_CANDIDATE_TEST.cmd",
         "RUN_CANDIDATE_SAVE_TEST.cmd",
         "RUN_CANDIDATE_FINISH.cmd",

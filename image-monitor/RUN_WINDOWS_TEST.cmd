@@ -23,6 +23,8 @@ set "RESUME_PREINPUT=0"
 set "POST_SAVE_RESUME_ARGUMENT="
 set "CHECK_LABEL=Windows native-save test"
 set "MONITOR_DIAGNOSIS=0"
+set "WATCH_DETAIL=0"
+if /i "%~1"=="--watch-detail" goto watch_detail_arguments
 if /i "%~1"=="--monitor-diagnosis" goto diagnosis_arguments
 
 :parse_arguments
@@ -45,6 +47,13 @@ if /i "%~1"=="--save-post" goto option_save_post
 if /i "%~1"=="--resume-preinput" goto option_resume_preinput
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
 exit /b 2
+
+:watch_detail_arguments
+if not "%~2"=="" exit /b 2
+set "CHECK_LABEL=watch candidate detail"
+set "WATCH_DETAIL=1"
+set "WATCH_DETAIL_CODE="
+goto new_log
 
 :diagnosis_arguments
 if not "%~2"=="" exit /b 2
@@ -314,6 +323,8 @@ set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
+if "%WATCH_DETAIL%"=="1" >>"%LOG_FILE%" echo Inspect at most one pending post from the last verified list scan in headless Chrome.
+if "%WATCH_DETAIL%"=="1" goto check_project
 if "%MONITOR_DIAGNOSIS%"=="1" >>"%LOG_FILE%" echo Checking the last stored list failure. The monitor site and saved images are not opened.
 if "%MONITOR_DIAGNOSIS%"=="1" goto check_project
 if "%MONITOR_SAVE_BATCH%"=="0" if "%MONITOR_BATCH_FINISH%"=="0" if "%MONITOR_SAVE_TEST%"=="0" if "%MONITOR_FINISH%"=="0" if "%MONITOR%"=="0" if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
@@ -321,7 +332,7 @@ if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Single-post native image saving requir
 if "%RESUME_PREINPUT%"=="1" >>"%LOG_FILE%" echo Verified pre-input resume was explicitly requested. Generic native recovery will not run.
 if "%READ_ONLY_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public-page DOM inspection. No image saving is attempted.
 if "%READ_ONLY_LIST_INSPECTION%"=="1" >>"%LOG_FILE%" echo Read-only public search-list DOM inspection in a headless browser. No image saving or monitoring is attempted.
-if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo Bounded public-list discovery trial: two cycles in headless mode, about two minutes after setup.
+if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo Bounded public-list discovery trial: up to two cycles in headless mode, about two minutes after setup.
 if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo The separate watch database persists baseline and candidate records. The image-job queue and image files are untouched.
 if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo No continuous program or native image saving is started. This single TXT opens automatically when the trial ends.
 if "%CANDIDATE_TEST%"=="1" >>"%LOG_FILE%" echo Read-only inspection of at most two previously stored candidate posts, with at least 60 seconds between requests.
@@ -388,6 +399,7 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+if "%WATCH_DETAIL%"=="1" goto start_watch_detail
 if "%MONITOR_DIAGNOSIS%"=="1" goto read_monitor_diagnosis
 if "%MONITOR_SAVE_BATCH%"=="1" goto start_monitor_save_batch
 if "%MONITOR_BATCH_FINISH%"=="1" goto start_monitor_batch_finish
@@ -522,6 +534,24 @@ echo Monitor candidate verification finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
+:start_watch_detail
+echo Checking the most recent list scan and its pending candidate in headless Chrome.
+>>"%LOG_FILE%" echo STAGE: watch_detail
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor watch-detail --work-root "%LOCALAPPDATA%\ImageMonitorWatch" --browser chrome >>"%LOG_FILE%" 2>&1
+set "WATCH_DETAIL_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Watch detail exit code: %WATCH_DETAIL_CODE%
+if not "%WATCH_DETAIL_CODE%"=="0" goto watch_detail_failed
+>>"%LOG_FILE%" echo RESULT: WATCH_DETAIL
+goto open_watch_detail_result
+
+:watch_detail_failed
+>>"%LOG_FILE%" echo RESULT: STOPPED - WATCH_DETAIL
+if not defined WATCH_DETAIL_CODE set "WATCH_DETAIL_CODE=1"
+
+:open_watch_detail_result
+start "" notepad.exe "%LOG_FILE%"
+exit /b %WATCH_DETAIL_CODE%
+
 :read_monitor_diagnosis
 >>"%LOG_FILE%" echo STAGE: stored_list_diagnosis
 call :get_stored_list_diagnosis
@@ -600,7 +630,7 @@ call :get_stored_list_diagnosis
 >>"%LOG_FILE%" echo Historical diagnosis exit code: %ERRORLEVEL%
 
 :live_watch_trial
-echo Running two list-discovery cycles in headless %TEST_BROWSER%. Allow about two minutes after setup.
+echo Running up to two list-discovery cycles in headless %TEST_BROWSER%. Allow about two minutes after setup.
 echo This bounded trial persists a separate watch baseline and candidates; it leaves image jobs and files untouched.
 echo No continuous program or native image saving starts. One TXT will open automatically when the trial ends.
 >>"%LOG_FILE%" echo STAGE: watch_test
@@ -608,8 +638,8 @@ echo No continuous program or native image saving starts. One TXT will open auto
 set "WATCH_TEST_CODE=%ERRORLEVEL%"
 >>"%LOG_FILE%" echo Bounded list-watch trial exit code: %WATCH_TEST_CODE%
 if not "%WATCH_TEST_CODE%"=="0" goto failed
->>"%LOG_FILE%" echo RESULT: COMPLETED_OR_SAFELY_WAITING - BOUNDED_LIST_WATCH_TRIAL
->>"%LOG_FILE%" echo See the JSON status above for completed, waiting, or busy. No images were saved.
+>>"%LOG_FILE%" echo RESULT: BOUNDED_LIST_WATCH_TRIAL
+>>"%LOG_FILE%" echo See the JSON status for completion, a verified recent window with a history gap, waiting, or busy.
 echo List-watch trial finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
@@ -624,6 +654,7 @@ goto failed
 >>"%LOG_FILE%" echo uv is not installed and WinGet is unavailable. Send this file for help.
 goto failed
 :failed
+if "%WATCH_DETAIL%"=="1" goto watch_detail_failed
 if "%MONITOR_DIAGNOSIS%"=="1" goto diagnosis_failed
 if "%MONITOR_SAVE_BATCH%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - MONITOR_BATCH_NATIVE_SAVE. No automatic retry or recovery was performed.
 if "%MONITOR_SAVE_BATCH%"=="1" >>"%LOG_FILE%" echo Send this TXT for diagnosis. Preserve the pending browser, attempt ledger, and all existing files.

@@ -174,7 +174,7 @@ def test_watch_launcher_adds_optional_history_then_runs_live_trial_in_one_txt(tm
     ]
     content = log.read_text("utf-8")
     before_live, live = content.split("STAGE: watch_test")
-    assert "LIVE_TRIAL_RAN" in live and "BOUNDED_LIST_WATCH_TRIAL" in live
+    assert "LIVE_TRIAL_RAN" in live and "RESULT: BOUNDED_LIST_WATCH_TRIAL" in live
     if history == "missing":
         assert "historical_monitor_list_diagnosis" not in content
         assert not root.exists()
@@ -187,3 +187,51 @@ def test_watch_launcher_adds_optional_history_then_runs_live_trial_in_one_txt(tm
         if history == "previous":
             assert '"profile_issue": "row_author_count"' in before_live
             assert '"pinned"' in before_live and "PRIVATE_FIXTURE_ROW" not in content
+
+
+@WINDOWS
+@pytest.mark.parametrize("missing_db", [True, False])
+def test_watch_detail_opens_one_result_and_preserves_the_cli_exit_code(tmp_path, missing_db):
+    central = launcher_after_setup('if "%WATCH_DETAIL%"=="1" goto start_watch_detail')
+    invocation = (
+        '"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 '
+        "--managed-python image-monitor watch-detail"
+    )
+    assert central.count(invocation) == 1
+    folder = tmp_path / "watch detail"
+    # Run the actual CLI against a missing database, and separately inject a
+    # failing worker to exercise the launcher's error result and argument quoting.
+    worker = (
+        '"%FIXTURE_PYTHON%" -m image_monitor watch-detail'
+        if missing_db
+        else '"%FIXTURE_PYTHON%" args_fixture.py'
+    )
+    copy_launcher(folder, central.replace(invocation, worker))
+    wrapper = folder / "RUN_WATCH_DETAIL.cmd"
+    wrapper.write_bytes((PROJECT / wrapper.name).read_bytes())
+    env = os.environ.copy()
+    env["FIXTURE_PYTHON"] = sys.executable
+    env["LOCALAPPDATA"] = str(tmp_path / "local 한글 & space")
+    root = Path(env["LOCALAPPDATA"]) / "ImageMonitorWatch"
+    if not missing_db:
+        (folder / "args_fixture.py").write_text(
+            "import json, sys\nprint(json.dumps(sys.argv[1:], ensure_ascii=False))\nsys.exit(2)\n",
+            encoding="ascii",
+        )
+    result = run_cmd(wrapper, [], environment=env)
+    assert result.returncode == (0 if missing_db else 2), result.stderr
+    [log] = folder.glob("WINDOWS_TEST_RESULT-*.txt")
+    assert [line for line in result.stdout.splitlines() if line.startswith("OPEN_RESULT=")] == [
+        f'OPEN_RESULT="{log}"'
+    ]
+    content = log.read_text("utf-8")
+    assert "STAGE: watch_detail" in content
+    if missing_db:
+        assert '"status": "candidate_no_baseline"' in content
+        assert "RESULT: WATCH_DETAIL" in content
+        assert not (root / "watch.sqlite").exists()
+    else:
+        expected_args = ["--work-root", str(root), "--browser", "chrome"]
+        assert json.dumps(expected_args, ensure_ascii=False) in content
+        assert "Watch detail exit code: 2" in content
+        assert "RESULT: STOPPED - WATCH_DETAIL" in content

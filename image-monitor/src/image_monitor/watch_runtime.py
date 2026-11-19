@@ -1,5 +1,6 @@
 """Bounded live list-discovery trial; never starts native saving or image work."""
 
+import json
 import time
 import uuid
 from collections import Counter
@@ -206,6 +207,8 @@ def _cycle_summary(outcome, plan, persisted):
 
 def _observed_page_pair(outcome):
     """Both snapshots must correspond to actual successful document navigations."""
+    if not isinstance(outcome, dict):
+        return False
     pages = outcome.get("pages", [])
     visits = outcome.get("navigation", [])
     if (
@@ -231,19 +234,22 @@ def _observed_page_pair(outcome):
     return outcome.get("http_status") == visits[-1]["http_status"]
 
 
-def matches_partial_coverage_scan(queue, scope, state, report):
-    """Verify one incomplete two-page observation against its durable gap and planner evidence."""
+def verified_recent_plan(queue, scope, state):
+    """Replay the latest two-page scan from the checkpoint that preceded it."""
     latest = state["latest_scan"]
+    scope_fields = ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type")
     if not (
         latest
-        and latest["complete"] is False
-        and latest["gap_reason"] in PARTIAL_COVERAGE_GAPS
-        and latest["gap_reason"] == report.get("reason")
-        and report.get("cycles_completed") == 1
-        and report.get("browser_closed") is True
-        and report.get("error_type") is None
+        and state["baseline"] is not None
+        and (
+            latest["gap_reason"] is None
+            if latest["complete"]
+            else latest["gap_reason"] in PARTIAL_COVERAGE_GAPS
+        )
+        and latest["generation"] == state["generation"]
+        and tuple(latest.get(key) for key in scope_fields) == scope.key()
     ):
-        return False
+        return None
     result = latest["result"]
     observed = result.get("private_observation", {})
     control = _control(state)
@@ -253,47 +259,90 @@ def matches_partial_coverage_scan(queue, scope, state, report):
         or control.get("blocked") is not False
         or control.get("http_status") != observed.get("http_status")
     ):
-        return False
+        return None
     pages = observed["pages"]
-    # Partial coverage leaves the state checkpoint at the original complete scan.
-    # Reuse the planner to validate exact links, descending identities and safe
-    # exclusions and to reproduce the saved observations for this checkpoint.
-    scan_time = _stored_time(result["observed_at"])
-    if scan_time != _stored_time(latest["observed_at"]):
-        return False
-    try:
-        planned = plan_scan(scope, state, pages, scan_time, allow_verified_live=True)
-    except WatchPlanError:
-        return False
+    # Partial scans preserve the last complete checkpoint. Complete scans replace
+    # it. Replay from the actual preceding complete record in both cases.
+    previous = queue.connection.execute(
+        "SELECT checkpoint_json, observed_at, gap_reason FROM watch_scans WHERE "
+        "watch_name=? AND gallery_type=? AND gallery_id=? AND keyword=? AND search_type=? "
+        "AND generation<? AND complete=1 ORDER BY generation DESC LIMIT 1",
+        (*scope.key(), state["generation"]),
+    ).fetchone()
+    if previous is None or previous["gap_reason"] is not None:
+        return None
+    previous_checkpoint = json.loads(previous["checkpoint_json"])
     if (
-        planned["gap_reason"] != latest["gap_reason"]
+        not isinstance(previous_checkpoint, dict)
+        or _stored_time(previous_checkpoint.get("observed_at"))
+        != _stored_time(previous["observed_at"])
+        or state["checkpoint"]
+        != (latest["checkpoint"] if latest["complete"] else previous_checkpoint)
+    ):
+        return None
+    scan_time = _stored_time(result["observed_at"])
+    if scan_time != _stored_time(latest["observed_at"]) or scan_time != _stored_time(
+        state["updated_at"]
+    ):
+        return None
+    try:
+        previous_state = state | {
+            "generation": state["generation"] - 1,
+            "checkpoint": previous_checkpoint,
+        }
+        planned = plan_scan(scope, previous_state, pages, scan_time, allow_verified_live=True)
+    except WatchPlanError:
+        return None
+    if (
+        planned["complete"] != latest["complete"]
+        or planned["gap_reason"] != latest["gap_reason"]
+        or len(planned["scan_result"]["pages"]) != 2
         or planned["checkpoint"] != latest["checkpoint"]
         or planned["scan_result"]
         != {k: v for k, v in result.items() if k not in ("control", "private_observation")}
     ):
-        return False
+        return None
     gap = queue.connection.execute(
-        "SELECT reason, generation, observed_at FROM watch_gaps WHERE scan_id=? "
-        "AND watch_name=? AND gallery_type=? AND gallery_id=? AND keyword=? AND search_type=?",
-        (latest["scan_id"], *scope.key()),
+        "SELECT watch_name,gallery_type,gallery_id,keyword,search_type,reason,generation,"
+        "observed_at FROM watch_gaps WHERE scan_id=?",
+        (latest["scan_id"],),
     ).fetchone()
-    if gap is None or tuple(gap) != (
-        latest["gap_reason"],
-        state["generation"],
-        latest["observed_at"],
+    expected_gap = (*scope.key(), latest["gap_reason"], state["generation"], latest["observed_at"])
+    if latest["complete"]:
+        return planned if gap is None else None
+    if gap is None or tuple(gap) != expected_gap:
+        return None
+    return planned
+
+
+def matches_partial_coverage_scan(queue, scope, state, report):
+    """Match a single-cycle dashboard report against the exact durable scan."""
+    latest = state["latest_scan"]
+    if not (
+        latest
+        and latest["complete"] is False
+        and latest["gap_reason"] == report.get("reason")
+        and report.get("cycles_completed") == 1
+        and report.get("browser_closed") is True
+        and report.get("error_type") is None
     ):
+        return False
+    planned = verified_recent_plan(queue, scope, state)
+    if planned is None:
         return False
     added = queue.connection.execute(
         "SELECT COUNT(*) FROM watch_candidates WHERE first_scan_id=?", (latest["scan_id"],)
     ).fetchone()[0]
     summary = _cycle_summary(
-        observed, planned, {"generation": state["generation"], "candidates_added": added}
+        latest["result"]["private_observation"],
+        planned,
+        {"generation": state["generation"], "candidates_added": added},
     )
     return (
         report.get("cycles") == [summary]
         and report.get("new_candidates") == added
         and _stored_time(report.get("next_eligible_at_local"))
-        == _stored_time(control["next_eligible_at"])
+        == _stored_time(latest["result"]["control"]["next_eligible_at"])
     )
 
 
@@ -313,6 +362,7 @@ def share_watch_report(report):
         "last_stage",
         "error_type",
         "reason",
+        "recent_pages_verified",
         "cycles_requested",
         "cycles_completed",
         "interval_seconds",
@@ -544,6 +594,13 @@ def run_watch_trial(
                 report.update(
                     status="watch_test_failed", reason="unexpected_image_jobs_in_watch_db"
                 )
+            elif (
+                report["status"] == "watch_test_partial"
+                and report["browser_closed"] is True
+                and state["generation"] == report["cycles"][-1]["generation"]
+                and verified_recent_plan(queue, scope, state) is not None
+            ):
+                report["recent_pages_verified"] = True
     except WatchRunBusy:
         report.update(status="watch_busy", reason="another_scan_owns_this_scope")
     except KeyboardInterrupt:

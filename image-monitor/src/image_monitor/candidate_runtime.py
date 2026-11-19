@@ -3,9 +3,11 @@
 import time
 import uuid
 from collections import Counter
+from contextlib import contextmanager
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_browser import HeadlessCandidateBrowser
 from image_monitor.candidate_policy import CandidatePolicyError, classify_candidate_detail
@@ -15,6 +17,7 @@ from image_monitor.native_probe import write_report
 from image_monitor.native_ui import NativeUIError, require_windows
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.retry import retry_after
+from image_monitor.watch_detail_source import recent_scan_candidate
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_planner import next_poll_at
 from image_monitor.watch_runtime import (
@@ -102,6 +105,8 @@ def share_candidate_report(report):
     """Share bounded structure and result counts, keeping each post identity private."""
     allowed = (
         "schema_version",
+        "program_version",
+        "source_scan",
         "status",
         "mode",
         "inspection_only",
@@ -123,6 +128,36 @@ def share_candidate_report(report):
     return {key: report[key] for key in allowed if key in report}
 
 
+@contextmanager
+def _inspection_queue(database, scope, clock, *, recent_scan_only, wait_until):
+    with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
+        state = WatchStore(queue).get_state(scope)
+        deadline = None
+        if recent_scan_only and state["baseline"] is not None:
+            now = clock.now()
+            eligibility, due = _eligibility(queue, state, now)
+            if eligibility == "waiting" and 0 < (due - now).total_seconds() <= 60:
+                _, pending = recent_scan_candidate(queue, scope, state)
+                if pending:
+                    deadline = due
+        if deadline is None:
+            yield queue, state, False
+            return
+        scan_id = state["latest_scan"]["scan_id"]
+
+    # Another monitor is free to run while the shared service clock counts down.
+    wait_until(deadline)
+    _plain_path(database)
+    with watch_run_lock(database, DEFAULT_SCOPE):
+        if not _plain_path(database).is_file():
+            yield None, None, True
+            return
+        with QueueStore(database) as queue:
+            state = WatchStore(queue).get_state(scope)
+            latest = state["latest_scan"]
+            yield queue, state, latest is None or latest["scan_id"] != scan_id
+
+
 def run_candidate_trial(
     work_root: Path,
     browser="chrome",
@@ -134,6 +169,7 @@ def run_candidate_trial(
     scope=DEFAULT_SCOPE,
     should_stop=None,
     expected_scan_id=None,
+    recent_scan_only=False,
 ):
     require_windows()
     if browser not in {"chrome", "edge"}:
@@ -144,6 +180,11 @@ def run_candidate_trial(
         raise NativeUIError("The candidate interval must be an integer from 60 to 300 seconds")
     if not isinstance(scope, WatchScope) or scope not in (DEFAULT_SCOPE, _MONITOR_SCOPE):
         raise NativeUIError("Candidate inspection requires an existing reviewed watch scope")
+    if type(recent_scan_only) is not bool or (
+        recent_scan_only
+        and (scope != DEFAULT_SCOPE or max_candidates != 1 or expected_scan_id is not None)
+    ):
+        raise NativeUIError("Recent-scan continuation requires one candidate in the trial scope")
     if should_stop is not None and not callable(should_stop):
         raise NativeUIError("The candidate stop condition must be callable")
     clock = clock or _Clock()
@@ -173,6 +214,8 @@ def run_candidate_trial(
         "details": [],
         "time_status_counts": {},
     }
+    if recent_scan_only:
+        report.update(mode="recent_scan_candidate_detail", program_version=PUBLIC_VERSION)
     backend = None
     try:
 
@@ -202,8 +245,12 @@ def run_candidate_trial(
             report.update(status="candidate_no_baseline", reason="existing_watch_database_required")
         else:
             # All reviewed scopes share this scan lease with discovery and saving.
-            with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
-                state = WatchStore(queue).get_state(scope)
+            with _inspection_queue(
+                database, scope, clock, recent_scan_only=recent_scan_only, wait_until=wait_until
+            ) as (queue, state, source_changed):
+                if source_changed:
+                    report.update(status="candidate_scan_unverified", reason="source_scan_changed")
+                    return report
                 if expected_scan_id is not None:
                     # The monitor validated this particular partial scan before its
                     # cooldown. Bind the decision again under the shared navigation lease.
@@ -228,17 +275,30 @@ def run_candidate_trial(
                         report.update(reason="access_block_requires_review", last_stage="blocked")
                     elif stopped():
                         raise _RequestedStop
-                    elif eligibility == "waiting":
+                    elif eligibility == "waiting" and not recent_scan_only:
                         report.update(status="candidate_waiting", reason="persisted_cooldown")
                         _deadline(report, due)
                     else:
-                        batch = store.list_pending(scope, limit=max_candidates)
-                        report["candidates_selected"] = len(batch)
-                        if not batch:
+                        if recent_scan_only:
+                            report["source_scan"], batch = recent_scan_candidate(
+                                queue, scope, state
+                            )
+                        else:
+                            batch = store.list_pending(scope, limit=max_candidates)
+                        if recent_scan_only and report["source_scan"] is None:
+                            report.update(
+                                status="candidate_scan_unverified",
+                                reason="verified_recent_scan_required",
+                            )
+                        elif not batch:
                             report.update(
                                 status="candidate_no_pending", reason="no_unattempted_candidates"
                             )
+                        elif eligibility == "waiting":
+                            report.update(status="candidate_waiting", reason="persisted_cooldown")
+                            _deadline(report, due)
                         else:
+                            report["candidates_selected"] = len(batch)
                             # Validate every frozen identity before opening any browser.
                             for candidate in batch:
                                 target = validate_post_url(candidate["post_url"])

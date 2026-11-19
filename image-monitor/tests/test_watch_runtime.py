@@ -241,6 +241,7 @@ def test_only_the_verified_first_page_survives_adjacent_layout_failure(tmp_path)
     )
     assert report["status"] == "watch_test_partial"
     assert report["reason"] == "list_profile_unverified_or_incomplete"
+    assert "recent_pages_verified" not in share_watch_report(report)
     assert report["new_candidates"] == 2
     saved = stored(tmp_path)
     latest = saved["state"]["latest_scan"]
@@ -511,12 +512,60 @@ def test_incomplete_second_scan_keeps_the_last_complete_checkpoint(tmp_path):
     report = run_watch_trial(tmp_path, clock=FakeClock(), backend_factory=factory)
     assert report["status"] == "watch_test_partial"
     assert report["cycles_completed"] == 2
+    assert "recent_pages_verified" not in share_watch_report(report)
     result = stored(tmp_path)
     assert result["state"]["generation"] == 2
     assert result["state"]["baseline"]["anchor_ids"] == ["100", "99"]
     assert result["state"]["checkpoint"]["anchor_ids"] == ["100", "99"]
     assert len(result["gaps"]) == 1
     assert {row["post_id"] for row in result["candidates"]} == {"104", "103", "102", "101"}
+
+
+@pytest.mark.parametrize(
+    ("second_ids", "reason"),
+    [([102, 101], "anchor_not_reached"), ([102, 100], "overlap_incomplete")],
+)
+def test_report_marks_verified_pages_after_a_complete_then_partial_cycle(
+    tmp_path, second_ids, reason
+):
+    pages = observed(
+        lambda stamp: snapshot([104, 103], stamp, links=[link(2)]),
+        lambda stamp: snapshot(second_ids, stamp, page=2, links=[link(3)]),
+    )
+    clock = FakeClock()
+    first = run_watch_trial(
+        tmp_path, clock=clock, backend_factory=BrowserFactory(baseline_outcome, pages)
+    )
+    assert first["cycles_completed"] == 2
+    assert first["status"] == "watch_test_partial" and first["reason"] == reason
+    assert share_watch_report(first)["recent_pages_verified"] is True
+    assert first["new_candidates"] > 0
+    assert first["cycles"][-1]["complete"] is False
+
+    clock.wait(60)
+    repeat = run_watch_trial(tmp_path, clock=clock, backend_factory=BrowserFactory(pages))
+    assert repeat["cycles_completed"] == 1 and repeat["new_candidates"] == 0
+    assert share_watch_report(repeat)["recent_pages_verified"] is True
+
+    # Completing a later pair still replays from generation 1's checkpoint.
+    clock.wait(60)
+    final = run_watch_trial(
+        tmp_path, clock=clock, cycles=1, backend_factory=BrowserFactory(new_posts_outcome)
+    )
+    assert final["status"] == "watch_test_completed"
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        state = WatchStore(queue).get_state(DEFAULT_SCOPE)
+        assert state["generation"] == 4
+        plan = watch_runtime.verified_recent_plan(queue, DEFAULT_SCOPE, state)
+        assert plan["complete"] and [row["post_id"] for row in plan["candidates"]] == ["104", "103"]
+        # A stray gap record for this complete scan invalidates the proof.
+        latest = state["latest_scan"]
+        with queue.connection:
+            queue.connection.execute(
+                "INSERT INTO watch_gaps VALUES (?,?,?,?,?,?,?,?,?)",
+                (latest["scan_id"], *DEFAULT_SCOPE.key(), 4, latest["observed_at"], reason),
+            )
+        assert watch_runtime.verified_recent_plan(queue, DEFAULT_SCOPE, state) is None
 
 
 def test_same_scope_busy_lease_prevents_database_and_browser_work(tmp_path):
@@ -527,6 +576,22 @@ def test_same_scope_busy_lease_prevents_database_and_browser_work(tmp_path):
     assert report["reason"] == "another_scan_owns_this_scope"
     assert report["cycles_completed"] == 0
     assert not database.exists()
+
+
+def test_two_page_gap_without_two_successful_visits_is_not_reported_as_verified(tmp_path):
+    def missing_visit(stamp):
+        result = observed(
+            lambda now: snapshot([104, 103], now, links=[link(2)]),
+            lambda now: snapshot([102, 101], now, page=2, links=[link(3)]),
+        )(stamp)
+        result["navigation"].pop()
+        return result
+
+    report = run_watch_trial(
+        tmp_path, clock=FakeClock(), backend_factory=BrowserFactory(baseline_outcome, missing_visit)
+    )
+    assert report["reason"] == "anchor_not_reached" and report["new_candidates"] == 4
+    assert "recent_pages_verified" not in share_watch_report(report)
 
 
 @pytest.mark.parametrize("malicious_part", ["snapshot_scope", "post_url"])

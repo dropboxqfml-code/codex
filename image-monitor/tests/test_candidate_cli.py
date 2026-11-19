@@ -100,6 +100,26 @@ def test_candidate_trial_uses_runtime_timing_defaults_and_shares_only_public_out
 
 
 @pytest.mark.parametrize(
+    ("status", "expected_code"),
+    [("candidate_test_completed", 0), ("candidate_scan_unverified", 2)],
+)
+def test_watch_detail_limits_inspection_to_one_recent_candidate(
+    tmp_path, monkeypatch, capsys, status, expected_code
+):
+    def run(root, browser, *, max_candidates, recent_scan_only):
+        assert (root, browser) == (tmp_path, "chrome")
+        assert max_candidates == 1 and recent_scan_only is True
+        return {"status": status, "post_url": "private"}
+
+    install_runtime_stub(monkeypatch, run=run, share=lambda report: {"status": report["status"]})
+    monkeypatch.setattr(
+        sys, "argv", ["image-monitor", "watch-detail", "--work-root", str(tmp_path)]
+    )
+    assert main() == expected_code
+    assert json.loads(capsys.readouterr().out) == {"status": status}
+
+
+@pytest.mark.parametrize(
     ("report", "expected_code"),
     [
         ({"status": "candidate_test_completed"}, 0),

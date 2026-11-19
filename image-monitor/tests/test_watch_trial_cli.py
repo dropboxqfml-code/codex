@@ -96,6 +96,8 @@ def test_watch_trial_uses_runtime_timing_defaults_and_shares_only_public_output(
         ({"status": "watch_test_completed"}, 0),
         ({"status": "watch_waiting", "browser_started": False}, 0),
         ({"status": "watch_busy", "browser_started": False}, 0),
+        ({"status": "watch_test_partial", "recent_pages_verified": True}, 0),
+        ({"status": "watch_test_partial", "reason": "anchor_not_reached"}, 2),
         ({"status": "watch_test_partial"}, 2),
         ({"status": "watch_test_failed"}, 2),
         ({"status": "watch_test_cancelled"}, 130),

@@ -69,11 +69,13 @@ def main() -> int:
     )
     watch_test.add_argument("--work-root", type=Path, required=True)
     watch_test.add_argument("--browser", choices=("chrome", "edge"), default="chrome")
-    candidate_test = commands.add_parser(
-        "candidate-test", help="Inspect at most two stored candidates; never save images"
-    )
-    candidate_test.add_argument("--work-root", type=Path, required=True)
-    candidate_test.add_argument("--browser", choices=("chrome", "edge"), default="chrome")
+    for name, description in (
+        ("candidate-test", "Inspect at most two stored candidates; never save images"),
+        ("watch-detail", "Inspect one new candidate from the latest verified watch trial"),
+    ):
+        candidate_test = commands.add_parser(name, help=description)
+        candidate_test.add_argument("--work-root", type=Path, required=True)
+        candidate_test.add_argument("--browser", choices=("chrome", "edge"), default="chrome")
     for name, description in (
         ("candidate-save-test", "Review and natively save one previously inspected candidate"),
         ("monitor-save-test", "Natively save one inspected candidate from the local monitor"),
@@ -297,11 +299,16 @@ def main() -> int:
             }
             else 2
         )
-    if args.command == "candidate-test":
+    if args.command in {"candidate-test", "watch-detail"}:
         try:
             from image_monitor.candidate_runtime import run_candidate_trial, share_candidate_report
 
-            output = run_candidate_trial(args.work_root, args.browser)
+            if args.command == "watch-detail":
+                output = run_candidate_trial(
+                    args.work_root, args.browser, max_candidates=1, recent_scan_only=True
+                )
+            else:
+                output = run_candidate_trial(args.work_root, args.browser)
             public_report = share_candidate_report(output)
         except KeyboardInterrupt:
             parser.exit(130, "Bounded candidate inspection cancelled.\n")
@@ -341,6 +348,8 @@ def main() -> int:
             or output.get("status") == "watch_test_cancelled"
         ):
             return 130
+        if output.get("status") == "watch_test_partial":
+            return 0 if output.get("recent_pages_verified") is True else 2
         return (
             0
             if output.get("status") in {"watch_test_completed", "watch_waiting", "watch_busy"}

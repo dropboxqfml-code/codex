@@ -260,7 +260,10 @@ class LedgerStore:
         self.watch_root, self.legacy_root, self.batch_root = _roots(
             watch_root, legacy_root, batch_root
         )
-        self.path = _plain_path(Path(path).absolute())
+        checked = _plain_path(Path(path))
+        # Windows may return a short-name parent for the same directory that
+        # the ledger stores under its long name. Keep the exact fixed leaf.
+        self.path = checked.parent.resolve() / checked.name
         _require(scope in _LEDGER_NAMES, "Unknown save ledger scope")
         self.scope = scope
         _require(
@@ -628,7 +631,8 @@ def recent_save_claims(watch_database):
 
 def _ledger_records(database, scope):
     name = _LEDGER_NAMES[scope]
-    path = _plain_path(database.parent / name)
+    watch_root = _root(database.parent)
+    path = _plain_path(watch_root / name)
     if not path.exists():
         return []
     _regular(path)
@@ -651,9 +655,7 @@ def _ledger_records(database, scope):
         rows = connection.execute("SELECT * FROM ledger_meta").fetchall()
         _require(len(rows) == 1 and rows[0]["singleton"] == 1, "Ledger root metadata is invalid")
         row = rows[0]
-        _require(
-            _root(row["watch_root"]) == database.parent, "Ledger belongs to another watch root"
-        )
+        _require(_root(row["watch_root"]) == watch_root, "Ledger belongs to another watch root")
         _require(json.loads(row["scope_json"]) == list(scope), "Ledger monitor scope is invalid")
         _roots(row["watch_root"], row["legacy_root"], row["batch_root"])
         count = connection.execute("SELECT COUNT(*) FROM save_tasks").fetchone()[0]

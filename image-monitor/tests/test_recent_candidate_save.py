@@ -133,7 +133,9 @@ def test_exact_save_repeats_offline_and_other_trial_selector_skips_the_completed
     assert again["reason"] == "selected_candidate_already_completed"
     assert again["tasks_started"] == 0 and again["already_completed_count"] == 1
     with QueueStore(recent.watch / "watch.sqlite") as queue:
-        legacy = select_candidate_save(queue, DEFAULT_SCOPE, recent.watch / MANIFEST_NAME)
+        # Windows can return a short TEMP parent for the DB while the caller
+        # uses its long name for the fixed manifest in that same directory.
+        legacy = select_candidate_save(queue, DEFAULT_SCOPE, recent.watch.resolve() / MANIFEST_NAME)
     assert legacy.reference_snapshot["post_id"] == "104"
     assert native.recent_save_exclusions(*recent.roots) == {"103", "104"}
     assert save(recent, recent.handoffs["104"], never)["tasks_started"] == 0

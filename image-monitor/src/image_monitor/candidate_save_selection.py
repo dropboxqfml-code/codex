@@ -286,14 +286,15 @@ def select_candidate_save(
     """Freeze one eligible completed detail; repeat calls must retain that exact binding."""
     name = selection_manifest_name(scope)
     path = _path(manifest_path)
-    if path != _database_path(queue).parent / name:
+    database = _database_path(queue)
+    if path.name != name or path.parent.resolve() != database.parent.resolve():
         raise QueueError("Candidate selection must stay beside its watch database")
     existing = read_selection(path)
     claims = set()
     if not queue.read_only:
         from image_monitor.monitor_save_ledger import recent_save_claims
 
-        claims = recent_save_claims(_database_path(queue))
+        claims = recent_save_claims(database)
     baseline = WatchStore(queue).get_state(scope)["baseline"]
     if existing is not None:
         if existing["post_id"] in claims:

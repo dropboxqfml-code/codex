@@ -72,15 +72,22 @@ def test_one_click_processes_one_task_and_refreshes_its_preview(data, browser, m
         button = page.get_by_role("button", name="후보 1건 저장", exact=True)
         expect(page.locator("#operation-save-ready")).to_have_text("2")
         for completed in (1, 2):
-            button.click()
-            expect(page.locator("#operation-save-completed")).to_have_text(str(completed))
-            assert controller.wait_stopped(10)
+            with page.expect_response(
+                lambda response: (
+                    response.url == server.url + "api/action" and response.request.method == "POST"
+                )
+            ) as action:
+                button.click()
+            assert action.value.ok
+            # Wait for the disk-backed save and preview refresh before checking the next UI poll.
+            assert controller.wait_stopped(30)
             state = controller.status()
             assert len(worker.calls) == completed
             assert state["phase"] == "stopped" and state["completed_cycles"] == 0
             assert state["operations_save_status"] == "monitor_batch_completed"
             assert state["operations_save_tasks_completed"] == 1
             assert state["operations_save_files_verified"] == worker.calls[-1][2].image_count
+            expect(page.locator("#operation-save-completed")).to_have_text(str(completed))
             expected_files = sum(permit.image_count for _, _, permit in worker.calls)
             expect(page.locator("#saved-files img")).to_have_count(expected_files)
             page.wait_for_function(

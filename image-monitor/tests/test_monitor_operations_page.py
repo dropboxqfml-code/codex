@@ -69,6 +69,13 @@ def portal(browser):
                     phase="finishing_completed",
                     settings_editable=False,
                 )
+            elif action == "save_one":
+                state.snapshot.update(
+                    task_kind="save",
+                    phase="saving_candidate",
+                    operations_can_save=False,
+                    settings_editable=False,
+                )
             elif action == "stop":
                 state.snapshot.update(phase="stopped", settings_editable=True)
             elif action == "exit":
@@ -214,6 +221,82 @@ def test_completion_outcome_reports_verified_existing_files_without_restart(port
     expect(page.locator("#operations-finish")).to_contain_text("파일 4개를 검증")
     expect(page.locator("#status-title")).to_have_text("완료 상태 확인을 마쳤습니다.")
     expect(page.locator("#finish-completed")).to_be_disabled()
+    assert state.actions == []
+
+
+def test_partial_monitoring_stop_refreshes_once_and_save_requires_another_click(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    state.snapshot.update(
+        phase="waiting",
+        task_kind="auto_details",
+        gap_reason="anchor_not_reached",
+        completed_cycles=0,
+        partial_cycles=1,
+        settings_editable=False,
+        operations_can_save=False,
+    )
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    expect(page.locator("#cycle-count")).to_have_text("0")
+    expect(page.locator("#partial-cycles")).to_have_text("1")
+    expect(page.locator("#coverage-gap")).to_contain_text("이전 확인 지점을 찾지 못했습니다")
+    expect(page.locator("#status-title")).to_contain_text("후보 자동 확인")
+    save = page.get_by_role("button", name="후보 1건 저장", exact=True)
+    expect(save).to_be_disabled()
+    page.get_by_role("button", name="중지", exact=True).click()
+    expect(page.locator("#status-title")).to_have_text("작업 현황을 확인하고 있습니다.")
+    state.snapshot.update(
+        phase="stopped",
+        operations_status="busy",
+        operations_reason="service_cooldown",
+        operations_remaining_seconds=9,
+        settings_editable=True,
+    )
+    expect(page.locator("#operations-wait")).to_contain_text("9초 후")
+    expect(save).to_be_disabled()
+    state.snapshot.update(operations_can_save=True, operations_remaining_seconds=0)
+    expect(save).to_be_enabled()
+    assert state.actions == [{"action": "stop"}, {"action": "refresh_operations"}]
+    save.click()
+    expect(page.locator("#status-title")).to_contain_text("한 건의 저장")
+    expect(page.locator("#status-detail")).to_contain_text("전용 Chrome")
+    expect(page.locator("#start")).to_be_disabled()
+    expect(save).to_be_disabled()
+    state.snapshot.update(
+        phase="stopped",
+        operations_status="ready",
+        operations_reason="save_completed",
+        operations_save_status="monitor_batch_completed",
+        operations_save_tasks_completed=1,
+        operations_save_files_verified=2,
+        operations_counts=COUNTS | {"save_completed": 3},
+        settings_editable=True,
+        gap_reason="overlap_incomplete",
+    )
+    expect(page.locator("#save-outcome")).to_have_text(
+        "후보 한 건의 저장을 마치고 파일 2개를 검증했습니다."
+    )
+    expect(page.locator("#operation-save-completed")).to_have_text("3")
+    expect(page.locator("#coverage-gap")).to_contain_text("겹쳐 확인하는 절차가 남았습니다")
+    assert state.actions[-1] == {"action": "save_one"}
+    assert len(state.actions) == 3
+
+
+def test_save_button_requires_stopped_owned_and_current_permission(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    state.snapshot.update(phase="needs_review", operations_can_save=True)
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    button = page.locator("#save-one")
+    expect(button).to_be_disabled()
+    state.snapshot.update(phase="stopped", browser_closed=None)
+    expect(button).to_be_disabled()
+    state.snapshot.update(browser_closed=True, operations_can_save=1)
+    expect(button).to_be_disabled()
+    state.snapshot.update(operations_can_save=True)
+    expect(button).to_be_enabled()
     assert state.actions == []
 
 

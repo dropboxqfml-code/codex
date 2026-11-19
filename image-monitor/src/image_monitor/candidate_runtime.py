@@ -19,6 +19,7 @@ from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_planner import next_poll_at
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
+    PARTIAL_COVERAGE_GAPS,
     SERVICE_SCOPE,
     _Clock,
     _eligibility,
@@ -132,6 +133,7 @@ def run_candidate_trial(
     clock=None,
     scope=DEFAULT_SCOPE,
     should_stop=None,
+    expected_scan_id=None,
 ):
     require_windows()
     if browser not in {"chrome", "edge"}:
@@ -202,6 +204,16 @@ def run_candidate_trial(
             # All reviewed scopes share this scan lease with discovery and saving.
             with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
                 state = WatchStore(queue).get_state(scope)
+                if expected_scan_id is not None:
+                    # The monitor validated this particular partial scan before its
+                    # cooldown. Bind the decision again under the shared navigation lease.
+                    latest = state["latest_scan"]
+                    if latest is None or (
+                        latest["scan_id"] != expected_scan_id
+                        or latest["complete"]
+                        or latest["gap_reason"] not in PARTIAL_COVERAGE_GAPS
+                    ):
+                        raise QueueError("List coverage changed before candidate inspection")
                 if queue.summary()["posts"] or queue.summary()["jobs"]:
                     raise QueueError("Candidate inspection requires the separate watch database")
                 baseline = state["baseline"]

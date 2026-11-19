@@ -140,9 +140,9 @@ class _Capture:
                 self.complete.set()
 
 
-def _run_child(arguments, should_stop):
+def _run_child(arguments, should_stop, *, start_line=None):
     options = {
-        "stdin": subprocess.DEVNULL,
+        "stdin": subprocess.DEVNULL if start_line is None else subprocess.PIPE,
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "shell": False,
@@ -170,6 +170,7 @@ def _run_child(arguments, should_stop):
     started = []
     process = None
     returncode = None
+    control = None
     try:
         # Establish both drainers before starting an owned operation. If thread
         # creation fails, no child can fill a pipe and deadlock its cleanup.
@@ -181,12 +182,22 @@ def _run_child(arguments, should_stop):
         process = subprocess.Popen(arguments, **options)
         pipes[:] = [process.stdout, process.stderr]
         ready.set()
+        if start_line is not None:
+            control = process.stdin
+            if _requested(should_stop):
+                control.close()
+                control = None
+            else:
+                control.write(start_line)
+                control.flush()
         deadline = time.monotonic() + _SOFT_TIMEOUT_SECONDS
         exceeded = False
         while True:
-            # Observe stop requests without signalling or terminating the child.
-            # Its real report determines whether the ledger was reconciled.
-            _requested(should_stop)
+            # Closing the dashboard control pipe requests stop before the first
+            # native commit. An active child keeps ownership of its cleanup.
+            if _requested(should_stop) and control is not None:
+                control.close()
+                control = None
             exceeded = exceeded or time.monotonic() >= deadline
             try:
                 returncode = process.wait(timeout=_WAIT_INTERVAL_SECONDS)
@@ -198,6 +209,11 @@ def _run_child(arguments, should_stop):
                 continue
     finally:
         ready.set()
+        if control is not None:
+            try:
+                control.close()
+            except OSError:
+                pass
         # Every post-launch failure still owns its child's lifetime. Drainers
         # are already running, so waiting cannot deadlock on full output pipes.
         if process is not None and returncode is None:

@@ -531,6 +531,35 @@ def test_unknown_browser_cleanup_cannot_be_reported_as_clean_application_exit(
     assert report["reason"] == "monitor_cleanup_requires_review"
 
 
+@pytest.mark.parametrize("closed", [True, False, None])
+def test_exit_accounts_for_native_save_child_even_after_an_earlier_finish(
+    app_module, tmp_path, monkeypatch, closed
+):
+    monkeypatch.setattr(app_module, "require_windows", lambda: None)
+    _, factory, server = app_factories(
+        [],
+        on_serve=lambda ctrl: ctrl.snapshot.update(
+            browser_closed=True,
+            operations_status="ready",
+            operations_save_status="monitor_batch_manual_review",
+            operations_save_browser_closed=closed,
+            operations_finish_status="batch_finish_completed",
+        ),
+    )
+    report = app_module.run_monitor_app(
+        tmp_path, controller_factory=factory, server_factory=server, opener=lambda *_: True
+    )
+    assert report["browser_closed"] is closed
+    assert report["monitor_status"]["browser_closed"] is True
+    assert report["worker_stopped"] is True
+    if closed is True:
+        assert report["status"] == "monitor_closed"
+    else:
+        assert report["status"] == "monitor_manual_review"
+        assert report["reason"] == "native_save_cleanup_requires_review"
+        assert report["last_stage"] == "cleanup"
+
+
 def test_real_browser_controls_stay_local_and_never_execute_status_text(portal):
     playwright = pytest.importorskip("playwright.sync_api")
     if sys.platform == "win32":

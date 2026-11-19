@@ -94,7 +94,23 @@ def seed_old_trial(database):
         return old_trial_records(queue)
 
 
-def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    ("gap", "first_rows", "second_rows", "expected_new"),
+    [
+        (None, [104, 103, 100, 99], [98, 97], [103, 104]),
+        ("anchor_not_reached", range(142, 122, -1), range(122, 102, -1), range(103, 143)),
+        (
+            "overlap_incomplete",
+            range(140, 120, -1),
+            [*range(120, 102, -1), 100, 99],
+            range(103, 141),
+        ),
+    ],
+    ids=["covered", "no-anchor-in-two-pages", "anchor-on-second-page"],
+)
+def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(
+    tmp_path, monkeypatch, gap, first_rows, second_rows, expected_new
+):
     pytest.importorskip("playwright.sync_api")
     if sys.platform != "win32":
         executable = shutil.which("chromium") or shutil.which("google-chrome")
@@ -110,9 +126,10 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
     first_url = build_list_url("normal", "comic_new6", "ai")
     second_url = build_list_url("normal", "comic_new6", "ai", page=2)
     third_url = build_list_url("normal", "comic_new6", "ai", page=3)
+    new_ids = {str(i) for i in expected_new}
     latest_pages = [
-        (first_url, list_html([104, 103, 100, 99], second_url)),
-        (second_url, list_html([98, 97], third_url)),
+        (first_url, list_html(first_rows, second_url)),
+        (second_url, list_html(second_rows, third_url)),
     ]
     documents = [
         (first_url, list_html([100, 99], second_url)),
@@ -203,18 +220,26 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
 
     status = controller.status()
     assert status["phase"] == "stopped", status
-    assert status["completed_cycles"] == 3
-    assert status["candidate_count"] == status["new_candidates"] == 2
-    assert status["detail_completed_count"] == status["detail_pending_count"] == 1
+    assert status["completed_cycles"] == (1 if gap else 3)
+    assert status["partial_cycles"] == (2 if gap else 0)
+    assert status["gap_reason"] == gap
+    assert status["candidate_count"] == status["new_candidates"] == len(new_ids)
+    assert status["detail_completed_count"] == status["auto_details_checked"] == 1
+    assert status["detail_pending_count"] == len(new_ids) - 1
     assert status["baseline_initialized"]
     assert status["browser_closed"] is True
     assert len(set(worker_ids)) == 1 and worker_ids[0] != threading.get_ident()
     assert clock.waits == [60, 60, 60]
     assert navigation == [url for url, _ in documents]
     assert image_requests == [image_url("103")] and unexpected_requests == []
-    assert [report["status"] for report in reports] == ["watch_test_completed"] * 3
+    subsequent = "watch_test_partial" if gap else "watch_test_completed"
+    assert [report["status"] for report in reports] == [
+        "watch_test_completed",
+        subsequent,
+        subsequent,
+    ]
     assert [report["cycles"][0]["navigation_attempts"] for report in reports] == [1, 2, 2]
-    assert [report["new_candidates"] for report in reports] == [0, 2, 0]
+    assert [report["new_candidates"] for report in reports] == [0, len(new_ids), 0]
     assert len(detail_reports) == 1 and detail_reports[0]["status"] == "candidate_test_completed"
     assert detail_reports[0]["images_saved"] is False
     assert len(sessions) == len(owned_browsers) == 4
@@ -228,9 +253,15 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
         scans = list(reversed(store.list_scans(MONITOR_SCOPE)))
         assert state["generation"] == 3
         assert state["baseline"]["anchor_ids"] == ["100", "99"]
-        assert state["checkpoint"]["anchor_ids"] == ["104", "103", "100", "99"]
-        assert {row["post_id"] for row in store.list_candidates(MONITOR_SCOPE)} == {"104", "103"}
-        assert all(scan["complete"] is True for scan in scans)
+        assert state["checkpoint"]["anchor_ids"] == (
+            ["100", "99"] if gap else ["104", "103", "100", "99"]
+        )
+        assert {row["post_id"] for row in store.list_candidates(MONITOR_SCOPE)} == new_ids
+        assert [scan["complete"] for scan in scans] == [True, not gap, not gap]
+        gaps = store.list_gaps(MONITOR_SCOPE)
+        assert [row["scan_id"] for row in gaps] == (
+            [scans[2]["scan_id"], scans[1]["scan_id"]] if gap else []
+        )
         assert all(scan["result"]["queue_eligible"] is False for scan in scans)
         snapshots = [
             page for scan in scans for page in scan["result"]["private_observation"]["pages"]

@@ -1,5 +1,6 @@
 import argparse
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -88,6 +89,7 @@ def main() -> int:
             "monitor-save-batch",
             "Save at most two inspected monitor candidates, skipping completed work",
         ),
+        ("monitor-save-one", "Run one native save requested by the local monitor"),
         ("monitor-batch-finish", "Reconcile completed monitor batch files without saving again"),
     ):
         monitor_batch = commands.add_parser(name, help=description)
@@ -122,6 +124,14 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "monitor-save-one":
+        from image_monitor.monitor_save_action import run_dashboard_child, save_exit_code
+
+        output = run_dashboard_child(
+            args.watch_root, args.legacy_root, args.work_root, stream=sys.stdin.buffer
+        )
+        print(json.dumps(output))
+        return save_exit_code(output)
     if args.command in {"monitor-save-batch", "monitor-batch-finish"}:
         try:
             if args.command == "monitor-save-batch":

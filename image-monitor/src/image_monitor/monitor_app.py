@@ -13,6 +13,7 @@ from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.monitor_controller import MONITOR_SCOPE, MonitorController
 from image_monitor.monitor_page import render_monitor_page
+from image_monitor.monitor_save_action import SAVE_ACTION_REASONS, SAVE_ACTION_STATUSES
 from image_monitor.native_probe import write_report
 from image_monitor.native_ui import NativeUIError, require_windows
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
@@ -132,7 +133,11 @@ def _public_operations(status):
     result["operations_reason"] = _public_reason(
         status.get("operations_reason"), _OPERATIONS_REASONS
     )
-    for key in ("operations_error_type", "operations_finish_error_type"):
+    for key in (
+        "operations_error_type",
+        "operations_finish_error_type",
+        "operations_save_error_type",
+    ):
         value = status.get(key)
         result[key] = (
             value
@@ -152,6 +157,26 @@ def _public_operations(status):
     )
     result["operations_rows_omitted"] = _public_count(status.get("operations_rows_omitted"))
     result["operations_can_finish"] = status.get("operations_can_finish") is True
+    result["operations_can_save"] = status.get("operations_can_save") is True
+    save = status.get("operations_save_status")
+    result["operations_save_status"] = (
+        save
+        if isinstance(save, str) and (save in SAVE_ACTION_STATUSES or save == "save_not_started")
+        else None
+    )
+    result["operations_save_reason"] = _public_reason(
+        status.get("operations_save_reason"),
+        SAVE_ACTION_REASONS | {"eligibility_changed", "requested_stop", "save_action_failed"},
+    )
+    closed = status.get("operations_save_browser_closed")
+    result["operations_save_browser_closed"] = closed if type(closed) is bool else None
+    for key, maximum in (
+        ("operations_save_tasks_started", 1),
+        ("operations_save_tasks_completed", 1),
+        ("operations_save_files_verified", 2),
+    ):
+        value = status.get(key)
+        result[key] = value if type(value) is int and 0 <= value <= maximum else 0
     result["operations_wait_until"] = None
     deadline = status.get("operations_wait_until")
     if isinstance(deadline, str) and len(deadline) <= 40:
@@ -194,6 +219,7 @@ def _public_status(status, *, include_preview_ids=False):
         raise ValueError("A monitor status object is required")
     result = {key: status[key] for key in _STATUS_FIELDS if key in status}
     result["auto_details_checked"] = _public_count(status.get("auto_details_checked"))
+    result["partial_cycles"] = _public_count(status.get("partial_cycles"))
     result.update(_public_operations(status))
     # Detail rows are anonymous structure summaries, never private observations.
     # Bound and project these separately so a future controller field cannot
@@ -249,6 +275,7 @@ class MonitorServer(ThreadingHTTPServer):
         self.token = secrets.token_urlsafe(32)
         self.script_nonce = secrets.token_urlsafe(24)
         self.closing = threading.Event()
+        self.action_lock = threading.Lock()
         self._exit_reply_pending = threading.Event()
         super().__init__(("127.0.0.1", 0), _MonitorHandler)
         self.timeout = 0.25
@@ -427,36 +454,29 @@ class _MonitorHandler(BaseHTTPRequestHandler):
                 "refresh_saved",
                 "refresh_operations",
                 "finish_completed",
+                "save_one",
             } or set(action) != {"action"}:
                 raise ValueError("Invalid action")
         except (ValueError, UnicodeError, RecursionError, OSError):
             self._respond(400, {"error": "invalid_action"})
             return
-        if self.server.closing.is_set() and name != "exit":
-            self._respond(409, {"error": "monitor_is_closing"})
-            return
         try:
             controller = self.server.controller
-            if name == "start":
-                controller.start()
-            elif name == "pause":
-                controller.pause()
-            elif name == "stop":
-                controller.stop()
-            elif name == "configure":
-                controller.configure(action["interval_seconds"])
-            elif name == "inspect_candidates":
-                controller.inspect_candidates()
-            elif name == "refresh_saved":
-                controller.refresh_saved()
-            elif name == "refresh_operations":
-                controller.refresh_operations()
-            elif name == "finish_completed":
-                controller.finish_completed()
-            else:
-                controller.stop()
-                self.server._exit_reply_pending.set()
-                self.server.closing.set()
+            # Serialize admission with exit. An earlier request may still be in
+            # a handler thread when the user closes the dashboard.
+            with self.server.action_lock:
+                if self.server.closing.is_set() and name != "exit":
+                    self._respond(409, {"error": "monitor_is_closing"})
+                    return
+                if name == "configure":
+                    controller.configure(action["interval_seconds"])
+                elif name == "exit":
+                    controller.stop()
+                    self.server._exit_reply_pending.set()
+                    self.server.closing.set()
+                else:
+                    # Each permitted argument-free action was matched exactly above.
+                    getattr(controller, name)()
             try:
                 self._respond(200, self.server.snapshot())
             finally:
@@ -584,16 +604,9 @@ def run_monitor_app(
                     pass
                 if server is not None:
                     server.server_close()
-            report["monitor_status"] = _public_status(controller.status())
-            report["worker_stopped"] = not controller.is_alive()
-            report["browser_closed"] = report["monitor_status"].get("browser_closed")
-            if report["worker_stopped"] and report["browser_closed"] is True:
-                report.update(
-                    status="monitor_cancelled" if cancelled else "monitor_closed",
-                    last_stage="complete",
-                )
-            else:
-                report.update(reason="monitor_cleanup_requires_review", last_stage="cleanup")
+            report.update(
+                status="monitor_cancelled" if cancelled else "monitor_closed", last_stage="complete"
+            )
     except WatchRunBusy:
         report.update(status="monitor_busy", reason="another_monitor_is_open")
     except KeyboardInterrupt:
@@ -610,9 +623,33 @@ def run_monitor_app(
         if server is not None:
             server.server_close()
         if controller is not None:
-            report["monitor_status"] = _public_status(controller.status())
+            status = _public_status(controller.status())
+            report["monitor_status"] = status
             report["worker_stopped"] = not controller.is_alive()
-            report["browser_closed"] = report["monitor_status"].get("browser_closed")
+            report["browser_closed"] = status.get("browser_closed")
+            if (
+                status.get("operations_save_status") is not None
+                and status.get("operations_save_browser_closed") is not True
+            ):
+                # The child can exit before its owned Chrome closes. Both browser
+                # lifetimes must be known before reporting a clean dashboard exit.
+                report.update(
+                    status="monitor_manual_review",
+                    reason="native_save_cleanup_requires_review",
+                    last_stage="cleanup",
+                    browser_closed=False
+                    if status.get("operations_save_browser_closed") is False
+                    or report["browser_closed"] is False
+                    else None,
+                )
+            elif report["status"] in {"monitor_closed", "monitor_cancelled"} and (
+                not report["worker_stopped"] or report["browser_closed"] is not True
+            ):
+                report.update(
+                    status="monitor_failed",
+                    reason="monitor_cleanup_requires_review",
+                    last_stage="cleanup",
+                )
         report["report_path"] = str(report_path)
         write_report(report_path, report)
     return report

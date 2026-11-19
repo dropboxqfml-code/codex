@@ -22,10 +22,12 @@ from image_monitor.monitor_settings import (
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_planner import next_poll_at
 from image_monitor.watch_runtime import (
+    PARTIAL_COVERAGE_GAPS,
     _control,
     _eligibility,
     _stamp,
     _stored_time,
+    matches_partial_coverage_scan,
     run_watch_trial,
 )
 from image_monitor.watch_store import WatchScope, WatchStore
@@ -146,6 +148,12 @@ def _finish_completed(*args, **kwargs):
     return run_completed_finish(*args, **kwargs)
 
 
+def _save_one(*args, **kwargs):
+    from image_monitor.monitor_save_action import run_dashboard_save
+
+    return run_dashboard_save(*args, **kwargs)
+
+
 def _load_saved_catalog(*args, **kwargs):
     # Import only when a configured local preview is requested. Opening the
     # discovery screen without a save root keeps the earlier startup behavior.
@@ -171,8 +179,8 @@ class MonitorController:
     """Start stopped, then alternate discovery with pending candidate inspections.
 
     This new watch scope leaves the earlier trial's baseline and candidates
-    intact. Its first valid scan creates a new-only baseline. Missing coverage
-    later pauses for review instead of resetting that baseline.
+    intact. Its first valid scan creates a new-only baseline. A verified two-page
+    gap leaves coverage open while known candidates can still be inspected.
 
     Tests may inject clock.now() and clock.wait_for(event, seconds). The latter
     advances a controlled clock without real minute-long waits.
@@ -190,6 +198,7 @@ class MonitorController:
         catalog_loader=_load_saved_catalog,
         operations_loader=_load_operations,
         finish_runner=_finish_completed,
+        save_runner=_save_one,
     ):
         if batch_root is not None and save_root is None:
             raise QueueError("Batch preview requires the legacy save root")
@@ -207,6 +216,7 @@ class MonitorController:
         self._catalog_loader = catalog_loader
         self._operations_loader = operations_loader
         self._finish_runner = finish_runner
+        self._save_runner = save_runner
         self._saved_images = {}
         settings = load_monitor_settings(self.work_root)
         self._lock = threading.RLock()
@@ -217,6 +227,8 @@ class MonitorController:
         self._extra_due = None
         self._last_finished = None
         self._last_detail_finished = None
+        self._latest_scan_id = None
+        self._partial_scan_id = None
         self._seen_database = self.database.exists()
         self._state = {
             "scope_label": "만화 · ai · 제목+내용",
@@ -225,6 +237,7 @@ class MonitorController:
             "browser": "chrome",
             "interval_seconds": settings["interval_seconds"],
             "completed_cycles": 0,
+            "partial_cycles": 0,
             "candidate_count": 0,
             "current_cycle_new": 0,
             "new_candidates": 0,
@@ -261,6 +274,14 @@ class MonitorController:
             "operations_wait_until": None,
             "operations_remaining_seconds": 0,
             "operations_can_finish": False,
+            "operations_can_save": False,
+            "operations_save_status": None,
+            "operations_save_reason": None,
+            "operations_save_error_type": None,
+            "operations_save_tasks_started": 0,
+            "operations_save_tasks_completed": 0,
+            "operations_save_files_verified": 0,
+            "operations_save_browser_closed": None,
             "operations_finish_status": None,
             "operations_finish_reason": None,
             "operations_finish_error_type": None,
@@ -293,6 +314,12 @@ class MonitorController:
                 else 0
             )
             result["settings_editable"] = result["phase"] == "stopped" and not self.is_alive()
+            result["operations_can_save"] = (
+                result["operations_can_save"]
+                and result["settings_editable"]
+                and result["browser_closed"] is True
+                and result["operations_remaining_seconds"] == 0
+            )
             due = result["next_eligible_at"]
             result["remaining_seconds"] = (
                 max(0, math.ceil((_stored_time(due) - self._clock.now()).total_seconds()))
@@ -329,7 +356,13 @@ class MonitorController:
             if self._state["phase"] == "needs_review":
                 raise QueueError("The monitor requires review before another start")
             if self.is_alive():
-                if self._state["task_kind"] in {"saved", "operations", "overview", "finish"}:
+                if self._state["task_kind"] in {
+                    "saved",
+                    "operations",
+                    "overview",
+                    "finish",
+                    "save",
+                }:
                     return self.status()
                 if self._pause.is_set() and not self._stop.is_set():
                     self._pause.clear()
@@ -339,7 +372,13 @@ class MonitorController:
             self._stop.clear()
             self._pause.clear()
             self._wake.clear()
-            self._state.update(phase="starting", task_kind="list", reason=None, error_type=None)
+            self._state.update(
+                phase="starting",
+                task_kind="list",
+                reason=None,
+                error_type=None,
+                operations_can_save=False,
+            )
             self._thread = threading.Thread(
                 target=self._work, name="image-monitor-discovery", daemon=True
             )
@@ -399,10 +438,16 @@ class MonitorController:
         """Request existing completed-file reconciliation; never retry a save."""
         return self._begin_operations("finish")
 
+    def save_one(self):
+        """Request one eligible post on the dedicated browser's main thread."""
+        return self._begin_operations("save")
+
     def _begin_operations(self, kind):
         with self._lock:
             if self.is_alive() or self._state["phase"] not in {"stopped", "needs_review"}:
                 raise QueueError("Stop the monitor before reviewing local work")
+            if kind == "save" and not self.status()["operations_can_save"]:
+                raise QueueError("Refresh the stopped monitor and choose an eligible save")
             if self.batch_root is None:
                 if kind == "finish":
                     raise QueueError("Completed reconciliation requires configured batch roots")
@@ -419,17 +464,19 @@ class MonitorController:
                     "operations": "verifying_operations",
                     "overview": "verifying_overview",
                     "finish": "finishing_completed",
+                    "save": "saving_candidate",
                 }[kind],
                 operations_status="checking",
                 operations_reason=None,
                 operations_error_type=None,
                 operations_can_finish=False,
+                operations_can_save=False,
                 operations_counts=dict.fromkeys(_OPERATION_COUNTS, 0),
                 operations_rows=[],
                 operations_rows_omitted=0,
                 operations_wait_until=None,
             )
-            if kind in {"overview", "finish"}:
+            if kind in {"overview", "finish", "save"}:
                 self._saved_images = {}
                 self._state.update(
                     saved_status="checking",
@@ -447,6 +494,16 @@ class MonitorController:
                     operations_finish_reason=None,
                     operations_finish_error_type=None,
                     operations_finish_files_verified=0,
+                )
+            elif kind == "save":
+                self._state.update(
+                    operations_save_status=None,
+                    operations_save_reason=None,
+                    operations_save_error_type=None,
+                    operations_save_tasks_started=0,
+                    operations_save_tasks_completed=0,
+                    operations_save_files_verified=0,
+                    operations_save_browser_closed=None,
                 )
             self._stop.clear()
             self._pause.clear()
@@ -524,6 +581,15 @@ class MonitorController:
             "operations_rows_omitted": omitted,
             "operations_wait_until": due,
             "operations_can_finish": can_finish,
+            "operations_can_save": (
+                status == "ready"
+                and snapshot.get("error_type") is None
+                and reason in {"save_ready", "save_planned", "service_cooldown"}
+                and (reason != "service_cooldown" or due is not None)
+                and counts["save_ready"] + counts["save_planned"] > 0
+                and counts["save_active"] == counts["save_needs_review"] == 0
+                and not can_finish
+            ),
         }
 
     def _operations_state(self):
@@ -569,7 +635,41 @@ class MonitorController:
             "operations_finish_files_verified": report["files_verified"],
         }
 
+    def _request_save(self, state):
+        from image_monitor.monitor_save_action import validate_save_result
+
+        due = state["operations_wait_until"]
+        if not state["operations_can_save"] or (
+            due is not None and _stored_time(due) > self._clock.now()
+        ):
+            self._set(
+                operations_save_status="save_not_started",
+                operations_save_reason="eligibility_changed",
+                operations_save_browser_closed=True,
+            )
+            return state
+        result = validate_save_result(
+            self._save_runner(
+                self.work_root, self.save_root, self.batch_root, should_stop=self._requested_stop
+            )
+        )
+        self._set(
+            operations_save_status=result["status"],
+            operations_save_reason=result["reason"],
+            operations_save_tasks_started=result["tasks_started"],
+            operations_save_tasks_completed=result["tasks_completed"],
+            operations_save_files_verified=result["files_verified"],
+            operations_save_browser_closed=result["browser_closed"],
+        )
+        if (
+            result["status"] == "monitor_batch_manual_review"
+            or result["browser_closed"] is not True
+        ):
+            self._review("native_save_requires_review")
+        return state if self._requested_stop() else self._operations_state()
+
     def _work_operations(self, kind, review):
+        refresh_saved = kind in {"overview", "finish", "save"}
         try:
             state = self._operations_state()
             if kind == "finish" and not self._requested_stop():
@@ -587,8 +687,10 @@ class MonitorController:
                 self._set(**result)
                 if not self._requested_stop():
                     state = self._operations_state()
+            elif kind == "save" and not self._requested_stop():
+                state = self._request_save(state)
             images = None
-            if kind in {"overview", "finish"} and not self._requested_stop():
+            if refresh_saved and not self._requested_stop():
                 saved, images = self._catalog_state()
                 state.update(saved)
             with self._lock:
@@ -597,8 +699,9 @@ class MonitorController:
                         operations_status="cancelled",
                         operations_reason="requested_stop",
                         operations_can_finish=False,
+                        operations_can_save=False,
                     )
-                    if kind in {"overview", "finish"}:
+                    if refresh_saved:
                         self._state.update(saved_status="cancelled", saved_reason="requested_stop")
                 else:
                     self._state.update(state)
@@ -613,8 +716,9 @@ class MonitorController:
                     else "operations_require_review",
                     operations_error_type=_safe_error_type(type(error).__name__),
                     operations_can_finish=False,
+                    operations_can_save=False,
                 )
-                if kind in {"overview", "finish"}:
+                if refresh_saved:
                     self._saved_images = {}
                     self._state.update(
                         saved_status="cancelled" if self._requested_stop() else "needs_review",
@@ -632,6 +736,13 @@ class MonitorController:
                         else "completed_batch_requires_review",
                         operations_finish_error_type=_safe_error_type(type(error).__name__),
                     )
+                if kind == "save" and self._state["operations_save_status"] is None:
+                    self._state.update(
+                        operations_save_status="monitor_batch_manual_review",
+                        operations_save_reason="save_action_failed",
+                        operations_save_error_type=_safe_error_type(type(error).__name__),
+                    )
+                    self._review("native_save_requires_review")
         finally:
             with self._lock:
                 if (
@@ -642,6 +753,16 @@ class MonitorController:
                     self._state.update(
                         operations_finish_status="batch_finish_cancelled",
                         operations_finish_reason="cancelled",
+                    )
+                if (
+                    kind == "save"
+                    and self._state["operations_save_status"] is None
+                    and self._requested_stop()
+                ):
+                    self._state.update(
+                        operations_save_status="monitor_batch_cancelled",
+                        operations_save_reason="requested_stop",
+                        operations_save_browser_closed=True,
                     )
                 self._state["phase"] = (
                     "needs_review"
@@ -801,7 +922,7 @@ class MonitorController:
             self._stop.clear()
             self._pause.clear()
             self._wake.clear()
-            self._state["phase"] = "starting"
+            self._state.update(phase="starting", operations_can_save=False)
             self._thread = threading.Thread(
                 target=self._work,
                 kwargs={"details_only": True},
@@ -925,7 +1046,7 @@ class MonitorController:
             "details": details,
         }
 
-    def _read_source(self):
+    def _read_source(self, *, partial_report=None):
         now = self._clock.now()
         _stamp(now)
         if not self.database.exists():
@@ -961,6 +1082,13 @@ class MonitorController:
                     MONITOR_SCOPE.key(),
                 ).fetchone()[0]
             latest = state["latest_scan"]
+            self._latest_scan_id = latest["scan_id"] if latest else None
+            if (
+                partial_report is not None
+                and eligibility != "blocked"
+                and matches_partial_coverage_scan(queue, MONITOR_SCOPE, state, partial_report)
+            ):
+                self._partial_scan_id = self._latest_scan_id
             result = latest["result"] if latest else {}
             detail_status = self._read_details(queue, count)
             if self._last_detail_finished is not None and due is not None:
@@ -1015,7 +1143,10 @@ class MonitorController:
                 last_scan_status=status, browser_closed=closed, current_cycle_new=added
             )
             self._state["new_candidates"] += added
-        eligibility, _ = self._read_source()
+        self._partial_scan_id = None
+        eligibility, _ = self._read_source(
+            partial_report=report if status == "watch_test_partial" else None
+        )
         if eligibility == "blocked":
             self._review("access_block_requires_review", error_type=report.get("error_type"))
             return False
@@ -1040,6 +1171,11 @@ class MonitorController:
                 raise QueueError("The completed monitor cycle has no durable next time")
             with self._lock:
                 self._state["completed_cycles"] += 1
+                self._state["reason"] = None
+            return True
+        if self._partial_scan_id is not None:
+            with self._lock:
+                self._state["partial_cycles"] += 1
                 self._state["reason"] = None
             return True
         if status == "watch_waiting" or http_status in {429, 503}:
@@ -1147,6 +1283,11 @@ class MonitorController:
             interval_seconds=self._state["interval_seconds"],
             should_stop=self._requested_stop,
             clock=self._clock,
+            **(
+                {"expected_scan_id": self._partial_scan_id}
+                if automatic and self._partial_scan_id is not None
+                else {}
+            ),
         )
         keep_batch, count = self._after_detail(report)
         if automatic and keep_batch and report["status"] == "candidate_test_completed":
@@ -1171,9 +1312,17 @@ class MonitorController:
                 if eligibility == "blocked":
                     self._review("access_block_requires_review")
                     break
-                if task == "auto_details" and self._state["gap_reason"] is not None:
-                    self._review("scan_requires_review")
-                    break
+                if task == "auto_details":
+                    if self._partial_scan_id is not None:
+                        gap_changed = (
+                            self._state["gap_reason"] not in PARTIAL_COVERAGE_GAPS
+                            or self._partial_scan_id != self._latest_scan_id
+                        )
+                    else:
+                        gap_changed = self._state["gap_reason"] is not None
+                    if gap_changed:
+                        self._review("scan_requires_review")
+                        break
                 if task != "list":
                     if not self._state["baseline_initialized"]:
                         self._review("existing_baseline_required")
@@ -1221,9 +1370,8 @@ class MonitorController:
                 )
                 if not self._after_cycle(report):
                     break
-                if (
-                    report["status"] == "watch_test_completed"
-                    and self._state["detail_pending_count"]
+                if self._state["detail_pending_count"] and (
+                    report["status"] == "watch_test_completed" or self._partial_scan_id is not None
                 ):
                     task = "auto_details"
         except BaseException as error:

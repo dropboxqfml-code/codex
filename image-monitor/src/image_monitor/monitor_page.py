@@ -86,6 +86,8 @@ h1{font-size:28px;line-height:1.4;letter-spacing:-1.3px;margin:0 0 6px;font-weig
 .status-mark.attention::after{background:#b38431}
 h2{margin:0;font-size:21px;font-weight:700;letter-spacing:-.8px;line-height:1.45}
 .status-detail{margin:0 0 17px;color:var(--muted);font-size:14px;min-height:38px}
+.coverage{margin:0 0 15px;padding:8px 12px;border-radius:7px;background:var(--amber-soft);
+  color:#705015;font-size:13px}
 .times{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:14px 0;
   border-top:1px solid #edf0ee;border-bottom:1px solid #edf0ee}
 .time-label{font-size:12px;color:var(--muted);margin-bottom:5px}
@@ -111,9 +113,6 @@ input:disabled{background:#f4f6f4;color:#7d8985}
 .browser-note{display:flex;align-items:center;gap:8px;margin-top:20px;padding-top:17px;
   border-top:1px solid #edf0ee;color:var(--muted);font-size:12px}
 .mini-dot{width:7px;height:7px;background:#8aa995;border-radius:50%}
-.notice{border:1px solid #e1e7db;border-radius:12px;padding:14px 20px;margin-top:16px;
-  background:#edf1e7;font-size:13px;color:#536553;line-height:1.8}
-.notice strong{font-weight:650;color:#304d3c}
 .details-panel{margin-top:18px;padding:21px 25px}
 .details-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
 .details-heading h2{font-size:18px;margin:2px 0 0;letter-spacing:-.5px}
@@ -194,6 +193,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     <div class="operations-heading">
       <h2 id="operations-title">작업 현황</h2>
       <div class="operations-actions">
+        <button class="button primary" id="save-one" type="button" disabled>후보 1건 저장</button>
         <button class="button" id="refresh-operations" type="button" disabled>
           작업 현황 새로 확인</button>
         <button class="button" id="finish-completed" type="button" disabled>
@@ -216,10 +216,11 @@ input:disabled{background:#f4f6f4;color:#7d8985}
         <dd id="operation-save-needs-review">0</dd></div>
     </dl>
     <p class="operations-help">위 개수와 사유는 마지막 현황 확인 시점의 기록입니다.
-      감시를 중지한 뒤 ‘작업 현황 새로 확인’을 누르면 갱신됩니다.
-      ‘완료 상태 다시 확인’은 기존 파일을 검증하고 조건이 맞으면 해당 Chrome을 종료합니다.</p>
+      감시를 중지하면 현황을 한 번 갱신합니다. 저장할 때는 ‘후보 1건 저장’을 누른 뒤
+      전용 Chrome에서 ‘저장 시작’을 누르고 완료될 때까지 그 창을 앞에 두세요.</p>
     <p class="operations-wait" id="operations-wait" role="status"></p>
     <p class="operations-finish" id="operations-finish" role="status"></p>
+    <p class="operations-finish" id="save-outcome" role="status"></p>
     <details class="operations-records" id="operations-records" hidden>
       <summary>최근 작업 기록 · 최대 20개</summary>
       <table class="operations-table" aria-label="익명 작업 현황">
@@ -243,7 +244,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     <div class="metric"><div class="metric-label">이번 실행에서 추가</div>
       <div class="metric-value"><span id="new-count">0</span><small>개</small></div></div>
     <div class="metric"><div class="metric-label">이번 실행의 목록 확인</div>
-      <div class="metric-value"><span id="cycle-count">0</span><small>회</small></div></div>
+      <div class="metric-value"><small>완료</small> <span id="cycle-count">0</span>
+        <small>부분</small> <span id="partial-cycles">0</span></div></div>
     <div class="metric"><div class="metric-label">이번 실행의 자동 후보 확인</div>
       <div class="metric-value"><span id="auto-details-checked">0</span><small>건</small></div>
     </div>
@@ -257,6 +259,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
         <h2 id="status-title">상태를 확인하고 있습니다.</h2>
       </div>
       <p class="status-detail" id="status-detail">잠시 기다려 주세요.</p>
+      <p class="coverage" id="coverage-gap" hidden></p>
       <div class="times">
         <div><div class="time-label">마지막 목록 확인</div>
           <div class="time-value" id="last-scan">아직 없음</div></div>
@@ -318,15 +321,10 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     <p class="details-empty" id="details-empty">아직 내용을 확인한 후보가 없습니다.</p>
   </section>
 
-  <div class="notice">
-    <strong>이미지를 파일로 저장하려면</strong><br>
-    ZIP 기본 설정에서는 감시를 중지하고 RUN_MONITOR_BATCH.cmd를 연 뒤
-    전용 Chrome에서 ‘저장 시작’을 누르세요.
-  </div>
   <p class="message" id="message" role="status" aria-live="polite"></p>
 
   <footer class="footer">
-    <span>감시 중에도 다른 작업을 계속하셔도 됩니다.<br>
+    <span>목록과 본문을 확인하는 동안 다른 작업을 계속하셔도 됩니다.<br>
       중지하면 현재 확인을 마친 뒤 멈춥니다.</span>
   </footer>
 </main>
@@ -361,6 +359,9 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     finishing_completed: {title: '완료 상태를 다시 확인하고 있습니다.',
       detail: '이미 저장한 파일을 검증하고 기록된 작업의 종료 상태를 확인합니다. ' +
         '이미지를 새로 저장하지 않습니다.', tone: 'active'},
+    saving_candidate: {title: '후보 한 건의 저장을 진행하고 있습니다.',
+      detail: '전용 Chrome이 열리면 ‘저장 시작’을 누르고 저장이 끝날 때까지 그 창을 앞에 두세요.',
+      tone: 'active'},
     waiting: {title: '다음 목록 확인을 기다리고 있습니다.',
       detail: '앞 확인을 마친 뒤 정해진 간격만큼 기다립니다.', tone: 'active'},
     pausing: {title: '일시정지를 준비하고 있습니다.',
@@ -385,6 +386,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     low_disk_space: '남은 저장 공간을 확인해 주세요. 새 목록 확인은 멈춘 상태입니다.',
     owned_browser_not_closed: '확인 창의 종료를 확인하지 못했습니다. 결과 TXT를 보내주세요.',
     owned_browser_cleanup_unconfirmed: '확인 창의 종료를 확인하지 못해 감시를 멈췄습니다.',
+    native_save_requires_review: '직전 저장 상태를 확인해야 합니다. 결과 TXT를 보내주세요.',
     another_worker_active: '다른 확인 작업이 끝나기를 기다리고 있습니다.',
     another_scan_owns_this_scope: '다른 확인 작업이 끝나기를 기다리고 있습니다.',
     waiting_for_worker: '다른 확인 작업이 끝나기를 기다리고 있습니다.',
@@ -412,6 +414,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   let commandRevision = 0;
   let timer = null;
   let savedSignature = null;
+  let refreshAfterStop = false;
 
   function text(id, value) {
     const node = element(id);
@@ -475,6 +478,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     const reason = typeof state.operations_reason === 'string' &&
       Object.hasOwn(reasons, state.operations_reason) ? state.operations_reason : null;
     text('operations-help', status === 'checking' ? '기존 기록과 대기 사유를 확인하고 있습니다.' :
+      reason === 'service_cooldown' && state.operations_can_save === true ?
+        '대기 시간이 지났습니다. 후보 한 건의 저장을 요청할 수 있습니다.' :
       reason ? reasons[reason] : status === 'empty' ? reasons.no_existing_work :
         status === 'needs_review' ? reasons.operations_require_review :
           '마지막으로 확인한 후보와 저장 작업의 기록입니다.');
@@ -501,6 +506,21 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     text('operations-finish', typeof state.operations_finish_status === 'string' &&
       Object.hasOwn(finishLabels, state.operations_finish_status) ?
         finishLabels[state.operations_finish_status] : '');
+    const savedFiles = count(state.operations_save_files_verified);
+    const saveLabels = {
+      monitor_batch_completed: count(state.operations_save_tasks_completed) === 1 ?
+        `후보 한 건의 저장을 마치고 파일 ${savedFiles}개를 검증했습니다.` :
+        '대상 후보의 이미지를 저장할 수 없습니다.',
+      monitor_batch_waiting: '대기 시간이 남아 저장을 시작하지 못했습니다.',
+      monitor_batch_busy: '다른 작업이 진행 중입니다. 종료 후 현황을 확인해 주세요.',
+      monitor_batch_no_candidates: '현재 저장할 수 있는 후보가 없습니다.',
+      monitor_batch_manual_review: '저장 결과를 확인해야 합니다. 결과 TXT를 보내주세요.',
+      monitor_batch_cancelled: '저장 요청을 중지했습니다. 작업 현황에서 결과를 확인해 주세요.',
+      save_not_started: '저장 조건이 달라졌습니다. 작업 현황에서 현재 상태를 확인해 주세요.'
+    };
+    text('save-outcome', typeof state.operations_save_status === 'string' &&
+      Object.hasOwn(saveLabels, state.operations_save_status) ?
+        saveLabels[state.operations_save_status] : '');
     const body = element('operations-rows');
     body.replaceChildren();
     const rows = Array.isArray(state.operations_rows) ? state.operations_rows.slice(0, 20) : [];
@@ -664,7 +684,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     const phase = typeof state.phase === 'string' ? state.phase : 'unknown';
     const detailTask = state.task_kind === 'details';
     const savedTask = state.task_kind === 'saved';
-    const localTask = savedTask || ['operations', 'finish', 'overview'].includes(state.task_kind);
+    const localTask = savedTask ||
+      ['operations', 'finish', 'overview', 'save'].includes(state.task_kind);
     let info = phases[phase] || phases.unknown;
     if (state.task_kind === 'auto_details' && phase === 'waiting') {
       info = {title: '후보 자동 확인을 기다리고 있습니다.',
@@ -705,16 +726,29 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       detail: '위 작업 현황에서 결과와 대기 사유를 확인할 수 있습니다. 확인을 마치고 멈췄습니다.',
       tone: ''};
     }
+    if (state.task_kind === 'save' && phase === 'stopped') {
+      info = {title: '저장 요청 처리를 마쳤습니다.',
+        detail: '위 작업 현황과 저장 결과에서 처리한 후보를 확인할 수 있습니다.', tone: ''};
+    }
     const editable = state.settings_editable === true ||
       (state.settings_editable === undefined && phase === 'stopped');
     text('candidate-count', count(state.candidate_count).toLocaleString('ko-KR'));
     text('new-count', count(state.new_candidates).toLocaleString('ko-KR'));
     text('cycle-count', count(state.completed_cycles).toLocaleString('ko-KR'));
+    text('partial-cycles', count(state.partial_cycles).toLocaleString('ko-KR'));
     text('auto-details-checked', count(state.auto_details_checked).toLocaleString('ko-KR'));
     text('status-title', closing ? '프로그램을 종료하고 있습니다.' : info.title);
     const reason = typeof state.reason === 'string' ? state.reason : '';
     const gap = typeof state.gap_reason === 'string' ? state.gap_reason : '';
-    const explanation = reasons[reason] || reasons[gap];
+    const explanation = Object.hasOwn(reasons, reason) ? reasons[reason] :
+      (phase === 'needs_review' && Object.hasOwn(reasons, gap) ? reasons[gap] : null);
+    const coverageText = gap === 'anchor_not_reached' ?
+      '최근 두 페이지에서 이전 확인 지점을 찾지 못했습니다. ' +
+      '그 사이의 글은 일부 누락됐을 수 있습니다.' :
+      gap === 'overlap_incomplete' ?
+        '이전 확인 지점에 도달했습니다. 다음 페이지까지 겹쳐 확인하는 절차가 남았습니다.' : '';
+    text('coverage-gap', coverageText);
+    element('coverage-gap').hidden = !coverageText;
     text('status-detail', closing ? '진행 중인 확인을 마치고 최종 결과를 정리합니다.' :
       ((phase === 'needs_review' || phase === 'waiting') && explanation ?
         explanation : info.detail));
@@ -754,6 +788,9 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       !['stopped', 'needs_review'].includes(phase) || state.browser_closed !== true ||
       !operationsConfigured ||
       state.operations_can_finish !== true;
+    element('save-one').disabled = requesting || closing || refreshAfterStop ||
+      phase !== 'stopped' || state.browser_closed !== true ||
+      !operationsConfigured || state.operations_can_save !== true;
     renderOperations(state);
     renderDetails(state);
     renderSaved(state);
@@ -768,7 +805,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     element('status-mark').className = 'status-mark';
     text('countdown', '');
     const controls = ['start', 'pause', 'stop', 'apply', 'exit', 'interval',
-      'inspect-candidates', 'refresh-saved', 'refresh-operations', 'finish-completed'];
+      'inspect-candidates', 'refresh-saved', 'refresh-operations', 'finish-completed', 'save-one'];
     for (const id of controls) {
       element(id).disabled = true;
     }
@@ -795,7 +832,13 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       responseReceived = true;
       if (!response.ok) throw new Error('Status unavailable');
       const payload = await response.json();
-      if (revision === commandRevision && !requesting) accept(payload);
+      if (revision === commandRevision && !requesting) {
+        accept(payload);
+        if (refreshAfterStop && (closing || current.phase !== 'stopping')) {
+          refreshAfterStop = false;
+          if (!closing && current.phase === 'stopped') await action('refresh_operations');
+        }
+      }
     } catch (error) {
       if (closing && !responseReceived && error instanceof TypeError) {
         finishScreen();
@@ -815,6 +858,12 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   }
   async function action(name, interval) {
     if (requesting || closing || ended) return;
+    const updateOnStop = name === 'stop' && current &&
+      ['list', 'auto_details', 'details'].includes(current.task_kind) &&
+      ['starting', 'scanning', 'inspecting', 'waiting', 'paused', 'pausing']
+        .includes(current.phase) &&
+      ['ready', 'empty', 'busy', 'needs_review', 'cancelled'].includes(current.operations_status);
+    refreshAfterStop = false;
     requesting = true;
     commandRevision += 1;
     if (current) render(current);
@@ -835,6 +884,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       const payload = await response.json();
       if (name === 'configure') dirtyInterval = false;
       if (name === 'exit') closing = true;
+      if (name === 'stop') refreshAfterStop = updateOnStop;
       accept(payload);
       if (name === 'configure') message('확인 간격을 저장했습니다. 기존 대기 시간은 유지됩니다.');
       if (name === 'exit') message('마지막 확인을 마치고 종료합니다. 잠시 기다려 주세요.');
@@ -850,6 +900,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   element('refresh-saved').addEventListener('click', () => action('refresh_saved'));
   element('refresh-operations').addEventListener('click', () => action('refresh_operations'));
   element('finish-completed').addEventListener('click', () => action('finish_completed'));
+  element('save-one').addEventListener('click', () => action('save_one'));
   element('pause').addEventListener('click', () => action('pause'));
   element('stop').addEventListener('click', () => action('stop'));
   element('exit').addEventListener('click', () => action('exit'));

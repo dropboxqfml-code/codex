@@ -2,6 +2,7 @@
 
 import json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from urllib.parse import urlsplit
 
@@ -81,6 +82,14 @@ class OperationsController(FakeController):
             self.snapshot["task_kind"] = "finish"
             return self._action("finish_completed", "finishing_completed", alive=True)
 
+    def save_one(self):
+        with self.lock:
+            self._require_idle()
+            if self.snapshot.get("operations_can_save") is not True:
+                raise ValueError("A current saveable candidate is required")
+            self.snapshot["task_kind"] = "save"
+            return self._action("save_one", "saving_candidate", alive=True)
+
 
 @pytest.fixture
 def portal():
@@ -111,11 +120,14 @@ def portal():
     [
         ("refresh_operations", "operations", "verifying_operations"),
         ("finish_completed", "finish", "finishing_completed"),
+        ("save_one", "save", "saving_candidate"),
     ],
 )
 def test_explicit_work_actions_use_the_existing_nonblocking_control_surface(
     portal, name, task, phase
 ):
+    if name == "save_one":
+        portal.controller.snapshot["operations_can_save"] = True
     code, _, result = action(portal, name)
     assert code == 200
     assert result["status"]["phase"] == phase
@@ -197,6 +209,15 @@ def test_completion_outcome_is_shared_as_fixed_summary_fields(portal):
 def test_work_projection_rejects_nested_private_values_even_in_known_fields(portal):
     injected = {"path": "C:/private/image.jpg", "url": "https://private.example/post"}
     portal.controller.snapshot.update(
+        partial_cycles=injected,
+        operations_can_save=injected,
+        operations_save_status=injected,
+        operations_save_reason=injected,
+        operations_save_tasks_completed=injected,
+        operations_save_files_verified=injected,
+        operations_save_tasks_started=injected,
+        operations_save_browser_closed=injected,
+        operations_save_error_type=injected,
         operations_reason=injected,
         operations_error_type=injected,
         operations_wait_until=injected,
@@ -220,7 +241,27 @@ def test_work_projection_rejects_nested_private_values_even_in_known_fields(port
     assert "private" not in json.dumps(shared)
 
 
-@pytest.mark.parametrize("name", ["refresh_operations", "finish_completed"])
+def test_save_results_and_partial_cycle_counts_reach_status_and_shared_txt(portal):
+    fields = dict(
+        partial_cycles=3,
+        operations_can_save=False,
+        operations_save_status="monitor_batch_completed",
+        operations_save_reason=None,
+        operations_save_tasks_started=1,
+        operations_save_tasks_completed=1,
+        operations_save_files_verified=2,
+        operations_save_browser_closed=True,
+        operations_save_error_type=None,
+    )
+    portal.controller.snapshot.update(fields)
+    code, _, body = request(portal)
+    assert code == 200
+    status = json.loads(body)["status"]
+    shared = share_monitor_report({"monitor_status": status})["monitor_status"]
+    assert {key: status[key] for key in fields} == {key: shared[key] for key in fields} == fields
+
+
+@pytest.mark.parametrize("name", ["refresh_operations", "finish_completed", "save_one"])
 @pytest.mark.parametrize(
     "extra",
     [
@@ -237,7 +278,7 @@ def test_work_actions_cannot_choose_roots_targets_limits_or_retry_behavior(porta
     assert portal.controller.calls == []
 
 
-@pytest.mark.parametrize("name", ["refresh_operations", "finish_completed"])
+@pytest.mark.parametrize("name", ["refresh_operations", "finish_completed", "save_one"])
 @pytest.mark.parametrize("header", ["Host", "Origin", "X-Image-Monitor-Token"])
 @pytest.mark.parametrize("variation", ["wrong", "duplicate"])
 def test_work_actions_keep_exact_single_host_origin_and_capability(portal, name, header, variation):
@@ -254,7 +295,7 @@ def test_work_actions_keep_exact_single_host_origin_and_capability(portal, name,
     assert portal.controller.calls == []
 
 
-@pytest.mark.parametrize("name", ["refresh_operations", "finish_completed"])
+@pytest.mark.parametrize("name", ["refresh_operations", "finish_completed", "save_one"])
 def test_work_actions_reject_duplicate_json_fields_without_starting_work(portal, name):
     body = json.dumps({"action": name}).encode()
     body = body[:-1] + b',"action":"start"}'
@@ -263,7 +304,7 @@ def test_work_actions_reject_duplicate_json_fields_without_starting_work(portal,
     assert portal.controller.calls == []
 
 
-@pytest.mark.parametrize("name", ["refresh_operations", "finish_completed"])
+@pytest.mark.parametrize("name", ["refresh_operations", "finish_completed", "save_one"])
 def test_active_worker_excludes_work_actions(portal, name):
     assert action(portal, "start")[0] == 200
     code, _, _ = action(portal, name)
@@ -277,6 +318,41 @@ def test_explicit_finish_requires_current_eligibility(portal):
     assert code == 409
     assert result == {"error": "monitor_action_not_available"}
     assert portal.controller.calls == []
+
+
+def test_save_is_not_admitted_during_exit(portal, monkeypatch):
+    entered, competing, release = threading.Event(), threading.Event(), threading.Event()
+    lock = portal.server.action_lock
+    stop = portal.controller.stop
+
+    class Admission:
+        def __enter__(self):
+            if entered.is_set():
+                competing.set()
+            lock.acquire()
+
+        def __exit__(self, *_args):
+            lock.release()
+
+    def stopping():
+        entered.set()
+        assert release.wait(3)
+        return stop()
+
+    portal.controller.snapshot["operations_can_save"] = True
+    monkeypatch.setattr(portal.server, "action_lock", Admission())
+    monkeypatch.setattr(portal.controller, "stop", stopping)
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        closing = workers.submit(action, portal, "exit")
+        try:
+            assert entered.wait(3)
+            save = workers.submit(action, portal, "save_one")
+            assert competing.wait(3)
+        finally:
+            release.set()
+        assert closing.result()[0] == 200
+        assert save.result()[0] == 409
+    assert [call[0] for call in portal.controller.calls] == ["stop"]
 
 
 @pytest.mark.parametrize(

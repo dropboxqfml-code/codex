@@ -404,12 +404,34 @@ def share_batch_report(report):
     return public
 
 
+class _StopBeforeSave(Exception):
+    pass
+
+
 def run_monitor_batch(
-    watch_root, legacy_root, batch_root, *, max_tasks=2, clock=None, save_runner=run_post_save
+    watch_root,
+    legacy_root,
+    batch_root,
+    *,
+    max_tasks=2,
+    clock=None,
+    save_runner=run_post_save,
+    should_stop=None,
 ):
     require_windows()
     if type(max_tasks) is not int or not 1 <= max_tasks <= 2:
         raise NativeUIError("Choose one or two new batch save attempts")
+    if should_stop is not None and (max_tasks != 1 or not callable(should_stop)):
+        raise NativeUIError("A dashboard stop condition requires a single save attempt")
+
+    def stop_if_requested():
+        if should_stop is not None:
+            stopped = should_stop()
+            if type(stopped) is not bool:
+                raise NativeUIError("The save stop condition must return a boolean")
+            if stopped:
+                raise _StopBeforeSave
+
     clock = clock or _Clock()
     _stamp(clock.now())
     watch_root, legacy_root, batch_root = map(_root, (watch_root, legacy_root, batch_root))
@@ -442,6 +464,7 @@ def run_monitor_batch(
     active = ledger = None
     database = _plain_path(watch_root / "watch.sqlite")
     try:
+        stop_if_requested()
         if not database.is_file():
             report.update(status="monitor_batch_no_candidates", reason="existing_watch_required")
         else:
@@ -486,6 +509,7 @@ def run_monitor_batch(
                         else:
                             report["last_stage"] = "completed_file_verification"
                             for task in ledger.list_tasks():
+                                stop_if_requested()
                                 if task["status"] == "completed":
                                     permit = reconstruct_permit(queue, task)
                                     with NativeSaveLock():
@@ -494,12 +518,14 @@ def run_monitor_batch(
                                     report["already_completed_count"] += 1
                                 elif task["status"] == "unavailable":
                                     report["unavailable_count"] += 1
+                            stop_if_requested()
                             report["adopted_count"] = _adopt_legacy(
                                 queue, ledger, watch_root, legacy_root, batch_root, clock
                             )
                             report["already_completed_count"] += report["adopted_count"]
                             report["last_stage"] = "candidate_planning"
                             for detail in _details(queue):
+                                stop_if_requested()
                                 if ledger.get_for_post(detail["post_id"]) is not None:
                                     continue
                                 eligible = _eligible_permit(queue, detail)
@@ -518,6 +544,7 @@ def run_monitor_batch(
                                     reason="no_unsaved_reviewed_candidates",
                                 )
                             for task in pending[:max_tasks]:
+                                stop_if_requested()
                                 state = WatchStore(queue).get_state(MONITOR_SCOPE)
                                 eligibility, due = _eligibility(queue, state, clock.now())
                                 if eligibility == "blocked":
@@ -552,6 +579,9 @@ def run_monitor_batch(
                                     raise QueueError(
                                         "A planned batch task already has native output"
                                     )
+                                # After starting a durable task the native worker owns it
+                                # through verification and cleanup, even if the dashboard exits.
+                                stop_if_requested()
                                 active = ledger.start(
                                     task["task_id"], clock.now(), native_session=native_session
                                 )
@@ -697,6 +727,8 @@ def run_monitor_batch(
                             )
                 if queue.summary()["posts"] or queue.summary()["jobs"]:
                     raise QueueError("Batch saving changed the discovery image queue")
+    except _StopBeforeSave:
+        report.update(status="monitor_batch_cancelled", reason="requested_stop")
     except WatchRunBusy:
         report.update(status="monitor_batch_busy", reason="another_scan_owns_this_scope")
     except KeyboardInterrupt:

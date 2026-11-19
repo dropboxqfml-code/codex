@@ -631,3 +631,41 @@ def test_planned_task_with_existing_native_output_never_starts(data):
     result = run(data, runner)
     assert result["status"] == "monitor_batch_manual_review"
     assert runner.calls == [] and proof.read_bytes() == b"Unowned native work remains"
+
+
+def test_dashboard_stop_before_native_commit_keeps_planned_tasks_reusable(data, monkeypatch):
+    import threading
+
+    stopped = threading.Event()
+    original = runtime._preflight
+
+    def preflight(*args):
+        original(*args)
+        stopped.set()
+
+    monkeypatch.setattr(runtime, "_preflight", preflight)
+    runner = Runner(data)
+    outcome = run(data, runner, max_tasks=1, should_stop=stopped.is_set)
+    assert outcome["status"] == "monitor_batch_cancelled"
+    assert outcome["reason"] == "requested_stop"
+    assert outcome["tasks_started"] == 0 and runner.calls == []
+    with ledger(data) as state:
+        assert [task["status"] for task in state.list_tasks()] == ["planned", "planned"]
+    result = run(data, runner, max_tasks=1)
+    assert result["tasks_completed"] == 1 and len(runner.calls) == 1
+
+
+def test_dashboard_stop_during_started_native_work_preserves_its_verified_result(data):
+    import threading
+
+    stopped = threading.Event()
+    runner = Runner(data)
+
+    def finish(*args, **kwargs):
+        stopped.set()
+        return runner(*args, **kwargs)
+
+    outcome = run(data, finish, max_tasks=1, should_stop=stopped.is_set)
+    assert outcome["status"] == "monitor_batch_completed"
+    assert outcome["tasks_completed"] == 1 and len(runner.calls) == 1
+    assert outcome["tasks_remaining"] == 1

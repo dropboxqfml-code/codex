@@ -19,6 +19,7 @@ from image_monitor.watch_planner import WatchPlanError, next_poll_at, plan_scan
 from image_monitor.watch_store import WatchScope, WatchStore
 
 SERVICE_SCOPE = "dcinside"
+PARTIAL_COVERAGE_GAPS = frozenset({"anchor_not_reached", "overlap_incomplete"})
 DEFAULT_SCOPE = WatchScope("검색 감시 시험", "normal", "comic_new6", "ai", "search_subject_memo")
 
 
@@ -193,6 +194,87 @@ def _cycle_summary(outcome, plan, persisted):
         "baseline_created": plan["baseline"] is not None,
         "new_candidates": persisted["candidates_added"],
     }
+
+
+def matches_partial_coverage_scan(queue, scope, state, report):
+    """Verify one incomplete two-page observation against its durable gap and planner evidence."""
+    latest = state["latest_scan"]
+    if not (
+        latest
+        and latest["complete"] is False
+        and latest["gap_reason"] in PARTIAL_COVERAGE_GAPS
+        and latest["gap_reason"] == report.get("reason")
+        and report.get("cycles_completed") == 1
+        and report.get("browser_closed") is True
+        and report.get("error_type") is None
+    ):
+        return False
+    result = latest["result"]
+    observed = result.get("private_observation", {})
+    control = _control(state)
+    if (
+        observed.get("status") != "observed"
+        or control.get("transport_status") != "observed"
+        or control.get("blocked") is not False
+        or control.get("http_status") != observed.get("http_status")
+    ):
+        return False
+    pages = observed.get("pages", [])
+    navigation = observed.get("navigation", [])
+    if len(pages) != 2 or len(navigation) != 2:
+        return False
+    for page, visit in zip(pages, navigation, strict=True):
+        http = visit.get("http_status")
+        if (
+            type(http) is not int
+            or not 200 <= http < 300
+            or visit.get("url") != page.get("url")
+            or page.get("status") != "observed"
+            or not page.get("rows")
+        ):
+            return False
+    if observed.get("http_status") != navigation[-1]["http_status"]:
+        return False
+    # Partial coverage leaves the state checkpoint at the original complete scan.
+    # Reuse the planner to validate exact links, descending identities and safe
+    # exclusions and to reproduce the saved observations for this checkpoint.
+    scan_time = _stored_time(result["observed_at"])
+    if scan_time != _stored_time(latest["observed_at"]):
+        return False
+    try:
+        planned = plan_scan(scope, state, pages, scan_time, allow_verified_live=True)
+    except WatchPlanError:
+        return False
+    if (
+        planned["gap_reason"] != latest["gap_reason"]
+        or planned["checkpoint"] != latest["checkpoint"]
+        or planned["scan_result"]
+        != {k: v for k, v in result.items() if k not in ("control", "private_observation")}
+    ):
+        return False
+    gap = queue.connection.execute(
+        "SELECT reason, generation, observed_at FROM watch_gaps WHERE scan_id=? "
+        "AND watch_name=? AND gallery_type=? AND gallery_id=? AND keyword=? AND search_type=?",
+        (latest["scan_id"], *scope.key()),
+    ).fetchone()
+    if gap is None or tuple(gap) != (
+        latest["gap_reason"],
+        state["generation"],
+        latest["observed_at"],
+    ):
+        return False
+    added = queue.connection.execute(
+        "SELECT COUNT(*) FROM watch_candidates WHERE first_scan_id=?", (latest["scan_id"],)
+    ).fetchone()[0]
+    summary = _cycle_summary(
+        observed, planned, {"generation": state["generation"], "candidates_added": added}
+    )
+    return (
+        report.get("cycles") == [summary]
+        and report.get("new_candidates") == added
+        and _stored_time(report.get("next_eligible_at_local"))
+        == _stored_time(control["next_eligible_at"])
+    )
 
 
 def share_watch_report(report):

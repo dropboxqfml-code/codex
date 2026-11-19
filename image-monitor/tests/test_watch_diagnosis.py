@@ -8,7 +8,11 @@ from test_search_list import NOW, parse, profile_row, reviewed_raw, row
 from test_watch_runtime import BrowserFactory, FakeClock, observed, snapshot, stored
 
 from image_monitor import watch_runtime
-from image_monitor.watch_diagnosis import diagnose_list_scan, public_list_diagnosis
+from image_monitor.watch_diagnosis import (
+    diagnose_list_page,
+    diagnose_list_scan,
+    public_list_diagnosis,
+)
 
 
 def scan(*pages, reason="list_profile_unverified_or_incomplete"):
@@ -69,6 +73,61 @@ def test_old_snapshot_retains_provable_column_counts_for_excluded_rows():
     result = diagnose_list_scan(scan(page))
     assert result["pages"][0]["profile_issue"] == "row_author_count"
     assert result["pages"][0]["exclusion_reasons"] == {"ambiguous_row_fields": 1}
+    assert result["pages"][0]["author_cell_mismatches"] == {"ambiguous_row_fields": {"missing": 1}}
+
+
+def test_old_snapshot_reports_missing_or_multiple_author_cells_by_excluded_role():
+    pin = row("공지", is_pinned=True)
+    ad = row("광고", is_ad=True)
+    page = parse(reviewed_raw([profile_row(101), pin, ad, pin]))
+    page["layout_status"] = "unverified"
+    page["selector_evidence"].pop("profile_issue")
+    page["diagnostics"]["list_candidates"][0]["writer_field_count"] = 3
+    for exclusion, n in zip(page["excluded_rows"], (0, 2, 0), strict=True):
+        exclusion["field_counts"]["author"] = n
+        exclusion["PRIVATE_FIXTURE"] = "private://token"
+    expected = {"pinned": {"missing": 2}, "ad": {"multiple": 1}}
+    public = diagnose_list_page(page, 1)
+    assert public["profile_issue"] == "row_author_count"
+    assert public["author_cell_mismatches"] == expected
+    assert public["unsafe_exclusions"] == 0
+    assert "private" not in json.dumps(public).lower()
+    result = diagnose_list_scan(scan(page))
+    assert public_list_diagnosis(result) == result and result["pages"] == [public]
+    # An older user-approved strict profile never granted an exception.
+    page.update(layout_status="site_verified")
+    assert "author_cell_mismatches" not in diagnose_list_page(page, 1)
+    page["selector_evidence"]["source"] = "user_list_diagnosis_alpha3"
+    assert diagnose_list_page(page, 1)["author_cell_mismatches"] == expected
+
+
+def test_reports_do_not_infer_a_cell_count_from_missing_or_corrupt_legacy_fields():
+    page = parse(reviewed_raw([profile_row(101), row("공지", is_pinned=True)]))
+    page["layout_status"] = "unverified"
+    page["selector_evidence"]["profile_issue"] = "row_author_count"
+    fields = page["excluded_rows"][0]["field_counts"]
+    for invalid in (None, -1, True, "0", 10**14, 1):
+        fields["author"] = invalid
+        assert "author_cell_mismatches" not in diagnose_list_page(page, 1)
+
+
+def test_public_author_buckets_bound_total_and_use_fixed_categories_only():
+    page = {
+        "profile_issue": "row_author_count",
+        "excluded_rows": 3,
+        "author_cell_mismatches": {
+            "pinned": {"multiple": True, "missing": 1, "private://raw": 2},
+            "ad": {"multiple": 2, "missing": -1},
+            "private://raw": {"multiple": 2},
+        },
+    }
+    result = {"reason": "list_profile_unverified_or_incomplete", "pages": [page]}
+    assert public_list_diagnosis(result)["pages"][0]["author_cell_mismatches"] == {
+        "ad": {"multiple": 2},
+        "pinned": {"missing": 1},
+    }
+    page["excluded_rows"] = 2
+    assert "author_cell_mismatches" not in public_list_diagnosis(result)["pages"][0]
 
 
 def test_changed_table_has_priority_over_passively_waitable_metadata():

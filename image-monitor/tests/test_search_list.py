@@ -164,6 +164,75 @@ def test_reviewed_structure_requires_exact_main_root_and_owned_fields(changes):
     assert parse(raw)["layout_status"] == "unverified"
 
 
+@pytest.mark.parametrize("writer_count", [0, 2])
+@pytest.mark.parametrize("reason", ["ad", "pinned", "survey"])
+def test_only_proven_special_rows_can_have_nonstandard_writer_counts(reason, writer_count):
+    if reason == "survey":
+        special = row("설문", links=[{"href": "javascript:privateAction()"}])
+    else:
+        special = row("AD" if reason == "ad" else "공지", **{"is_" + reason: True})
+    special["field_counts"]["author"] = writer_count
+    special["author_raw"] = "PRIVATE_WRITER"
+    raw = reviewed_raw([profile_row(102), special, profile_row(101)])
+    main = raw["diagnostics"]["list_candidates"][0]
+    main["writer_field_count"] = 2 + writer_count
+    snapshot = parse(raw)
+    assert snapshot["layout_status"] == "site_verified"
+    assert snapshot["rows_complete"] and not snapshot["queue_eligible"]
+    assert snapshot["selector_evidence"]["source"] == "user_list_diagnosis_alpha3"
+    assert [item["post_id"] for item in snapshot["rows"]] == ["102", "101"]
+    assert snapshot["excluded_rows"][0]["reason"] == reason
+    assert snapshot["excluded_rows"][0]["field_counts"]["author"] == writer_count
+    assert "PRIVATE_WRITER" not in json.dumps(snapshot)
+    # A matching count outside the owned rows still represents an unknown table shape.
+    main["writer_field_count"] += 1
+    snapshot = parse(raw)
+    assert snapshot["layout_status"] == "unverified"
+    assert snapshot["selector_evidence"]["profile_issue"] == "main_writer_field_count"
+
+
+@pytest.mark.parametrize(
+    "unrecognized",
+    [
+        profile_row(101),
+        row("설문", links=[{"href": POST}]),
+        row("AD label in a title"),
+        row("private notice"),
+    ],
+)
+@pytest.mark.parametrize("writer_count", [0, 2])
+def test_malformed_ordinary_or_unproven_row_stays_unverified(unrecognized, writer_count):
+    entry = unrecognized | {"field_counts": {"number": 1, "date": 1, "author": writer_count}}
+    # Offsetting defects sum to the reviewed total but cannot cancel one another.
+    special = row("공지", is_pinned=True)
+    special["field_counts"]["author"] = 2 - writer_count
+    raw = reviewed_raw([profile_row(102), special, entry])
+    snapshot = parse(raw)
+    assert snapshot["layout_status"] == "unverified"
+    assert snapshot["selector_evidence"]["profile_issue"] == "row_author_count"
+    assert not snapshot["rows_complete"]
+    assert not snapshot["queue_eligible"]
+
+
+@pytest.mark.parametrize("field", ["number", "date", "title_links"])
+def test_other_shape_checks_still_apply_to_proven_special_rows(field):
+    special = row("공지", is_pinned=True)
+    special["field_counts"]["author"] = 0
+    if field == "title_links":
+        special.update(links=[], link_total=0, all_links=[], all_link_total=0)
+    else:
+        special["field_counts"][field] = 0
+    raw = reviewed_raw([profile_row(101), special])
+    raw["diagnostics"]["list_candidates"][0]["writer_field_count"] = 1
+    snapshot = parse(raw)
+    assert snapshot["layout_status"] == "unverified"
+    assert snapshot["selector_evidence"]["profile_issue"] in {
+        "row_number_count",
+        "row_date_count",
+        "row_title_link_count",
+    }
+
+
 @pytest.mark.parametrize("missing", ["title", "author", "date"])
 def test_reviewed_structure_requires_visible_ordinary_metadata(missing):
     entry = profile_row(101)

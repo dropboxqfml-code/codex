@@ -524,13 +524,17 @@ exit /b 0
 
 :read_monitor_diagnosis
 >>"%LOG_FILE%" echo STAGE: stored_list_diagnosis
-"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor-diagnosis --work-root "%LOCALAPPDATA%\ImageMonitorWatch" >>"%LOG_FILE%" 2>&1
+call :get_stored_list_diagnosis
 set "DIAGNOSIS_CODE=%ERRORLEVEL%"
 >>"%LOG_FILE%" echo Diagnosis exit code: %DIAGNOSIS_CODE%
 if not "%DIAGNOSIS_CODE%"=="0" goto failed
 >>"%LOG_FILE%" echo RESULT: STORED_LIST_DIAGNOSIS
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
+
+:get_stored_list_diagnosis
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor-diagnosis --work-root "%LOCALAPPDATA%\ImageMonitorWatch" >>"%LOG_FILE%" 2>&1
+exit /b %ERRORLEVEL%
 
 :start_monitor
 echo Opening the local monitoring screen and checking existing saved results offline.
@@ -590,6 +594,12 @@ start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
 :start_watch_test
+if not exist "%LOCALAPPDATA%\ImageMonitorWatch\watch.sqlite" goto live_watch_trial
+>>"%LOG_FILE%" echo STAGE: historical_monitor_list_diagnosis
+call :get_stored_list_diagnosis
+>>"%LOG_FILE%" echo Historical diagnosis exit code: %ERRORLEVEL%
+
+:live_watch_trial
 echo Running two list-discovery cycles in headless %TEST_BROWSER%. Allow about two minutes after setup.
 echo This bounded trial persists a separate watch baseline and candidates; it leaves image jobs and files untouched.
 echo No continuous program or native image saving starts. One TXT will open automatically when the trial ends.

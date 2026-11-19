@@ -27,8 +27,8 @@ class AdvancingClock:
         self.current += timedelta(seconds=seconds)
 
 
-def list_html(ids, next_url):
-    rows = []
+def list_html(ids, next_url, *, excluded_html=""):
+    rows = [excluded_html]
     for post_id in ids:
         rows.append(
             '<tr class="ub-content">'
@@ -52,9 +52,21 @@ def list_html(ids, next_url):
     )
 
 
-@pytest.mark.parametrize("second_page_verified", [True, False])
+def special_row(label, href, *, has_writer=True):
+    writer = '<td class="gall_writer">Invented writer</td>' if has_writer else ""
+    return (
+        f'<tr class="ub-content"><td class="gall_num">{label}</td>'
+        f'<td class="gall_tit"><a href="{href}">{label}</a></td>'
+        f'{writer}<td class="gall_date">12:00</td></tr>'
+    )
+
+
+@pytest.mark.parametrize(
+    ("second_page_verified", "ad_has_writer"),
+    [(True, True), (False, True), (True, False)],
+)
 def test_real_browser_two_cycle_discovery_uses_verified_dom_and_durable_state(
-    tmp_path, monkeypatch, second_page_verified
+    tmp_path, monkeypatch, second_page_verified, ad_has_writer
 ):
     pytest.importorskip("playwright.sync_api")
     if sys.platform != "win32":
@@ -68,12 +80,18 @@ def test_real_browser_two_cycle_discovery_uses_verified_dom_and_durable_state(
     first_url = build_list_url("normal", "comic_new6", "ai")
     second_url = build_list_url("normal", "comic_new6", "ai", page=2)
     third_url = build_list_url("normal", "comic_new6", "ai", page=3)
-    adjacent_html = list_html([98, 97], third_url)
+    baseline_ids = list(range(100, 80, -1))
+    first_ids = list(range(102, 82, -1))
+    second_ids = list(range(82, 62, -1))
+    notice = special_row("공지", "/board/view/?id=comic_new6&amp;no=1")
+    survey = special_row("설문", "javascript:void(0)")
+    ad = special_row("광고", "/fixture/ad", has_writer=ad_has_writer)
+    adjacent_html = list_html(second_ids, third_url, excluded_html=notice)
     if not second_page_verified:
         adjacent_html = adjacent_html.replace("Invented author", "")
     documents = [
-        (first_url, list_html([100, 99], second_url)),
-        (first_url, list_html([104, 103, 100, 99], second_url)),
+        (first_url, list_html(baseline_ids, second_url)),
+        (first_url, list_html(first_ids, second_url, excluded_html=ad + survey + notice)),
         (second_url, adjacent_html),
     ]
     navigation = []
@@ -123,6 +141,14 @@ def test_real_browser_two_cycle_discovery_uses_verified_dom_and_durable_state(
         ["site_verified"],
         ["site_verified", "site_verified" if second_page_verified else "unverified"],
     ]
+    shared = watch_runtime.share_watch_report(report)
+    public_first, public_second = shared["cycles"][1]["page_checks"]
+    assert public_first["layout_status"] == "site_verified"
+    if ad_has_writer:
+        assert "author_cell_mismatches" not in public_first
+    else:
+        assert public_first["author_cell_mismatches"] == {"ad": {"missing": 1}}
+    assert "author_cell_mismatches" not in public_second
     assert len(sessions) == len(owned_browsers) == 1
     assert report["browser_closed"] is sessions[0].browser_closed is True
     assert owned_browsers[0].is_connected() is False
@@ -133,15 +159,20 @@ def test_real_browser_two_cycle_discovery_uses_verified_dom_and_durable_state(
         scans = list(reversed(store.list_scans(watch_runtime.DEFAULT_SCOPE)))
         candidates = store.list_candidates(watch_runtime.DEFAULT_SCOPE)
         assert state["generation"] == 2
-        assert state["baseline"]["anchor_ids"] == ["100", "99"]
-        expected_anchors = ["104", "103", "100", "99"] if second_page_verified else ["100", "99"]
-        assert state["checkpoint"]["anchor_ids"] == expected_anchors
-        assert {candidate["post_id"] for candidate in candidates} == {"104", "103"}
+        assert state["baseline"]["anchor_ids"] == list(map(str, baseline_ids))
+        expected_anchors = first_ids if second_page_verified else baseline_ids
+        assert state["checkpoint"]["anchor_ids"] == list(map(str, expected_anchors))
+        assert {candidate["post_id"] for candidate in candidates} == {"102", "101"}
         assert queue.summary()["posts"] == queue.summary()["jobs"] == 0
         assert [scan["complete"] for scan in scans] == [True, second_page_verified]
         assert all(scan["result"]["queue_eligible"] is False for scan in scans)
         observations = [scan["result"]["private_observation"] for scan in scans]
         assert [len(outcome["navigation"]) for outcome in observations] == [1, 2]
+        first_page, second_page = observations[1]["pages"]
+        assert [len(page["rows"]) for page in (first_page, second_page)] == [20, 20]
+        assert [row["reason"] for row in first_page["excluded_rows"]] == ["ad", "survey", "pinned"]
+        assert first_page["excluded_rows"][0]["field_counts"]["author"] == int(ad_has_writer)
+        assert [row["reason"] for row in second_page["excluded_rows"]] == ["pinned"]
         assert [
             page["selector_evidence"]["live_layout_verified"]
             for outcome in observations

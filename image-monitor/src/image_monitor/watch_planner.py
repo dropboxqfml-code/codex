@@ -10,11 +10,10 @@ from datetime import datetime, timedelta
 from math import isfinite
 
 from image_monitor.dcinside import DCSnapshotError, validate_post_url
-from image_monitor.search_list import validate_list_url
+from image_monitor.search_list import recognized_special_row, validate_list_url
 from image_monitor.watch_store import WatchScope
 
 _SCOPE_FIELDS = ("gallery_type", "gallery_id", "search_type", "keyword")
-_SAFE_EXCLUSIONS = {"ad", "pinned", "wrong_gallery"}
 _REVIEWED_LIVE_SCOPE = {
     "gallery_type": "normal",
     "gallery_id": "comic_new6",
@@ -149,24 +148,8 @@ def _exclusion_evidence(value):
 
 
 def _safe_exclusion(value, layout_status):
-    if value["reason"] in _SAFE_EXCLUSIONS:
-        if layout_status == "site_verified" and value["reason"] in {"ad", "pinned"}:
-            flag = "is_ad" if value["reason"] == "ad" else "is_pinned"
-            return value.get("role_flags", {}).get(flag) is True
-        return True
-    # The label alone cannot prove a nonnumeric row is a survey. The parser
-    # requires the exact label and its sole title link to use javascript:.
-    fields = value.get("field_counts", {})
-    return (
-        value["reason"] == "survey"
-        and value.get("number_kind") == "survey_label"
-        and value.get("link_schemes") == {"javascript": 1}
-        and fields.get("number") == 1
-        and fields.get("title_links") == 1
-        and (
-            layout_status != "site_verified"
-            or value.get("role_flags") == {"is_ad": False, "is_pinned": False}
-        )
+    return value["reason"] == "wrong_gallery" or recognized_special_row(
+        value, require_role_flags=layout_status == "site_verified"
     )
 
 

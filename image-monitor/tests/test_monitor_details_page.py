@@ -379,3 +379,31 @@ def test_list_diagnosis_never_renders_raw_strings_or_unbounded_pages(portal):
     state.snapshot["list_diagnosis"]["reason"] = secret
     expect(panel).to_be_hidden()
     assert all(url.startswith(BASE_URL) for url in state.requests)
+
+
+def test_list_diagnosis_explains_author_count_with_only_observed_row_categories(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    state.snapshot["list_diagnosis"] = {
+        "reason": "list_profile_unverified_or_incomplete",
+        "pages": [
+            {
+                "page": 1,
+                "profile_issue": "row_author_count",
+                "ordinary_rows": 20,
+                "author_cell_mismatches": {
+                    "ad": {"missing": 2, "multiple": 1, "private": 9},
+                    "pinned": {"multiple": "PRIVATE"},
+                    "survey": {"multiple": 201},
+                    "private": {"missing": 9},
+                },
+            }
+        ],
+    }
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    panel = page.locator("#list-diagnosis")
+    panel.locator("summary").click()
+    expect(panel).to_contain_text("1페이지 · 작성자 칸을 한 개로 식별하지 못함 · 일반 글 20개")
+    expect(panel).to_contain_text("광고 · 작성자 칸 없음 2행, 여러 개 1행")
+    assert all(word not in panel.inner_text().lower() for word in ("private", "9행", "201", "설문"))

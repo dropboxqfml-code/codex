@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.native_probe import write_report
 from image_monitor.native_ui import NativeUIError, require_windows
@@ -14,6 +15,7 @@ from image_monitor.queue import QueueError, QueueStore
 from image_monitor.retry import retry_after
 from image_monitor.search_list import build_list_url
 from image_monitor.watch_browser import HeadlessWatchBrowser
+from image_monitor.watch_diagnosis import diagnose_list_page
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_planner import (
     WatchPlanError,
@@ -177,6 +179,7 @@ def _cycle_summary(outcome, plan, persisted):
         "page_count": len(pages),
         "page_statuses": [page.get("status") for page in pages],
         "layout_statuses": [page.get("layout_status") for page in pages],
+        "page_checks": [diagnose_list_page(page, index) for index, page in enumerate(pages, 1)],
         "ordinary_rows": sum(len(page.get("rows", [])) for page in pages),
         "excluded_counts": dict(Counter(row.get("reason", "unknown") for row in exclusions)),
         "excluded_evidence": [
@@ -298,6 +301,7 @@ def share_watch_report(report):
     # List titles/authors, source URLs/cursors and local state paths stay private.
     keys = (
         "schema_version",
+        "program_version",
         "status",
         "mode",
         "discovery_only",
@@ -360,6 +364,7 @@ def run_watch_trial(
     report_path = run_directory / "report.json"
     report = {
         "schema_version": 1,
+        "program_version": PUBLIC_VERSION,
         "mode": "bounded_live_list_discovery",
         "status": "watch_test_failed",
         "discovery_only": True,

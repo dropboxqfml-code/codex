@@ -1,6 +1,6 @@
-﻿이전 목록 검사 결과 확인 (0.4.0-alpha.3)
+﻿목록 감시 시험 (0.4.0-alpha.4)
 
-1. ZIP을 새 폴더에 모두 풀고, image-monitor 폴더의 CHECK_LAST_LIST.cmd를 더블클릭합니다.
-2. 메모장이 열리면 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개만 보내주세요.
+1. ZIP을 새 폴더에 모두 풀고, image-monitor 폴더의 RUN_WATCH_TEST.cmd를 더블클릭하세요.
+2. 메모장이 자동으로 열리면 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개만 보내주세요.
 
-이전 실행 기록을 읽는 검사입니다. 감시 시작이나 3분 대기는 필요 없습니다.
+이전 감시 기록이 있으면 먼저 읽고, Chrome에서 약 1~2분 동안 현재 목록을 검사합니다. 기다리는 동안 다른 일을 하셔도 됩니다.

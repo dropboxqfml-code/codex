@@ -70,6 +70,7 @@ _SETTLE_ISSUES = {
     "ordinary_date_missing",
     "secondary_table_empty",
 }
+_AUTHOR_ROW_GROUPS = ("ad", "pinned", "survey", "ambiguous_row_fields", "other_excluded")
 
 
 def _category(value, allowed):
@@ -84,10 +85,47 @@ def _mapping(value):
     return value if isinstance(value, dict) else {}
 
 
+def _excluded_author_cell_mismatches(excluded):
+    """Count stored exceptions by row role without exposing any row or author identity."""
+    result = {}
+    if not isinstance(excluded, list) or len(excluded) > MAX_ROWS:
+        return result
+    for entry in excluded:
+        row = _mapping(entry)
+        author_cells = _count(_mapping(row.get("field_counts")).get("author"), 1_000_000)
+        if author_cells is None or author_cells == 1:
+            continue
+        group = _category(row.get("reason"), _AUTHOR_ROW_GROUPS) or "other_excluded"
+        counts = result.setdefault(group, {})
+        kind = "missing" if author_cells == 0 else "multiple"
+        counts[kind] = counts.get(kind, 0) + 1
+    return result
+
+
+def _public_author_cell_mismatches(value, excluded_count):
+    """Re-project a histogram at a public boundary, bounded by observed excluded rows."""
+    result = {}
+    if _count(excluded_count, MAX_ROWS) is None:
+        return result
+    source_groups = _mapping(value)
+    for group in _AUTHOR_ROW_GROUPS:
+        source = _mapping(source_groups.get(group))
+        counts = {
+            kind: source[kind]
+            for kind in ("missing", "multiple")
+            if _count(source.get(kind), MAX_ROWS, 1) is not None
+        }
+        if counts:
+            result[group] = counts
+    if sum(sum(counts.values()) for counts in result.values()) > excluded_count:
+        return {}
+    return result
+
+
 def _public_page(page, ordinal):
     # Re-project from an allowlist even if called with a stored or externally supplied summary.
     reasons = _mapping(page.get("exclusion_reasons"))
-    return {
+    result = {
         "page": ordinal,
         "status": _category(page.get("status"), _PAGE_STATES),
         "layout_status": _category(page.get("layout_status"), _LAYOUT),
@@ -104,6 +142,13 @@ def _public_page(page, ordinal):
             if _count(reasons.get(key), MAX_ROWS, 1) is not None
         },
     }
+    if result["profile_issue"] == "row_author_count" or result["layout_status"] == "site_verified":
+        mismatches = _public_author_cell_mismatches(
+            page.get("author_cell_mismatches"), result["excluded_rows"]
+        )
+        if mismatches:
+            result["author_cell_mismatches"] = mismatches
+    return result
 
 
 def public_list_diagnosis(value):
@@ -197,7 +242,19 @@ def _stored_page(page):
         "matched_list_containers": counts.get("matched_list_containers"),
         "unsafe_exclusions": unsafe,
         "exclusion_reasons": reasons,
+        "author_cell_mismatches": _excluded_author_cell_mismatches(excluded)
+        if issue == "row_author_count"
+        or (
+            page.get("layout_status") == "site_verified"
+            and evidence.get("source") == "user_list_diagnosis_alpha3"
+        )
+        else {},
     }
+
+
+def diagnose_list_page(page, ordinal):
+    """Project a private page's observed validation, counts and proven exceptions."""
+    return _public_page(_stored_page(_mapping(page)), ordinal)
 
 
 def diagnose_list_scan(latest_scan):
@@ -217,7 +274,7 @@ def diagnose_list_scan(latest_scan):
             "transport_error_code": outcome.get("error_code"),
             "http_status": outcome.get("http_status"),
             "planner_issue": result.get("planner_issue"),
-            "pages": [_stored_page(_mapping(page)) for page in pages[:2]]
+            "pages": [diagnose_list_page(page, i) for i, page in enumerate(pages[:2], 1)]
             if isinstance(pages, list)
             else [],
         }

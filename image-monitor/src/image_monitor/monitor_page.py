@@ -462,6 +462,10 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     row_order: '게시글 순서', exclusion_evidence: '목록에서 제외한 행',
     pagination_identity: '페이지 이동 링크', no_page_evidence: '관찰한 페이지'
   };
+  const authorRowGroups = {
+    ad: '광고', pinned: '공지', survey: '설문',
+    ambiguous_row_fields: '열을 구분하지 못한 행', other_excluded: '기타 제외 행'
+  };
   function renderListDiagnosis(diagnosis) {
     const visible = diagnosis?.reason === 'list_profile_unverified_or_incomplete';
     element('list-diagnosis').hidden = !visible;
@@ -487,6 +491,17 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       const rows = Number.isSafeInteger(page.ordinary_rows) && page.ordinary_rows >= 0 ?
         ` · 일반 글 ${page.ordinary_rows}개` : '';
       lines.push(`${page.page}페이지 · ${label}${rows}`);
+      if (issue === 'row_author_count' || page.layout_status === 'site_verified') {
+        for (const [key, group] of Object.entries(authorRowGroups)) {
+          const counts = page.author_cell_mismatches?.[key];
+          const parts = [];
+          for (const [kind, description] of [['missing', '없음'], ['multiple', '여러 개']]) {
+            const n = counts?.[kind];
+            if (Number.isSafeInteger(n) && n > 0 && n <= 200) parts.push(`${description} ${n}행`);
+          }
+          if (parts.length) lines.push(`${group} · 작성자 칸 ${parts.join(', ')}`);
+        }
+      }
     }
     const issue = diagnosis.planner_issue;
     if (typeof issue === 'string' && Object.hasOwn(plannerIssues, issue)) {

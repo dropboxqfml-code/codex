@@ -46,6 +46,27 @@ LINK_SCHEMES = {"https", "http", "javascript", "relative", "other", "missing"}
 SAFE_EXCLUSIONS = {"ad", "pinned", "survey"}
 
 
+def recognized_special_row(value, *, require_role_flags=True):
+    """Decide whether row evidence identifies an excluded ad, notice, or survey."""
+    reason = value["reason"]
+    if reason not in SAFE_EXCLUSIONS:
+        return False
+    if reason in {"ad", "pinned"}:
+        flag = "is_ad" if reason == "ad" else "is_pinned"
+        return not require_role_flags or value.get("role_flags", {}).get(flag) is True
+    fields = value.get("field_counts", {})
+    return (
+        value.get("number_kind") == "survey_label"
+        and value.get("link_schemes") == {"javascript": 1}
+        and fields.get("number") == 1
+        and fields.get("title_links") == 1
+        and (
+            not require_role_flags
+            or value.get("role_flags") == {"is_ad": False, "is_pinned": False}
+        )
+    )
+
+
 def _control(char):
     return unicodedata.category(char) in {"Cc", "Cs"}
 
@@ -389,12 +410,13 @@ PROFILE_ISSUES = frozenset(
 )
 
 
-def _raw_row_issue(rows_raw):
-    for row in rows_raw:
+def _raw_row_issue(rows_raw, excluded_writer_counts):
+    for ordinal, row in enumerate(rows_raw, 1):
         fields = row.get("field_counts")
         for key in _ROW_FIELDS:
             value = fields.get(key) if isinstance(fields, dict) else None
-            if type(value) is not int or value != 1:
+            expected = excluded_writer_counts.get(ordinal, 1) if key == "author" else 1
+            if type(value) is not int or value != expected:
                 return "row_" + key + "_count"
         if type(row.get("link_total")) is not int or row["link_total"] != 1:
             return "row_title_link_count"
@@ -402,7 +424,15 @@ def _raw_row_issue(rows_raw):
 
 
 def reviewed_structure_issue(
-    target, diagnostics, rows, row_issue, row_total, container_count, status
+    target,
+    diagnostics,
+    rows,
+    row_issue,
+    row_total,
+    container_count,
+    status,
+    *,
+    writer_field_total=None,
 ):
     """Return the first reviewed profile check that failed, or None on an exact match."""
     if (
@@ -443,8 +473,11 @@ def reviewed_structure_issue(
         or main.get("visible_empty_marker_count") != 0
     ):
         return "main_table_shape"
+    if writer_field_total is None:
+        writer_field_total = row_total
     for key in _MAIN_COLUMNS:
-        if main.get(key) != row_total:
+        expected = writer_field_total if key == "writer_field_count" else row_total
+        if main.get(key) != expected:
             return "main_" + key
     secondary = next(candidate for candidate in candidates if candidate is not main)
     if (
@@ -587,16 +620,35 @@ def parse_list_snapshot(
         status = "empty"
     else:
         status = "unrecognized_empty"
+    # A proven special row is never a post candidate. Account for its actual
+    # owned writer cells while checking that every table writer belongs to a row.
+    excluded_writer_counts = {}
+    for exclusion in excluded:
+        count = exclusion["field_counts"].get("author")
+        if count is not None and count != 1 and recognized_special_row(exclusion):
+            excluded_writer_counts[exclusion["row_order"]] = count
+    writer_field_total = (
+        row_total - len(excluded_writer_counts) + sum(excluded_writer_counts.values())
+    )
     profile_issue = reviewed_structure_issue(
-        target, diagnostics, rows, _raw_row_issue(rows_raw), row_total, container_count, status
+        target,
+        diagnostics,
+        rows,
+        _raw_row_issue(rows_raw, excluded_writer_counts),
+        row_total,
+        container_count,
+        status,
+        writer_field_total=writer_field_total,
     )
     site_verified = layout_status == "unverified" and profile_issue is None
+    source = None
     if site_verified:
         layout_status = "site_verified"
+        source = "user_list_diagnosis_alpha3" if excluded_writer_counts else "user_list_probe_v12"
     rows_complete = (
         list_count == 1
         and status in {"observed", "empty"}
-        and all(exclusion["reason"] in SAFE_EXCLUSIONS for exclusion in excluded)
+        and all(recognized_special_row(exclusion) for exclusion in excluded)
     )
     fixture_terminal = (
         layout_status == "fixture_validated"
@@ -640,7 +692,7 @@ def parse_list_snapshot(
         "selector_evidence": {
             "status": layout_status,
             "live_layout_verified": site_verified,
-            "source": "user_list_probe_v12" if site_verified else None,
+            "source": source,
             "verification_scope": "reviewed_search_structure" if site_verified else None,
             "profile_issue": profile_issue,
             "rows_complete": rows_complete,

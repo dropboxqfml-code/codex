@@ -680,6 +680,24 @@ def test_startup_overview_requires_both_explicit_saved_roots(
     assert [call[0] for call in controller.calls].count("refresh_saved") == int(with_save_root)
 
 
+@pytest.mark.parametrize("value,expected", [(None, 0), (True, 0), (-1, 0), ("private", 0), (2, 2)])
+def test_shared_report_identifies_build_and_only_shares_a_count_for_auto_checks(
+    app_module, value, expected
+):
+    from image_monitor import PUBLIC_VERSION
+
+    snapshot = {"task_kind": "auto_details"}
+    if value is not None:
+        snapshot["auto_details_checked"] = value
+    report = app_module.share_monitor_report(
+        {"program_version": "private", "monitor_status": snapshot}
+    )
+    assert report["program_version"] == PUBLIC_VERSION
+    assert report["monitor_status"]["task_kind"] == "auto_details"
+    assert report["monitor_status"]["auto_details_checked"] == expected
+    assert "private" not in json.dumps(report)
+
+
 def test_operations_projection_keeps_the_service_contract_and_rejects_unknown_nested_values(
     app_module,
 ):

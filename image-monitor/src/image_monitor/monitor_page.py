@@ -2,6 +2,8 @@
 
 from html import escape
 
+from image_monitor import PUBLIC_VERSION
+
 _PAGE = r"""<!doctype html>
 <html lang="ko">
 <head>
@@ -34,9 +36,8 @@ button:focus-visible,input:focus-visible{outline:3px solid #67b7aa;outline-offse
 .connection-dot{width:7px;height:7px;border-radius:50%;background:#82a595}
 .connection[data-state="lost"] .connection-dot{background:#bb8b47}
 .intro{margin-bottom:16px}
-.eyebrow{font-size:12px;color:var(--teal);font-weight:700;letter-spacing:1.2px;margin:0 0 7px}
 h1{font-size:28px;line-height:1.4;letter-spacing:-1.3px;margin:0 0 6px;font-weight:750}
-.intro p:last-child{color:var(--muted);margin:0;font-size:15px}
+.intro p{color:var(--muted);margin:0;font-size:15px}
 .scope{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:5px 12px;
   border:1px solid #d4dfd9;border-radius:8px;background:#edf2eb;font-size:13px;font-weight:600}
 .scope-dot{height:6px;width:6px;border-radius:50%;background:var(--teal)}
@@ -65,7 +66,7 @@ h1{font-size:28px;line-height:1.4;letter-spacing:-1.3px;margin:0 0 6px;font-weig
   overflow-wrap:anywhere;vertical-align:top}
 .operations-table th:first-child{width:15%}.operations-table th:nth-child(2){width:23%}
 .operations-table th:last-child{width:15%}
-.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0 16px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 16px}
 .metric{border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:15px 22px}
 .metric-label{color:var(--muted);font-size:13px;margin-bottom:8px}
 .metric-value{font-size:30px;line-height:1.2;font-weight:730;letter-spacing:-1px}
@@ -146,7 +147,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   padding-top:18px;border-top:1px solid #dde4db;color:var(--muted);font-size:12px}
 @media(max-width:760px){.app{padding:23px 17px}.header{margin-bottom:28px}
   .brand-name{font-size:18px}
-  .connection{font-size:11px}.main-grid{grid-template-columns:1fr}.metrics{gap:9px}
+  .connection{font-size:11px}.main-grid{grid-template-columns:1fr}
+  .metrics{gap:9px;grid-template-columns:repeat(2,1fr)}
   .metric{padding:16px 13px}.metric-value{font-size:26px}.metric-label{font-size:11px}
   h1{font-size:26px}.monitor-panel{padding:23px 20px}.settings{padding:21px}
   .details-panel,.saved-panel{padding:21px 20px}.saved-grid{grid-template-columns:1fr}
@@ -176,7 +178,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     <div class="brand">
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
       <div><div class="brand-name">Image Monitor</div>
-        <div class="brand-caption">새 글 목록 감시</div></div>
+        <div class="brand-caption">__PUBLIC_VERSION__</div></div>
     </div>
     <div class="header-actions">
       <div class="connection" id="connection" data-state="connecting">
@@ -201,7 +203,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     <p class="operations-state" id="operations-state" data-state="disabled" role="status">
       현황 확인 준비 중</p>
     <p class="operations-help" id="operations-help"></p>
-    <dl class="operations-counts" aria-label="기존 작업별 개수">
+    <dl class="operations-counts" aria-label="마지막 현황 확인 시점의 작업별 개수">
       <div class="operations-count"><dt>내용 미확인</dt>
         <dd id="operation-candidate-uninspected">0</dd></div>
       <div class="operations-count"><dt>저장 가능</dt><dd id="operation-save-ready">0</dd></div>
@@ -213,9 +215,9 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       <div class="operations-count"><dt>저장 확인 필요</dt>
         <dd id="operation-save-needs-review">0</dd></div>
     </dl>
-    <p class="operations-help">현황 확인은 기존 기록을 읽습니다.
-      완료 상태 확인은 이미 저장한 파일을 검증하고,
-      조건이 맞으면 기록된 작업의 Chrome을 정상 종료합니다. 이미지를 새로 저장하지 않습니다.</p>
+    <p class="operations-help">위 개수와 사유는 마지막 현황 확인 시점의 기록입니다.
+      감시를 중지한 뒤 ‘작업 현황 새로 확인’을 누르면 갱신됩니다.
+      ‘완료 상태 다시 확인’은 기존 파일을 검증하고 조건이 맞으면 해당 Chrome을 종료합니다.</p>
     <p class="operations-wait" id="operations-wait" role="status"></p>
     <p class="operations-finish" id="operations-finish" role="status"></p>
     <details class="operations-records" id="operations-records" hidden>
@@ -229,9 +231,9 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   </section>
 
   <section class="intro" aria-labelledby="page-title">
-    <p class="eyebrow">목록 감시</p>
-    <h1 id="page-title">새 글을 차근차근 확인합니다.</h1>
-    <p>새로 보이는 글의 후보를 기록합니다.</p>
+    <h1 id="page-title">새 글 감시</h1>
+    <p>감시 시작을 누르면 목록을 읽습니다. 내용 미확인 후보가 있으면 한 건을 자동으로 확인한 뒤
+      목록으로 돌아옵니다.</p>
     <div class="scope"><span class="scope-dot" aria-hidden="true"></span>만화 · ai · 제목+내용</div>
   </section>
 
@@ -240,8 +242,11 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       <div class="metric-value"><span id="candidate-count">0</span><small>개</small></div></div>
     <div class="metric"><div class="metric-label">이번 실행에서 추가</div>
       <div class="metric-value"><span id="new-count">0</span><small>개</small></div></div>
-    <div class="metric"><div class="metric-label">완료한 확인</div>
+    <div class="metric"><div class="metric-label">이번 실행의 목록 확인</div>
       <div class="metric-value"><span id="cycle-count">0</span><small>회</small></div></div>
+    <div class="metric"><div class="metric-label">이번 실행의 자동 후보 확인</div>
+      <div class="metric-value"><span id="auto-details-checked">0</span><small>건</small></div>
+    </div>
   </section>
 
   <div class="main-grid">
@@ -253,7 +258,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       </div>
       <p class="status-detail" id="status-detail">잠시 기다려 주세요.</p>
       <div class="times">
-        <div><div class="time-label">마지막 확인</div>
+        <div><div class="time-label">마지막 목록 확인</div>
           <div class="time-value" id="last-scan">아직 없음</div></div>
         <div><div class="time-label">다음 확인 가능 시각</div>
           <div class="time-value"><span id="next-scan">—</span>
@@ -267,18 +272,18 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     </section>
 
     <aside class="panel settings" aria-labelledby="settings-title">
-      <p class="section-label">확인 간격</p><h2 id="settings-title">서두르지 않고, 규칙적으로</h2>
+      <h2 id="settings-title">확인 간격</h2>
       <form id="settings-form">
         <label class="setting-label" for="interval">확인 사이의 최소 간격</label>
         <div class="input-row"><input id="interval" type="number" min="60" max="300"
           step="1" value="60" inputmode="numeric" required disabled>
           <span class="unit">초</span></div>
-        <p class="setting-help" id="setting-help">60~300초로 설정할 수 있습니다.<br>
-          감시를 중지한 뒤 변경해 주세요.</p>
+        <p class="setting-help" id="setting-help">목록이나 후보 하나를 확인한 뒤 기본 60초를
+          기다립니다. 감시를 중지하면 60~300초로 변경할 수 있습니다.</p>
         <button class="button" id="apply" type="submit" disabled>간격 적용</button>
       </form>
       <div class="browser-note"><span class="mini-dot" aria-hidden="true"></span>
-        Chrome에서 화면 없이 목록을 확인합니다.</div>
+        Chrome이 백그라운드에서 목록과 후보 내용을 확인합니다.</div>
     </aside>
   </div>
 
@@ -302,8 +307,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
         <h2 id="details-title">작성 시각과 본문 이미지를 확인합니다.</h2></div>
       <button class="button" id="inspect-candidates" type="button" disabled>후보 내용 확인</button>
     </div>
-    <p class="details-help">감시를 중지한 상태에서 기존 후보를 최대 두 개 확인합니다.
-      이미지 개수와 작성 시각 판정만 기록하며, 끝나면 멈춥니다.</p>
+    <p class="details-help">감시 중에는 목록 확인 사이에 후보 한 건씩 처리합니다.
+      중지 상태에서 ‘후보 내용 확인’을 누르면 최대 두 건을 확인하고 멈춥니다.</p>
     <p class="details-counts" id="details-counts">완료 0개 · 확인 필요 0개 · 미시도 0개</p>
     <table class="details-table" aria-label="최근 후보 내용 확인 결과" id="details-table" hidden>
       <thead><tr><th scope="col">확인 기록</th><th scope="col">작성 시각 판정</th>
@@ -314,8 +319,9 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   </section>
 
   <div class="notice">
-    <strong>감시 시작 이후의 새 글부터 기록합니다.</strong><br>
-    이전 시험 기록과 저장 파일은 유지됩니다. 이미지 자동 저장은 아직 연결하지 않았습니다.
+    <strong>이미지를 파일로 저장하려면</strong><br>
+    ZIP 기본 설정에서는 감시를 중지하고 RUN_MONITOR_BATCH.cmd를 연 뒤
+    전용 Chrome에서 ‘저장 시작’을 누르세요.
   </div>
   <p class="message" id="message" role="status" aria-live="polite"></p>
 
@@ -336,7 +342,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
   });
   const phases = {
     stopped: {title: '감시를 시작할 준비가 됐습니다.',
-      detail: '시작을 누르면 목록을 확인하고 새 후보를 기록합니다.', tone: ''},
+      detail: '감시 시작을 누르면 목록 확인부터 시작합니다.', tone: ''},
     starting: {title: '감시를 준비하고 있습니다.',
       detail: '기존 기록과 다음 확인 시각을 살펴봅니다.', tone: 'active'},
     scanning: {title: '목록을 확인하고 있습니다.',
@@ -355,7 +361,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     finishing_completed: {title: '완료 상태를 다시 확인하고 있습니다.',
       detail: '이미 저장한 파일을 검증하고 기록된 작업의 종료 상태를 확인합니다. ' +
         '이미지를 새로 저장하지 않습니다.', tone: 'active'},
-    waiting: {title: '다음 확인을 기다리고 있습니다.',
+    waiting: {title: '다음 목록 확인을 기다리고 있습니다.',
       detail: '앞 확인을 마친 뒤 정해진 간격만큼 기다립니다.', tone: 'active'},
     pausing: {title: '일시정지를 준비하고 있습니다.',
       detail: '진행 중인 확인을 마친 뒤 잠시 멈춥니다.', tone: ''},
@@ -378,6 +384,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     insufficient_free_space: '남은 저장 공간을 확인해 주세요. 새 목록 확인은 멈춘 상태입니다.',
     low_disk_space: '남은 저장 공간을 확인해 주세요. 새 목록 확인은 멈춘 상태입니다.',
     owned_browser_not_closed: '확인 창의 종료를 확인하지 못했습니다. 결과 TXT를 보내주세요.',
+    owned_browser_cleanup_unconfirmed: '확인 창의 종료를 확인하지 못해 감시를 멈췄습니다.',
+    another_worker_active: '다른 확인 작업이 끝나기를 기다리고 있습니다.',
     another_scan_owns_this_scope: '다른 확인 작업이 끝나기를 기다리고 있습니다.',
     waiting_for_worker: '다른 확인 작업이 끝나기를 기다리고 있습니다.',
     service_retry_after: '다음 확인까지 기다립니다. 서버에서 요청한 대기 시간도 지킵니다.',
@@ -389,6 +397,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     excluded_rows_unverified: '목록의 일부 행을 구분하지 못해 멈췄습니다. 이전 기록은 유지됩니다.',
     order_unverified: '목록 순서를 확인하지 못해 멈췄습니다. 이전 기록은 유지됩니다.',
     detail_inspection_failed: '후보 내용을 확인하지 못해 멈췄습니다. 결과 TXT를 보내주세요.',
+    detail_requires_review: '후보 내용을 확인하지 못해 감시를 멈췄습니다. 결과 TXT를 보내주세요.',
     candidate_identity_or_baseline_invalid: '기존 후보의 기준 정보를 확인하지 못했습니다. ' +
       '기록을 유지하고 확인을 멈췄습니다.',
     no_unattempted_candidates: '아직 내용을 확인하지 않은 후보가 없습니다.',
@@ -432,7 +441,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     const reasons = {
       no_existing_work: '기록된 후보나 저장 작업이 없습니다.',
       candidate_detail_required: '내용을 확인하지 않은 후보가 있습니다. ' +
-        '감시를 중지한 뒤 후보 내용 확인에서 확인할 수 있습니다.',
+        '감시 중에 순서대로 확인합니다.',
       candidate_detail_requires_review: '이전 후보 내용 확인을 마치지 못했습니다. ' +
         '기존 기록을 유지했습니다. 결과 TXT를 보내주세요.',
       save_ready: '내용 확인을 마쳐 저장할 수 있는 후보입니다.',
@@ -468,7 +477,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     text('operations-help', status === 'checking' ? '기존 기록과 대기 사유를 확인하고 있습니다.' :
       reason ? reasons[reason] : status === 'empty' ? reasons.no_existing_work :
         status === 'needs_review' ? reasons.operations_require_review :
-          '아래 개수는 내용 확인과 저장 작업의 현재 기록입니다.');
+          '마지막으로 확인한 후보와 저장 작업의 기록입니다.');
     const counts = state.operations_counts && typeof state.operations_counts === 'object' &&
       !Array.isArray(state.operations_counts) ? state.operations_counts : {};
     for (const key of Object.keys(labels)) {
@@ -558,7 +567,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     element('details-empty').hidden = !!body.childElementCount;
     text('details-empty', count(state.candidate_count) === 0 ?
       '기록된 후보가 없습니다. 감시에서 새 후보를 찾은 뒤 확인할 수 있습니다.' :
-      pending > 0 ? '확인할 후보가 있습니다. 감시를 중지한 뒤 후보 내용 확인을 눌러 주세요.' :
+      pending > 0 ? '미확인 후보가 있습니다. 감시를 시작하면 순서대로 확인합니다.' :
         '아직 내용을 확인한 후보가 없습니다.');
   }
   function renderSaved(state) {
@@ -657,7 +666,13 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     const savedTask = state.task_kind === 'saved';
     const localTask = savedTask || ['operations', 'finish', 'overview'].includes(state.task_kind);
     let info = phases[phase] || phases.unknown;
-    if (detailTask) {
+    if (state.task_kind === 'auto_details' && phase === 'waiting') {
+      info = {title: '후보 자동 확인을 기다리고 있습니다.',
+        detail: '대기 시간이 지나면 미확인 후보 한 건을 읽습니다.', tone: 'active'};
+    } else if (state.task_kind === 'auto_details' && phase === 'inspecting') {
+      info = {title: '후보 내용을 자동으로 확인하고 있습니다.',
+        detail: '작성 시각과 본문 이미지 개수를 기록한 뒤 목록 감시로 돌아갑니다.', tone: 'active'};
+    } else if (detailTask) {
       const detailPhases = {
         starting: {title: '후보 내용 확인을 준비하고 있습니다.',
           detail: '기존 후보와 필요한 대기 시간을 살펴봅니다.', tone: 'active'},
@@ -695,6 +710,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     text('candidate-count', count(state.candidate_count).toLocaleString('ko-KR'));
     text('new-count', count(state.new_candidates).toLocaleString('ko-KR'));
     text('cycle-count', count(state.completed_cycles).toLocaleString('ko-KR'));
+    text('auto-details-checked', count(state.auto_details_checked).toLocaleString('ko-KR'));
     text('status-title', closing ? '프로그램을 종료하고 있습니다.' : info.title);
     const reason = typeof state.reason === 'string' ? state.reason : '';
     const gap = typeof state.gap_reason === 'string' ? state.gap_reason : '';
@@ -860,7 +876,9 @@ input:disabled{background:#f4f6f4;color:#7d8985}
 
 
 def render_monitor_page(*, script_nonce: str) -> str:
-    """Render fixed markup with only a safely escaped server-generated CSP nonce."""
+    """Render the application version and the escaped server-generated CSP nonce."""
     if not isinstance(script_nonce, str) or not script_nonce:
         raise ValueError("A script nonce is required")
-    return _PAGE.replace("__SCRIPT_NONCE__", escape(script_nonce, quote=True))
+    return _PAGE.replace("__PUBLIC_VERSION__", PUBLIC_VERSION).replace(
+        "__SCRIPT_NONCE__", escape(script_nonce, quote=True)
+    )

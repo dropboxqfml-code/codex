@@ -1,4 +1,4 @@
-"""Exercise bounded detail work through the real monitor's owned worker."""
+"""Exercise automatic and manual detail work through the monitor's owned worker."""
 
 import json
 import threading
@@ -147,6 +147,7 @@ def test_two_details_obey_both_cooldowns_and_never_discover_or_change_baseline(
     assert status["detail_count"] == status["detail_completed_count"] == 2
     assert status["detail_pending_count"] == 1
     assert status["detail_failed_count"] == 0
+    assert status["auto_details_checked"] == 0
     assert status["completed_cycles"] == status["new_candidates"] == 0
     assert status["last_scan_at"] == last_scan
     assert calls == [NOW + timedelta(seconds=60), NOW + timedelta(seconds=120)]
@@ -532,6 +533,199 @@ def test_malformed_report_summaries_fail_closed(tmp_path, controllers, summary):
     assert value.wait_stopped(3)
     assert value.status()["phase"] == "needs_review"
     assert value.status()["error_type"] == "QueueError"
+
+
+def test_continuous_monitor_alternates_backlogged_details_and_list_scans(tmp_path, controllers):
+    clock = AutoClock()
+    seed(tmp_path, clock, candidates=("101", "102", "103"))
+    clock.advance(60)
+    record_detail(tmp_path, clock)
+    calls = []
+
+    def cycle(root, _browser, **_options):
+        calls.append(("list", clock.now()))
+        if len(calls) == 5:
+            value.stop()
+        return persist(root, clock)
+
+    def details(root, _browser, **options):
+        assert options["max_candidates"] == 1 and options["scope"] == MONITOR_SCOPE
+        assert value.status()["task_kind"] == "auto_details"
+        calls.append(("detail", clock.now()))
+        return record_detail(root, clock, http=404 if len(calls) == 2 else 200)
+
+    value = create(controllers, tmp_path, details, clock=clock, cycle=cycle)
+    value.configure(120)
+    assert value.status()["auto_details_checked"] == 0
+    value.start()
+    assert value.wait_stopped(3)
+    assert calls == [
+        (kind, NOW + timedelta(seconds=60 + i * 120))
+        for i, kind in enumerate(("list", "detail", "list", "detail", "list"), start=1)
+    ]
+    status = value.status()
+    assert status["phase"] == "stopped"
+    assert status["new_candidates"] == status["detail_pending_count"] == 0
+    assert status["auto_details_checked"] == 2
+    assert status["detail_completed_count"] == status["completed_cycles"] == 3
+
+
+def test_stop_in_automatic_detail_cooldown_keeps_unattempted_candidate(tmp_path, controllers):
+    clock = Clock()
+    observed = []
+
+    def cycle(root, _browser, **_options):
+        observed.append("list")
+        return persist(root, clock, added=("101",))
+
+    def details(*_args, **_kwargs):
+        observed.append("detail")
+
+    value = create(controllers, tmp_path, details, clock=clock, cycle=cycle)
+    value.start()
+    until(lambda: value.status()["phase"] == "waiting")
+    assert value.status()["task_kind"] == "auto_details"
+    assert value.status()["remaining_seconds"] == 60
+    value.stop()
+    assert value.wait_stopped(3)
+    assert observed == ["list"]
+    assert value.status()["detail_count"] == value.status()["auto_details_checked"] == 0
+    assert value.status()["detail_pending_count"] == 1
+
+
+def test_automatic_detail_resumes_same_slot_after_pause(tmp_path, controllers):
+    clock = Clock()
+    calls = []
+
+    def cycle(root, _browser, **_kwargs):
+        calls.append("list")
+        return persist(root, clock, added=("101",))
+
+    def details(root, _browser, **_kwargs):
+        calls.append("detail")
+        report = record_detail(root, clock)
+        value.stop()
+        return report
+
+    value = create(controllers, tmp_path, details, clock=clock, cycle=cycle)
+    value.start()
+    until(lambda: value.status()["phase"] == "waiting")
+    value.pause()
+    until(lambda: value.status()["phase"] == "paused")
+    clock.advance(60)
+    assert value.status()["task_kind"] == "auto_details" and calls == ["list"]
+    value.start()
+    assert value.wait_stopped(3)
+    assert calls == ["list", "detail"]
+    assert value.status()["auto_details_checked"] == 1
+
+
+def test_new_list_gap_during_cooldown_prevents_reserved_automatic_detail(tmp_path, controllers):
+    class ChangedCoverageClock(Clock):
+        def wait_for(self, event, seconds):
+            self.advance(seconds)
+            persist(tmp_path, self, complete=False)
+
+    clock = ChangedCoverageClock()
+    calls = []
+
+    def cycle(root, _browser, **_kwargs):
+        calls.append("list")
+        return persist(root, clock, added=("101",))
+
+    def details(*_args, **_kwargs):
+        calls.append("detail")
+
+    value = create(controllers, tmp_path, details, clock=clock, cycle=cycle)
+    value.start()
+    assert value.wait_stopped(3)
+    status = value.status()
+    assert calls == ["list"]
+    assert status["phase"] == "needs_review" and status["reason"] == "scan_requires_review"
+    assert status["detail_pending_count"] == 1 and status["auto_details_checked"] == 0
+
+
+@pytest.mark.parametrize("http", [429, 503])
+def test_auto_detail_retry_after_is_respected_before_next_list_scan(tmp_path, controllers, http):
+    clock = AutoClock()
+    calls = []
+    deadline = NOW + timedelta(seconds=3660)
+
+    def cycle(root, _browser, **_kwargs):
+        calls.append(("list", clock.now()))
+        if len(calls) > 1:
+            value.stop()
+        return persist(root, clock, added=("101", "102"))
+
+    def details(root, _browser, **_kwargs):
+        calls.append(("detail", clock.now()))
+        result = record_detail(root, clock, http=http)
+        with QueueStore(root / "watch.sqlite") as queue:
+            queue.defer_service("dcinside", deadline)
+        result.update(status="candidate_waiting", next_eligible_at_local=deadline.isoformat())
+        return result
+
+    value = create(controllers, tmp_path, details, clock=clock, cycle=cycle)
+    value.start()
+    assert value.wait_stopped(3)
+    assert calls == [("list", NOW), ("detail", NOW + timedelta(seconds=60)), ("list", deadline)]
+    status = value.status()
+    assert status["phase"] == "stopped"
+    assert status["detail_failed_count"] == status["detail_pending_count"] == 1
+    assert status["auto_details_checked"] == 0
+
+
+@pytest.mark.parametrize(
+    ("outcome", "reason"),
+    [
+        ("access_block", "access_block_requires_review"),
+        ("unknown", "detail_requires_review"),
+        ("cleanup_unconfirmed", "owned_browser_cleanup_unconfirmed"),
+        ("missing_commit", "detail_stopped_for_review"),
+    ],
+)
+def test_automatic_detail_review_prevents_any_next_list_or_detail(
+    tmp_path, controllers, outcome, reason
+):
+    clock = AutoClock()
+    calls = []
+
+    def cycle(root, _browser, **_kwargs):
+        calls.append("list")
+        assert len(calls) == 1
+        return persist(root, clock, added=("101", "102"))
+
+    def details(root, _browser, **_kwargs):
+        calls.append("detail")
+        if outcome == "access_block":
+            return record_detail(root, clock, http=403)
+        if outcome == "unknown":
+            return record_detail(root, clock, time_status="unknown")
+        if outcome == "missing_commit":
+            return {
+                "status": "candidate_test_completed",
+                "candidates_completed": 1,
+                "browser_closed": True,
+                "details": [
+                    {
+                        "status": "observed",
+                        "http_status": 200,
+                        "time_status": "at_or_after_baseline",
+                    }
+                ],
+                "next_eligible_at_local": (clock.now() + timedelta(seconds=60)).isoformat(),
+            }
+        return record_detail(root, clock) | {"browser_closed": False}
+
+    value = create(controllers, tmp_path, details, clock=clock, cycle=cycle)
+    value.start()
+    assert value.wait_stopped(3)
+    assert calls == ["list", "detail"]
+    status = value.status()
+    assert status["phase"] == "needs_review" and status["reason"] == reason
+    assert status["auto_details_checked"] == 0
+    with pytest.raises(QueueError):
+        value.start()
 
 
 @pytest.mark.parametrize("task_kind", ["list", "details"])

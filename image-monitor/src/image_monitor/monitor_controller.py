@@ -168,7 +168,7 @@ class _Clock:
 
 
 class MonitorController:
-    """Start stopped and record only newly observed list candidates.
+    """Start stopped, then alternate discovery with pending candidate inspections.
 
     This new watch scope leaves the earlier trial's baseline and candidates
     intact. Its first valid scan creates a new-only baseline. Missing coverage
@@ -239,6 +239,7 @@ class MonitorController:
             "browser_closed": True,
             "settings_editable": True,
             "detail_count": 0,
+            "auto_details_checked": 0,
             "detail_pending_count": 0,
             "detail_completed_count": 0,
             "detail_failed_count": 0,
@@ -802,7 +803,10 @@ class MonitorController:
             self._wake.clear()
             self._state["phase"] = "starting"
             self._thread = threading.Thread(
-                target=self._work_details, name="image-monitor-details", daemon=True
+                target=self._work,
+                kwargs={"details_only": True},
+                name="image-monitor-details",
+                daemon=True,
             )
             self._thread.start()
             return self.status()
@@ -1132,72 +1136,56 @@ class MonitorController:
         self._review("detail_requires_review", error_type=report.get("error_type"))
         return False, processed
 
-    def _work_details(self):
-        processed = 0
-        try:
-            while processed < MAX_DETAIL_BATCH and not self._stop.is_set():
-                if self._pause.is_set():
-                    self._set(phase="paused")
-                    self._wait(60)
-                    continue
-                eligibility, due = self._read_source()
-                if eligibility == "blocked":
-                    self._review("access_block_requires_review")
-                    break
-                if not self._state["baseline_initialized"]:
-                    self._review("existing_baseline_required")
-                    break
-                if self._state["detail_pending_count"] == 0:
-                    self._set(reason="no_unattempted_candidates")
-                    break
-                if self._extra_due is not None:
-                    due = max(due, self._extra_due)
-                self._set(next_eligible_at=_stamp(due))
-                remaining = (due - self._clock.now()).total_seconds()
-                if remaining > 0:
-                    self._set(phase="waiting")
-                    self._wait(remaining)
-                    continue
-                if self._requested_stop():
-                    continue
-                if shutil.disk_usage(self.work_root).free < MIN_FREE_BYTES:
-                    self._review("insufficient_free_space")
-                    break
-                self._set(phase="inspecting", reason=None, browser_closed=None)
-                report = self._run_details(
-                    self.work_root,
-                    "chrome",
-                    scope=MONITOR_SCOPE,
-                    max_candidates=1,
-                    interval_seconds=self._state["interval_seconds"],
-                    should_stop=self._requested_stop,
-                    clock=self._clock,
-                )
-                keep_going, count = self._after_detail(report)
-                processed += count
-                if not keep_going:
-                    break
-        except BaseException as error:
-            self._review("detail_stopped_for_review", error_type=type(error).__name__)
-        finally:
+    def _inspect_one(self, *, automatic):
+        completed_before = self._state["detail_completed_count"]
+        self._set(phase="inspecting", reason=None, browser_closed=None)
+        report = self._run_details(
+            self.work_root,
+            "chrome",
+            scope=MONITOR_SCOPE,
+            max_candidates=1,
+            interval_seconds=self._state["interval_seconds"],
+            should_stop=self._requested_stop,
+            clock=self._clock,
+        )
+        keep_batch, count = self._after_detail(report)
+        if automatic and keep_batch and report["status"] == "candidate_test_completed":
+            if self._state["detail_completed_count"] <= completed_before:
+                raise QueueError("The completed automatic inspection has no durable result")
             with self._lock:
-                if self._state["phase"] != "needs_review":
-                    self._state["phase"] = "stopped"
+                self._state["auto_details_checked"] = min(
+                    2**31 - 1, self._state["auto_details_checked"] + 1
+                )
+        return keep_batch, count
 
-    def _work(self):
+    def _work(self, *, details_only=False):
+        task = "details" if details_only else "list"
+        processed = 0
         try:
             while not self._stop.is_set():
                 if self._pause.is_set():
-                    self._set(phase="paused")
+                    self._set(task_kind=task, phase="paused")
                     self._wait(60)
                     continue
                 eligibility, due = self._read_source()
                 if eligibility == "blocked":
                     self._review("access_block_requires_review")
                     break
+                if task == "auto_details" and self._state["gap_reason"] is not None:
+                    self._review("scan_requires_review")
+                    break
+                if task != "list":
+                    if not self._state["baseline_initialized"]:
+                        self._review("existing_baseline_required")
+                        break
+                    if self._state["detail_pending_count"] == 0:
+                        if details_only:
+                            self._set(reason="no_unattempted_candidates")
+                            break
+                        task = "list"
                 if self._extra_due is not None:
                     due = max(due, self._extra_due)
-                self._set(next_eligible_at=_stamp(due))
+                self._set(task_kind=task, next_eligible_at=_stamp(due))
                 remaining = (due - self._clock.now()).total_seconds()
                 if remaining > 0:
                     self._set(phase="waiting")
@@ -1208,6 +1196,19 @@ class MonitorController:
                 if shutil.disk_usage(self.work_root).free < MIN_FREE_BYTES:
                     self._review("insufficient_free_space")
                     break
+                if task != "list":
+                    keep_batch, count = self._inspect_one(automatic=not details_only)
+                    if self._state["phase"] == "needs_review":
+                        break
+                    if details_only:
+                        processed += count
+                        if not keep_batch or processed == MAX_DETAIL_BATCH:
+                            break
+                    else:
+                        # Give the next eligible service slot back to discovery,
+                        # even if more candidates remain or a server wait applied.
+                        task = "list"
+                    continue
                 self._set(phase="scanning", reason=None, browser_closed=None)
                 report = self._run_cycle(
                     self.work_root,
@@ -1220,8 +1221,14 @@ class MonitorController:
                 )
                 if not self._after_cycle(report):
                     break
+                if (
+                    report["status"] == "watch_test_completed"
+                    and self._state["detail_pending_count"]
+                ):
+                    task = "auto_details"
         except BaseException as error:
-            self._review("monitor_stopped_for_review", error_type=type(error).__name__)
+            reason = "monitor_stopped_for_review" if task == "list" else "detail_stopped_for_review"
+            self._review(reason, error_type=type(error).__name__)
         finally:
             with self._lock:
                 if self._state["phase"] != "needs_review":

@@ -324,9 +324,9 @@ if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo Offline verification of the alr
 if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo Shared pending state is cleared only after the prior dedicated browser is verified closed and all saved artifacts match.
 if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo Only the dedicated test browser may receive a normal close request after saved-file and exact ownership checks. Personal browser windows are not used.
 if "%CANDIDATE_FINISH%"=="1" >>"%LOG_FILE%" echo No browser is launched or forced closed, no images are saved again, and no Start button is required. This TXT opens automatically.
-if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Local status screen for continuous list discovery. Background reader: Chrome.
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Local status screen for list discovery and automatic candidate inspection. Background reader: Chrome.
 if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Watching begins only after you choose Start in the screen. Use Pause, Stop, or Exit there.
-if "%MONITOR%"=="1" >>"%LOG_FILE%" echo The new monitor watch records newly seen posts; previous trial records and saved images are retained.
+if "%MONITOR%"=="1" >>"%LOG_FILE%" echo After a successful list check, the monitor can inspect one unattempted candidate before the next list check.
 if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Existing saved monitor images are verified locally when the screen opens; no site request or native input starts for this check.
 if "%MONITOR%"=="1" >>"%LOG_FILE%" echo No images are saved, no saved files are changed, and no native recovery is started. Choose Exit when finished; this TXT opens automatically.
 if "%MONITOR_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo Native saving of one frozen candidate from the local monitor, at most two reviewed images.
@@ -512,7 +512,7 @@ exit /b 0
 
 :start_monitor
 echo Opening the local monitoring screen and checking existing saved results offline.
-echo Choose Start only when you want to begin list watching.
+echo Choose Start to watch the list and inspect candidate posts in the background.
 echo Use Pause or Stop as needed, then choose Exit when finished. One result TXT will open.
 >>"%LOG_FILE%" echo STAGE: monitor
 "%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor --work-root "%LOCALAPPDATA%\ImageMonitorWatch" --save-root "%LOCALAPPDATA%\ImageMonitorMonitorSave" --batch-root "%LOCALAPPDATA%\ImageMonitorBatch" >>"%LOG_FILE%" 2>&1

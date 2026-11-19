@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "image-monitor"
-version = "0.1.0"
-description = "Windows native-save image monitor: development foundation"
+dynamic = ["version"]
+description = "Windows image monitor with browser-native saving"
 requires-python = ">=3.12,<3.13"
 dependencies = ["Pillow>=11.1,<13", "tzdata>=2025.1"]
 
@@ -18,6 +18,13 @@ windows = [
 
 [project.scripts]
 image-monitor = "image_monitor.__main__:main"
+
+[tool.hatch.version]
+path = "src/image_monitor/VERSION"
+pattern = '^(?P<version>\S+)$'
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/image_monitor/VERSION" }]
 
 [dependency-groups]
 dev = ["pytest>=8.3,<10", "ruff>=0.11,<1"]

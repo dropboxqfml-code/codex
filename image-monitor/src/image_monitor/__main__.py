@@ -3,12 +3,14 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from image_monitor import PUBLIC_VERSION
 from image_monitor.paths import destination, plan_folder
 from image_monitor.validation import verify_image
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Image monitor development and native-save probe")
+    parser.add_argument("--version", action="version", version=f"Image Monitor {PUBLIC_VERSION}")
     commands = parser.add_subparsers(dest="command", required=True)
     plan = commands.add_parser("plan", help="Preview a path without creating directories")
     plan.add_argument("--root", type=Path, required=True)

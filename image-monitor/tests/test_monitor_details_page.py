@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from image_monitor import PUBLIC_VERSION
 from image_monitor.monitor_page import render_monitor_page
 
 BASE_URL = "http://127.0.0.1:39781/owned-test-capability/"
@@ -144,6 +145,33 @@ def test_detail_button_uses_bounded_action_and_preserves_pause_resume_stop_and_e
         {"action": "exit"},
     ]
     assert all(value.startswith(BASE_URL) for value in state.requests)
+
+
+def test_automatic_candidate_turn_shows_next_action_then_returns_to_the_list(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    state.snapshot.update(
+        task_kind="auto_details", phase="waiting", settings_editable=False, remaining_seconds=60
+    )
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    expect(page.locator(".brand-caption")).to_have_text(PUBLIC_VERSION)
+    expect(page.locator("#status-title")).to_have_text("후보 자동 확인을 기다리고 있습니다.")
+    expect(page.locator("#countdown")).to_have_text("1분 0초 후")
+    expect(page.locator("#auto-details-checked")).to_have_text("0")
+    expect(page.locator("#inspect-candidates")).to_be_disabled()
+    expect(page.locator("#stop")).to_be_enabled()
+    page.locator("#pause").click()
+    expect(page.locator("#start")).to_have_text("계속 감시")
+    page.locator("#start").click()
+    expect(page.locator("#status-title")).to_have_text("후보 자동 확인을 기다리고 있습니다.")
+    state.snapshot.update(phase="inspecting", browser_closed=None)
+    expect(page.locator("#status-title")).to_have_text("후보 내용을 자동으로 확인하고 있습니다.")
+    state.snapshot.update(task_kind="list", phase="waiting", auto_details_checked=1)
+    expect(page.locator("#status-title")).to_have_text("다음 목록 확인을 기다리고 있습니다.")
+    expect(page.locator("#auto-details-checked")).to_have_text("1")
+    expect(page.locator("#cycle-count")).to_have_text("2")
+    assert state.actions == [{"action": "pause"}, {"action": "start"}]
 
 
 @pytest.mark.parametrize(

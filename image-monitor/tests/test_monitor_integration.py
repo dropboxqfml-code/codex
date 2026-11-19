@@ -1,5 +1,6 @@
-"""Run two periodic discovery cycles with real browser DOM and durable records."""
+"""Exercise continuous discovery and detail inspection with routed browser DOM."""
 
+import io
 import shutil
 import sys
 import threading
@@ -7,9 +8,12 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from PIL import Image
+from test_candidate_trial_browser import image_url, post_html, post_url
 from test_watch_trial_browser import list_html
 
-from image_monitor import watch_browser, watch_runtime
+from image_monitor import candidate_browser, candidate_runtime, watch_browser, watch_runtime
+from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.monitor_controller import MONITOR_SCOPE, MonitorController
 from image_monitor.queue import QueueStore
 from image_monitor.search_list import build_list_url
@@ -97,6 +101,7 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
         if not executable:
             pytest.skip("Installed Chromium unavailable")
         monkeypatch.setattr(watch_runtime, "require_windows", lambda: None)
+        monkeypatch.setattr(candidate_runtime, "require_windows", lambda: None)
         monkeypatch.setattr(watch_browser, "require_windows", lambda: None)
         monkeypatch.setattr(watch_browser, "browser_executable", lambda _: Path(executable))
 
@@ -105,16 +110,25 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
     first_url = build_list_url("normal", "comic_new6", "ai")
     second_url = build_list_url("normal", "comic_new6", "ai", page=2)
     third_url = build_list_url("normal", "comic_new6", "ai", page=3)
-    documents = [
-        (first_url, list_html([100, 99], second_url)),
+    latest_pages = [
         (first_url, list_html([104, 103, 100, 99], second_url)),
         (second_url, list_html([98, 97], third_url)),
     ]
+    documents = [
+        (first_url, list_html([100, 99], second_url)),
+        *latest_pages,
+        (post_url("103"), post_html("103", "2026.11.17 17:01:00")),
+        *latest_pages,
+    ]
+    png = io.BytesIO()
+    Image.new("RGB", (4, 3)).save(png, format="PNG")
     navigation = []
+    image_requests = []
     unexpected_requests = []
     owned_browsers = []
     sessions = []
     reports = []
+    detail_reports = []
     worker_ids = []
 
     def local_document(route):
@@ -127,11 +141,14 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
             html = documents[len(navigation)][1]
             navigation.append(request.url)
             route.fulfill(status=200, content_type="text/html; charset=utf-8", body=html)
+        elif request.resource_type == "image" and request.url == image_url("103"):
+            image_requests.append(request.url)
+            route.fulfill(status=200, content_type="image/png", body=png.getvalue())
         else:
             unexpected_requests.append(request.url)
             route.abort()
 
-    class RoutedBrowser(watch_browser.HeadlessWatchBrowser):
+    class RoutedSession:
         def __enter__(self):
             entered = super().__enter__()
             sessions.append(self)
@@ -139,10 +156,16 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
             self._page.context.route("**/*", local_document)
             return entered
 
+    class RoutedBrowser(RoutedSession, watch_browser.HeadlessWatchBrowser):
+        pass
+
+    class RoutedCandidate(RoutedSession, candidate_browser.HeadlessCandidateBrowser):
+        pass
+
     clock = MonitorClock()
 
     def run_cycle(*args, **kwargs):
-        assert len(reports) < 2, "The monitor began an unexpected extra scan"
+        assert len(reports) < 3, "The monitor began an unexpected extra scan"
         assert kwargs["scope"] == MONITOR_SCOPE
         assert kwargs["cycles"] == 1
         assert kwargs["interval_seconds"] == 60
@@ -151,12 +174,24 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
         worker_ids.append(threading.get_ident())
         report = watch_runtime.run_watch_trial(*args, backend_factory=RoutedBrowser, **kwargs)
         reports.append(report)
-        if len(reports) == 2:
+        if len(reports) == 3:
             controller.stop()
         return report
 
+    def run_details(*args, **kwargs):
+        assert controller.status()["task_kind"] == "auto_details"
+        assert kwargs["max_candidates"] == 1
+        worker_ids.append(threading.get_ident())
+        report = candidate_runtime.run_candidate_trial(
+            *args, backend_factory=RoutedCandidate, **kwargs
+        )
+        detail_reports.append(report)
+        return report
+
     with watch_run_lock(database, MONITOR_SCOPE, purpose="monitor"):
-        controller = MonitorController(tmp_path, run_cycle=run_cycle, clock=clock)
+        controller = MonitorController(
+            tmp_path, run_cycle=run_cycle, run_details=run_details, clock=clock
+        )
         assert controller.status()["phase"] == "stopped"
         assert not controller.status()["baseline_initialized"]
         try:
@@ -168,18 +203,21 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
 
     status = controller.status()
     assert status["phase"] == "stopped", status
-    assert status["completed_cycles"] == 2
+    assert status["completed_cycles"] == 3
     assert status["candidate_count"] == status["new_candidates"] == 2
+    assert status["detail_completed_count"] == status["detail_pending_count"] == 1
     assert status["baseline_initialized"]
     assert status["browser_closed"] is True
     assert len(set(worker_ids)) == 1 and worker_ids[0] != threading.get_ident()
-    assert sum(clock.waits) == 60
-    assert navigation == [first_url, first_url, second_url]
-    assert unexpected_requests == []
-    assert [report["status"] for report in reports] == ["watch_test_completed"] * 2
-    assert [report["cycles"][0]["navigation_attempts"] for report in reports] == [1, 2]
-    assert [report["new_candidates"] for report in reports] == [0, 2]
-    assert len(sessions) == len(owned_browsers) == 2
+    assert clock.waits == [60, 60, 60]
+    assert navigation == [url for url, _ in documents]
+    assert image_requests == [image_url("103")] and unexpected_requests == []
+    assert [report["status"] for report in reports] == ["watch_test_completed"] * 3
+    assert [report["cycles"][0]["navigation_attempts"] for report in reports] == [1, 2, 2]
+    assert [report["new_candidates"] for report in reports] == [0, 2, 0]
+    assert len(detail_reports) == 1 and detail_reports[0]["status"] == "candidate_test_completed"
+    assert detail_reports[0]["images_saved"] is False
+    assert len(sessions) == len(owned_browsers) == 4
     assert all(session.browser_closed is True for session in sessions)
     assert all(browser.is_connected() is False for browser in owned_browsers)
 
@@ -188,7 +226,7 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
         store = WatchStore(queue)
         state = store.get_state(MONITOR_SCOPE)
         scans = list(reversed(store.list_scans(MONITOR_SCOPE)))
-        assert state["generation"] == 2
+        assert state["generation"] == 3
         assert state["baseline"]["anchor_ids"] == ["100", "99"]
         assert state["checkpoint"]["anchor_ids"] == ["104", "103", "100", "99"]
         assert {row["post_id"] for row in store.list_candidates(MONITOR_SCOPE)} == {"104", "103"}
@@ -197,9 +235,19 @@ def test_periodic_monitor_uses_real_dom_and_preserves_the_existing_trial(tmp_pat
         snapshots = [
             page for scan in scans for page in scan["result"]["private_observation"]["pages"]
         ]
-        assert len(snapshots) == 3
+        assert len(snapshots) == 5
         assert all(page["layout_status"] == "site_verified" for page in snapshots)
         assert queue.summary()["posts"] == queue.summary()["jobs"] == 0
-        first_scan, second_scan = (datetime.fromisoformat(scan["observed_at"]) for scan in scans)
-        assert second_scan - first_scan >= timedelta(seconds=60)
+        first_scan, second_scan, third_scan = (
+            datetime.fromisoformat(scan["observed_at"]) for scan in scans
+        )
+        (detail,) = CandidateDetailStore(queue).list_details(MONITOR_SCOPE)
+        assert detail["result"]["classification"]["time_status"] == "at_or_after_baseline"
+        assert (
+            detail["result"]["private_observation"]["snapshot"]["image_counts"]["included_unique"]
+            == 1
+        )
+        assert second_scan - first_scan == timedelta(seconds=60)
+        assert datetime.fromisoformat(detail["started_at"]) - second_scan == timedelta(seconds=60)
+        assert third_scan - datetime.fromisoformat(detail["finished_at"]) == timedelta(seconds=60)
     assert not (tmp_path / "images").exists()

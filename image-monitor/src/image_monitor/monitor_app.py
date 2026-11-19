@@ -9,6 +9,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.monitor_controller import MONITOR_SCOPE, MonitorController
 from image_monitor.monitor_page import render_monitor_page
@@ -192,6 +193,7 @@ def _public_status(status, *, include_preview_ids=False):
     if not isinstance(status, dict):
         raise ValueError("A monitor status object is required")
     result = {key: status[key] for key in _STATUS_FIELDS if key in status}
+    result["auto_details_checked"] = _public_count(status.get("auto_details_checked"))
     result.update(_public_operations(status))
     # Detail rows are anonymous structure summaries, never private observations.
     # Bound and project these separately so a future controller field cannot
@@ -484,6 +486,7 @@ def share_monitor_report(report):
         "browser_closed",
     )
     public = {key: report[key] for key in fields if key in report}
+    public["program_version"] = PUBLIC_VERSION
     if isinstance(report.get("monitor_status"), dict):
         public["monitor_status"] = _public_status(report["monitor_status"])
     return public
@@ -530,6 +533,7 @@ def run_monitor_app(
     report_path = run_directory / "report.json"
     report = {
         "schema_version": 1,
+        "program_version": PUBLIC_VERSION,
         "mode": "local_discovery_monitor",
         "status": "monitor_failed",
         "last_stage": "monitor_ownership",

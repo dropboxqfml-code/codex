@@ -330,7 +330,8 @@ def test_real_browser_data_original_placeholder_is_not_accepted_as_loaded_image(
         + """<div class="write_div"><img src="https://fixture.invalid/placeholder.png"
       data-original="https://fixture.invalid/actual.png"></div>"""
     )
-    snapshot = inspect_post(current, expected_url=URL, observed_at=NOW, timeout_ms=150)
+    # Allow the browser to finish the initial DOM inspection and reach the lazy image check.
+    snapshot = inspect_post(current, expected_url=URL, observed_at=NOW, timeout_ms=1500)
     assert snapshot["images"] == []
     assert snapshot["pending_images"][0]["reason"] == "image_loading_timed_out"
 

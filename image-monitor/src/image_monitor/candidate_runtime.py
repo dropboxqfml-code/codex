@@ -266,12 +266,15 @@ def run_candidate_trial(
                     # Recheck ownership and consumption while holding the same lease as list and
                     # detail navigation. Another process may have used the slot during cooldown.
                     latest = state["latest_scan"]
-                    if (
-                        scope != _MONITOR_SCOPE
-                        or not latest
-                        or latest["scan_id"] != expected_scan_id
-                    ):
-                        raise QueueError("List coverage changed before candidate inspection")
+                    if scope != _MONITOR_SCOPE:
+                        raise QueueError("An expected scan requires the monitor scope")
+                    if not latest or latest["scan_id"] != expected_scan_id:
+                        report.update(
+                            status="candidate_test_failed",
+                            reason="source_scan_changed",
+                            error_type="QueueError",
+                        )
+                        return report
                 if queue.summary()["posts"] or queue.summary()["jobs"]:
                     raise QueueError("Candidate inspection requires the separate watch database")
                 baseline = state["baseline"]

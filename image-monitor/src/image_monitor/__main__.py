@@ -59,6 +59,10 @@ def main() -> int:
     monitor.add_argument(
         "--batch-root", type=Path, help="Also read completed batch images; requires --save-root"
     )
+    resume_once = commands.add_parser(
+        "monitor-resume-once", help="Resume one outstanding monitor detail check and exit"
+    )
+    resume_once.add_argument("--work-root", type=Path, required=True)
     diagnosis = commands.add_parser(
         "monitor-diagnosis",
         help="Read the last stored list-profile failure without starting a browser",
@@ -136,6 +140,15 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "monitor-resume-once":
+        from image_monitor.monitor_resume_once import (
+            monitor_resume_once_exit_code,
+            run_monitor_resume_once,
+        )
+
+        report = run_monitor_resume_once(args.work_root)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return monitor_resume_once_exit_code(report)
     if args.command == "monitor-diagnosis":
         from image_monitor.artifact_files import _plain_path
         from image_monitor.monitor_diagnosis import read_latest_list_diagnosis

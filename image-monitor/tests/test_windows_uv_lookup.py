@@ -163,6 +163,7 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
         ("RUN_CANDIDATE_SAVE_TEST.cmd", "--candidate-save-test --chrome"),
         ("RUN_CANDIDATE_FINISH.cmd", "--candidate-finish"),
         ("RUN_MONITOR.cmd", "--monitor --chrome"),
+        ("RUN_MONITOR_RESUME.cmd", "--monitor-resume-once"),
         ("RUN_POST_SAVE_TEST.cmd", "--save-post --chrome"),
         ("RETRY_POST_SAVE_TEST.cmd", "--save-post --chrome --resume-preinput"),
     ],

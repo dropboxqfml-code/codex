@@ -251,10 +251,15 @@ def test_watch_detail_opens_one_result_and_preserves_the_cli_exit_code(tmp_path,
             'if "%WATCH_IMAGES_CHECK%"=="1" goto check_watch_images',
             "watch_images_check",
         ),
+        (
+            "RUN_MONITOR_RESUME.cmd",
+            'if "%MONITOR_RESUME_ONCE%"=="1" goto start_monitor_resume',
+            "monitor_resume_once",
+        ),
     ],
 )
 @pytest.mark.parametrize("code", [0, 2])
-def test_watch_images_uses_exact_roots_and_opens_one_result(
+def test_watch_command_uses_exact_roots_and_opens_one_result(
     tmp_path, code, wrapper_name, dispatch, stage
 ):
     central = launcher_after_setup(dispatch)
@@ -285,16 +290,19 @@ def test_watch_images_uses_exact_roots_and_opens_one_result(
         f'OPEN_RESULT="{log}"'
     ]
     content = log.read_text("utf-8")
-    expected_args = [
-        "--watch-root",
-        str(appdata / "ImageMonitorWatch"),
-        "--legacy-root",
-        str(appdata / "ImageMonitorCandidateSave"),
-        "--work-root",
-        str(appdata / "ImageMonitorWatchImages"),
-    ]
-    if stage == "watch_images":
-        expected_args.extend(["--browser", "chrome"])
+    if stage == "monitor_resume_once":
+        expected_args = ["--work-root", str(appdata / "ImageMonitorWatch")]
+    else:
+        expected_args = [
+            "--watch-root",
+            str(appdata / "ImageMonitorWatch"),
+            "--legacy-root",
+            str(appdata / "ImageMonitorCandidateSave"),
+            "--work-root",
+            str(appdata / "ImageMonitorWatchImages"),
+        ]
+        if stage == "watch_images":
+            expected_args.extend(["--browser", "chrome"])
     assert json.dumps(expected_args, ensure_ascii=False) in content
     lines = content.splitlines()
     assert [line for line in lines if line.startswith("STAGE:")] == [f"STAGE: {stage}"]
@@ -304,14 +312,21 @@ def test_watch_images_uses_exact_roots_and_opens_one_result(
 
 
 @WINDOWS
-def test_incomplete_watch_check_bundle_opens_one_setup_error_result(tmp_path):
+@pytest.mark.parametrize(
+    ("wrapper_name", "stage"),
+    [
+        ("CHECK_WATCH_IMAGES.cmd", "WATCH_IMAGES_CHECK"),
+        ("RUN_MONITOR_RESUME.cmd", "MONITOR_RESUME_ONCE"),
+    ],
+)
+def test_incomplete_watch_bundle_opens_one_setup_error_result(tmp_path, wrapper_name, stage):
     folder = tmp_path / "missing setup"
     central = (PROJECT / "RUN_WINDOWS_TEST.cmd").read_text("ascii")
     copy_launcher(
         folder,
         central.replace('start "" notepad.exe "%LOG_FILE%"', 'echo OPEN_RESULT="%LOG_FILE%"'),
     )
-    wrapper = folder / "CHECK_WATCH_IMAGES.cmd"
+    wrapper = folder / wrapper_name
     wrapper.write_bytes((PROJECT / wrapper.name).read_bytes())
     result = run_cmd(wrapper, [])
     assert result.returncode == 1
@@ -321,6 +336,4 @@ def test_incomplete_watch_check_bundle_opens_one_setup_error_result(tmp_path):
     ]
     lines = log.read_text("utf-8").splitlines()
     assert not any(line.startswith("STAGE:") for line in lines)
-    assert [line for line in lines if line.startswith("RESULT:")] == [
-        "RESULT: STOPPED - WATCH_IMAGES_CHECK"
-    ]
+    assert [line for line in lines if line.startswith("RESULT:")] == [f"RESULT: STOPPED - {stage}"]

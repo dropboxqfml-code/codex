@@ -26,6 +26,8 @@ set "MONITOR_DIAGNOSIS=0"
 set "WATCH_DETAIL=0"
 set "WATCH_IMAGES=0"
 set "WATCH_IMAGES_CHECK=0"
+set "MONITOR_RESUME_ONCE=0"
+if /i "%~1"=="--monitor-resume-once" goto monitor_resume_arguments
 if /i "%~1"=="--watch-images-check" goto watch_images_check_arguments
 if /i "%~1"=="--watch-images" goto watch_images_arguments
 if /i "%~1"=="--watch-detail" goto watch_detail_arguments
@@ -51,6 +53,14 @@ if /i "%~1"=="--save-post" goto option_save_post
 if /i "%~1"=="--resume-preinput" goto option_resume_preinput
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
 exit /b 2
+
+:monitor_resume_arguments
+if not "%~2"=="" exit /b 2
+set "CHECK_LABEL=resume pending monitor detail"
+set "MONITOR_RESUME_ONCE=1"
+set "WATCH_RESULT=MONITOR_RESUME_ONCE"
+set "WATCH_EXIT_CODE="
+goto new_log
 
 :watch_images_check_arguments
 if not "%~2"=="" exit /b 2
@@ -344,6 +354,8 @@ set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
+if "%MONITOR_RESUME_ONCE%"=="1" >>"%LOG_FILE%" echo Check the next pending post from the previous monitor session in background Chrome if its turn is due.
+if "%MONITOR_RESUME_ONCE%"=="1" goto check_project
 if "%WATCH_IMAGES_CHECK%"=="1" >>"%LOG_FILE%" echo Verify the files from the most recent completed watch save against their local records.
 if "%WATCH_IMAGES_CHECK%"=="1" goto check_project
 if "%WATCH_IMAGES%"=="1" >>"%LOG_FILE%" echo Check up to three pending recent posts and offer one eligible post for saving in dedicated Chrome.
@@ -424,6 +436,7 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+if "%MONITOR_RESUME_ONCE%"=="1" goto start_monitor_resume
 if "%WATCH_IMAGES_CHECK%"=="1" goto check_watch_images
 if "%WATCH_IMAGES%"=="1" goto start_watch_images
 if "%WATCH_DETAIL%"=="1" goto start_watch_detail
@@ -560,6 +573,14 @@ if not "%MONITOR_FINISH_CODE%"=="0" goto failed
 echo Monitor candidate verification finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
+
+:start_monitor_resume
+echo Checking the pending monitor detail. The result TXT will open automatically.
+>>"%LOG_FILE%" echo STAGE: monitor_resume_once
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor-resume-once --work-root "%LOCALAPPDATA%\ImageMonitorWatch" >>"%LOG_FILE%" 2>&1
+set "WATCH_EXIT_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Monitor resume once exit code: %WATCH_EXIT_CODE%
+goto finish_watch_result
 
 :check_watch_images
 echo Verifying the last completed watch save on this PC.
@@ -699,6 +720,7 @@ goto failed
 >>"%LOG_FILE%" echo uv is not installed and WinGet is unavailable. Send this file for help.
 goto failed
 :failed
+if "%MONITOR_RESUME_ONCE%"=="1" goto watch_result_failed
 if "%WATCH_IMAGES_CHECK%"=="1" goto watch_result_failed
 if "%WATCH_IMAGES%"=="1" goto watch_result_failed
 if "%WATCH_DETAIL%"=="1" goto watch_result_failed

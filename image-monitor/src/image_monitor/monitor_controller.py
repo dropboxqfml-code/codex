@@ -37,6 +37,7 @@ from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
 
 MIN_FREE_BYTES = 256 * 1024 * 1024
 BUSY_BACKOFF_SECONDS = 15
+MAX_RESUME_WAIT_SECONDS = 60
 MAX_DETAIL_BATCH = 2
 _SCOPE_WHERE = "watch_name=? AND gallery_type=? AND gallery_id=? AND keyword=? AND search_type=?"
 _TIME_STATUSES = {"unknown", "before_baseline", "at_or_after_baseline"}
@@ -177,6 +178,25 @@ class _Clock:
         return datetime.now(UTC)
 
 
+def _detail_fields(http_status, time_status, reason, image_count, pending_images):
+    return {
+        "time_status": time_status if time_status in _TIME_STATUSES else "unknown",
+        "reason": (
+            "candidate_deleted"
+            if http_status in {404, 410}
+            else reason
+            if reason in _DETAIL_REASONS
+            else None
+        ),
+        "image_count": image_count
+        if type(image_count) is int and 0 <= image_count <= 1000
+        else None,
+        "pending_images": (
+            pending_images if type(pending_images) is int and 0 <= pending_images <= 1000 else None
+        ),
+    }
+
+
 class MonitorController:
     """Start stopped, then alternate discovery with pending candidate inspections.
 
@@ -260,6 +280,8 @@ class MonitorController:
             "auto_details_checked": 0,
             "resume_detail_pending": False,
             "resumed_detail_slot": False,
+            "resume_once_status": None,
+            "resume_once_detail": None,
             "detail_pending_count": 0,
             "detail_completed_count": 0,
             "detail_failed_count": 0,
@@ -312,6 +334,8 @@ class MonitorController:
             result = self._state.copy()
             result["list_diagnosis"] = public_list_diagnosis(result["list_diagnosis"])
             result["details"] = [row.copy() for row in result["details"]]
+            if result["resume_once_detail"] is not None:
+                result["resume_once_detail"] = result["resume_once_detail"].copy()
             result["saved_files"] = [row.copy() for row in result["saved_files"]]
             result["operations_rows"] = [row.copy() for row in result["operations_rows"]]
             result["operations_counts"] = result["operations_counts"].copy()
@@ -390,6 +414,40 @@ class MonitorController:
             )
             self._thread = threading.Thread(
                 target=self._work, name="image-monitor-discovery", daemon=True
+            )
+            self._thread.start()
+            return self.status()
+
+    def resume_once(self):
+        """Run only the already verified automatic detail turn, then stop."""
+        with self._lock:
+            if self.is_alive():
+                return self.status() | {
+                    "resume_once_status": "busy",
+                    "resume_once_detail": None,
+                    "reason": "another_worker_active",
+                }
+            self._state.update(resume_once_detail=None, resumed_detail_slot=False)
+            if self._state["browser_closed"] is not True:
+                self._review("owned_browser_cleanup_unconfirmed")
+            if self._state["phase"] == "needs_review":
+                self._state["resume_once_status"] = "needs_review"
+                return self.status()
+            self._stop.clear()
+            self._pause.clear()
+            self._wake.clear()
+            self._state.update(
+                phase="starting",
+                task_kind="auto_details",
+                reason=None,
+                error_type=None,
+                resume_once_status="running",
+            )
+            self._thread = threading.Thread(
+                target=self._work,
+                kwargs={"resume_once": True, "original_scan_id": self._resumable_scan_id},
+                name="image-monitor-resume-once",
+                daemon=True,
             )
             self._thread.start()
             return self.status()
@@ -1018,24 +1076,7 @@ class MonitorController:
                 {
                     "order": index,
                     "status": status,
-                    "time_status": time_status if time_status in _TIME_STATUSES else "unknown",
-                    "reason": (
-                        "candidate_deleted"
-                        if http_status in {404, 410}
-                        else reason
-                        if reason in _DETAIL_REASONS
-                        else None
-                    ),
-                    "image_count": (
-                        image_count
-                        if type(image_count) is int and 0 <= image_count <= 1000
-                        else None
-                    ),
-                    "pending_images": (
-                        pending_images
-                        if type(pending_images) is int and 0 <= pending_images <= 1000
-                        else None
-                    ),
+                    **_detail_fields(http_status, time_status, reason, image_count, pending_images),
                 }
             )
         finished = queue.connection.execute(
@@ -1225,7 +1266,7 @@ class MonitorController:
         )
         return False
 
-    def _after_detail(self, report):
+    def _after_detail(self, report, *, resume_once=False):
         if not isinstance(report, dict) or report.get("status") not in _DETAIL_STATUSES:
             raise QueueError("The detail inspection did not return a valid report")
         status = report["status"]
@@ -1241,6 +1282,22 @@ class MonitorController:
             processed == 0 and summaries
         ):
             raise QueueError("The detail inspection summaries do not match its counts")
+        if resume_once and processed:
+            row = summaries[0]
+            http = row.get("http_status")
+            counts = row.get("image_counts") or {}
+            self._set(
+                resume_once_detail={
+                    "http_status": http if type(http) is int and 100 <= http <= 599 else None,
+                    **_detail_fields(
+                        http,
+                        row.get("time_status"),
+                        row.get("reason"),
+                        counts.get("included_unique"),
+                        counts.get("pending"),
+                    ),
+                }
+            )
         if (
             eligibility == "blocked"
             or report.get("reason") == "access_block_requires_review"
@@ -1252,6 +1309,9 @@ class MonitorController:
             return False, processed
         if report.get("browser_closed") is not True:
             self._review("owned_browser_cleanup_unconfirmed", error_type=report.get("error_type"))
+            return False, processed
+        if resume_once and not processed and report.get("reason") == "source_scan_changed":
+            self._set(reason="resume_slot_changed")
             return False, processed
         if status == "candidate_busy":
             self._extra_due = self._clock.now() + timedelta(seconds=BUSY_BACKOFF_SECONDS)
@@ -1293,12 +1353,12 @@ class MonitorController:
                 raise QueueError("The completed detail inspection has invalid evidence")
             self._set(reason=None)
             return True, processed
-        if status == "candidate_test_cancelled" and self._requested_stop():
+        if status == "candidate_test_cancelled" and (resume_once or self._requested_stop()):
             return True, processed
         self._review("detail_requires_review", error_type=report.get("error_type"))
         return False, processed
 
-    def _inspect_one(self, *, automatic):
+    def _inspect_one(self, *, automatic, resume_once=False):
         completed_before = self._state["detail_completed_count"]
         self._set(phase="inspecting", reason=None, browser_closed=None)
         report = self._run_details(
@@ -1315,7 +1375,7 @@ class MonitorController:
                 else {}
             ),
         )
-        keep_batch, count = self._after_detail(report)
+        keep_batch, count = self._after_detail(report, resume_once=resume_once)
         if automatic and keep_batch and report["status"] == "candidate_test_completed":
             if self._state["detail_completed_count"] <= completed_before:
                 raise QueueError("The completed automatic inspection has no durable result")
@@ -1325,20 +1385,51 @@ class MonitorController:
                 )
         return keep_batch, count, report["status"]
 
-    def _work(self, *, details_only=False):
+    def _finish_resume_once(self, detail_status):
+        if detail_status == "candidate_test_completed" and self._state["reason"] is None:
+            self._set(resume_once_status="completed", resumed_detail_slot=True)
+        elif (
+            self._state["reason"] == "resume_slot_changed"
+            or detail_status == "candidate_no_pending"
+        ):
+            self._set(resume_once_status="no_slot", reason="resume_slot_changed")
+        elif detail_status == "candidate_busy":
+            self._set(resume_once_status="busy")
+        elif detail_status == "candidate_waiting" or self._state["reason"] == "service_retry_after":
+            self._set(resume_once_status="waiting")
+        elif detail_status == "candidate_test_cancelled":
+            self._set(resume_once_status="cancelled", reason="requested_stop")
+        else:
+            self._review("detail_requires_review")
+
+    def _work(self, *, details_only=False, resume_once=False, original_scan_id=None):
         task = "details" if details_only else "list"
         select_slot = not details_only
         restored = False
         processed = 0
+        waited = False
         try:
             while not self._stop.is_set():
                 if self._pause.is_set():
+                    if resume_once:
+                        break
                     self._set(task_kind=task, phase="paused")
                     self._wait(60)
                     continue
                 eligibility, due = self._read_source(check_resume=select_slot)
+                if eligibility == "blocked":
+                    self._review("access_block_requires_review")
+                    break
                 if select_slot:
                     source = self._resumable_scan_id
+                    if resume_once and (original_scan_id is None or source != original_scan_id):
+                        self._set(
+                            resume_once_status="no_slot",
+                            reason="no_verified_detail_slot"
+                            if original_scan_id is None
+                            else "resume_slot_changed",
+                        )
+                        break
                     if task == "list":
                         restored = source is not None
                     elif source != self._detail_scan_id:
@@ -1348,9 +1439,6 @@ class MonitorController:
                     task = "auto_details" if source is not None else "list"
                     self._set(resume_detail_pending=restored)
                     select_slot = False
-                if eligibility == "blocked":
-                    self._review("access_block_requires_review")
-                    break
                 if task == "auto_details":
                     gap = self._state["gap_reason"]
                     if self._detail_scan_id is None:
@@ -1367,6 +1455,9 @@ class MonitorController:
                         self._review("existing_baseline_required")
                         break
                     if self._state["detail_pending_count"] == 0:
+                        if resume_once:
+                            self._set(resume_once_status="no_slot", reason="resume_slot_changed")
+                            break
                         if details_only:
                             self._set(reason="no_unattempted_candidates")
                             break
@@ -1379,8 +1470,13 @@ class MonitorController:
                 self._set(task_kind=task, next_eligible_at=_stamp(due))
                 remaining = (due - self._clock.now()).total_seconds()
                 if remaining > 0:
+                    if resume_once and (waited or remaining > MAX_RESUME_WAIT_SECONDS):
+                        self._set(resume_once_status="waiting", reason="persisted_cooldown")
+                        break
                     self._set(phase="waiting")
                     self._wait(remaining)
+                    if resume_once:
+                        waited = select_slot = True
                     continue
                 if self._requested_stop():
                     continue
@@ -1388,8 +1484,13 @@ class MonitorController:
                     self._review("insufficient_free_space")
                     break
                 if task != "list":
-                    keep_batch, count, detail_status = self._inspect_one(automatic=not details_only)
+                    keep_batch, count, detail_status = self._inspect_one(
+                        automatic=not details_only, resume_once=resume_once
+                    )
                     if self._state["phase"] == "needs_review":
+                        break
+                    if resume_once:
+                        self._finish_resume_once(detail_status)
                         break
                     if details_only:
                         processed += count
@@ -1447,3 +1548,8 @@ class MonitorController:
                     self._state["phase"] = "stopped"
                 else:
                     self._state["resume_detail_pending"] = False
+                if resume_once:
+                    if self._state["phase"] == "needs_review":
+                        self._state["resume_once_status"] = "needs_review"
+                    elif self._state["resume_once_status"] == "running":
+                        self._state.update(resume_once_status="cancelled", reason="requested_stop")

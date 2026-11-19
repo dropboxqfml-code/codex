@@ -11,6 +11,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+CURRENT_RANGES_A = (20e-12, 200e-12, 2e-9, 20e-9, 200e-9, 2e-6, 20e-6, 200e-6, 2e-3, 20e-3)
+
 
 class ConfigurationError(ValueError):
     pass
@@ -79,6 +81,8 @@ class RunConfig:
     nplc: float = 10.0
     line_frequency_hz: float = 60.0
     current_autorange: bool = True
+    current_autorange_min_A: float = CURRENT_RANGES_A[0]
+    current_autorange_max_A: float = CURRENT_RANGES_A[-1]
     current_range_A: float = 2e-9
     current_trip_A: float | None = None
     power_limit_W: float | None = None
@@ -357,6 +361,8 @@ class RunConfig:
             "nplc",
             "line_frequency_hz",
             "current_range_A",
+            "current_autorange_min_A",
+            "current_autorange_max_A",
             "current_trip_A",
             "power_limit_W",
             "current_floor_A",
@@ -453,6 +459,14 @@ class RunConfig:
             raise ConfigurationError("line_frequency_hz must be explicitly 50 or 60 Hz")
         if self.current_range_A > 0.02:
             raise ConfigurationError("current_range_A exceeds 20 mA")
+        if (
+            self.current_autorange_min_A not in CURRENT_RANGES_A
+            or self.current_autorange_max_A not in CURRENT_RANGES_A
+            or self.current_autorange_min_A > self.current_autorange_max_A
+        ):
+            raise ConfigurationError(
+                "AUTO limits must be ordered 6517A current ranges (20 pA..20 mA)"
+            )
         if self.min_dwell_s > self.dwell_s or self.exclude_initial_s > self.dwell_s:
             raise ConfigurationError("Dwell cannot be shorter than minimum/excluded interval")
         if self.summary_window_s > self.dwell_s:

@@ -18,7 +18,7 @@
 
 ## ARM 영점보정과 오류 기록
 
-v0.9.1의 `FVMI_CURRENT`는 매뉴얼 3-133, §3.22.12의 첫 번째 영점보정 방식과 2-60, §2.13.3의 V/I 전면 패널 절차를 사용합니다. 출력 OFF·Zero Check ON·선택한 고정 전류 범위에서 settling 후 `:SYST:ZCOR ON`을 적용하고 보정 readback·완료 응답·오류 큐를 확인한 다음 `:SYST:ZCH OFF`와 autorange 복원을 진행합니다. Autorange는 기존처럼 20 pA 범위에서 보정하고 고정 범위는 해당 범위에서 보정합니다. `SIMULATION` Native 저항 모드는 기존 `ZCH ON → ZCOR:ACQ → ZCH OFF → ZCOR ON` 방식을 유지하며 실장비 Native 출력은 계속 차단합니다.
+v0.9.1의 `FVMI_CURRENT`는 매뉴얼 3-133, §3.22.12의 첫 번째 영점보정 방식과 2-60, §2.13.3의 V/I 전면 패널 절차를 사용합니다. 출력 OFF·Zero Check ON·선택한 고정 전류 범위에서 settling 후 `:SYST:ZCOR ON`을 적용하고 보정 readback·완료 응답·오류 큐를 확인한 다음 `:SYST:ZCH OFF`와 autorange 복원을 진행합니다. FVMI의 AUTO는 설정된 하한(기본 20 pA)에서 영점보정하고 고정 범위는 지정한 범위에서 영점보정합니다. ARM에서 AUTO 상·하한을 적용한 뒤 장비 응답으로 확인합니다. `SIMULATION` Native 저항 모드는 기존 `ZCH ON → ZCOR:ACQ → ZCH OFF → ZCOR ON` 방식을 유지하며 실장비 Native 출력은 계속 차단합니다.
 
 이는 Zero Correct를 생략하거나 오류를 무시하는 처리가 아닙니다. `zero correction acquire`에서 보고된 `-200`의 실제 원인을 idle·판독 시점 등으로 확정하지 않았으며, 전면 패널 방식의 firmware별 동작과 정확도는 실제 장비 시험으로 확인해야 합니다. `+513 Calibration data lost` 등 오류는 중단 사유로 유지하고, Zero Correct를 유실 교정 상수의 복구 절차로 사용하지 않습니다. ARM 구성 시작에 기존 오류 큐도 원문으로 확인해 새 설정에서 검출한 오류와 구분합니다.
 

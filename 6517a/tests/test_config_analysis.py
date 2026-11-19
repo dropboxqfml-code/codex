@@ -34,6 +34,28 @@ def test_snapshot_is_deeply_immutable_and_json_roundtrip():
     )
 
 
+def test_legacy_auto_settings_use_full_span_and_equal_bounds_roundtrip():
+    original = RunConfig.from_dict({"current_autorange": True})
+    assert original.current_autorange_min_A == 20e-12
+    assert original.current_autorange_max_A == 20e-3
+    single_range = replace(original, current_autorange_min_A=2e-9, current_autorange_max_A=2e-9)
+    assert RunConfig.from_dict(single_range.to_dict()) == single_range
+
+
+@pytest.mark.parametrize(
+    "limits",
+    [
+        {"current_autorange_min_A": True},
+        {"current_autorange_min_A": 3e-9},
+        {"current_autorange_max_A": float("inf")},
+        {"current_autorange_min_A": 200e-9, "current_autorange_max_A": 2e-9},
+    ],
+)
+def test_auto_bounds_validate_as_ordered_nominal_current_ranges(limits):
+    with pytest.raises(ConfigurationError):
+        RunConfig.from_dict(limits)
+
+
 @pytest.mark.parametrize(
     "field,value",
     [

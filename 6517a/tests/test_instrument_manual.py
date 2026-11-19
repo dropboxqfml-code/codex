@@ -127,6 +127,112 @@ def test_manual_zero_correction_sequence_and_lowest_autorange_calibration():
     assert readback["zero_correct_valid_for_uprange_per_manual"]
 
 
+@pytest.mark.parametrize(
+    "old_lower,old_upper,expected_writes",
+    [
+        (20e-12, 200e-12, ["ULIM", "LLIM"]),
+        (2e-6, 20e-6, ["LLIM", "ULIM"]),
+        (20e-12, 20e-3, ["LLIM", "ULIM"]),
+        (20e-12, 200e-9, ["LLIM"]),
+        (2e-9, 200e-9, []),
+    ],
+)
+def test_auto_bounds_are_verified_before_zero_and_after_auto_enable(
+    old_lower, old_upper, expected_writes
+):
+    instrument, transport = commissioned()
+    prefix = ":SENS:CURR:RANG:AUTO"
+    transport.values[prefix + ":LLIM"] = str(old_lower)
+    transport.values[prefix + ":ULIM"] = str(old_upper)
+    readback = instrument.configure(
+        real_config(current_autorange_min_A=2e-9, current_autorange_max_A=200e-9)
+    )
+
+    commands = transport.commands
+    auto_off = commands.index(prefix + " OFF")
+    auto_on = commands.index(prefix + " ON")
+    zero_correction = commands.index(":SYST:ZCOR ON")
+    assert auto_off < zero_correction < auto_on
+    bounds_before_zero = [item for item in commands[auto_off:zero_correction] if prefix in item]
+    assert [
+        item.split(" ")[0].rsplit(":", 1)[1]
+        for item in bounds_before_zero
+        if ":AUTO:" in item and " " in item
+    ] == expected_writes
+    for suffix in (":LLIM?", ":ULIM?"):
+        assert prefix + suffix in bounds_before_zero
+        assert prefix + suffix in commands[auto_on + 1 :]
+    assert readback["current_autorange"] is True
+    assert readback["current_range_A"] == readback["zero_correct_range_A"] == 2e-9
+    assert readback["current_autorange_min_A"] == 2e-9
+    assert readback["current_autorange_max_A"] == 200e-9
+    assert readback["current_autorange_limits"] == {
+        "before_A": {"lower": old_lower, "upper": old_upper},
+        "lower_A": 2e-9,
+        "upper_A": 200e-9,
+    }
+    assert instrument.output_state == "OFF"
+    assert ":OUTP1 ON" not in commands
+
+
+@pytest.mark.parametrize("phase", ["before_zero", "after_auto"])
+def test_auto_bound_readback_mismatch_blocks_arm(phase):
+    instrument, transport = commissioned()
+    query = transport.query
+
+    def misreported_upper(command):
+        response = query(command)
+        if command == ":SENS:CURR:RANG:AUTO:ULIM?":
+            written = ":SENS:CURR:RANG:AUTO:ULIM 2E-07" in transport.commands
+            auto_enabled = ":SENS:CURR:RANG:AUTO ON" in transport.commands
+            if written and (phase == "before_zero" or auto_enabled):
+                return "2e-6"
+        return response
+
+    transport.query = misreported_upper
+    with pytest.raises(ProtocolError, match="mismatch.*ULIM"):
+        instrument.configure(real_config(current_autorange_max_A=200e-9))
+    assert not instrument.configured
+    assert instrument.output_state == "OFF"
+    assert ":OUTP1 ON" not in transport.commands
+    assert (":SYST:ZCOR ON" in transport.commands) == (phase == "after_auto")
+
+
+def test_auto_bound_readback_saves_device_values():
+    instrument, transport = commissioned()
+    query = transport.query
+
+    def device_lower_bound(command):
+        response = query(command)
+        if (
+            command == ":SENS:CURR:RANG:AUTO:LLIM?"
+            and ":SENS:CURR:RANG:AUTO ON" in transport.commands
+        ):
+            return "2.0000001e-9"
+        return response
+
+    transport.query = device_lower_bound
+    readback = instrument.configure(real_config(current_autorange_min_A=2e-9))
+    assert readback["current_autorange_min_A"] == 2.0000001e-9
+    assert readback["current_autorange_limits"]["lower_A"] == 2.0000001e-9
+
+
+def test_fixed_current_range_leaves_autorange_bounds_untouched():
+    instrument, transport = commissioned()
+    readback = instrument.configure(
+        real_config(
+            current_autorange=False,
+            current_range_A=200e-9,
+            current_autorange_min_A=2e-9,
+            current_autorange_max_A=20e-9,
+        )
+    )
+    assert not any(":SENS:CURR:RANG:AUTO:" in item for item in transport.commands)
+    assert readback["current_autorange"] is False
+    assert readback["current_autorange_min_A"] is readback["current_autorange_max_A"] is None
+    assert readback["current_range_A"] == readback["zero_correct_range_A"] == 200e-9
+
+
 def test_start_requires_one_use_authorization_even_after_configure():
     instrument, transport, config, _ = armed()
     with pytest.raises(RuntimeError, match="authorization"):

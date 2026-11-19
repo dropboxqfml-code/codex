@@ -29,6 +29,8 @@ _FIELD_LABELS = {
     "range_settle_s": "범위 변경 후 대기 시간",
     "exclude_initial_s": "초기 제외 시간",
     "current_range_A": "전류 범위",
+    "current_autorange_min_A": "AUTO 하한 (A)",
+    "current_autorange_max_A": "AUTO 상한 (A)",
     "nplc": "NPLC",
     "line_frequency_hz": "전원 주파수",
     "simulation_resistance_ohm": "SIM 저항 모델",
@@ -97,6 +99,10 @@ _KNOWN_ERRORS = {
     "source range must be 100/1000 V; NPLC must be 0.01..10": (
         "source_range_V",
         "V-Source 범위는 100/1000 V, NPLC는 0.01~10으로 입력하세요.",
+    ),
+    "AUTO limits must be ordered 6517A current ranges (20 pA..20 mA)": (
+        "current_autorange_min_A",
+        "AUTO 하한·상한은 20 pA~20 mA 사이의 6517A 범위이며 하한은 상한 이하여야 합니다.",
     ),
     "summary_window_s cannot exceed dwell_s": (
         "summary_window_s",

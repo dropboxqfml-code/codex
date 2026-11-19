@@ -135,13 +135,35 @@ def test_usb_disconnect_keeps_hv_unknown_and_physical_source_may_remain_on(tmp_p
 
 
 def test_software_trip_invalidates_sample_and_no_voltage_increase(tmp_path):
-    runner, transport, _ = setup_runner(tmp_path, current_trip_A=5e-13)
+    runner, transport, _ = setup_runner(
+        tmp_path,
+        current_trip_A=5e-13,
+        current_autorange_min_A=2e-9,
+        current_autorange_max_A=2e-7,
+        faults={"range_change_at_read": 1},
+    )
     result = completed(runner)
     assert result["status"] == "aborted"
-    assert "SOFTWARE_CURRENT_TRIP" in runner.rows[0]["quality_flags"]
+    assert result["output_state"] == "OFF"
+    assert {"SOFTWARE_CURRENT_TRIP", "SETTLING_EXCLUDED"} <= set(runner.rows[0]["quality_flags"])
     assert runner.rows[0]["valid_for_summary"] is False
     assert runner.rows[0]["resistance_apparent_ohm"] is None
     assert ":SOUR:VOLT 2" not in source_writes(transport)
+    saved = json.loads((runner.run_directory / "run_status.json").read_text())
+    details = saved["trip_details"]
+    assert details == result["trip_details"]
+    assert details["raw_response"] == runner.rows[0]["raw_response"]
+    assert details["trip_current_A"] == runner.rows[0]["current_raw_A"]
+    assert details["current_trip_A"] == 5e-13
+    assert details["current_range_before_A"] == 2e-9
+    assert details["current_range_after_A"] == 2e-8
+    events = [
+        json.loads(line)
+        for line in (runner.run_directory / "events.jsonl").read_text().splitlines()
+    ]
+    event_names = [item["event"] for item in events]
+    assert event_names.index("output_stop") < event_names.index("software_current_trip")
+    runner.shutdown()
 
 
 def test_source_limit_invalidates_r(tmp_path):

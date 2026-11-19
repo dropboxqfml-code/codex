@@ -209,6 +209,54 @@ def test_range_and_query_time_metadata():
     assert status["query_end_monotonic_s"] >= status["query_start_monotonic_s"]
 
 
+def test_simulated_autorange_chooses_nominal_ranges_within_the_configured_interval():
+    transport = SimulatorTransport(
+        Clock(), resistance_ohm=100e6, offset_A=0, absorption_A=0, noise_A=0
+    )
+    transport.open()
+    transport.write(":SYST:ZCH OFF")
+    transport.write(":SENS:CURR:RANG:AUTO:LLIM 2e-9")
+    transport.write(":SENS:CURR:RANG:AUTO:ULIM 2e-7")
+    transport.write(":OUTP1 ON")
+    for voltage, selected_range in ((0.1, 2e-9), (0.5, 2e-8), (10, 2e-7), (0, 2e-9)):
+        transport.write(f":SOUR:VOLT {voltage}")
+        result = parse_reading(transport.query(":READ?"), "FVMI_CURRENT")
+        assert not result.flags
+        assert result.value == pytest.approx(voltage / 100e6, abs=1e-15)
+        assert float(transport.query(":SENS:CURR:RANG?")) == selected_range
+
+    # A 10 nA input exceeds the deliberately narrowed AUTO window.
+    transport.write(":SENS:CURR:RANG:AUTO:ULIM 2e-9")
+    transport.write(":SOUR:VOLT 1")
+    result = parse_reading(transport.query(":READ?"), "FVMI_CURRENT")
+    assert result.flags == ("OVERFLOW", "SENTINEL")
+    assert result.value is None
+    assert float(transport.query(":SENS:CURR:RANG?")) == 2e-9
+
+
+@pytest.mark.parametrize("fault_status", [None, "UNDERFLOW"])
+def test_simulated_fixed_current_overload_and_explicit_fault_status(fault_status):
+    faults = {"underflow_at_read": 2} if fault_status else None
+    transport = SimulatorTransport(
+        Clock(), resistance_ohm=100e6, noise_A=0, faults=faults, absorption_A=0, offset_A=0
+    )
+    transport.open()
+    transport.write(":SYST:ZCH OFF")
+    transport.write(":SENS:CURR:RANG 2e-9")
+    assert transport.query(":SENS:CURR:RANG:AUTO?") == "0"
+    transport.write(":OUTP1 ON")
+    transport.write(":SOUR:VOLT 0.21")
+    result = parse_reading(transport.query(":READ?"), "FVMI_CURRENT")
+    assert not result.flags
+    assert result.value == pytest.approx(2.1e-9, abs=1e-15)
+
+    transport.write(":SOUR:VOLT 0.22")
+    result = parse_reading(transport.query(":READ?"), "FVMI_CURRENT")
+    assert result.flags == ((fault_status,) if fault_status else ("OVERFLOW", "SENTINEL"))
+    assert result.value is None
+    assert float(transport.query(":SENS:CURR:RANG?")) == 2e-9
+
+
 def test_split_response_is_not_combined_with_new_query():
     driver, transport = configured(split_response_at_read=1)
     with pytest.raises(ProtocolError):

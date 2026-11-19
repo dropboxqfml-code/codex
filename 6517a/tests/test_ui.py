@@ -272,13 +272,17 @@ def test_actual_simulator_gui_connect_arm_start_complete_and_close(qtbot, tmp_pa
         {
             "sample_id": "GUI-INTEGRATION-SIM",
             "output_directory": str(tmp_path),
-            "voltages": [1],
+            "protocol": "list",
+            "voltages": [0.1, 0.5],
             "dwell_s": 0.5,
             "summary_window_s": 0.25,
             "sample_interval_s": 0.1,
             "range_settle_s": 0,
             "nplc": 0.1,
-            "current_trip_A": 1e-6,
+            "current_autorange_min_A": 2e-9,
+            "current_autorange_max_A": 2e-7,
+            "current_trip_A": 1e-8,
+            "simulation_resistance_ohm": 1e8,
             "residual_warning_ack": True,
         }
     )
@@ -330,5 +334,22 @@ def test_actual_simulator_gui_connect_arm_start_complete_and_close(qtbot, tmp_pa
         assert status["status"] == "completed"
         assert status["final_output_state"] == "OFF"
         assert status["residual_voltage_state"] == "UNVERIFIED"
+        ranges_by_voltage = {
+            voltage: {
+                row["current_range_A"]
+                for row in window.rows
+                if row["voltage_programmed_readback_V"] == voltage
+            }
+            for voltage in config.voltages
+        }
+        assert ranges_by_voltage == {0.1: {2e-9}, 0.5: {2e-8}}
+        assert "판독 직후 20 nA" in window.current_range_label.text()
+        readback = json.loads((status_path.parent / "metadata.json").read_text(encoding="utf-8"))[
+            "settings_readback"
+        ]
+        assert readback["current_autorange_min_A"] == readback["zero_correct_range_A"] == 2e-9
+        assert readback["current_autorange_max_A"] == 2e-7
+        assert (status_path.parent / "readings.csv").is_file()
+        assert (status_path.parent / "analysis.txt").is_file()
     finally:
         close_window(qtbot, window)

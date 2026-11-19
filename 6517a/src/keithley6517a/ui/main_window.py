@@ -138,6 +138,7 @@ class InstrumentWorker(QObject):
                 "worker_busy": self._active_action is not None,
                 "run_result": dict(self._run_result),
                 "arm_failure_report": dict(self._arm_failure_report),
+                "settings_readback": dict(getattr(self.runner, "settings_readback", None) or {}),
                 "interlock_query": safety.get("interlock", "UNKNOWN"),
                 "setup_policy": setup_policy,
                 "operator_setup_acknowledged": bool(
@@ -296,6 +297,8 @@ class MainWindow(QMainWindow):
         self._closed = False
         self._last_sample_time: float | None = None
         self._last_elapsed: float | None = None
+        self._last_reading_range_A: float | None = None
+        self._settings_readback: dict = {}
         self._fixture_status = "미확인"
         self._can_arm = False
         self._can_start = False
@@ -474,8 +477,22 @@ class MainWindow(QMainWindow):
         self.autorange = QCheckBox("전류 자동 범위")
         self.autorange.setChecked(True)
         advanced_form.addRow(self.autorange)
+        self.autorange_min = QLineEdit()
+        self.autorange_min.setToolTip("전류 자동 범위에서 사용할 가장 낮은 측정 범위입니다.")
+        advanced_form.addRow("AUTO 하한 (A)", self.autorange_min)
+        self.autorange_max = QLineEdit()
+        self.autorange_max.setToolTip("전류 자동 범위에서 사용할 가장 높은 측정 범위입니다.")
+        advanced_form.addRow("AUTO 상한 (A)", self.autorange_max)
         self.current_range = QLineEdit("2e-9")
+        self.current_range.setToolTip("전류 자동 범위가 꺼져 있을 때 사용하는 측정 범위입니다.")
         advanced_form.addRow("고정 범위 (A)", self.current_range)
+        range_presets = QHBoxLayout()
+        self.auto_range_preset = QPushButton("AUTO 2–200 nA")
+        self.fixed_range_preset = QPushButton("고정 200 nA")
+        for preset in (self.auto_range_preset, self.fixed_range_preset):
+            preset.setToolTip("전류 측정 범위 설정만 변경합니다.")
+            range_presets.addWidget(preset)
+        advanced_form.addRow(range_presets)
         self.nplc = self._spin(0.01, 10, 10)
         self.interval = self._spin(0.001, 86400, 1)
         self.dwell = self._spin(0.001, 86400, 300)
@@ -562,6 +579,11 @@ class MainWindow(QMainWindow):
         right_layout.addLayout(values)
         self.reading_state_label = QLabel("판독 대기 · START 후 값이 표시됩니다")
         right_layout.addWidget(self.reading_state_label)
+        self.current_range_label = QLabel()
+        self.current_range_label.setWordWrap(True)
+        self.current_range_label.setToolTip("판독 범위는 장비가 측정 직후에 응답한 값입니다.")
+        self.current_range_label.hide()
+        right_layout.addWidget(self.current_range_label)
         self.progress_label = QLabel()
         self.progress_label.hide()
         self.progress_label.setToolTip(
@@ -699,7 +721,15 @@ class MainWindow(QMainWindow):
         self.profile.currentIndexChanged.connect(self._refresh_connection_guide)
         self.source_range.currentIndexChanged.connect(self._refresh_connection_guide)
         self.autorange.toggled.connect(self._refresh_connection_guide)
-        for control in (self.voltages, self.trip, self.current_range):
+        self.auto_range_preset.clicked.connect(lambda: self._apply_current_range_preset(True))
+        self.fixed_range_preset.clicked.connect(lambda: self._apply_current_range_preset(False))
+        for control in (
+            self.voltages,
+            self.trip,
+            self.current_range,
+            self.autorange_min,
+            self.autorange_max,
+        ):
             control.textChanged.connect(self._refresh_connection_guide)
         for control in (
             self.ceiling,
@@ -989,6 +1019,7 @@ class MainWindow(QMainWindow):
         self.trip.setText("" if data.get("current_trip_A") is None else str(data["current_trip_A"]))
         self.source_range.setCurrentText(str(int(data.get("source_range_V", 100))))
         self.autorange.setChecked(data.get("current_autorange", True))
+        self._load_autorange_limits(data)
         self.current_range.setText(str(data.get("current_range_A") or 2e-9))
         self.nplc.setValue(data.get("nplc", 10))
         self.interval.setValue(data.get("sample_interval_s", 1))
@@ -999,6 +1030,39 @@ class MainWindow(QMainWindow):
         self.ack.setChecked(data.get("residual_warning_ack", False))
         self._loading_controls = False
         self._mode_changed()
+
+    def _load_autorange_limits(self, data: dict) -> None:
+        self.autorange_min.setText(
+            str(data.get("current_autorange_min_A", RunConfig.current_autorange_min_A))
+        )
+        self.autorange_max.setText(
+            str(data.get("current_autorange_max_A", RunConfig.current_autorange_max_A))
+        )
+
+    def _autorange_limits_from_controls(self) -> dict[str, float]:
+        return {
+            "current_autorange_min_A": float(self.autorange_min.text()),
+            "current_autorange_max_A": float(self.autorange_max.text()),
+        }
+
+    def _apply_current_range_preset(self, auto: bool) -> None:
+        if self._connected or self._busy or self._closing:
+            return
+        if auto and self.mode.currentText() != "FVMI_CURRENT":
+            return
+        self._loading_controls = True
+        self.autorange.setChecked(auto)
+        if auto:
+            self.autorange_min.setText("2e-9")
+            self.autorange_max.setText("2e-7")
+        else:
+            self.current_range.setText("2e-7")
+            try:
+                RunConfig.from_dict(self._autorange_limits_from_controls())
+            except ValueError:
+                self._load_autorange_limits(self._base_config)
+        self._loading_controls = False
+        self._refresh_connection_guide()
 
     def config_from_controls(self) -> RunConfig:
         data = dict(self._base_config)
@@ -1032,6 +1096,7 @@ class MainWindow(QMainWindow):
             residual_warning_ack=self.ack.isChecked(),
             setup_policy=self.setup_policy.currentData(),
             operator_setup_acknowledged=self.operator_setup_ack.isChecked(),
+            **self._autorange_limits_from_controls(),
             **self.sample_geometry.config_values(),
         )
         data["protocol"] = (
@@ -1191,6 +1256,10 @@ class MainWindow(QMainWindow):
                 "sample_id": self.sample_id.text(),
                 "voltages": self.voltages.text(),
                 "current_trip_A": self.trip.text(),
+                "current_autorange": self.autorange.isChecked(),
+                "current_autorange_min_A": self.autorange_min.text(),
+                "current_autorange_max_A": self.autorange_max.text(),
+                "current_range_A": self.current_range.text(),
                 "output_directory": self.output_dir.text(),
             },
         }
@@ -1256,6 +1325,9 @@ class MainWindow(QMainWindow):
             self._last_error = ""
             self._last_run_result = {}
             self._last_run_directory = None
+            self._settings_readback = {}
+            self._last_reading_range_A = None
+            self._refresh_current_range_status()
             self.path_label.setText("저장 위치: ARM 후 생성됩니다")
             self.result_status_label.hide()
             self._busy = True
@@ -1268,6 +1340,9 @@ class MainWindow(QMainWindow):
     def _send(self, action: str) -> None:
         if action == "arm":
             self._last_error = ""
+            self._settings_readback = {}
+            self._last_reading_range_A = None
+            self._refresh_current_range_status()
         self._busy = True
         self._update_buttons()
         self.command.emit((action, None))
@@ -1279,6 +1354,8 @@ class MainWindow(QMainWindow):
         self.rows.clear()
         self._last_elapsed = None
         self._last_sample_time = None
+        self._last_reading_range_A = None
+        self._refresh_current_range_status()
         for key, unit in (("voltage", "V"), ("current", "A"), ("resistance", "Ω")):
             self.value_labels[key].setText(f"— {unit}")
         self.reading_state_label.setText("판독 대기 · 첫 측정값을 기다립니다")
@@ -1331,6 +1408,13 @@ class MainWindow(QMainWindow):
         }
         self.state_label.setText(self._state)
         self.output_label.setText("OUTPUT " + status.get("output_state", "UNKNOWN"))
+        arm_failure = status.get("arm_failure_report") or {}
+        if not self._connected or arm_failure:
+            self._settings_readback = {}
+            self._last_reading_range_A = None
+        else:
+            self._settings_readback = status.get("settings_readback") or {}
+        self._refresh_current_range_status()
         identity = status.get("identity")
         if identity:
             self.identity_label.setText(
@@ -1346,7 +1430,6 @@ class MainWindow(QMainWindow):
         if status.get("run_directory"):
             self.path_label.setText("Run 폴더: " + status["run_directory"])
             self._last_run_directory = status["run_directory"]
-        arm_failure = status.get("arm_failure_report") or {}
         if arm_failure != self._last_arm_failure_report:
             self._last_arm_failure_report = dict(arm_failure)
             if arm_failure.get("report_saved") and arm_failure.get("report_path"):
@@ -1408,6 +1491,8 @@ class MainWindow(QMainWindow):
         )
         self.value_labels["current"].setText(_display_si(row.get("current_raw_A"), "A"))
         self.value_labels["resistance"].setText(_display_si(display["_display_r"], "Ω"))
+        self._last_reading_range_A = row.get("current_range_A")
+        self._refresh_current_range_status()
         self.resistivity_label.setText("ρ " + _display_si(row.get("resistivity_ohm_m"), "Ω·m"))
         self.reading_state_label.setText(
             "판독 중" if elapsed is None else f"판독 중 · {elapsed:g} s"
@@ -1433,6 +1518,31 @@ class MainWindow(QMainWindow):
             f"Quality: {row.get('quality_flags', [])}"
         )
         self.live_label.setProperty("stale", False)
+
+    def _refresh_current_range_status(self) -> None:
+        settings = self._settings_readback
+        range_value = settings.get("current_range_A")
+        auto = settings.get("current_autorange")
+        lower = settings.get("current_autorange_min_A")
+        upper = settings.get("current_autorange_max_A")
+        zero = settings.get("zero_correct_range_A")
+        parts = []
+        if auto is True:
+            parts.append(
+                "AUTO"
+                if lower is None or upper is None
+                else f"AUTO {_display_si(lower, 'A')}–{_display_si(upper, 'A')}"
+            )
+        elif auto is False and range_value is not None:
+            parts.append(f"고정 {_display_si(range_value, 'A')}")
+        if zero is not None:
+            parts.append(f"Zero Correct {_display_si(zero, 'A')}")
+        if self._last_reading_range_A is not None:
+            parts.append(f"판독 직후 {_display_si(self._last_reading_range_A, 'A')}")
+        elif auto is True and range_value is not None:
+            parts.append(f"ARM 선택 {_display_si(range_value, 'A')}")
+        self.current_range_label.setText("전류 범위 · " + " · ".join(parts) if parts else "")
+        self.current_range_label.setVisible(bool(parts))
 
     @Slot(dict)
     def _on_event(self, event: dict) -> None:
@@ -1467,8 +1577,12 @@ class MainWindow(QMainWindow):
             self.diagnose_button,
             self.off_check_button,
             self.setup_button,
+            self.fixed_range_preset,
         ):
             button.setEnabled(preparation)
+        auto_limits_available = preparation and self.mode.currentText() == "FVMI_CURRENT"
+        for control in (self.autorange_min, self.autorange_max, self.auto_range_preset):
+            control.setEnabled(auto_limits_available)
         self.off_check_button.setEnabled(preparation and self.transport.currentData() == "visa")
         self.open_run_button.setEnabled(bool(self._last_run_directory) and not closing)
         review_ready = (

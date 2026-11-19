@@ -49,6 +49,8 @@ class MeasurementRunner:
         self.identity = {}
         self.run_directory = None
         self.last_arm_failure_report = {}
+        self.settings_readback = {}
+        self._trip_details = None
         self.rows = []
         self._saved_reading_count = 0
         self.summaries = []
@@ -239,6 +241,8 @@ class MeasurementRunner:
         self.writer = None
         self.run_directory = None
         self.last_arm_failure_report = {}
+        self.settings_readback = {}
+        self._trip_details = None
         self.rows.clear()
         self._saved_reading_count = 0
         self.summaries.clear()
@@ -283,6 +287,7 @@ class MeasurementRunner:
         if self.state != "OUTPUT_OFF_CONFIRMED" or self._started:
             raise MeasurementError("ARM requires a fresh connection with confirmed output OFF")
         self.last_arm_failure_report = {}
+        self.settings_readback = {}
         self.config.validate(for_arm=True)
         try:
             self._checkpoint()
@@ -375,6 +380,7 @@ class MeasurementRunner:
             for item in self.events:
                 self.writer.event(item)
             self._checkpoint()
+            self.settings_readback = dict(settings_readback)
             self._state("ARMED")
         except StopRequested as exc:
             self._started = True  # cancel this preparation; reconnect before another ARM
@@ -547,6 +553,8 @@ class MeasurementRunner:
     def _finish_run(self, result, reason):
         self._state("STOPPING")
         stop_errors = self._safe_off()
+        if self._trip_details is not None:
+            self._event("software_current_trip", **self._trip_details)
         if self.output_state != "OFF":
             result = "aborted"
             reason += "; output OFF unconfirmed: HV_STATE_UNKNOWN"
@@ -727,6 +735,21 @@ class MeasurementRunner:
                 self.on_sample(dict(row))
             self._validate_status(after, expected_output="ON")
             if software_trip:
+                self._trip_details = dict(
+                    trip_current_A=trip_current,
+                    current_basis=(
+                        "MEASURED_CURRENT"
+                        if self.config.mode == "FVMI_CURRENT"
+                        else "CURRENT_INFERRED_FROM_RESISTANCE"
+                    ),
+                    current_trip_A=self.config.current_trip_A,
+                    source_voltage_setting_V=programmed,
+                    current_range_before_A=before.get("current_range"),
+                    current_range_after_A=after.get("current_range"),
+                    phase=phase,
+                    reading_number=parsed.reading_number,
+                    raw_response=parsed.raw,
+                )
                 raise MeasurementError("Software current trip (not programmable compliance)")
             if power_trip:
                 raise MeasurementError("Software power trip")
@@ -773,6 +796,8 @@ class MeasurementRunner:
                 else max(0.0, self.clock.monotonic() - self._start_time)
             ),
         )
+        if self._trip_details is not None:
+            saved["trip_details"] = dict(self._trip_details)
         if self.writer:
             try:
                 self.writer.status(
@@ -802,6 +827,7 @@ class MeasurementRunner:
         finally:
             self.output_state = getattr(self.instrument, "output_state", "UNKNOWN")
             self._connected = False
+            self.settings_readback = {}
             self._state("DISCONNECTED" if self.output_state == "OFF" else "HV_STATE_UNKNOWN")
             if self.output_state != "OFF" and self.writer:
                 self._finalize("aborted", "Final disconnect could not confirm output OFF")

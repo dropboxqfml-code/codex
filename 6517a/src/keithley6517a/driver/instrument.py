@@ -12,7 +12,7 @@ import time
 import uuid
 from decimal import ROUND_HALF_UP, Decimal
 
-from ..config import RunConfig
+from ..config import CURRENT_RANGES_A, RunConfig
 from ..transport.base import CommunicationError, UnsupportedOperation
 from .commands import (
     COMMON_PROFILE,
@@ -278,6 +278,25 @@ class Instrument:
         self._verify(key + "?", expected if expected is not None else value)
         self._check_errors(key)
 
+    def _verify_autorange_limits(self, key, lower, upper):
+        return (
+            self._number(self._verify(key + ":LLIM?", lower)),
+            self._number(self._verify(key + ":ULIM?", upper)),
+        )
+
+    def _set_autorange_limits(self, key, lower, upper):
+        previous_lower = self._number(self._query(key + ":LLIM?"))
+        previous_upper = self._number(self._query(key + ":ULIM?"))
+        updates = ((":LLIM", lower, previous_lower), (":ULIM", upper, previous_upper))
+        # Move the upper bound first when the new interval is above the retained one.
+        if lower > previous_upper:
+            updates = updates[::-1]
+        for suffix, requested, previous in updates:
+            if requested != previous:
+                self._set(key + suffix, requested, requested)
+        self._verify_autorange_limits(key, lower, upper)
+        return {"lower": previous_lower, "upper": previous_upper}
+
     def _check_errors(self, context):
         errors = self.errors()
         if errors:
@@ -359,10 +378,18 @@ class Instrument:
         self._set(":SENS:FUNC", "'RES'" if native else "'CURR'", "RES" if native else "CURR")
         range_key = ":SENS:RES:MAN:CRANG" if native else ":SENS:CURR:RANG"
         auto = _get(config, "current_autorange", True)
-        self._set(range_key + ":AUTO", "OFF", False)
+        auto_key = range_key + ":AUTO"
+        self._set(auto_key, "OFF", False)
         # 2-60: zero correction survives uprange, requires re-zero on downrange.
-        # Start auto-ranging from the lowest 20 pA range so it never goes below zeroed range.
-        zero_range = 20e-12 if auto else _get(config, "current_range_A", 2e-9)
+        # Start auto-ranging at its floor so it cannot go below the zeroed range.
+        auto_current = auto and not native
+        if auto_current:
+            lower = _get(config, "current_autorange_min_A", CURRENT_RANGES_A[0])
+            upper = _get(config, "current_autorange_max_A", CURRENT_RANGES_A[-1])
+            previous_limits = self._set_autorange_limits(auto_key, lower, upper)
+            zero_range = lower
+        else:
+            zero_range = CURRENT_RANGES_A[0] if auto else _get(config, "current_range_A", 2e-9)
         self._set(range_key, zero_range, zero_range)
         zero_range_readback = self._number(self._query(range_key + "?"))
         self._profile(COMMON_PROFILE)
@@ -378,7 +405,7 @@ class Instrument:
         self._verify(":OUTP1?", False)
         self._verify(":SYST:ZCH?", True)
         self._verify(":SYST:ZCOR?", False)
-        self._verify(range_key + ":AUTO?", False)
+        self._verify(auto_key + "?", False)
         self._verify(range_key + "?", zero_range_readback)
         self._check_errors("before zero correction")
         if native:
@@ -403,7 +430,16 @@ class Instrument:
             self._verify(":SYST:ZCOR?", True)
             self._check_errors("zero correction retained after zero check OFF")
             zero_method = "enable_while_zero_check_on"
-        self._set(range_key + ":AUTO", "ON" if auto else "OFF", auto)
+        self._set(auto_key, "ON" if auto else "OFF", auto)
+        auto_limits = None
+        lower_readback = upper_readback = None
+        if auto_current:
+            lower_readback, upper_readback = self._verify_autorange_limits(auto_key, lower, upper)
+            auto_limits = {
+                "before_A": previous_limits,
+                "lower_A": lower_readback,
+                "upper_A": upper_readback,
+            }
         self._verify(":SENS:RES:VSC?", "MAN")
         self._verify(":SOUR:VOLT?", 0)
         self._check_errors("final configuration")
@@ -425,6 +461,11 @@ class Instrument:
         self._configured_snapshot = _snapshot(config)
         return {
             "source_range_V": self.source_range_V,
+            "current_autorange": bool(auto),
+            "current_autorange_limits": auto_limits,
+            "current_autorange_min_A": lower_readback,
+            "current_autorange_max_A": upper_readback,
+            "current_range_A": status["current_range"],
             "voltage_ceiling_V": ceiling,
             "manual_vsource": True,
             "normal_resistance": True,

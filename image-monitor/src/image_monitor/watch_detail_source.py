@@ -1,8 +1,9 @@
 """Select an unattempted post first discovered in the latest verified two-page scan."""
 
+from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.search_list import MAX_ROWS
-from image_monitor.watch_runtime import verified_recent_plan
-from image_monitor.watch_store import _record
+from image_monitor.watch_runtime import confirmed_monitor_scan, verified_recent_plan
+from image_monitor.watch_store import MONITOR_SCOPE, _record
 
 
 def recent_scan_candidates(queue, scope, state):
@@ -65,3 +66,24 @@ def recent_scan_candidate(queue, scope, state, *, post_id=None):
             row["unattempted"] = 1
             return summary, [row]
     return summary, []
+
+
+def monitor_detail_scan_id(database, queue, state):
+    """Identify a closed monitor scan whose next automatic detail turn is still unspent."""
+    latest = state["latest_scan"]
+    if (
+        queue.schema_version < 5
+        or not latest
+        or not confirmed_monitor_scan(database, latest)
+        or verified_recent_plan(queue, MONITOR_SCOPE, state) is None
+        or not CandidateDetailStore(queue).list_pending(MONITOR_SCOPE, limit=1)
+    ):
+        return None
+    # Detail start times from CandidateDetailStore are normalized to UTC microseconds.
+    # An interrupted attempt also owns its turn; it cannot authorize another post here.
+    attempted = queue.connection.execute(
+        "SELECT 1 FROM candidate_details WHERE watch_name=? AND gallery_type=? AND gallery_id=? "
+        "AND keyword=? AND search_type=? AND started_at>=? LIMIT 1",
+        (*MONITOR_SCOPE.key(), latest["observed_at"]),
+    ).fetchone()
+    return latest["scan_id"] if attempted is None else None

@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
+from image_monitor.candidate_finish import CandidateFinishError, _read_json, _uuid
 from image_monitor.native_probe import write_report
 from image_monitor.native_ui import NativeUIError, require_windows
 from image_monitor.queue import QueueError, QueueStore
@@ -24,7 +25,7 @@ from image_monitor.watch_planner import (
     plan_scan,
     plan_verified_page_prefix,
 )
-from image_monitor.watch_store import WatchScope, WatchStore
+from image_monitor.watch_store import MONITOR_SCOPE, WatchScope, WatchStore
 
 SERVICE_SCOPE = "dcinside"
 PARTIAL_COVERAGE_GAPS = frozenset({"anchor_not_reached", "overlap_incomplete"})
@@ -375,6 +376,53 @@ def share_watch_report(report):
     return {key: report[key] for key in keys if key in report}
 
 
+def confirmed_monitor_scan(database: Path, latest: dict) -> bool:
+    """Verify browser cleanup for this exact monitor scan using its final local report."""
+    if not isinstance(latest, dict) or not isinstance(latest.get("result"), dict):
+        return False
+    fields = ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type")
+    control = latest["result"].get("control")
+    if not isinstance(control, dict) or tuple(latest.get(k) for k in fields) != MONITOR_SCOPE.key():
+        return False
+    run_id = control.get("monitor_run_id")
+    if not _uuid(run_id) or not _uuid(latest.get("scan_id")):
+        return False
+    try:
+        report = _read_json(database.parent / "runs" / run_id / "report.json")
+        if not isinstance(report, dict) or report.get("closed_monitor_scan") != {
+            "run_id": run_id,
+            "scan_id": latest["scan_id"],
+            "scope": list(MONITOR_SCOPE.key()),
+        }:
+            return False
+        cycles = report.get("cycles")
+        complete, gap = latest["complete"], latest["gap_reason"]
+        return (
+            report.get("mode") == "bounded_live_list_discovery"
+            and report.get("discovery_only") is True
+            and report.get("browser_closed") is True
+            and report.get("error_type", "missing") is None
+            and (
+                complete is True
+                and gap is None
+                or complete is False
+                and gap in PARTIAL_COVERAGE_GAPS
+            )
+            and report.get("status")
+            == ("watch_test_completed" if complete else "watch_test_partial")
+            and report.get("reason") == gap
+            and isinstance(cycles, list)
+            and 1 <= len(cycles) <= 2
+            and report.get("cycles_completed") == len(cycles)
+            and isinstance(cycles[-1], dict)
+            and cycles[-1].get("generation") == latest["generation"]
+            and _stored_time(report.get("next_eligible_at_local"))
+            == _stored_time(control.get("next_eligible_at"))
+        )
+    except (OSError, ValueError, CandidateFinishError, RecursionError):
+        return False
+
+
 def run_watch_trial(
     work_root: Path,
     browser="chrome",
@@ -555,6 +603,8 @@ def run_watch_trial(
                             "http_status": status,
                             "transport_status": outcome["status"],
                         }
+                        if scope == MONITOR_SCOPE:
+                            plan["scan_result"]["control"]["monitor_run_id"] = run_directory.name
                         plan["scan_result"]["private_observation"] = outcome
                         report["last_stage"] = "persist_scan"
                         persisted = store.persist_scan(scope, **plan)
@@ -601,6 +651,21 @@ def run_watch_trial(
                 and verified_recent_plan(queue, scope, state) is not None
             ):
                 report["recent_pages_verified"] = True
+            if (
+                scope == MONITOR_SCOPE
+                and report["browser_closed"] is True
+                and (
+                    report["status"] == "watch_test_completed"
+                    or report.get("recent_pages_verified") is True
+                )
+            ):
+                # Only the final report, written after leaving the owned browser, can
+                # certify this scan. A process lost after the DB commit leaves no proof.
+                report["closed_monitor_scan"] = {
+                    "run_id": run_directory.name,
+                    "scan_id": persisted["scan_id"],
+                    "scope": list(scope.key()),
+                }
     except WatchRunBusy:
         report.update(status="watch_busy", reason="another_scan_owns_this_scope")
     except KeyboardInterrupt:

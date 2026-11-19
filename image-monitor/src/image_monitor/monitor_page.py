@@ -236,8 +236,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
 
   <section class="intro" aria-labelledby="page-title">
     <h1 id="page-title">새 글 감시</h1>
-    <p>감시 시작을 누르면 목록을 읽습니다. 내용 미확인 후보가 있으면 한 건을 자동으로 확인한 뒤
-      목록으로 돌아옵니다.</p>
+    <p>감시를 시작하면 새 글 목록과 미확인 후보의 본문을 번갈아 확인합니다.</p>
     <div class="scope"><span class="scope-dot" aria-hidden="true"></span>만화 · ai · 제목+내용</div>
   </section>
 
@@ -249,7 +248,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     <div class="metric"><div class="metric-label">이번 실행의 목록 확인</div>
       <div class="metric-value"><small>완료</small> <span id="cycle-count">0</span>
         <small>부분</small> <span id="partial-cycles">0</span></div></div>
-    <div class="metric"><div class="metric-label">이번 실행의 자동 후보 확인</div>
+    <div class="metric">
+      <div class="metric-label" id="auto-details-label">이번 실행의 자동 후보 확인</div>
       <div class="metric-value"><span id="auto-details-checked">0</span><small>건</small></div>
     </div>
   </section>
@@ -779,8 +779,10 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     const localTask = savedTask ||
       ['operations', 'finish', 'overview', 'save'].includes(state.task_kind);
     let info = phases[phase] || phases.unknown;
+    const resumePending = state.resume_detail_pending === true;
     if (state.task_kind === 'auto_details' && phase === 'waiting') {
-      info = {title: '후보 자동 확인을 기다리고 있습니다.',
+      info = {title: resumePending ? '이전 목록의 후보 확인을 기다리고 있습니다.' :
+        '후보 자동 확인을 기다리고 있습니다.',
         detail: '대기 시간이 지나면 미확인 후보 한 건을 읽습니다.', tone: 'active'};
     } else if (state.task_kind === 'auto_details' && phase === 'inspecting') {
       info = {title: '후보 내용을 자동으로 확인하고 있습니다.',
@@ -824,11 +826,18 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     }
     const editable = state.settings_editable === true ||
       (state.settings_editable === undefined && phase === 'stopped');
+    if (resumePending && phase === 'stopped' && editable) {
+      const next = '감시 시작을 누르면 이전 목록에 남은 후보 한 건의 본문부터 확인합니다.';
+      info = {...info, detail: info === phases.stopped ? next : info.detail + ' ' + next};
+    }
     text('candidate-count', count(state.candidate_count).toLocaleString('ko-KR'));
     text('new-count', count(state.new_candidates).toLocaleString('ko-KR'));
     text('cycle-count', count(state.completed_cycles).toLocaleString('ko-KR'));
     text('partial-cycles', count(state.partial_cycles).toLocaleString('ko-KR'));
     text('auto-details-checked', count(state.auto_details_checked).toLocaleString('ko-KR'));
+    text('auto-details-label', state.resumed_detail_slot === true ?
+      '이번 실행의 자동 후보 확인 (이전 목록에서 이어 확인한 후보 포함)' :
+      '이번 실행의 자동 후보 확인');
     text('status-title', closing ? '프로그램을 종료하고 있습니다.' : info.title);
     const reason = typeof state.reason === 'string' ? state.reason : '';
     const gap = typeof state.gap_reason === 'string' ? state.gap_reason : '';

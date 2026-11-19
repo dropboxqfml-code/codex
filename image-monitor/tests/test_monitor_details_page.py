@@ -174,6 +174,36 @@ def test_automatic_candidate_turn_shows_next_action_then_returns_to_the_list(por
     assert state.actions == [{"action": "pause"}, {"action": "start"}]
 
 
+def test_reopened_dashboard_explains_pending_and_completed_detail_separately(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    state.snapshot.update(task_kind="overview", resume_detail_pending=True)
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    expect(page.locator("#status-detail")).to_contain_text("이전 목록에 남은 후보 한 건의 본문부터")
+    expect(page.locator("#start")).to_be_enabled()
+    expect(page.locator("#auto-details-checked")).to_have_text("0")
+    state.snapshot.update(task_kind="auto_details", phase="waiting", settings_editable=False)
+    expect(page.locator("#status-title")).to_have_text("이전 목록의 후보 확인을 기다리고 있습니다.")
+    state.snapshot.update(phase="needs_review", reason="access_block_requires_review")
+    expect(page.locator("#status-detail")).to_contain_text("접근 제한")
+    expect(page.locator("#start")).to_be_disabled()
+    state.snapshot.update(
+        phase="waiting",
+        task_kind="list",
+        reason=None,
+        resume_detail_pending=False,
+        resumed_detail_slot=True,
+        auto_details_checked=1,
+    )
+    expect(page.locator("#auto-details-label")).to_contain_text(
+        "이전 목록에서 이어 확인한 후보 포함"
+    )
+    expect(page.locator("#auto-details-checked")).to_have_text("1")
+    expect(page.locator("#status-title")).to_have_text("다음 목록 확인을 기다리고 있습니다.")
+    assert state.actions == []
+
+
 @pytest.mark.parametrize(
     "changes",
     [

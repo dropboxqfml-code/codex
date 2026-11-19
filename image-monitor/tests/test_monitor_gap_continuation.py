@@ -55,7 +55,7 @@ def run_controller(root, clock, cycle, detail):
         assert controller.wait_stopped(4)
 
 
-def test_restart_with_older_partial_scan_keeps_gap_and_can_inspect_deduplicated_candidates(
+def test_restart_with_legacy_partial_scan_keeps_gap_and_can_inspect_deduplicated_candidates(
     tmp_path,
 ):
     clock = AutoClock()
@@ -63,6 +63,14 @@ def test_restart_with_older_partial_scan_keeps_gap_and_can_inspect_deduplicated_
     first = run_scan(tmp_path, clock, partial_pages)
     assert first["status"] == "watch_test_partial"
     assert first["reason"] == "anchor_not_reached" and first["new_candidates"] == 40
+    # Previously released records did not bind the scan to a monitor run's closed browser.
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        scan = WatchStore(queue).get_state(MONITOR_SCOPE)["latest_scan"]
+        del scan["result"]["control"]["monitor_run_id"]
+        queue.connection.execute(
+            "UPDATE watch_scans SET result_json=? WHERE scan_id=?",
+            (json.dumps(scan["result"]), scan["scan_id"]),
+        )
     with QueueStore(tmp_path / "watch.sqlite", read_only=True) as queue:
         before = WatchStore(queue).get_state(MONITOR_SCOPE)
         first_gap = WatchStore(queue).list_gaps(MONITOR_SCOPE)[0]

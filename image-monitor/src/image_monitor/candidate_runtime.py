@@ -21,12 +21,11 @@ from image_monitor.native_probe import write_report
 from image_monitor.native_ui import NativeUIError, require_windows
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.retry import retry_after
-from image_monitor.watch_detail_source import recent_scan_candidate
+from image_monitor.watch_detail_source import monitor_detail_scan_id, recent_scan_candidate
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_planner import next_poll_at
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
-    PARTIAL_COVERAGE_GAPS,
     SERVICE_SCOPE,
     _Clock,
     _eligibility,
@@ -264,13 +263,13 @@ def run_candidate_trial(
                     report.update(status="candidate_scan_unverified", reason="source_scan_changed")
                     return report
                 if expected_scan_id is not None:
-                    # The monitor validated this particular partial scan before its
-                    # cooldown. Bind the decision again under the shared navigation lease.
+                    # Recheck ownership and consumption while holding the same lease as list and
+                    # detail navigation. Another process may have used the slot during cooldown.
                     latest = state["latest_scan"]
-                    if latest is None or (
-                        latest["scan_id"] != expected_scan_id
-                        or latest["complete"]
-                        or latest["gap_reason"] not in PARTIAL_COVERAGE_GAPS
+                    if (
+                        scope != _MONITOR_SCOPE
+                        or not latest
+                        or latest["scan_id"] != expected_scan_id
                     ):
                         raise QueueError("List coverage changed before candidate inspection")
                 if queue.summary()["posts"] or queue.summary()["jobs"]:
@@ -287,6 +286,12 @@ def run_candidate_trial(
                         report.update(reason="access_block_requires_review", last_stage="blocked")
                     elif stopped():
                         raise _RequestedStop
+                    elif expected_scan_id is not None and (
+                        monitor_detail_scan_id(database, queue, state) != expected_scan_id
+                    ):
+                        report.update(
+                            status="candidate_no_pending", reason="no_verified_detail_slot"
+                        )
                     elif eligibility == "waiting" and not recent_scan_only:
                         report.update(status="candidate_waiting", reason="persisted_cooldown")
                         _deadline(report, due)

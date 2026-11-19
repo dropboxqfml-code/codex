@@ -111,6 +111,21 @@ def test_detail_projection_is_bounded_and_does_not_alias_controller_rows(portal)
 
 
 @pytest.mark.parametrize(
+    ("pending", "resumed", "expected"),
+    [(True, False, (True, False)), (False, True, (False, True)), ("private", 1, (False, False))],
+)
+def test_dashboard_and_shared_report_only_expose_boolean_resume_flags(
+    portal, pending, resumed, expected
+):
+    portal.controller.snapshot.update(resume_detail_pending=pending, resumed_detail_slot=resumed)
+    code, _, body = request(portal)
+    assert code == 200
+    shared = share_monitor_report({"monitor_status": portal.controller.status()})
+    for public in (json.loads(body)["status"], shared["monitor_status"]):
+        assert (public["resume_detail_pending"], public["resumed_detail_slot"]) == expected
+
+
+@pytest.mark.parametrize(
     "extra",
     [
         {"scope": "previous trial"},

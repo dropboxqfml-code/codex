@@ -222,6 +222,8 @@ def _public_status(status, *, include_preview_ids=False):
     result["list_diagnosis"] = public_list_diagnosis(status.get("list_diagnosis"))
     result["auto_details_checked"] = _public_count(status.get("auto_details_checked"))
     result["partial_cycles"] = _public_count(status.get("partial_cycles"))
+    result["resume_detail_pending"] = status.get("resume_detail_pending") is True
+    result["resumed_detail_slot"] = status.get("resumed_detail_slot") is True
     result.update(_public_operations(status))
     # Detail rows are anonymous structure summaries, never private observations.
     # Bound and project these separately so a future controller field cannot

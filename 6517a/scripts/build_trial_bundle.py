@@ -97,6 +97,7 @@ def copy_sources(destination, root=PROJECT_ROOT, developer=False):
     if developer:
         paths += sorted((root / "tests").rglob("*.py"))
         paths += sorted((root / "scripts").glob("*.py"))
+        paths += sorted((root / "scripts").glob("*.ps1"))
         paths += sorted((root / "packaging").glob("*"))
     for path in paths:
         if not path.is_file() or "__pycache__" in path.parts:

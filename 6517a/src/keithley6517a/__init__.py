@@ -1,3 +1,3 @@
 """6517A measurement application; simulation is the default, not hardware certification."""
 
-__version__ = "0.9.2.2"
+__version__ = "0.9.2.3"

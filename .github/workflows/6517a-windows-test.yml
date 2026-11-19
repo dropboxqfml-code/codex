@@ -2,19 +2,29 @@ name: 6517A Windows portable trial
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - '6517a-audit-*'
 
 permissions:
   contents: read
 
+env:
+  PYTHONUTF8: '1'
+  QT_QPA_PLATFORM: offscreen
+
 jobs:
   windows-simulation:
-    runs-on: windows-latest
-    timeout-minutes: 25
+    runs-on: windows-2022
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: 6517a
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
       - uses: astral-sh/setup-uv@v7
         with:
           version: '0.13.5'
@@ -24,23 +34,88 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          uv run --locked pytest -q
+          uv run --locked pytest -q --junitxml=reports/windows-tests.xml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           uv run --locked ruff check .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           uv run --locked ruff format --check .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build portable package and test its Windows interpreter, synthetic CLI and GUI
-        run: uv run --locked python scripts/build_trial_bundle.py --output dist --native-smoke
+        run: |
+          uv run --locked python scripts/build_trial_bundle.py --output dist --native-smoke
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item reports/windows-tests.xml dist/Windows-software-tests.xml
+      - name: Record exact tested ZIP checksums and native launch evidence
+        run: |
+          $reports = @(Get-ChildItem dist/*-build-report.json)
+          if ($reports.Count -ne 1) { throw 'Expected exactly one build report' }
+          $report = Get-Content $reports[0].FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+          $archive = Get-Item "dist/6517A-USB-GPIB-Trial-$($report.version)-Windows-x64.zip"
+          $hash = (Get-FileHash $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($report.native_windows_execution_verified -ne $true -or
+              $report.relocated_windows_execution_verified -ne $true -or
+              $report.hardware_verified -ne $false -or
+              $report.relocation_check.archive_sha256 -ne $hash -or
+              $report.relocation_check.checks.korean_space_path_verified -ne $true -or
+              $report.relocation_check.checks.actual_start_gui_cmd_verified -ne $true -or
+              $report.relocation_check.checks.visible_gui_normal_close_verified -ne $true) {
+              throw 'The exact ZIP or its real CMD/GUI launch was not confirmed'
+          }
+          $commit = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          [xml]$junit = Get-Content reports/windows-tests.xml -Raw -Encoding UTF8
+          $counts = [ordered]@{ tests = 0; failures = 0; errors = 0; skipped = 0 }
+          foreach ($suite in $junit.SelectNodes('//testsuite[not(testsuite)]')) {
+              foreach ($key in @('tests', 'failures', 'errors', 'skipped')) {
+                  $counts[$key] += [int]$suite.GetAttribute($key)
+              }
+          }
+          if ($counts.tests -le 0 -or $counts.failures -ne 0 -or $counts.errors -ne 0) {
+              throw 'The Windows JUnit report has no tests or contains failures'
+          }
+          @(
+            '## 6517A native Windows audit',
+            '',
+            "Commit: $commit",
+            "ZIP: $($archive.Name)",
+            "Bytes: $($archive.Length)",
+            "SHA-256: $hash",
+            "Windows JUnit: tests=$($counts.tests), failures=$($counts.failures), errors=$($counts.errors), skipped=$($counts.skipped)",
+            '',
+            'The exact ZIP passed native CLI/GUI, Korean/space-path relocation,',
+            'actual Start-GUI.cmd, visible main-window and normal-close checks.',
+            'Hardware was not connected or verified. This workflow creates no GitHub Release.'
+          ) | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          [ordered]@{
+              source_commit = $commit
+              version = $report.version
+              zip = $archive.Name
+              bytes = $archive.Length
+              sha256 = $hash
+              native_windows_execution_verified = $true
+              hardware_verified = $false
+              software_tests = $counts
+              relocation_check = $report.relocation_check
+          } | ConvertTo-Json -Depth 20 | Set-Content dist/Windows-artifact-audit.json -Encoding utf8
+      - name: Retain Windows software test report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: 6517A-Windows-test-results-${{ github.run_id }}
+          path: 6517a/reports/windows-tests.xml
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload trial packages and checksums
         uses: actions/upload-artifact@v6
         with:
-          name: 6517A-Windows-x64-trial
+          name: 6517A-Windows-x64-trial-${{ github.run_id }}
           path: |
             6517a/dist/*-Windows-x64.zip
             6517a/dist/*-Windows-x64.zip.sha256
             6517a/dist/*-Source.zip
             6517a/dist/*-Source.zip.sha256
             6517a/dist/*-build-report.json
+            6517a/dist/Windows-software-tests.xml
+            6517a/dist/Windows-artifact-audit.json
           if-no-files-found: error
           retention-days: 14

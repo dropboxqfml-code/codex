@@ -16,7 +16,7 @@ def _read_sidecar(path):
         raise ValueError(f"Non-finite JSON value in {path.name}: {token}")
 
     try:
-        value = json.loads(path.read_text(encoding="utf-8"), parse_constant=invalid_constant)
+        value = json.loads(path.read_text(encoding="utf-8-sig"), parse_constant=invalid_constant)
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"Invalid {path.name}: {exc}") from exc
     if not isinstance(value, dict):
@@ -26,8 +26,11 @@ def _read_sidecar(path):
 
 def _reading_rows(stream):
     reader = csv.DictReader(stream)
-    fields = set(reader.fieldnames or ())
+    header = reader.fieldnames or ()
+    fields = set(header)
     required = {"elapsed_s", "voltage_programmed_readback_V", "current_raw_A"}
+    if len(fields) != len(header):
+        raise ValueError("Duplicate column name in readings.csv")
     if not required <= fields or not fields & {"native_r_ohm", "resistance_apparent_ohm"}:
         raise ValueError("Expected a 6517A readings.csv with time, resistance, voltage, current")
     for line_number, row in enumerate(reader, start=2):

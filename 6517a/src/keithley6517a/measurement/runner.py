@@ -12,6 +12,7 @@ import uuid
 from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import NamedTuple
 
 from .. import __version__
 from ..clock import Clock
@@ -21,6 +22,7 @@ from ..driver.commands import (
     PICOAMP_REFERENCE_RANGES_A,
     current_range_matches,
 )
+from ..driver.parser import ParsedReading
 from ..storage.run_writer import RunWriter
 from .analysis import analyze_reading, summarize
 
@@ -37,6 +39,16 @@ class StopRequested(MeasurementError):
 _PICOAMP_COMPARISON_FRACTION = 0.75
 # Manual appendix: typical preamp settling to 10% on nA ranges is 15 ms.
 _REFERENCE_MIN_SETTLE_S = 0.015
+
+
+class _Sample(NamedTuple):
+    before: dict
+    read_start: float
+    reading: ParsedReading
+    read_end: float
+    after: dict
+    read_start_wall_time: str
+    read_end_wall_time: str
 
 
 class MeasurementRunner:
@@ -576,24 +588,11 @@ class MeasurementRunner:
             self._state("FAULT")
         else:
             self._state("OUTPUT_OFF_CONFIRMED")
-        if self._storage_error:
-            result = "aborted"
-            reason += f"; persistence failed: {self._storage_error}"
-            if self.output_state == "OFF":
-                self._state("FAULT")
-        saved = self._finalize(result, reason)
-        if self._storage_error:
-            result = "aborted"
-            reason = f"{reason}; final persistence failed: {self._storage_error}"
-            if self.output_state == "OFF":
-                self._state("FAULT")
         return dict(
-            status=result,
-            reason=reason,
+            self._finalize(result, reason),
             run_directory=str(self.run_directory) if self.run_directory else None,
             output_state=self.output_state,
             residual_voltage_state="UNVERIFIED",
-            **saved,
         )
 
     def _trip_checks(self, value, voltage):
@@ -618,8 +617,10 @@ class MeasurementRunner:
         ):
             raise MeasurementError("pA comparison: fixed range or Zero Correct changed before READ")
         read_start = self.clock.monotonic()
+        read_start_wall_time = self.clock.wall_time()
         parsed = self.instrument.read(self.config.mode)
         read_end = self.clock.monotonic()
+        read_end_wall_time = self.clock.wall_time()
         after = self.instrument.safety_status()
         self.output_state = after.get("output_state", "UNKNOWN")
         if reference is not None and (
@@ -627,7 +628,9 @@ class MeasurementRunner:
             or after.get("zero_correct") is not True
         ):
             raise MeasurementError("pA comparison: fixed range or Zero Correct changed during READ")
-        return before, read_start, parsed, read_end, after
+        return _Sample(
+            before, read_start, parsed, read_end, after, read_start_wall_time, read_end_wall_time
+        )
 
     def _reading_is_fresh_at_voltage(self, reading, voltage):
         return (self._last_number is None or reading.reading_number > self._last_number) and abs(
@@ -668,7 +671,7 @@ class MeasurementRunner:
         return self._read_sample()
 
     def _retry_reference_overflow(self, sample, voltage, deadline):
-        _, _, reading, _, after = sample
+        reading, after = sample.reading, sample.after
         reference = self._picoamp_reference_range_A
         if (
             reference is None
@@ -695,30 +698,45 @@ class MeasurementRunner:
         )
         return self._raise_reference_and_read(wider, reading, deadline)
 
-    def _compare_picoamp_reading(self, reading, before, after, voltage, deadline):
-        self._validate_status(after, expected_output="ON")
+    @staticmethod
+    def _comparison_sample_fields(prefix, sample):
+        return {
+            f"{prefix}_reading_number": sample.reading.reading_number,
+            f"{prefix}_response": sample.reading.raw,
+            f"{prefix}_current_A": sample.reading.value,
+            f"{prefix}_status": sample.reading.status,
+            f"{prefix}_voltage_reported_by_instrument_V": sample.reading.voltage_reported,
+            f"{prefix}_range_before_A": sample.before.get("current_range"),
+            f"{prefix}_range_after_A": sample.after.get("current_range"),
+            f"{prefix}_read_start_monotonic_s": sample.read_start,
+            f"{prefix}_read_end_monotonic_s": sample.read_end,
+            f"{prefix}_read_start_wall_time_iso8601": sample.read_start_wall_time,
+            f"{prefix}_read_end_wall_time_iso8601": sample.read_end_wall_time,
+        }
+
+    def _compare_picoamp_reading(self, original_sample, voltage, deadline):
+        reading = original_sample.reading
+        self._validate_status(original_sample.after, expected_output="ON")
         reference = PICOAMP_REFERENCE_RANGES_A[0]
+        original_fields = self._comparison_sample_fields("original", original_sample)
         self._event(
             "picoamp_comparison_started",
             source_voltage_setting_V=voltage,
-            original_reading_number=reading.reading_number,
-            original_response=reading.raw,
-            original_current_A=reading.value,
-            original_range_before_A=before.get("current_range"),
-            original_range_after_A=after.get("current_range"),
             reference_range_A=reference,
+            **original_fields,
         )
         sample = self._raise_reference_and_read(reference, reading, deadline)
         sample = self._retry_reference_overflow(sample, voltage, deadline)
-        reference_reading = sample[2]
+        reference_reading = sample.reading
         # Persist the comparison event after protective OFF so it cannot delay a trip.
+        # Its event time is persistence time; these snapshots retain the first pair's
+        # host READ intervals and ranges even if later steps widen the fixed range.
         self._picoamp_comparison_readback = dict(
-            original_reading_number=reading.reading_number,
+            source_voltage_setting_V=voltage,
+            read_time_basis="HOST_READ_CALL_NOT_INDEPENDENT_ADC_TIMING",
             reference_range_A=self._picoamp_reference_range_A,
-            reference_reading_number=reference_reading.reading_number,
-            reference_response=reference_reading.raw,
-            reference_current_A=reference_reading.value,
-            reference_status=reference_reading.status,
+            **original_fields,
+            **self._comparison_sample_fields("reference", sample),
             reference_reading_minus_original_A=(
                 reference_reading.value - reading.value
                 if reference_reading.value is not None
@@ -758,13 +776,17 @@ class MeasurementRunner:
             if self.clock.monotonic() >= deadline:
                 break
             sample = self._read_sample()
-            before, _, reading, _, after = sample
+            reading, after = sample.reading, sample.after
             old_reference = self._picoamp_reference_range_A
             if self._needs_picoamp_comparison(reading, after.get("current_range"), programmed):
-                sample = self._compare_picoamp_reading(reading, before, after, programmed, deadline)
+                sample = self._compare_picoamp_reading(sample, programmed, deadline)
             elif old_reference is not None:
                 sample = self._retry_reference_overflow(sample, programmed, deadline)
-            before, read_start, parsed, read_end, after = sample
+            before = sample.before
+            read_start = sample.read_start
+            parsed = sample.reading
+            read_end = sample.read_end
+            after = sample.after
             if old_reference != self._picoamp_reference_range_A:
                 # The switch was performed and settled explicitly before the read.
                 last_range = after.get("current_range")
@@ -918,6 +940,21 @@ class MeasurementRunner:
         )
         if self.writer:
             try:
+                close_errors = self.writer.close() or []
+            except Exception as exc:
+                close_errors = [f"{type(exc).__name__}: {exc}"]
+            if close_errors:
+                self._storage_error = OSError("Writer close failed: " + "; ".join(close_errors))
+                self.events.append(dict(event="writer_close_failed", errors=list(close_errors)))
+        if self._storage_error:
+            result = "aborted"
+            reason += f"; persistence failed: {self._storage_error}"
+            if self.output_state == "OFF" and self.state != "FAULT":
+                self._state("FAULT")
+        if self.writer:
+            try:
+                # The terminal status is independent atomic JSON. Write success
+                # only after every data-stream close has been checked.
                 self.writer.status(
                     result,
                     reason,
@@ -928,10 +965,27 @@ class MeasurementRunner:
                 )
             except Exception as exc:
                 self._storage_error = exc
+                result = "aborted"
+                reason += f"; final persistence failed: {exc}"
                 self.events.append(dict(event="status_persistence_failed", reason=str(exc)))
-            finally:
-                self.writer.close()
-        return saved
+                if self.output_state == "OFF" and self.state != "FAULT":
+                    self._state("FAULT")
+                try:
+                    self.writer.status(
+                        result,
+                        reason,
+                        self.output_state,
+                        software_state=self.state,
+                        wall_time_iso8601=self.clock.wall_time(),
+                        **saved,
+                    )
+                except Exception as recovery_error:
+                    reason += f"; terminal status update failed: {recovery_error}"
+                    self._storage_error = OSError(reason)
+                    self.events.append(
+                        dict(event="terminal_status_update_failed", reason=str(recovery_error))
+                    )
+        return dict(status=result, reason=reason, **saved)
 
     def shutdown(self):
         self._check_owner()

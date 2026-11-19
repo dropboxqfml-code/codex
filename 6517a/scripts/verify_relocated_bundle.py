@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import stat
@@ -96,12 +97,60 @@ def verify_files(root: Path, *, passed=True) -> dict:
     return report
 
 
+def verify_cmd_launcher(root: Path) -> dict:
+    """Launch the unmodified user CMD and observe its own native Windows window."""
+    print(
+        "[RELOCATION] Launching actual Start-GUI.cmd and observing its main window",
+        file=sys.stderr,
+        flush=True,
+    )
+    report_path = root / "diagnostics/cmd-launcher-verification.json"
+    run_child(
+        root,
+        [
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            Path(__file__).with_name("verify_gui_launcher.ps1"),
+            "-Root",
+            root,
+            "-Report",
+            report_path,
+        ],
+        timeout=180,
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    if (
+        report.get("status") != "passed"
+        or report.get("hardware_verified") is not False
+        or report.get("automatic_output_enable") is not False
+        or report.get("start_gui_cmd_verified") is not True
+        or report.get("visible_main_window_verified") is not True
+        or report.get("gui_normal_close_verified") is not True
+        or report.get("gui_exit_code") != 0
+    ):
+        raise RuntimeError("The actual user CMD/GUI launch was not verified")
+    return report
+
+
 def verify_relocated_bundle(archive: Path) -> dict:
+    archive = archive.resolve(strict=True)
+    with archive.open("rb") as stream:
+        archive_sha256 = hashlib.file_digest(stream, "sha256").hexdigest()
+    archive_bytes = archive.stat().st_size
     print("[RELOCATION] Extracting delivered ZIP into a new path", file=sys.stderr, flush=True)
     with tempfile.TemporaryDirectory(prefix="6517a-relocation-") as temporary:
         destination = Path(temporary).resolve() / "relocated bundle 시험"
         destination.mkdir()
         root = extract_bundle(archive.resolve(), destination)
+        if " " not in str(root) or not any(
+            "\uac00" <= character <= "\ud7a3" for character in str(root)
+        ):
+            raise RuntimeError("Relocation must exercise a path with both Korean and spaces")
         manifest_path = root / "bundle_manifest.json"
         original_manifest = manifest_path.read_bytes()
         manifest = json.loads(original_manifest)
@@ -162,6 +211,8 @@ def verify_relocated_bundle(archive: Path) -> dict:
             or summary.get("device_ascii_compatibility_verified") is not True
         ):
             raise RuntimeError("Relocated synthetic CLI/GUI did not confirm success")
+        launcher_report = verify_cmd_launcher(root)
+        verify_files(root)
 
         print(
             "[RELOCATION] Regenerating mutable caches, then rechecking", file=sys.stderr, flush=True
@@ -231,6 +282,10 @@ def verify_relocated_bundle(archive: Path) -> dict:
             "source_and_dll_tampering_rejected": True,
             "restored_integrity_passed": True,
             "manifest_unchanged": True,
+            "korean_space_path_verified": " " in str(root)
+            and any("\uac00" <= character <= "\ud7a3" for character in str(root)),
+            "actual_start_gui_cmd_verified": True,
+            "visible_gui_normal_close_verified": True,
         }
     return {
         "status": "passed",
@@ -238,6 +293,10 @@ def verify_relocated_bundle(archive: Path) -> dict:
         "relocated_windows_execution_verified": True,
         "hardware_verified": False,
         "checks": checks,
+        "cmd_launcher_check": launcher_report,
+        "archive_name": archive.name,
+        "archive_bytes": archive_bytes,
+        "archive_sha256": archive_sha256,
     }
 
 

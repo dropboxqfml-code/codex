@@ -214,6 +214,7 @@ class RunWriter:
         self.directory.mkdir()  # no exist_ok: a run must never overwrite another
         self.handles = []
         self.closed = False
+        self.close_errors = []
         area, length = config.effective_geometry_m
         self.include_resistivity = area is not None and length is not None
         try:
@@ -316,9 +317,13 @@ class RunWriter:
         )
 
     def close(self):
+        """Attempt every close and retain failures without masking initialization errors."""
+        if self.closed:
+            return list(self.close_errors)
         for stream in self.handles:
             try:
                 stream.close()
-            except OSError:
-                pass
+            except Exception as exc:
+                self.close_errors.append(f"{type(exc).__name__}: {exc}")
         self.closed = True
+        return list(self.close_errors)

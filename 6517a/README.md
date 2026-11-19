@@ -1,14 +1,14 @@
 # Keithley 6517A · USB-GPIB 시험용 프로그램
 
-Windows 10/11 64-bit용 **v0.9.2.2 저전류 AUTO 시험판**입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV·분석용 TXT 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
+Windows 10/11 64-bit용 **v0.9.2.3 교정 전 점검 시험판**입니다. NI GPIB-USB와 6517A를 연결해 전압·시간·software current trip을 입력하고, ARM → START로 current 측정과 I(t)·R(t)·I–V·R–V 그래프 및 CSV·분석용 TXT 저장을 실행합니다. 정전압과 전압 목록을 지원하며 상위 폴더의 이미지 중복 검색 앱과 독립적으로 동작합니다.
 
-v0.9.2를 기반으로, 전압을 바꿔도 200 pA 범위에서 약 158–160 pA가 정상 상태로 반복 보고된 경우에 대응합니다. 낮은 전류 범위를 열어 둔 상태에서 범위 상단에 가까운 판독을 더 높은 범위로 다시 측정합니다. 이 동작의 실제 6517A 검증은 남아 있습니다.
+v0.9.2.2의 실측 로그에서 10 GΩ 시험은 20 pA·200 pA 자동 범위로 완료됐습니다. 100 MΩ 시험에서는 0.1 V에서 157.25 pA를 읽은 뒤 같은 전압에서 2 nA 범위로 재판독해 789.61 pA를 얻었습니다. v0.9.2.3은 이 측정 흐름과 보호 중단, 결과 저장, Windows 실행을 점검한 시험판입니다.
 
 연결 구성은 사용자가 관리하는 **저전압 시험 모드**와 기존 **검증 fixture 모드**를 선택합니다. 시작 화면은 SIMULATION·0 V이며, REAL 준비도 0 V·trip 미설정·사용자 확인 미선택에서 시작합니다. 설정 불러오기·초안 적용·연결만으로 출력 ON을 하지 않습니다.
 
 ## Windows에서 실행
 
-아래 GitHub 공개 파일은 v0.9.2용입니다. [v0.9.2 Windows ZIP](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.2/6517A-USB-GPIB-Trial-0.9.2-Windows-x64.zip) · [v0.9.2 SHA-256](https://github.com/dropboxqfml-code/codex/releases/download/6517a-v0.9.2/6517A-USB-GPIB-Trial-0.9.2-Windows-x64.zip.sha256)
+Windows 배포 파일과 버전별 검증 기록은 GitHub에서 확인할 수 있습니다. [6517A 시험판 릴리스](https://github.com/dropboxqfml-code/codex/releases?q=6517a-v)
 
 받은 시험판 ZIP을 새 쓰기 가능한 폴더에 모두 풀고 **`Start-GUI.cmd` 하나만 실행**합니다. 시작 창이 **Bundle 파일 검사 → Simulation 동작 검사 → GUI**를 자동으로 진행하며, 두 검사를 통과하면 메인 화면을 엽니다. Python과 Python 의존성은 포함돼 있습니다. 호환되는 기존 NI-488.2·NI-VISA 64-bit 설치를 사용하며, 드라이버 설치 상태와 이 프로그램의 통신 결과는 구분합니다.
 

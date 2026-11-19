@@ -281,7 +281,8 @@ def test_server_wait_continues_later_without_shortening_retry_after(
 
     value = create(controllers, tmp_path, cycle, clock)
     value.start()
-    assert value.wait_stopped(3)
+    # The fake clock checks Retry-After. Allow the Windows runner time to commit both scans.
+    assert value.wait_stopped(30)
     assert calls == [NOW, NOW + timedelta(seconds=180)]
     assert value.status()["completed_cycles"] == 1
 

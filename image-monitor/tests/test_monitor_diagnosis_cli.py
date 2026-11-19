@@ -238,17 +238,35 @@ def test_watch_detail_opens_one_result_and_preserves_the_cli_exit_code(tmp_path,
 
 
 @WINDOWS
+@pytest.mark.parametrize(
+    ("wrapper_name", "dispatch", "stage"),
+    [
+        (
+            "RUN_WATCH_IMAGES.cmd",
+            'if "%WATCH_IMAGES%"=="1" goto start_watch_images',
+            "watch_images",
+        ),
+        (
+            "CHECK_WATCH_IMAGES.cmd",
+            'if "%WATCH_IMAGES_CHECK%"=="1" goto check_watch_images',
+            "watch_images_check",
+        ),
+    ],
+)
 @pytest.mark.parametrize("code", [0, 2])
-def test_watch_images_uses_exact_roots_and_opens_one_result(tmp_path, code):
-    central = launcher_after_setup('if "%WATCH_IMAGES%"=="1" goto start_watch_images')
+def test_watch_images_uses_exact_roots_and_opens_one_result(
+    tmp_path, code, wrapper_name, dispatch, stage
+):
+    central = launcher_after_setup(dispatch)
+    command = stage.replace("_", "-")
     invocation = (
         '"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 '
-        "--managed-python image-monitor watch-images"
+        f"--managed-python image-monitor {command} "
     )
     assert central.count(invocation) == 1
     folder = tmp_path / "watch images"
-    copy_launcher(folder, central.replace(invocation, '"%FIXTURE_PYTHON%" args_fixture.py'))
-    wrapper = folder / "RUN_WATCH_IMAGES.cmd"
+    copy_launcher(folder, central.replace(invocation, '"%FIXTURE_PYTHON%" args_fixture.py '))
+    wrapper = folder / wrapper_name
     wrapper.write_bytes((PROJECT / wrapper.name).read_bytes())
     (folder / "args_fixture.py").write_text(
         "import json, sys\nprint(json.dumps(sys.argv[1:], ensure_ascii=False))\n"
@@ -274,10 +292,35 @@ def test_watch_images_uses_exact_roots_and_opens_one_result(tmp_path, code):
         str(appdata / "ImageMonitorCandidateSave"),
         "--work-root",
         str(appdata / "ImageMonitorWatchImages"),
-        "--browser",
-        "chrome",
     ]
+    if stage == "watch_images":
+        expected_args.extend(["--browser", "chrome"])
     assert json.dumps(expected_args, ensure_ascii=False) in content
-    assert "STAGE: watch_images" in content and "STAGE: watch_detail" not in content
-    assert f"Watch images exit code: {code}" in content
-    assert ("RESULT: WATCH_IMAGES" if code == 0 else "RESULT: STOPPED - WATCH_IMAGES") in content
+    lines = content.splitlines()
+    assert [line for line in lines if line.startswith("STAGE:")] == [f"STAGE: {stage}"]
+    assert f"{stage.replace('_', ' ').capitalize()} exit code: {code}" in lines
+    prefix = "RESULT: " if code == 0 else "RESULT: STOPPED - "
+    assert [line for line in lines if line.startswith("RESULT:")] == [prefix + stage.upper()]
+
+
+@WINDOWS
+def test_incomplete_watch_check_bundle_opens_one_setup_error_result(tmp_path):
+    folder = tmp_path / "missing setup"
+    central = (PROJECT / "RUN_WINDOWS_TEST.cmd").read_text("ascii")
+    copy_launcher(
+        folder,
+        central.replace('start "" notepad.exe "%LOG_FILE%"', 'echo OPEN_RESULT="%LOG_FILE%"'),
+    )
+    wrapper = folder / "CHECK_WATCH_IMAGES.cmd"
+    wrapper.write_bytes((PROJECT / wrapper.name).read_bytes())
+    result = run_cmd(wrapper, [])
+    assert result.returncode == 1
+    [log] = folder.glob("WINDOWS_TEST_RESULT-*.txt")
+    assert [line for line in result.stdout.splitlines() if line.startswith("OPEN_RESULT=")] == [
+        f'OPEN_RESULT="{log}"'
+    ]
+    lines = log.read_text("utf-8").splitlines()
+    assert not any(line.startswith("STAGE:") for line in lines)
+    assert [line for line in lines if line.startswith("RESULT:")] == [
+        "RESULT: STOPPED - WATCH_IMAGES_CHECK"
+    ]

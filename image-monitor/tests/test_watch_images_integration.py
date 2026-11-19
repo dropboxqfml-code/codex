@@ -20,20 +20,23 @@ from test_windows_candidate_save import (
     inspect_unverified_candidate,
     run_owned_candidate_native,
 )
-from test_windows_monitor_batch import _html
+from test_windows_monitor_batch import _html, _native_files
 from test_windows_post_pipeline import fixture_assets, serve_fixtures
 
 from image_monitor import (
     candidate_finish,
     candidate_runtime,
     monitor_batch_runtime,
+    saved_catalog,
     watch_browser,
     watch_image_search,
     watch_runtime,
 )
 from image_monitor.candidate_store import CandidateDetailStore
+from image_monitor.monitor_save_ledger import RECENT_LEDGER_NAME, LedgerStore
 from image_monitor.native_state import session_id
 from image_monitor.queue import QueueStore
+from image_monitor.watch_images_check import check_recent_images
 from image_monitor.watch_runtime import DEFAULT_SCOPE
 
 
@@ -58,6 +61,18 @@ def seed_list(watch, clock):
     )
     assert latest["reason"] == "anchor_not_reached"
     assert latest["new_candidates"] == 40 and latest["candidate_count"] == 46
+
+
+def saved_tasks(watch, legacy, work):
+    with LedgerStore(
+        watch / RECENT_LEDGER_NAME,
+        watch_root=watch,
+        legacy_root=legacy,
+        batch_root=work,
+        scope=DEFAULT_SCOPE.key(),
+        read_only=True,
+    ) as ledger:
+        return ledger.list_tasks()
 
 
 @pytest.mark.skipif(
@@ -104,10 +119,9 @@ def test_search_skips_stored_attachment_only_detail_and_saves_the_next_exact_bod
                 monkeypatch.setattr(module, "require_windows", lambda: None)
             monkeypatch.setattr(watch_browser, "browser_executable", lambda _: Path(chrome))
             monkeypatch.setattr(monitor_batch_runtime, "session_id", lambda: 1)
-            monkeypatch.setattr(monitor_batch_runtime, "NativeSaveLock", nullcontext)
-            monkeypatch.setattr(
-                monitor_batch_runtime, "shared_state_path", lambda: root / "pending.json"
-            )
+            for module in (monitor_batch_runtime, saved_catalog):
+                monkeypatch.setattr(module, "NativeSaveLock", nullcontext)
+                monkeypatch.setattr(module, "shared_state_path", lambda: root / "pending.json")
             monkeypatch.setattr(
                 candidate_finish,
                 "exclusive_digest",
@@ -210,3 +224,33 @@ def test_search_skips_stored_attachment_only_detail_and_saves_the_next_exact_bod
             assert list_state(queue) == before and queue.summary()["jobs"] == 0
             details = CandidateDetailStore(queue).list_details(DEFAULT_SCOPE)
             assert details[0] == original and [d["post_id"] for d in details] == ["240", "239"]
+
+        files = _native_files(work)
+        assert {path.name for path in files} == {"001.png", "metadata.json"}
+        tasks = saved_tasks(watch, legacy, work)
+        assert [(t["post_id"], t["status"]) for t in tasks] == [("239", "completed")]
+
+        next_posts = ["238", "237", "236"]
+        documents.update({post_url(post_id): empty for post_id in next_posts})
+        requests_before_restart = requested.copy()
+        resumed = run_watch_images(
+            watch,
+            legacy,
+            work,
+            clock=FakeClock(clock.now()),
+            save_runner=lambda *args, **kwargs: pytest.fail("A saved post was offered again"),
+        )
+        assert resumed["status"] == "image_search_limit" and resumed["save"] is None, resumed
+        assert resumed["search"]["previously_handled"] == 1
+        assert resumed["search"]["new_details_checked"] == len(next_posts)
+        checked = check_recent_images(watch, legacy, work)
+        assert checked["status"] == "watch_images_verified", checked
+        assert checked["saved_file_count"] == 1 and checked["saved_files"] == save["saved_files"]
+        assert bodies == [post_url(post_id) for post_id in ["240", "239", *next_posts]]
+        assert image_requests == [origin + "/render-first.png"] and unexpected == []
+        assert requested == requests_before_restart
+        assert saved_tasks(watch, legacy, work) == tasks and _native_files(work) == files
+        with QueueStore(watch / "watch.sqlite", read_only=True) as queue:
+            assert list_state(queue) == before and queue.summary()["jobs"] == 0
+            after = CandidateDetailStore(queue).list_details(DEFAULT_SCOPE)
+            assert after[:2] == details and [d["post_id"] for d in after[2:]] == next_posts

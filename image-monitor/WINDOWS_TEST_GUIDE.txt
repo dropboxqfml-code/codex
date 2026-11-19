@@ -1,8 +1,6 @@
-﻿최근 게시글 본문 이미지 저장 시험 (0.4.0-alpha.6)
+﻿이전에 저장한 이미지 확인 (0.4.0-beta.1)
 
-1. ZIP을 새 폴더에 풀고 image-monitor 폴더의 RUN_WATCH_IMAGES.cmd를 더블클릭하세요.
-2. 전용 Chrome에 ‘저장 시작’이 나타나면 한 번 누르고, 저장이 끝날 때까지 그 창을 앞에 두세요.
-3. 메모장이 자동으로 열리면 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개만 보내주세요.
+1. 이미지를 저장했던 PC에서 ZIP을 새 폴더에 풀고 image-monitor 폴더 안의 CHECK_WATCH_IMAGES.cmd를 더블클릭하세요.
+2. 메모장이 열리면 같은 폴더에서 방금 생성된 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개를 이 채팅에 첨부해 주세요.
 
-새로 확인하는 글은 최대 3개이며, 확인 사이에는 약 1분씩 기다립니다. 저장할 이미지가 없어도 결과 TXT가 열립니다.
-저장된 파일은 %LOCALAPPDATA%\ImageMonitorWatchImages\tasks 아래의 작업별 images 폴더에서 확인할 수 있습니다.
+이 검사는 마지막으로 저장을 마친 게시글의 이미지 파일을 PC에 남은 기록과 대조합니다.

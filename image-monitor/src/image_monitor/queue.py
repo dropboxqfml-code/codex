@@ -270,14 +270,16 @@ def _matches_schema(connection: sqlite3.Connection, schema: str) -> bool:
 
 
 class QueueStore:
-    def __init__(self, path: Path | str, *, read_only: bool = False):
+    def __init__(self, path: Path | str, *, read_only: bool = False, immutable: bool = False):
         if sqlite3.sqlite_version_info < (3, 50, 2):
             raise QueueError("SQLite 3.50.2 or newer is required")
         path = Path(path)
         self.read_only = read_only
+        if immutable and not read_only:
+            raise QueueError("An immutable database must be read-only")
         if read_only:
             self.connection = sqlite3.connect(
-                path.resolve().as_uri() + "?mode=ro",
+                path.resolve().as_uri() + ("?mode=ro&immutable=1" if immutable else "?mode=ro"),
                 uri=True,
                 isolation_level=None,
                 timeout=5,

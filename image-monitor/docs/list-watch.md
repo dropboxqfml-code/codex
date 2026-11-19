@@ -346,6 +346,11 @@ uv run --locked --extra windows image-monitor monitor-save-batch --watch-root C:
 uv run --locked --extra windows image-monitor watch-images --watch-root C:/IMWatch --legacy-root C:/IMCandidateSave --work-root C:/IMWatchImages
 ```
 
+저장 완료 후 프로그램을 새로 열어 마지막 게시글의 파일을 재검증하려면 같은 경로로
+`watch-images-check`를 실행합니다. `watch_images_verified`는 현재 파일을 저장 당시의 기록과
+대조한 결과입니다. `watch_images_no_saved_files`는 확인할 완료 기록이 없을 때,
+`watch_images_review`는 파일이나 기록에 확인할 사항이 있을 때 표시됩니다.
+
 한정 `watch-test` CLI는 주기 수나 대기 간격을 바꾸는 옵션을 제공하지 않습니다. `monitor`의
 간격은 정지한 로컬 화면에서만 설정합니다. 사용자용 실행기와 결과 확인은
 위 TXT 안내에만 정리합니다. 실제 사이트를 읽지 않는 새 DB 합성 통합 시험도 유지합니다.

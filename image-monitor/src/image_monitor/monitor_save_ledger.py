@@ -256,6 +256,7 @@ class LedgerStore:
         read_only=False,
         create=True,
         scope=MONITOR_SCOPE,
+        immutable=False,
     ):
         self.watch_root, self.legacy_root, self.batch_root = _roots(
             watch_root, legacy_root, batch_root
@@ -274,6 +275,7 @@ class LedgerStore:
             self.watch_root.is_dir() and stat.S_ISDIR(self.watch_root.lstat().st_mode),
             "The existing watch directory is required",
         )
+        _require(not immutable or read_only, "An immutable ledger must be read-only")
         self.read_only = read_only
         existed = self.path.exists()
         if existed:
@@ -282,9 +284,8 @@ class LedgerStore:
             existed or create and not read_only, "The existing monitor save ledger is required"
         )
         mode = "ro" if read_only else "rw" if existed or not create else "rwc"
-        self.connection = sqlite3.connect(
-            self.path.as_uri() + f"?mode={mode}", uri=True, isolation_level=None, timeout=5
-        )
+        uri = self.path.as_uri() + f"?mode={mode}" + ("&immutable=1" if immutable else "")
+        self.connection = sqlite3.connect(uri, uri=True, isolation_level=None, timeout=5)
         self.connection.row_factory = sqlite3.Row
         try:
             self.connection.execute("PRAGMA trusted_schema=OFF")

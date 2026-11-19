@@ -27,6 +27,7 @@ def bundle_project(tmp_path, monkeypatch):
         "RUN_WATCH_TEST.cmd",
         "RUN_WATCH_DETAIL.cmd",
         "RUN_WATCH_IMAGES.cmd",
+        "CHECK_WATCH_IMAGES.cmd",
         "RUN_CANDIDATE_TEST.cmd",
         "RUN_CANDIDATE_SAVE_TEST.cmd",
         "RUN_CANDIDATE_FINISH.cmd",

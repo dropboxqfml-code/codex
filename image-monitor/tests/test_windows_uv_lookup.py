@@ -158,6 +158,7 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
         ("RUN_WATCH_TEST.cmd", "--watch-test --chrome"),
         ("RUN_WATCH_DETAIL.cmd", "--watch-detail"),
         ("RUN_WATCH_IMAGES.cmd", "--watch-images"),
+        ("CHECK_WATCH_IMAGES.cmd", "--watch-images-check"),
         ("RUN_CANDIDATE_TEST.cmd", "--candidate-test --chrome"),
         ("RUN_CANDIDATE_SAVE_TEST.cmd", "--candidate-save-test --chrome"),
         ("RUN_CANDIDATE_FINISH.cmd", "--candidate-finish"),

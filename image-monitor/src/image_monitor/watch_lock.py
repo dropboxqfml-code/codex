@@ -78,7 +78,9 @@ def _release(descriptor: int) -> None:
 
 
 @contextmanager
-def watch_run_lock(database: Path, scope: WatchScope, *, purpose=None) -> Iterator[None]:
+def watch_run_lock(
+    database: Path, scope: WatchScope, *, purpose=None, existing_only=False
+) -> Iterator[None]:
     """Own this canonical database/scope until exit; raise if already owned.
 
     The database's parent directory must exist. Existing sidecar contents are
@@ -90,7 +92,9 @@ def watch_run_lock(database: Path, scope: WatchScope, *, purpose=None) -> Iterat
         _check_regular(path)
     except FileNotFoundError:
         pass
-    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+    if not existing_only:
+        flags |= os.O_CREAT
     descriptor = os.open(path, flags, 0o600)
     try:
         opened = os.fstat(descriptor)

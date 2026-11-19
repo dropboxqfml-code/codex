@@ -99,6 +99,7 @@ def main() -> int:
         ("monitor-save-one", "Run one native save requested by the local monitor"),
         ("monitor-batch-finish", "Reconcile completed monitor batch files without saving again"),
         ("watch-images", "Check recent posts for body images and offer to save one post in Chrome"),
+        ("watch-images-check", "Verify the last completed recent-post image save on disk"),
         ("watch-images-finish", "Verify a pending recent-post save using completed local files"),
     ):
         monitor_batch = commands.add_parser(name, help=description)
@@ -167,6 +168,15 @@ def main() -> int:
         )
         print(json.dumps(output))
         return save_exit_code(output)
+    if args.command == "watch-images-check":
+        from image_monitor.watch_images_check import (
+            check_recent_images,
+            watch_images_check_exit_code,
+        )
+
+        report = check_recent_images(args.watch_root, args.legacy_root, args.work_root)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return watch_images_check_exit_code(report)
     if args.command == "watch-images":
         try:
             from image_monitor.watch_images import run_watch_images, watch_images_exit_code

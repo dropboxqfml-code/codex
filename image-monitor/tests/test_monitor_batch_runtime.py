@@ -101,7 +101,7 @@ def ledger(data, *, readonly=True):
     )
 
 
-def finalize(root, permit, snapshot, now):
+def finalize(root, permit, snapshot, now, *, native_filename="native-image.png"):
     base = root / "session-1"
     base.mkdir(parents=True, exist_ok=True)
     snapshot = deepcopy(snapshot)
@@ -113,7 +113,7 @@ def finalize(root, permit, snapshot, now):
             source = job["source"]
             image = source["image"]
             staging = (
-                base / "images" / "_staging" / job["job_id"] / uuid.uuid4().hex / "native-image.png"
+                base / "images" / "_staging" / job["job_id"] / uuid.uuid4().hex / native_filename
             )
             staging.parent.mkdir(parents=True)
             Image.new("RGB", (image["natural_width"], image["natural_height"]), "#315781").save(
@@ -138,7 +138,7 @@ def finalize(root, permit, snapshot, now):
                     "destination": str(staging),
                     "exclusive_sha256": verified["sha256"],
                 },
-                browser_suggested_filename="invented.png",
+                browser_suggested_filename="invented" + staging.suffix,
                 saved_at=now,
             )
 

@@ -52,8 +52,9 @@ def list_html(ids, next_url):
     )
 
 
+@pytest.mark.parametrize("second_page_verified", [True, False])
 def test_real_browser_two_cycle_discovery_uses_verified_dom_and_durable_state(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, second_page_verified
 ):
     pytest.importorskip("playwright.sync_api")
     if sys.platform != "win32":
@@ -67,10 +68,13 @@ def test_real_browser_two_cycle_discovery_uses_verified_dom_and_durable_state(
     first_url = build_list_url("normal", "comic_new6", "ai")
     second_url = build_list_url("normal", "comic_new6", "ai", page=2)
     third_url = build_list_url("normal", "comic_new6", "ai", page=3)
+    adjacent_html = list_html([98, 97], third_url)
+    if not second_page_verified:
+        adjacent_html = adjacent_html.replace("Invented author", "")
     documents = [
         (first_url, list_html([100, 99], second_url)),
         (first_url, list_html([104, 103, 100, 99], second_url)),
-        (second_url, list_html([98, 97], third_url)),
+        (second_url, adjacent_html),
     ]
     navigation = []
     unexpected_requests = []
@@ -102,7 +106,10 @@ def test_real_browser_two_cycle_discovery_uses_verified_dom_and_durable_state(
     clock = AdvancingClock()
     report = watch_runtime.run_watch_trial(tmp_path, backend_factory=RoutedBrowser, clock=clock)
 
-    assert report["status"] == "watch_test_completed", report
+    expected_status = "watch_test_completed" if second_page_verified else "watch_test_partial"
+    assert report["status"] == expected_status, report
+    if not second_page_verified:
+        assert report["reason"] == "list_profile_unverified_or_incomplete"
     assert report["cycles_completed"] == 2
     assert report["baseline_initialized"] is True
     assert report["new_candidates"] == report["candidate_count"] == 2
@@ -114,7 +121,7 @@ def test_real_browser_two_cycle_discovery_uses_verified_dom_and_durable_state(
     assert [cycle["navigation_attempts"] for cycle in report["cycles"]] == [1, 2]
     assert [cycle["layout_statuses"] for cycle in report["cycles"]] == [
         ["site_verified"],
-        ["site_verified", "site_verified"],
+        ["site_verified", "site_verified" if second_page_verified else "unverified"],
     ]
     assert len(sessions) == len(owned_browsers) == 1
     assert report["browser_closed"] is sessions[0].browser_closed is True
@@ -127,17 +134,18 @@ def test_real_browser_two_cycle_discovery_uses_verified_dom_and_durable_state(
         candidates = store.list_candidates(watch_runtime.DEFAULT_SCOPE)
         assert state["generation"] == 2
         assert state["baseline"]["anchor_ids"] == ["100", "99"]
-        assert state["checkpoint"]["anchor_ids"] == ["104", "103", "100", "99"]
+        expected_anchors = ["104", "103", "100", "99"] if second_page_verified else ["100", "99"]
+        assert state["checkpoint"]["anchor_ids"] == expected_anchors
         assert {candidate["post_id"] for candidate in candidates} == {"104", "103"}
         assert queue.summary()["posts"] == queue.summary()["jobs"] == 0
-        assert all(scan["complete"] is True for scan in scans)
+        assert [scan["complete"] for scan in scans] == [True, second_page_verified]
         assert all(scan["result"]["queue_eligible"] is False for scan in scans)
         observations = [scan["result"]["private_observation"] for scan in scans]
         assert [len(outcome["navigation"]) for outcome in observations] == [1, 2]
-        assert all(
-            page["selector_evidence"]["live_layout_verified"] is True
+        assert [
+            page["selector_evidence"]["live_layout_verified"]
             for outcome in observations
             for page in outcome["pages"]
-        )
+        ] == [True, True, second_page_verified]
         first_scan, second_scan = (datetime.fromisoformat(scan["observed_at"]) for scan in scans)
         assert second_scan - first_scan >= timedelta(seconds=60)

@@ -86,6 +86,9 @@ h1{font-size:28px;line-height:1.4;letter-spacing:-1.3px;margin:0 0 6px;font-weig
 .status-mark.attention::after{background:#b38431}
 h2{margin:0;font-size:21px;font-weight:700;letter-spacing:-.8px;line-height:1.45}
 .status-detail{margin:0 0 17px;color:var(--muted);font-size:14px;min-height:38px}
+.list-diagnosis{margin:0 0 15px;color:var(--muted);font-size:13px}
+.list-diagnosis summary{cursor:pointer}
+.list-diagnosis p{white-space:pre-line;margin:6px 0 0}
 .coverage{margin:0 0 15px;padding:8px 12px;border-radius:7px;background:var(--amber-soft);
   color:#705015;font-size:13px}
 .times{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:14px 0;
@@ -260,6 +263,10 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       </div>
       <p class="status-detail" id="status-detail">잠시 기다려 주세요.</p>
       <p class="coverage" id="coverage-gap" hidden></p>
+      <details class="list-diagnosis" id="list-diagnosis" hidden>
+        <summary>최근 목록 구조 확인 실패 기록</summary>
+        <p id="list-diagnosis-details"></p>
+      </details>
       <div class="times">
         <div><div class="time-label">마지막 목록 확인</div>
           <div class="time-value" id="last-scan">아직 없음</div></div>
@@ -421,6 +428,76 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     if (node.textContent !== String(value)) node.textContent = String(value);
   }
   function count(value) { return Number.isSafeInteger(value) && value >= 0 ? value : 0; }
+  const profileIssues = {
+    scope_unreviewed: '감시 대상과 검색 범위가 다름',
+    list_not_observed: '게시글 목록을 읽지 못함',
+    no_ordinary_rows: '일반 게시글을 식별하지 못함',
+    ordinary_title_missing: '제목이 비어 있는 글이 있음',
+    ordinary_author_missing: '작성자가 비어 있는 글이 있음',
+    ordinary_date_missing: '작성 시각이 비어 있는 글이 있음',
+    row_number_count: '글번호 칸을 한 개로 식별하지 못함',
+    row_author_count: '작성자 칸을 한 개로 식별하지 못함',
+    row_date_count: '작성 시각 칸을 한 개로 식별하지 못함',
+    row_title_link_count: '제목 링크를 한 개로 식별하지 못함',
+    container_inventory: '목록 표의 개수나 구성을 확인하지 못함',
+    container_selection: '게시글을 읽을 표를 하나로 특정하지 못함',
+    main_table_shape: '주 목록 표의 구조가 예상과 다름',
+    secondary_table_shape: '보조 목록 표의 구조가 예상과 다름',
+    main_table_row_count: '주 목록 표의 전체 행 수가 맞지 않음',
+    main_ordinary_row_count: '주 목록 표의 게시글 행 수가 맞지 않음',
+    main_number_field_count: '주 목록 표의 글번호 칸 수가 맞지 않음',
+    main_writer_field_count: '주 목록 표의 작성자 칸 수가 맞지 않음',
+    main_date_field_count: '주 목록 표의 작성 시각 칸 수가 맞지 않음',
+    main_title_link_count: '주 목록 표의 제목 링크 수가 맞지 않음',
+    secondary_rows: '보조 목록 표의 행 구성을 확인하지 못함',
+    secondary_table_empty: '보조 목록 표에서 행을 찾지 못함',
+    secondary_number_field_count: '보조 목록 표의 글번호 칸 수가 맞지 않음',
+    secondary_date_field_count: '보조 목록 표의 작성 시각 칸 수가 맞지 않음',
+    secondary_title_link_count: '보조 목록 표의 제목 링크 수가 맞지 않음',
+    multiple_profile_checks: '목록의 여러 항목이 검증 조건과 다름'
+  };
+  const plannerIssues = {
+    snapshot_layout: '목록 구조', snapshot_identity: '목록 주소와 검색 범위',
+    observation_time: '관찰 시각', list_status: '목록 상태', row_identity: '글번호와 링크',
+    row_order: '게시글 순서', exclusion_evidence: '목록에서 제외한 행',
+    pagination_identity: '페이지 이동 링크', no_page_evidence: '관찰한 페이지'
+  };
+  function renderListDiagnosis(diagnosis) {
+    const visible = diagnosis?.reason === 'list_profile_unverified_or_incomplete';
+    element('list-diagnosis').hidden = !visible;
+    if (!visible) {
+      text('list-diagnosis-details', '');
+      return;
+    }
+    const listStates = {missing_list: '목록 표를 찾지 못함', ambiguous_list: '목록 표가 여러 개임',
+      empty: '빈 목록이 표시됨', unrecognized_empty: '빈 목록인지 확인하지 못함',
+      conflicting_empty_marker: '빈 목록 표시와 관찰한 행이 서로 맞지 않음'};
+    const lines = [];
+    let pageIssue = false;
+    const pages = Array.isArray(diagnosis.pages) ? diagnosis.pages.slice(0, 2) : [];
+    for (const page of pages) {
+      if (!page || ![1, 2].includes(page.page)) continue;
+      const issue = page.profile_issue;
+      const knownIssue = typeof issue === 'string' && Object.hasOwn(profileIssues, issue);
+      const statusLabel = typeof page.status === 'string' &&
+        Object.hasOwn(listStates, page.status) ? listStates[page.status] : null;
+      const label = statusLabel || (knownIssue ? profileIssues[issue] :
+        page.layout_status === 'site_verified' ? '검증된 목록 구조' : '세부 원인을 특정할 수 없음');
+      pageIssue ||= !!statusLabel || knownIssue;
+      const rows = Number.isSafeInteger(page.ordinary_rows) && page.ordinary_rows >= 0 ?
+        ` · 일반 글 ${page.ordinary_rows}개` : '';
+      lines.push(`${page.page}페이지 · ${label}${rows}`);
+    }
+    const issue = diagnosis.planner_issue;
+    if (typeof issue === 'string' && Object.hasOwn(plannerIssues, issue)) {
+      if (issue !== 'snapshot_layout' || !pageIssue) {
+        lines.push(`확인하지 못한 항목 · ${plannerIssues[issue]}`);
+      }
+    } else if (!pageIssue) {
+      lines.push('기록에서 실패한 검증 단계를 특정할 수 없습니다.');
+    }
+    text('list-diagnosis-details', lines.join('\n'));
+  }
   function formatTime(value, missing) {
     if (typeof value !== 'string' || !value) return missing;
     const date = new Date(value);
@@ -749,6 +826,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
         '이전 확인 지점에 도달했습니다. 다음 페이지까지 겹쳐 확인하는 절차가 남았습니다.' : '';
     text('coverage-gap', coverageText);
     element('coverage-gap').hidden = !coverageText;
+    renderListDiagnosis(state.list_diagnosis);
     text('status-detail', closing ? '진행 중인 확인을 마치고 최종 결과를 정리합니다.' :
       ((phase === 'needs_review' || phase === 'waiting') && explanation ?
         explanation : info.detail));

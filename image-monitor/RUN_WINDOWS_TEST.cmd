@@ -22,6 +22,8 @@ set "SAVE_POST=0"
 set "RESUME_PREINPUT=0"
 set "POST_SAVE_RESUME_ARGUMENT="
 set "CHECK_LABEL=Windows native-save test"
+set "MONITOR_DIAGNOSIS=0"
+if /i "%~1"=="--monitor-diagnosis" goto diagnosis_arguments
 
 :parse_arguments
 if "%~1"=="" goto arguments_ready
@@ -43,6 +45,12 @@ if /i "%~1"=="--save-post" goto option_save_post
 if /i "%~1"=="--resume-preinput" goto option_resume_preinput
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
 exit /b 2
+
+:diagnosis_arguments
+if not "%~2"=="" exit /b 2
+set "CHECK_LABEL=stored list diagnosis"
+set "MONITOR_DIAGNOSIS=1"
+goto new_log
 
 :option_chrome
 set "TEST_BROWSER=chrome"
@@ -306,6 +314,8 @@ set "LOG_FILE=%~dp0WINDOWS_TEST_RESULT-%RANDOM%-%RANDOM%.txt"
 if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
+if "%MONITOR_DIAGNOSIS%"=="1" >>"%LOG_FILE%" echo Checking the last stored list failure. The monitor site and saved images are not opened.
+if "%MONITOR_DIAGNOSIS%"=="1" goto check_project
 if "%MONITOR_SAVE_BATCH%"=="0" if "%MONITOR_BATCH_FINISH%"=="0" if "%MONITOR_SAVE_TEST%"=="0" if "%MONITOR_FINISH%"=="0" if "%MONITOR%"=="0" if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Single-post native image saving requires review in the dedicated Chrome app window.
 if "%RESUME_PREINPUT%"=="1" >>"%LOG_FILE%" echo Verified pre-input resume was explicitly requested. Generic native recovery will not run.
@@ -345,6 +355,7 @@ if "%MONITOR_BATCH_FINISH%"=="1" >>"%LOG_FILE%" echo Offline reconciliation of a
 if "%MONITOR_BATCH_FINISH%"=="1" >>"%LOG_FILE%" echo Only exactly bound completed files and owned-browser state may be reconciled. Earlier files, selections, and unresolved work are preserved.
 if "%MONITOR_BATCH_FINISH%"=="1" >>"%LOG_FILE%" echo No new browser, save-start button, image saving, or automatic native retry is started. This single TXT opens automatically.
 if "%MONITOR_BATCH_FINISH%"=="0" if "%MONITOR_FINISH%"=="0" if "%MONITOR%"=="0" if "%CANDIDATE_FINISH%"=="0" >>"%LOG_FILE%" echo Selected browser: %TEST_BROWSER%
+:check_project
 if not exist "pyproject.toml" goto missing_project
 if not exist "uv.lock" goto missing_project
 if not defined LOCALAPPDATA goto missing_appdata
@@ -377,6 +388,7 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+if "%MONITOR_DIAGNOSIS%"=="1" goto read_monitor_diagnosis
 if "%MONITOR_SAVE_BATCH%"=="1" goto start_monitor_save_batch
 if "%MONITOR_BATCH_FINISH%"=="1" goto start_monitor_batch_finish
 if "%MONITOR_SAVE_TEST%"=="1" goto start_monitor_save_test
@@ -510,6 +522,16 @@ echo Monitor candidate verification finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
+:read_monitor_diagnosis
+>>"%LOG_FILE%" echo STAGE: stored_list_diagnosis
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor monitor-diagnosis --work-root "%LOCALAPPDATA%\ImageMonitorWatch" >>"%LOG_FILE%" 2>&1
+set "DIAGNOSIS_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Diagnosis exit code: %DIAGNOSIS_CODE%
+if not "%DIAGNOSIS_CODE%"=="0" goto failed
+>>"%LOG_FILE%" echo RESULT: STORED_LIST_DIAGNOSIS
+start "" notepad.exe "%LOG_FILE%"
+exit /b 0
+
 :start_monitor
 echo Opening the local monitoring screen and checking existing saved results offline.
 echo Choose Start to watch the list and inspect candidate posts in the background.
@@ -592,6 +614,7 @@ goto failed
 >>"%LOG_FILE%" echo uv is not installed and WinGet is unavailable. Send this file for help.
 goto failed
 :failed
+if "%MONITOR_DIAGNOSIS%"=="1" goto diagnosis_failed
 if "%MONITOR_SAVE_BATCH%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - MONITOR_BATCH_NATIVE_SAVE. No automatic retry or recovery was performed.
 if "%MONITOR_SAVE_BATCH%"=="1" >>"%LOG_FILE%" echo Send this TXT for diagnosis. Preserve the pending browser, attempt ledger, and all existing files.
 if "%MONITOR_BATCH_FINISH%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - MONITOR_BATCH_VERIFICATION. Existing files and unresolved attempt records are preserved.
@@ -619,6 +642,11 @@ if "%WATCH_TEST%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Nat
 if "%CANDIDATE_TEST%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - BOUNDED_CANDIDATE_INSPECTION. No image saving was attempted.
 if "%CANDIDATE_TEST%"=="1" >>"%LOG_FILE%" echo Send this TXT file for diagnosis. Native-save recovery was not performed.
 echo Test stopped. Opening the result file; please send that TXT file for help.
+start "" notepad.exe "%LOG_FILE%"
+exit /b 1
+
+:diagnosis_failed
+>>"%LOG_FILE%" echo RESULT: STOPPED - STORED_LIST_DIAGNOSIS
 start "" notepad.exe "%LOG_FILE%"
 exit /b 1
 

@@ -14,12 +14,14 @@ from pathlib import Path
 
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_runtime import run_candidate_trial
+from image_monitor.monitor_diagnosis import PROFILE_GAP, read_latest_list_diagnosis
 from image_monitor.monitor_settings import (
     load_monitor_settings,
     save_monitor_settings,
     validate_interval,
 )
 from image_monitor.queue import QueueError, QueueStore
+from image_monitor.watch_diagnosis import public_list_diagnosis
 from image_monitor.watch_planner import next_poll_at
 from image_monitor.watch_runtime import (
     PARTIAL_COVERAGE_GAPS,
@@ -30,9 +32,8 @@ from image_monitor.watch_runtime import (
     matches_partial_coverage_scan,
     run_watch_trial,
 )
-from image_monitor.watch_store import WatchScope, WatchStore
+from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
 
-MONITOR_SCOPE = WatchScope("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
 MIN_FREE_BYTES = 256 * 1024 * 1024
 BUSY_BACKOFF_SECONDS = 15
 MAX_DETAIL_BATCH = 2
@@ -228,6 +229,7 @@ class MonitorController:
         self._last_finished = None
         self._last_detail_finished = None
         self._latest_scan_id = None
+        self._diagnosis_generation = None
         self._partial_scan_id = None
         self._seen_database = self.database.exists()
         self._state = {
@@ -246,6 +248,7 @@ class MonitorController:
             "next_eligible_at": None,
             "remaining_seconds": 0,
             "last_scan_status": None,
+            "list_diagnosis": None,
             "gap_reason": None,
             "reason": None,
             "error_type": None,
@@ -303,6 +306,7 @@ class MonitorController:
     def status(self):
         with self._lock:
             result = self._state.copy()
+            result["list_diagnosis"] = public_list_diagnosis(result["list_diagnosis"])
             result["details"] = [row.copy() for row in result["details"]]
             result["saved_files"] = [row.copy() for row in result["saved_files"]]
             result["operations_rows"] = [row.copy() for row in result["operations_rows"]]
@@ -1083,6 +1087,18 @@ class MonitorController:
                 ).fetchone()[0]
             latest = state["latest_scan"]
             self._latest_scan_id = latest["scan_id"] if latest else None
+            if latest and self._diagnosis_generation != state["generation"]:
+                if (
+                    self._diagnosis_generation is None
+                    or state["generation"] != self._diagnosis_generation + 1
+                    or latest["gap_reason"] == PROFILE_GAP
+                ):
+                    self._set(
+                        list_diagnosis=read_latest_list_diagnosis(
+                            queue, MONITOR_SCOPE, max_generation=state["generation"]
+                        )
+                    )
+                self._diagnosis_generation = state["generation"]
             if (
                 partial_report is not None
                 and eligibility != "blocked"

@@ -18,6 +18,15 @@ from image_monitor.search_list import (
 from image_monitor.site_inspection import _error_code
 from image_monitor.watch_store import WatchScope
 
+_SETTLE_ISSUES = frozenset(
+    {
+        "secondary_table_empty",
+        "ordinary_author_missing",
+        "ordinary_date_missing",
+        "ordinary_title_missing",
+    }
+)
+
 
 def _playwright():
     from playwright.sync_api import sync_playwright
@@ -160,11 +169,54 @@ class HeadlessWatchBrowser:
             raise ValueError("should_stop must return a boolean")
         return requested
 
+    def _inspect_document(self, url, scan_time, *, can_settle):
+        page = self._page
+        document_changed = False
+
+        def navigated(frame):
+            nonlocal document_changed
+            if frame == page.main_frame:
+                document_changed = True
+
+        def sample(timeout_ms):
+            return dict(
+                inspect_list(
+                    page,
+                    expected_url=url,
+                    observed_at=self._observation_time(scan_time),
+                    timeout_ms=timeout_ms,
+                )
+            )
+
+        # A reload can replace the document even if its canonical URL stays the same.
+        page.on("framenavigated", navigated)
+        try:
+            snapshot = sample(15_000)
+            issue = snapshot.get("selector_evidence", {}).get("profile_issue")
+            if (
+                can_settle
+                and snapshot.get("layout_status") == "unverified"
+                and snapshot.get("rows_complete") is True
+                and issue in _SETTLE_ISSUES
+                and not self._stop_requested()
+            ):
+                page.wait_for_timeout(1000)
+                if not document_changed and not self._stop_requested():
+                    snapshot = sample(750)
+                    snapshot["selector_evidence"] = dict(
+                        snapshot["selector_evidence"], settle_initial_issue=issue
+                    )
+            if document_changed:
+                raise DCSnapshotError("Search document changed during observation")
+            return snapshot
+        finally:
+            page.remove_listener("framenavigated", navigated)
+
     def scan(self, scope: WatchScope, observed_at: datetime, max_pages: int = 2) -> dict:
         """Read fresh latest page one and at most one actual adjacent page link.
 
-        Document failures stop immediately. Earlier snapshots survive a later
-        navigation or inspection failure; retries and cursor changes are absent.
+        Each navigation runs once. A recognized incomplete render may receive
+        one more DOM observation. Earlier pages survive a later page failure.
         """
         if self._page is None:
             raise ValueError("A watch scan requires an open browser context")
@@ -218,13 +270,10 @@ class HeadlessWatchBrowser:
                 result.update(status="http_error", error_type="HTTPStatusError")
                 return result
             try:
-                snapshot = dict(
-                    inspect_list(
-                        self._page,
-                        expected_url=url,
-                        observed_at=self._observation_time(scan_time),
-                        timeout_ms=15_000,
-                    )
+                snapshot = self._inspect_document(
+                    url,
+                    scan_time,
+                    can_settle=200 <= status < 300 and result["retry_after"] is None,
                 )
                 snapshot["scan_observed_at"] = scan_time.isoformat(timespec="microseconds")
                 result["pages"].append(snapshot)

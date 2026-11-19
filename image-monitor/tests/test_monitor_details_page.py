@@ -318,3 +318,64 @@ def test_deleted_candidate_uses_a_fixed_unavailable_label(portal):
     page.goto(BASE_URL, wait_until="domcontentloaded")
     expect(page.locator("#detail-rows tr")).to_contain_text("삭제되었거나 공개되지 않음")
     assert state.actions == []
+
+
+def test_retained_list_diagnosis_identifies_the_failed_page_without_overriding_live_state(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    reason = "list_profile_unverified_or_incomplete"
+    state.snapshot.update(
+        phase="needs_review",
+        reason=reason,
+        list_diagnosis={
+            "reason": reason,
+            "planner_issue": "snapshot_layout",
+            "pages": [
+                {"page": 1, "layout_status": "site_verified", "ordinary_rows": 20},
+                {"page": 2, "profile_issue": "secondary_table_empty", "ordinary_rows": 19},
+            ],
+        },
+    )
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    panel = page.locator("#list-diagnosis")
+    panel.locator("summary").click()
+    expect(panel).to_contain_text("최근 목록 구조 확인 실패 기록")
+    expect(panel).to_contain_text("1페이지 · 검증된 목록 구조 · 일반 글 20개")
+    expect(panel).to_contain_text("2페이지 · 보조 목록 표에서 행을 찾지 못함")
+    expect(page.locator("#status-detail")).to_contain_text("목록 구조")
+    state.snapshot.update(phase="waiting", reason=None, gap_reason=None)
+    expect(page.locator("#status-title")).to_contain_text("다음 목록 확인")
+    expect(panel).to_contain_text("2페이지")
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    state.snapshot["list_diagnosis"] = None
+    expect(panel).to_be_hidden()
+    assert state.actions == []
+
+
+def test_list_diagnosis_never_renders_raw_strings_or_unbounded_pages(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    secret = '<img src="https://private.example/secret">'
+    state.snapshot["list_diagnosis"] = {
+        "reason": "list_profile_unverified_or_incomplete",
+        "planner_issue": "__proto__",
+        "pages": [
+            {"page": 1, "profile_issue": secret, "status": secret, "ordinary_rows": secret},
+            {"page": 2, "profile_issue": "constructor"},
+            {"page": 3, "profile_issue": "secondary_rows"},
+        ],
+    }
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    panel = page.locator("#list-diagnosis")
+    panel.locator("summary").click()
+    expect(panel).to_contain_text("실패한 검증 단계를 특정할 수 없습니다")
+    expect(panel.locator("img")).to_have_count(0)
+    assert all(word not in panel.inner_text() for word in ("private", "constructor", "3페이지"))
+    state.snapshot["list_diagnosis"].update(pages=[], planner_issue="observation_time")
+    expect(panel).to_contain_text("확인하지 못한 항목 · 관찰 시각")
+    state.snapshot["list_diagnosis"]["reason"] = secret
+    expect(panel).to_be_hidden()
+    assert all(url.startswith(BASE_URL) for url in state.requests)

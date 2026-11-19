@@ -16,6 +16,7 @@ from image_monitor.monitor_page import render_monitor_page
 from image_monitor.monitor_save_action import SAVE_ACTION_REASONS, SAVE_ACTION_STATUSES
 from image_monitor.native_probe import write_report
 from image_monitor.native_ui import NativeUIError, require_windows
+from image_monitor.watch_diagnosis import public_list_diagnosis
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 
 MAX_BODY_BYTES = 2048
@@ -218,6 +219,7 @@ def _public_status(status, *, include_preview_ids=False):
     if not isinstance(status, dict):
         raise ValueError("A monitor status object is required")
     result = {key: status[key] for key in _STATUS_FIELDS if key in status}
+    result["list_diagnosis"] = public_list_diagnosis(status.get("list_diagnosis"))
     result["auto_details_checked"] = _public_count(status.get("auto_details_checked"))
     result["partial_cycles"] = _public_count(status.get("partial_cycles"))
     result.update(_public_operations(status))

@@ -112,7 +112,12 @@ def test_owns_one_fresh_headless_system_browser_and_closes_only_it(browser_sessi
     assert "scan_observed_at" not in inspect.return_value
     assert report["pages"][0]["scan_observed_at"] == NOW.isoformat(timespec="microseconds")
     assert report["navigation"] == [{"url": PAGE_ONE, "http_status": 200, "retry_after": None}]
-    assert [item[0] for item in page.mock_calls] == ["goto", "goto().header_value"]
+    assert [item[0] for item in page.mock_calls] == [
+        "goto",
+        "goto().header_value",
+        "on",
+        "remove_listener",
+    ]
     browser.close.assert_called_once()
     manager.__exit__.assert_called_once_with(None, None, None)
     assert owned.browser_closed is True
@@ -233,6 +238,58 @@ def test_retry_after_is_bounded(browser_session):
         report = owned.scan(SCOPE, NOW)
     assert report["retry_after"] == report["lastRetryAfter"] == "x" * 256
     assert report["navigation"][0]["retry_after"] == "x" * 256
+
+
+def incomplete_page(issue="secondary_table_empty", *, complete=True):
+    return snapshot() | {"rows_complete": complete, "selector_evidence": {"profile_issue": issue}}
+
+
+@pytest.mark.parametrize(
+    ("issue", "complete", "status", "retry_after"),
+    [
+        ("scope_unreviewed", True, 200, None),
+        ("container_inventory", True, 200, None),
+        ("multiple_profile_checks", True, 200, None),
+        ("ordinary_date_missing", False, 200, None),
+        ("secondary_table_empty", True, 304, None),
+        ("secondary_table_empty", True, 200, "60"),
+    ],
+)
+def test_dom_settle_requires_a_recognized_incomplete_profile_and_safe_response(
+    browser_session, issue, complete, status, retry_after
+):
+    page, response, inspect = browser_session[3:6]
+    response.status = status
+    response.header_value.return_value = retry_after
+    inspect.return_value = incomplete_page(issue, complete=complete)
+    with backend.HeadlessWatchBrowser(now=lambda: NOW) as owned:
+        result = owned.scan(SCOPE, NOW)
+    assert result["pages"][0]["layout_status"] == "unverified"
+    page.wait_for_timeout.assert_not_called()
+    assert page.goto.call_count == inspect.call_count == 1
+
+
+def test_dom_settle_does_not_reinspect_after_stop(browser_session):
+    page, _, inspect = browser_session[3:6]
+    inspect.return_value = incomplete_page()
+    with backend.HeadlessWatchBrowser(
+        now=lambda: NOW, should_stop=lambda: page.wait_for_timeout.called
+    ) as owned:
+        result = owned.scan(SCOPE, NOW)
+    assert result["status"] == "cancelled"
+    assert result["pages"][0]["layout_status"] == "unverified"
+    assert page.goto.call_count == inspect.call_count == 1
+
+
+def test_dom_settle_rejects_replaced_main_document_even_at_same_url(browser_session):
+    page, _, inspect = browser_session[3:6]
+    inspect.return_value = incomplete_page()
+    page.wait_for_timeout.side_effect = lambda _ms: page.on.call_args.args[1](page.main_frame)
+    with backend.HeadlessWatchBrowser(now=lambda: NOW) as owned:
+        result = owned.scan(SCOPE, NOW)
+    assert result["status"] == "inspection_error"
+    assert result["pages"] == []
+    assert page.goto.call_count == inspect.call_count == 1
 
 
 @pytest.mark.parametrize("failure", ["http", "network", "inspection"])

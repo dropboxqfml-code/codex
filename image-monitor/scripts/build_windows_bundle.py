@@ -36,6 +36,7 @@ def main():
         "RUN_CANDIDATE_SAVE_TEST.cmd",
         "RUN_CANDIDATE_FINISH.cmd",
         "RUN_MONITOR.cmd",
+        "CHECK_LAST_LIST.cmd",
         "RUN_MONITOR_SAVE.cmd",
         "RUN_MONITOR_FINISH.cmd",
         "RUN_MONITOR_BATCH.cmd",

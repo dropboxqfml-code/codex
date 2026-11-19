@@ -26,6 +26,10 @@ _REVIEWED_LIVE_SCOPE = {
 class WatchPlanError(ValueError):
     """The supplied evidence cannot safely be interpreted as this watch."""
 
+    def __init__(self, message, *, issue="invalid_planner_evidence"):
+        super().__init__(message)
+        self.issue = issue
+
 
 def _time(value, name):
     if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
@@ -73,13 +77,15 @@ def _list_url(value, expected):
     try:
         parsed = validate_list_url(value)
     except DCSnapshotError as error:
-        raise WatchPlanError("Invalid list URL") from error
+        raise WatchPlanError("Invalid list URL", issue="snapshot_identity") from error
     if any(parsed[field] != expected[field] for field in _SCOPE_FIELDS):
-        raise WatchPlanError("List URL does not match the exact watch scope")
+        raise WatchPlanError(
+            "List URL does not match the exact watch scope", issue="snapshot_identity"
+        )
     if parsed["navigation"]:
         raise WatchPlanError("Additional navigation filters require a distinct watch scope")
     if parsed["canonical_url"] != value:
-        raise WatchPlanError("Expected a canonical list URL")
+        raise WatchPlanError("Expected a canonical list URL", issue="snapshot_identity")
     return parsed
 
 
@@ -112,7 +118,7 @@ def _exclusion_evidence(value):
             "missing",
             "other",
         }:
-            raise WatchPlanError("Invalid excluded row number evidence")
+            raise WatchPlanError("Invalid excluded row number evidence", issue="exclusion_evidence")
         evidence["number_kind"] = value["number_kind"]
     for name in ("link_schemes", "field_counts"):
         if name not in value:
@@ -128,7 +134,7 @@ def _exclusion_evidence(value):
             or set(counts) - allowed
             or any(type(count) is not int or count < 0 for count in counts.values())
         ):
-            raise WatchPlanError("Invalid excluded row count evidence")
+            raise WatchPlanError("Invalid excluded row count evidence", issue="exclusion_evidence")
         evidence[name] = dict(counts)
     if "role_flags" in value:
         flags = value["role_flags"]
@@ -137,7 +143,7 @@ def _exclusion_evidence(value):
             or set(flags) != {"is_ad", "is_pinned"}
             or any(type(flag) is not bool for flag in flags.values())
         ):
-            raise WatchPlanError("Invalid excluded row role evidence")
+            raise WatchPlanError("Invalid excluded row role evidence", issue="exclusion_evidence")
         evidence["role_flags"] = dict(flags)
     return evidence
 
@@ -168,7 +174,10 @@ def _page(value, expected, observed_at, layout_status):
     if not isinstance(value, Mapping):
         raise WatchPlanError("Each page must be a list snapshot")
     if value.get("layout_status") != layout_status or value.get("queue_eligible") is not False:
-        raise WatchPlanError(f"Expected {layout_status.replace('_', '-')}, non-queueable snapshots")
+        raise WatchPlanError(
+            f"Expected {layout_status.replace('_', '-')}, non-queueable snapshots",
+            issue="snapshot_layout",
+        )
     target = _list_url(value.get("url"), expected)
     scope = value.get("scope")
     if (
@@ -180,23 +189,37 @@ def _page(value, expected, observed_at, layout_status):
         or value["page"] != target["page"]
         or value.get("search_pos") != target["search_pos"]
     ):
-        raise WatchPlanError("Snapshot identity does not match its URL and exact watch scope")
+        raise WatchPlanError(
+            "Snapshot identity does not match its URL and exact watch scope",
+            issue="snapshot_identity",
+        )
     page_time = (
         _stored_time(value["observed_at"], "page observed_at") if "observed_at" in value else None
     )
     if layout_status == "site_verified" and page_time is None:
-        raise WatchPlanError("Verified live snapshots require a page observed_at")
+        raise WatchPlanError(
+            "Verified live snapshots require a page observed_at", issue="observation_time"
+        )
     if "scan_observed_at" in value:
         if _stored_time(value["scan_observed_at"], "page scan_observed_at") != observed_at:
-            raise WatchPlanError("Snapshot scan observation date differs from the scan")
+            raise WatchPlanError(
+                "Snapshot scan observation date differs from the scan", issue="observation_time"
+            )
         if page_time is None or not observed_at <= page_time <= observed_at + timedelta(
             seconds=120
         ):
-            raise WatchPlanError("Snapshot observation is outside the scan observation window")
+            raise WatchPlanError(
+                "Snapshot observation is outside the scan observation window",
+                issue="observation_time",
+            )
     elif page_time is not None and page_time != observed_at:
-        raise WatchPlanError("Snapshot observation date differs from the scan")
+        raise WatchPlanError(
+            "Snapshot observation date differs from the scan", issue="observation_time"
+        )
     if value.get("status") not in {"observed", "empty"}:
-        raise WatchPlanError("Missing, ambiguous, or unrecognized list evidence")
+        raise WatchPlanError(
+            "Missing, ambiguous, or unrecognized list evidence", issue="list_status"
+        )
     rows = []
     previous_order = -1
     for row in _sequence(value.get("rows"), "rows"):
@@ -207,16 +230,20 @@ def _page(value, expected, observed_at, layout_status):
         try:
             post = validate_post_url(row.get("canonical_url"))
         except DCSnapshotError as error:
-            raise WatchPlanError("Invalid row post URL") from error
+            raise WatchPlanError("Invalid row post URL", issue="row_identity") from error
         if (
             post["canonical_url"] != row.get("canonical_url")
             or post["post_id"] != post_id
             or any(post[field] != expected[field] for field in ("gallery_type", "gallery_id"))
         ):
-            raise WatchPlanError("Row post URL is not its canonical, in-scope identity")
+            raise WatchPlanError(
+                "Row post URL is not its canonical, in-scope identity", issue="row_identity"
+            )
         order = row.get("row_order")
         if type(order) is not int or order < 0 or order <= previous_order:
-            raise WatchPlanError("Rows must retain strictly increasing DOM row_order")
+            raise WatchPlanError(
+                "Rows must retain strictly increasing DOM row_order", issue="row_order"
+            )
         previous_order = order
         for field in ("title", "author_raw", "published_at_raw"):
             if row.get(field) is not None and not isinstance(row[field], str):
@@ -238,7 +265,7 @@ def _page(value, expected, observed_at, layout_status):
     row_orders = {row["row_order"] for row in rows}
     for exclusion in _sequence(value.get("excluded_rows", []), "excluded_rows"):
         if not isinstance(exclusion, Mapping):
-            raise WatchPlanError("Invalid excluded row evidence")
+            raise WatchPlanError("Invalid excluded row evidence", issue="exclusion_evidence")
         order, reason = exclusion.get("row_order"), exclusion.get("reason")
         if (
             type(order) is not int
@@ -247,24 +274,30 @@ def _page(value, expected, observed_at, layout_status):
             or not isinstance(reason, str)
             or not reason
         ):
-            raise WatchPlanError("Invalid or conflicting excluded row evidence")
+            raise WatchPlanError(
+                "Invalid or conflicting excluded row evidence", issue="exclusion_evidence"
+            )
         row_orders.add(order)
         excluded.append({"row_order": order, "reason": reason} | _exclusion_evidence(exclusion))
     if (value["status"] == "empty" and (rows or excluded)) or (
         value["status"] == "observed" and not (rows or excluded)
     ):
-        raise WatchPlanError("Snapshot status conflicts with the observed rows")
+        raise WatchPlanError(
+            "Snapshot status conflicts with the observed rows", issue="list_status"
+        )
     links = []
     for link in _sequence(value.get("pagination_candidates"), "pagination_candidates"):
         if not isinstance(link, Mapping):
-            raise WatchPlanError("Invalid pagination candidate")
+            raise WatchPlanError("Invalid pagination candidate", issue="pagination_identity")
         parsed = _list_url(link.get("canonical_url"), expected)
         if (
             type(link.get("page")) is not int
             or link["page"] != parsed["page"]
             or link.get("search_pos") != parsed["search_pos"]
         ):
-            raise WatchPlanError("Pagination candidate conflicts with its URL")
+            raise WatchPlanError(
+                "Pagination candidate conflicts with its URL", issue="pagination_identity"
+            )
         cursor = {key: parsed[key] for key in ("canonical_url", "page", "search_pos")}
         if cursor not in links:
             links.append(cursor)
@@ -344,7 +377,7 @@ def plan_scan(
             raise WatchPlanError("Watch state belongs to a different scope")
     pages = _sequence(pages, "pages")
     if not pages:
-        raise WatchPlanError("A scan requires latest page 1 evidence")
+        raise WatchPlanError("A scan requires latest page 1 evidence", issue="no_page_evidence")
     baseline = state.get("baseline")
     checkpoint = state.get("checkpoint")
     if baseline is None and checkpoint is not None:
@@ -536,6 +569,32 @@ def plan_scan(
         "gap_reason": gap_reason,
         "baseline": new_baseline,
     }
+
+
+def plan_verified_page_prefix(scope, state, pages, observed_at):
+    """Keep first-page observations when only the adjacent page's layout is unverified."""
+    if state.get("baseline") is None or pages[1].get("layout_status") != "unverified":
+        return None
+    try:
+        prefix = plan_scan(scope, state, pages[:1], observed_at, allow_verified_live=True)
+        # Check the failed page's URL, scope, timestamps and row identities
+        # without upgrading its layout or including any of its observations.
+        following = _page(pages[1], _scope(scope), observed_at, "unverified")
+        if (
+            prefix["gap_reason"] not in {"anchor_not_reached", "overlap_incomplete"}
+            or prefix["scan_result"]["follow_up"] != _cursor(following)
+            or _stored_time(pages[1].get("observed_at"), "second page observed_at")
+            < _stored_time(pages[0].get("observed_at"), "first page observed_at")
+        ):
+            return None
+    except WatchPlanError:
+        return None
+    prefix["gap_reason"] = "list_profile_unverified_or_incomplete"
+    prefix["checkpoint"] = state["checkpoint"]
+    prefix["scan_result"].update(
+        layout_status="unverified", gap_reason=prefix["gap_reason"], verified_prefix_pages=1
+    )
+    return prefix
 
 
 def next_poll_at(

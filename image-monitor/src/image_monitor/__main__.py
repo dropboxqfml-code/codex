@@ -59,6 +59,11 @@ def main() -> int:
     monitor.add_argument(
         "--batch-root", type=Path, help="Also read completed batch images; requires --save-root"
     )
+    diagnosis = commands.add_parser(
+        "monitor-diagnosis",
+        help="Read the last stored list-profile failure without starting a browser",
+    )
+    diagnosis.add_argument("--work-root", type=Path, required=True)
     watch_test = commands.add_parser(
         "watch-test", help="Run a bounded public-list discovery trial; never save images"
     )
@@ -124,6 +129,30 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "monitor-diagnosis":
+        from image_monitor.artifact_files import _plain_path
+        from image_monitor.monitor_diagnosis import read_latest_list_diagnosis
+        from image_monitor.queue import QueueStore
+        from image_monitor.watch_store import MONITOR_SCOPE
+
+        report = {"program_version": PUBLIC_VERSION, "list_diagnosis": None}
+        try:
+            if args.work_root.anchor.startswith(("//", "\\\\")):
+                raise ValueError("Use a local watch directory")
+            database = _plain_path(args.work_root / "watch.sqlite")
+            if not database.exists():
+                report["status"] = "watch_database_missing"
+            else:
+                with QueueStore(database, read_only=True) as queue:
+                    evidence = read_latest_list_diagnosis(queue, MONITOR_SCOPE)
+                report["list_diagnosis"] = evidence
+                report["status"] = (
+                    "diagnosis_found" if evidence is not None else "no_saved_diagnosis"
+                )
+        except Exception:
+            report["status"] = "diagnosis_read_failed"
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 2 if report["status"] == "diagnosis_read_failed" else 0
     if args.command == "monitor-save-one":
         from image_monitor.monitor_save_action import run_dashboard_child, save_exit_code
 

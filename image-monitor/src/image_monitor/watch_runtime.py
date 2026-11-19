@@ -15,7 +15,12 @@ from image_monitor.retry import retry_after
 from image_monitor.search_list import build_list_url
 from image_monitor.watch_browser import HeadlessWatchBrowser
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
-from image_monitor.watch_planner import WatchPlanError, next_poll_at, plan_scan
+from image_monitor.watch_planner import (
+    WatchPlanError,
+    next_poll_at,
+    plan_scan,
+    plan_verified_page_prefix,
+)
 from image_monitor.watch_store import WatchScope, WatchStore
 
 SERVICE_SCOPE = "dcinside"
@@ -196,6 +201,33 @@ def _cycle_summary(outcome, plan, persisted):
     }
 
 
+def _observed_page_pair(outcome):
+    """Both snapshots must correspond to actual successful document navigations."""
+    pages = outcome.get("pages", [])
+    visits = outcome.get("navigation", [])
+    if (
+        outcome.get("status") != "observed"
+        or not isinstance(pages, list)
+        or len(pages) != 2
+        or not isinstance(visits, list)
+        or len(visits) != 2
+    ):
+        return False
+    for page, visit in zip(pages, visits, strict=True):
+        if not isinstance(page, dict) or not isinstance(visit, dict):
+            return False
+        http = visit.get("http_status")
+        if (
+            type(http) is not int
+            or not 200 <= http < 300
+            or visit.get("url") != page.get("url")
+            or page.get("status") != "observed"
+            or not page.get("rows")
+        ):
+            return False
+    return outcome.get("http_status") == visits[-1]["http_status"]
+
+
 def matches_partial_coverage_scan(queue, scope, state, report):
     """Verify one incomplete two-page observation against its durable gap and planner evidence."""
     latest = state["latest_scan"]
@@ -213,28 +245,13 @@ def matches_partial_coverage_scan(queue, scope, state, report):
     observed = result.get("private_observation", {})
     control = _control(state)
     if (
-        observed.get("status") != "observed"
+        not _observed_page_pair(observed)
         or control.get("transport_status") != "observed"
         or control.get("blocked") is not False
         or control.get("http_status") != observed.get("http_status")
     ):
         return False
-    pages = observed.get("pages", [])
-    navigation = observed.get("navigation", [])
-    if len(pages) != 2 or len(navigation) != 2:
-        return False
-    for page, visit in zip(pages, navigation, strict=True):
-        http = visit.get("http_status")
-        if (
-            type(http) is not int
-            or not 200 <= http < 300
-            or visit.get("url") != page.get("url")
-            or page.get("status") != "observed"
-            or not page.get("rows")
-        ):
-            return False
-    if observed.get("http_status") != navigation[-1]["http_status"]:
-        return False
+    pages = observed["pages"]
     # Partial coverage leaves the state checkpoint at the original complete scan.
     # Reuse the planner to validate exact links, descending identities and safe
     # exclusions and to reproduce the saved observations for this checkpoint.
@@ -446,9 +463,14 @@ def run_watch_trial(
                             plan = plan_scan(
                                 scope, state, pages, observed_at, allow_verified_live=True
                             )
-                        except WatchPlanError:
+                        except WatchPlanError as error:
                             reason = "list_profile_unverified_or_incomplete"
-                            plan = _empty_plan(state, observed_at, reason, scope)
+                            plan = None
+                            if error.issue == "snapshot_layout" and _observed_page_pair(outcome):
+                                plan = plan_verified_page_prefix(scope, state, pages, observed_at)
+                            if plan is None:
+                                plan = _empty_plan(state, observed_at, reason, scope)
+                            plan["scan_result"]["planner_issue"] = error.issue
                         cancelled = outcome["status"] == "cancelled" or stopped()
                         failed = outcome["status"] != "observed" and not cancelled
                         if failed or cancelled:

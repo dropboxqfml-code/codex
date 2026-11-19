@@ -353,37 +353,85 @@ def _ordinary_row(raw, target, row_order):
     }, None
 
 
-def _reviewed_structure(target, diagnostics, rows, rows_raw, row_total, container_count, status):
-    """Match the reviewed main/secondary shape without fixing live row counts."""
+_ROW_FIELDS = ("number", "author", "date")
+_MAIN_COLUMNS = (
+    "table_row_count",
+    "ordinary_row_count",
+    "number_field_count",
+    "writer_field_count",
+    "date_field_count",
+    "title_link_count",
+)
+_SECONDARY_COLUMNS = ("number_field_count", "date_field_count", "title_link_count")
+PROFILE_ISSUES = frozenset(
+    {
+        "scope_unreviewed",
+        "list_not_observed",
+        "no_ordinary_rows",
+        "ordinary_title_missing",
+        "ordinary_author_missing",
+        "ordinary_date_missing",
+        "row_number_count",
+        "row_author_count",
+        "row_date_count",
+        "row_title_link_count",
+        "container_inventory",
+        "container_selection",
+        "main_table_shape",
+        "secondary_table_shape",
+        "secondary_rows",
+        "secondary_table_empty",
+        "multiple_profile_checks",
+        "unavailable",
+        *("main_" + key for key in _MAIN_COLUMNS),
+        *("secondary_" + key for key in _SECONDARY_COLUMNS),
+    }
+)
+
+
+def _raw_row_issue(rows_raw):
+    for row in rows_raw:
+        fields = row.get("field_counts")
+        for key in _ROW_FIELDS:
+            value = fields.get(key) if isinstance(fields, dict) else None
+            if type(value) is not int or value != 1:
+                return "row_" + key + "_count"
+        if type(row.get("link_total")) is not int or row["link_total"] != 1:
+            return "row_title_link_count"
+    return None
+
+
+def reviewed_structure_issue(
+    target, diagnostics, rows, row_issue, row_total, container_count, status
+):
+    """Return the first reviewed profile check that failed, or None on an exact match."""
     if (
-        target["gallery_type"] != "normal"
-        or target["gallery_id"] != "comic_new6"
-        or target["search_type"] != SEARCH_TYPE
-        or target["keyword"] != "ai"
-        or target["navigation"]
-        or status != "observed"
-        or not rows
-        or any(not row[key] for row in rows for key in ("title", "author_raw", "published_at_raw"))
-        or any(
-            not isinstance(raw.get("field_counts"), dict)
-            or any(
-                type(raw["field_counts"].get(key)) is not int or raw["field_counts"][key] != 1
-                for key in ("number", "author", "date")
-            )
-            or type(raw.get("link_total")) is not int
-            or raw["link_total"] != 1
-            for raw in rows_raw
-        )
-        or diagnostics.get("list_candidate_total") != 1
-        or diagnostics.get("list_candidates_truncated") is not False
+        target.get("gallery_type") != "normal"
+        or target.get("gallery_id") != "comic_new6"
+        or target.get("search_type") != SEARCH_TYPE
+        or target.get("keyword") != "ai"
+        or target.get("navigation")
     ):
-        return False
+        return "scope_unreviewed"
+    if status != "observed":
+        return "list_not_observed"
+    if not rows:
+        return "no_ordinary_rows"
+    if row_issue is not None:
+        return row_issue
     candidates = diagnostics.get("list_candidates", [])
-    if len(candidates) != container_count or container_count != 2:
-        return False
+    if (
+        diagnostics.get("list_candidate_total") != 1
+        or diagnostics.get("list_candidates_truncated") is not False
+        or not isinstance(candidates, list)
+        or len(candidates) != container_count
+        or container_count != 2
+        or not all(isinstance(table, dict) for table in candidates)
+    ):
+        return "container_inventory"
     selected = [candidate for candidate in candidates if candidate.get("selected") is True]
     if len(selected) != 1:
-        return False
+        return "container_selection"
     main = selected[0]
     if (
         main.get("tag") != "TABLE"
@@ -393,38 +441,39 @@ def _reviewed_structure(target, diagnostics, rows, rows_raw, row_total, containe
         or main.get("root_ownership") != "direct_tbody_rows"
         or main.get("empty_marker_count") != 0
         or main.get("visible_empty_marker_count") != 0
-        or any(
-            main.get(key) != row_total
-            for key in (
-                "table_row_count",
-                "ordinary_row_count",
-                "number_field_count",
-                "writer_field_count",
-                "date_field_count",
-                "title_link_count",
-            )
-        )
     ):
-        return False
+        return "main_table_shape"
+    for key in _MAIN_COLUMNS:
+        if main.get(key) != row_total:
+            return "main_" + key
     secondary = next(candidate for candidate in candidates if candidate is not main)
-    return (
-        secondary.get("tag") == "TABLE"
-        and secondary.get("classes") == ["gall_list"]
-        and secondary.get("root_ownership") == "direct_tbody_rows"
-        and secondary.get("has_id") is True
-        and secondary.get("qualifies") is False
-        and secondary.get("selected") is False
-        and secondary.get("ordinary_row_count") == 0
-        and secondary.get("writer_field_count") == 0
-        and secondary.get("empty_marker_count") == 0
-        and secondary.get("visible_empty_marker_count") == 0
-        and type(secondary.get("table_row_count")) is int
-        and 0 < secondary["table_row_count"] <= MAX_ROWS
-        and all(
-            secondary.get(key) == secondary.get("table_row_count")
-            for key in ("number_field_count", "date_field_count", "title_link_count")
-        )
-    )
+    if (
+        secondary.get("tag") != "TABLE"
+        or secondary.get("classes") != ["gall_list"]
+        or secondary.get("root_ownership") != "direct_tbody_rows"
+        or secondary.get("has_id") is not True
+        or secondary.get("qualifies") is not False
+        or secondary.get("selected") is not False
+        or secondary.get("ordinary_row_count") != 0
+        or secondary.get("writer_field_count") != 0
+        or secondary.get("empty_marker_count") != 0
+        or secondary.get("visible_empty_marker_count") != 0
+    ):
+        return "secondary_table_shape"
+    count = secondary.get("table_row_count")
+    if type(count) is not int or not 0 <= count <= MAX_ROWS:
+        return "secondary_rows"
+    for key in _SECONDARY_COLUMNS:
+        if secondary.get(key) != count:
+            return "secondary_" + key
+    for field, issue in (
+        ("title", "ordinary_title_missing"),
+        ("author_raw", "ordinary_author_missing"),
+        ("published_at_raw", "ordinary_date_missing"),
+    ):
+        if any(not row.get(field) for row in rows):
+            return "multiple_profile_checks" if count == 0 else issue
+    return "secondary_table_empty" if count == 0 else None
 
 
 def parse_list_snapshot(
@@ -538,9 +587,10 @@ def parse_list_snapshot(
         status = "empty"
     else:
         status = "unrecognized_empty"
-    site_verified = layout_status == "unverified" and _reviewed_structure(
-        target, diagnostics, rows, rows_raw, row_total, container_count, status
+    profile_issue = reviewed_structure_issue(
+        target, diagnostics, rows, _raw_row_issue(rows_raw), row_total, container_count, status
     )
+    site_verified = layout_status == "unverified" and profile_issue is None
     if site_verified:
         layout_status = "site_verified"
     rows_complete = (
@@ -592,6 +642,7 @@ def parse_list_snapshot(
             "live_layout_verified": site_verified,
             "source": "user_list_probe_v12" if site_verified else None,
             "verification_scope": "reviewed_search_structure" if site_verified else None,
+            "profile_issue": profile_issue,
             "rows_complete": rows_complete,
             "selectors": dict(SELECTORS),
             "scope": {"gallery_type": target["gallery_type"], "gallery_id": target["gallery_id"]},

@@ -149,6 +149,13 @@ def new_posts_outcome(observed_at):
     )(observed_at)
 
 
+def unverified_second_page(stamp):
+    return observed(
+        lambda now: snapshot([104, 103], now, links=[link()]),
+        lambda now: snapshot([102, 101], now, page=2, layout_status="unverified"),
+    )(stamp)
+
+
 def http_failure(status, retry_after=None):
     return lambda _: {
         "status": "http_error",
@@ -223,6 +230,90 @@ def test_immediate_reopening_uses_saved_cooldown_before_creating_browser(tmp_pat
     assert second["next_eligible_at_local"].endswith("+09:00")
     assert clock.waits == []
     assert stored(tmp_path)["state"]["generation"] == 1
+
+
+def test_only_the_verified_first_page_survives_adjacent_layout_failure(tmp_path):
+    clock = FakeClock()
+    report = run_watch_trial(
+        tmp_path,
+        clock=clock,
+        backend_factory=BrowserFactory(baseline_outcome, unverified_second_page),
+    )
+    assert report["status"] == "watch_test_partial"
+    assert report["reason"] == "list_profile_unverified_or_incomplete"
+    assert report["new_candidates"] == 2
+    saved = stored(tmp_path)
+    latest = saved["state"]["latest_scan"]
+    assert {row["post_id"] for row in saved["candidates"]} == {"104", "103"}
+    assert saved["state"]["checkpoint"] == latest["checkpoint"] == saved["scans"][1]["checkpoint"]
+    assert saved["state"]["baseline"]["anchor_ids"] == ["100", "99"]
+    assert saved["gaps"][0]["reason"] == report["reason"]
+    assert not latest["complete"] and latest["result"]["layout_status"] == "unverified"
+    assert latest["result"]["verified_prefix_pages"] == 1
+    assert [page["page"] for page in latest["result"]["pages"]] == [1]
+    assert all(row["page"] == 1 for row in latest["result"]["observations"])
+    assert len(latest["result"]["private_observation"]["pages"]) == 2
+    assert (
+        latest["result"]["queue_eligible"] is False and latest["result"]["save_approved"] is False
+    )
+
+    clock.wait(60)
+    again = run_watch_trial(
+        tmp_path, cycles=1, clock=clock, backend_factory=BrowserFactory(unverified_second_page)
+    )
+    assert again["new_candidates"] == 0 and again["candidate_count"] == 2
+    for candidate in stored(tmp_path)["candidates"]:
+        assert candidate["first_scan_id"] == latest["scan_id"]
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "no_adjacent_link",
+        "different_page",
+        "wrong_scope",
+        "first_unverified",
+        "missing_table",
+        "bad_response",
+        "unbound_visit",
+        "stale_page",
+        "invalid_post_identity",
+    ],
+)
+def test_unproven_page_pair_produces_no_prefix_candidates(tmp_path, fault):
+    def broken(stamp):
+        outcome = unverified_second_page(stamp)
+        first, second = outcome["pages"]
+        if fault == "no_adjacent_link":
+            first["pagination_candidates"] = []
+        elif fault == "different_page":
+            second["url"] = outcome["navigation"][1]["url"] = link(3)["canonical_url"]
+            second["page"] = 3
+        elif fault == "wrong_scope":
+            second["scope"]["keyword"] = "different"
+        elif fault == "first_unverified":
+            first["layout_status"] = "unverified"
+        elif fault == "missing_table":
+            second.update(status="list_missing", rows=[])
+        elif fault == "bad_response":
+            outcome["navigation"][0]["http_status"] = 403
+        elif fault == "unbound_visit":
+            outcome["navigation"][1]["url"] = link(3)["canonical_url"]
+        elif fault == "stale_page":
+            second["observed_at"] = (stamp - timedelta(seconds=1)).isoformat()
+        elif fault == "invalid_post_identity":
+            second["rows"][0]["post_id"] = "99"
+        return outcome
+
+    report = run_watch_trial(
+        tmp_path, clock=FakeClock(), backend_factory=BrowserFactory(baseline_outcome, broken)
+    )
+    assert report["status"] == "watch_test_partial"
+    assert report["new_candidates"] == 0
+    saved = stored(tmp_path)
+    assert not saved["candidates"]
+    assert saved["state"]["checkpoint"] == saved["scans"][1]["checkpoint"]
+    assert "verified_prefix_pages" not in saved["state"]["latest_scan"]["result"]
 
 
 def test_poll_interval_starts_after_the_previous_scan_finished(tmp_path):

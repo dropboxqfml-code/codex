@@ -16,6 +16,11 @@ from pathlib import Path
 from .. import __version__
 from ..clock import Clock
 from ..config import RunConfig
+from ..driver.commands import (
+    PICOAMP_RANGES_A,
+    PICOAMP_REFERENCE_RANGES_A,
+    current_range_matches,
+)
 from ..storage.run_writer import RunWriter
 from .analysis import analyze_reading, summarize
 
@@ -26,6 +31,12 @@ class MeasurementError(RuntimeError):
 
 class StopRequested(MeasurementError):
     pass
+
+
+# Trigger a comparison near full scale. This is not a test for a faulty value.
+_PICOAMP_COMPARISON_FRACTION = 0.75
+# Manual appendix: typical preamp settling to 10% on nA ranges is 15 ms.
+_REFERENCE_MIN_SETTLE_S = 0.015
 
 
 class MeasurementRunner:
@@ -65,6 +76,8 @@ class MeasurementRunner:
         self._last_number = None
         self._start_time = None
         self._next_safety_poll = 0.0
+        self._picoamp_reference_range_A = None
+        self._picoamp_comparison_readback = None
         if instrument is None:
             from ..driver.instrument import Instrument
 
@@ -236,6 +249,8 @@ class MeasurementRunner:
         self._started = False
         self._storage_error = self._armed_config = self._last_number = self._start_time = None
         self._next_safety_poll = 0.0
+        self._picoamp_reference_range_A = None
+        self._picoamp_comparison_readback = None
         self.writer = None
         self.run_directory = None
         self.last_arm_failure_report = {}
@@ -547,6 +562,8 @@ class MeasurementRunner:
     def _finish_run(self, result, reason):
         self._state("STOPPING")
         stop_errors = self._safe_off()
+        if self._picoamp_comparison_readback is not None:
+            self._event("picoamp_comparison_readback", **self._picoamp_comparison_readback)
         if self.output_state != "OFF":
             result = "aborted"
             reason += "; output OFF unconfirmed: HV_STATE_UNKNOWN"
@@ -579,6 +596,137 @@ class MeasurementRunner:
             **saved,
         )
 
+    def _trip_checks(self, value, voltage):
+        current = value
+        if self.config.mode == "NATIVE_RESISTANCE":
+            current = voltage / value if value not in (None, 0) else None
+        if current is None:
+            return False, False
+        return (
+            abs(current) >= self.config.current_trip_A,
+            self.config.power_limit_W is not None
+            and abs(voltage * current) >= self.config.power_limit_W,
+        )
+
+    def _read_sample(self):
+        before = self.instrument.safety_status()
+        self._validate_status(before, expected_output="ON")
+        reference = self._picoamp_reference_range_A
+        if reference is not None and (
+            not current_range_matches(before.get("current_range"), reference)
+            or before.get("zero_correct") is not True
+        ):
+            raise MeasurementError("pA comparison: fixed range or Zero Correct changed before READ")
+        read_start = self.clock.monotonic()
+        parsed = self.instrument.read(self.config.mode)
+        read_end = self.clock.monotonic()
+        after = self.instrument.safety_status()
+        self.output_state = after.get("output_state", "UNKNOWN")
+        if reference is not None and (
+            not current_range_matches(after.get("current_range"), reference)
+            or after.get("zero_correct") is not True
+        ):
+            raise MeasurementError("pA comparison: fixed range or Zero Correct changed during READ")
+        return before, read_start, parsed, read_end, after
+
+    def _reading_is_fresh_at_voltage(self, reading, voltage):
+        return (self._last_number is None or reading.reading_number > self._last_number) and abs(
+            reading.voltage_reported - voltage
+        ) <= 1e-7
+
+    def _needs_picoamp_comparison(self, reading, current_range, voltage):
+        return (
+            self._picoamp_reference_range_A is None
+            and self.config.mode == "FVMI_CURRENT"
+            and self.config.current_autorange
+            and reading.status == "N"
+            and not reading.flags
+            and reading.value is not None
+            and self._reading_is_fresh_at_voltage(reading, voltage)
+            and any(
+                current_range_matches(current_range, range_A)
+                and abs(reading.value) >= _PICOAMP_COMPARISON_FRACTION * range_A
+                for range_A in PICOAMP_RANGES_A
+            )
+            and not any(self._trip_checks(reading.value, voltage))
+        )
+
+    def _raise_reference_and_read(self, reference, reading, deadline):
+        settle_s = max(self.config.range_settle_s, _REFERENCE_MIN_SETTLE_S)
+        if self.clock.monotonic() + settle_s >= deadline:
+            raise MeasurementError("pA comparison did not fit the remaining voltage step")
+        self._checkpoint()
+        self.instrument.raise_picoamp_range(
+            reference, previous_reference_A=self._picoamp_reference_range_A
+        )
+        self._picoamp_reference_range_A = reference
+        self._last_number = reading.reading_number
+        self._state("SETTLING")
+        self._wait_until(min(self.clock.monotonic() + settle_s, deadline))
+        if self.clock.monotonic() >= deadline:
+            raise MeasurementError("pA comparison did not fit the remaining voltage step")
+        return self._read_sample()
+
+    def _retry_reference_overflow(self, sample, voltage, deadline):
+        _, _, reading, _, after = sample
+        reference = self._picoamp_reference_range_A
+        if (
+            reference is None
+            or reference == PICOAMP_REFERENCE_RANGES_A[-1]
+            or reading.status != "O"
+            or "STATUS_VALUE_MISMATCH" in reading.flags
+            or not self._reading_is_fresh_at_voltage(reading, voltage)
+            or any(self._trip_checks(reference, voltage))
+        ):
+            return sample
+        self._validate_status(after, expected_output="ON")
+        # A valid overload below the protection limit gives no usable current.
+        # Try at most one wider reference that covers the limit for this run.
+        wider = next(
+            (rng for rng in PICOAMP_REFERENCE_RANGES_A if rng >= self.config.current_trip_A),
+            PICOAMP_REFERENCE_RANGES_A[-1],
+        )
+        self._event(
+            "picoamp_reference_overflow",
+            source_voltage_setting_V=voltage,
+            response=reading.raw,
+            previous_reference_range_A=reference,
+            reference_range_A=wider,
+        )
+        return self._raise_reference_and_read(wider, reading, deadline)
+
+    def _compare_picoamp_reading(self, reading, before, after, voltage, deadline):
+        self._validate_status(after, expected_output="ON")
+        reference = PICOAMP_REFERENCE_RANGES_A[0]
+        self._event(
+            "picoamp_comparison_started",
+            source_voltage_setting_V=voltage,
+            original_reading_number=reading.reading_number,
+            original_response=reading.raw,
+            original_current_A=reading.value,
+            original_range_before_A=before.get("current_range"),
+            original_range_after_A=after.get("current_range"),
+            reference_range_A=reference,
+        )
+        sample = self._raise_reference_and_read(reference, reading, deadline)
+        sample = self._retry_reference_overflow(sample, voltage, deadline)
+        reference_reading = sample[2]
+        # Persist the comparison event after protective OFF so it cannot delay a trip.
+        self._picoamp_comparison_readback = dict(
+            original_reading_number=reading.reading_number,
+            reference_range_A=self._picoamp_reference_range_A,
+            reference_reading_number=reference_reading.reading_number,
+            reference_response=reference_reading.raw,
+            reference_current_A=reference_reading.value,
+            reference_status=reference_reading.status,
+            reference_reading_minus_original_A=(
+                reference_reading.value - reading.value
+                if reference_reading.value is not None
+                else None
+            ),
+        )
+        return sample
+
     def _run_step(self, cycle, index, voltage):
         self._state("RAMPING")
         self._checkpoint()
@@ -609,25 +757,20 @@ class MeasurementRunner:
             self._wait_until(min(next_sample, deadline))
             if self.clock.monotonic() >= deadline:
                 break
-            before = self.instrument.safety_status()
-            self._validate_status(before, expected_output="ON")
-            read_start = self.clock.monotonic()
-            parsed = self.instrument.read(self.config.mode)
-            read_end = self.clock.monotonic()
-            after = self.instrument.safety_status()
-            self.output_state = after.get("output_state", "UNKNOWN")
+            sample = self._read_sample()
+            before, _, reading, _, after = sample
+            old_reference = self._picoamp_reference_range_A
+            if self._needs_picoamp_comparison(reading, after.get("current_range"), programmed):
+                sample = self._compare_picoamp_reading(reading, before, after, programmed, deadline)
+            elif old_reference is not None:
+                sample = self._retry_reference_overflow(sample, programmed, deadline)
+            before, read_start, parsed, read_end, after = sample
+            if old_reference != self._picoamp_reference_range_A:
+                # The switch was performed and settled explicitly before the read.
+                last_range = after.get("current_range")
+                range_invalid_until = read_start
             flags = list(parsed.flags)
-            trip_current = parsed.value
-            if self.config.mode == "NATIVE_RESISTANCE":
-                trip_current = programmed / parsed.value if parsed.value not in (None, 0) else None
-            software_trip = (
-                trip_current is not None and abs(trip_current) >= self.config.current_trip_A
-            )
-            power_trip = (
-                trip_current is not None
-                and self.config.power_limit_W is not None
-                and abs(programmed * trip_current) >= self.config.power_limit_W
-            )
+            software_trip, power_trip = self._trip_checks(parsed.value, programmed)
             if software_trip:
                 flags.append("SOFTWARE_CURRENT_TRIP")
             if power_trip:

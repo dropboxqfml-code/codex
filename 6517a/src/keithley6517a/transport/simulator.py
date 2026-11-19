@@ -9,7 +9,14 @@ import random
 import threading
 import time
 
+from ..driver.commands import CURRENT_RANGES_A
 from .base import CommunicationError
+
+_CURRENT_RANGE = ":SENS:CURR:RANG"
+_CURRENT_AUTORANGE = _CURRENT_RANGE + ":AUTO"
+_CURRENT_AUTO_LOWER = _CURRENT_AUTORANGE + ":LLIM"
+_CURRENT_AUTO_UPPER = _CURRENT_AUTORANGE + ":ULIM"
+_CURRENT_FULL_SCALE = 1.05  # Rev. D 2-57, measurement range for current.
 
 
 class SimulatorTransport:
@@ -53,8 +60,10 @@ class SimulatorTransport:
             ":SOUR:VOLT:MCON": "0",
             ":SOUR:CURR:RLIM:STAT": "0",
             ":SENS:FUNC": "CURR",
-            ":SENS:CURR:RANG:AUTO": "1",
-            ":SENS:CURR:RANG": "2e-9",
+            _CURRENT_AUTORANGE: "1",
+            _CURRENT_AUTO_LOWER: str(CURRENT_RANGES_A[0]),
+            _CURRENT_AUTO_UPPER: str(CURRENT_RANGES_A[-1]),
+            _CURRENT_RANGE: "2e-9",
             ":SENS:CURR:NPLC": "10",
             ":SENS:CURR:NPLC:AUTO": "0",
             ":SENS:RES:NPLC": "10",
@@ -125,6 +134,41 @@ class SimulatorTransport:
     def _canonical(self, command):
         return command.strip().upper()
 
+    def _set_current_auto_limit(self, key, value):
+        try:
+            requested = float(value)
+        except ValueError as exc:
+            raise CommunicationError("Invalid simulator current autorange limit") from exc
+        if not 0 <= requested <= _CURRENT_FULL_SCALE * CURRENT_RANGES_A[-1]:
+            raise CommunicationError("Simulator current autorange limit must be in 0..21 mA")
+        selected = next(
+            range_A for range_A in CURRENT_RANGES_A if requested <= _CURRENT_FULL_SCALE * range_A
+        )
+        lower, upper = self._current_auto_window()
+        if (key == _CURRENT_AUTO_LOWER and selected > upper) or (
+            key == _CURRENT_AUTO_UPPER and selected < lower
+        ):
+            raise CommunicationError("Simulator autorange lower limit exceeds upper limit")
+        self.values[key] = str(selected)
+
+    def _current_auto_window(self):
+        return float(self.values[_CURRENT_AUTO_LOWER]), float(self.values[_CURRENT_AUTO_UPPER])
+
+    def _current_reading_range(self, magnitude_A):
+        if self.values[_CURRENT_AUTORANGE] == "1":
+            # Ideal selection at each read omits relay settling and range hysteresis.
+            lower, upper = self._current_auto_window()
+            selected = next(
+                (
+                    range_A
+                    for range_A in CURRENT_RANGES_A
+                    if lower <= range_A <= upper and magnitude_A <= _CURRENT_FULL_SCALE * range_A
+                ),
+                upper,
+            )
+            self.values[_CURRENT_RANGE] = str(selected)
+        return float(self.values[_CURRENT_RANGE])
+
     def write(self, command):
         self._owned()
         command = self._canonical(command)
@@ -170,6 +214,11 @@ class SimulatorTransport:
         value = {"ON": "1", "OFF": "0", "MANUAL": "MAN", "NORMAL": "NORM", "ASCII": "ASC"}.get(
             value, value
         )
+        if key in (_CURRENT_AUTO_LOWER, _CURRENT_AUTO_UPPER):
+            self._set_current_auto_limit(key, value)
+            return
+        if key == _CURRENT_RANGE:
+            self.values[_CURRENT_AUTORANGE] = "0"
         self.values[key] = value.strip("'\"")
 
     def query(self, command):
@@ -237,11 +286,26 @@ class SimulatorTransport:
         current = volts / self.resistance_ohm + self.offset_A + self.drift_A_per_s * t
         current += self.absorption_A * math.exp(-t / self.tau_s) if volts else 0.0
         current += self.rng.gauss(0, self.noise_A)
+        native = self.values[":SENS:FUNC"].startswith("RES")
+        if (
+            self.faults.get("picoamp_autorange_plateau")
+            and not native
+            and volts
+            and self.values[_CURRENT_AUTORANGE] == "1"
+        ):
+            lower, upper = self._current_auto_window()
+            if lower <= 2e-10 <= upper:
+                # Inject a plausible NADC response for testing the application guard.
+                current = math.copysign(158e-12, volts)
         if self.faults.get("sign_reverse_at_read") == n:
             current *= -1
         if self.faults.get("zero_current_at_read") == n:
             current = 0.0
         status = "N"
+        if not native:
+            magnitude = abs(current)
+            if magnitude > _CURRENT_FULL_SCALE * self._current_reading_range(magnitude):
+                status = "O"
         if self.faults.get("reference"):
             status = "R"
         if self.values[":SYST:ZCH"] == "1" or self.faults.get("zero_check"):
@@ -252,7 +316,6 @@ class SimulatorTransport:
             status = "U"
         if self.faults.get("out_of_limit_at_read") == n:
             status = "L"
-        native = self.values[":SENS:FUNC"].startswith("RES")
         value = (volts / current if current and volts else 9.9e37) if native else current
         if status in {"O", "L"}:
             value = 9.9e37
@@ -263,7 +326,7 @@ class SimulatorTransport:
         number = self.last_number if self.faults.get("stale_at_read") == n else n
         self.last_number = number
         if self.faults.get("range_change_at_read") == n:
-            self.values[":SENS:CURR:RANG"] = "2e-8"
+            self.values[_CURRENT_RANGE] = "2e-8"
             self.values[":SENS:RES:MAN:CRANG"] = "2e-8"
         return (
             f"{value:+.8E}{status}{'OHM' if native else 'ADC'},{number:+06d}rdg#,{volts:+.8E}Vsrc"

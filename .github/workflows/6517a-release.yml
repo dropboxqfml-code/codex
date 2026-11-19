@@ -54,8 +54,8 @@ jobs:
           ref_type = os.environ['RELEASE_REF_TYPE']
           ref_name = os.environ['RELEASE_TAG']
           if ref_type == 'tag':
-              if not re.fullmatch(r'\d+\.\d+\.\d+', version):
-                  raise SystemExit('Release version must be a plain numeric semantic version')
+              if not re.fullmatch(r'\d+\.\d+\.\d+(?:\.\d+)?', version):
+                  raise SystemExit('Release version must have three or four numeric components')
               if ref_name != f'6517a-v{version}':
                   raise SystemExit('Release tag does not match the package version')
           elif ref_type != 'branch' or not ref_name.startswith('6517a-debug-'):

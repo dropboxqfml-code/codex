@@ -76,6 +76,54 @@ def test_manual_vsource_and_current_autorange_independent():
     assert transport.values[":SENS:RES:VSC"] == "MAN"
 
 
+def test_current_autorange_arm_restores_picoamp_limits_before_enabling_auto():
+    driver, transport = configured()
+    lower = ":SENS:CURR:RANG:AUTO:LLIM"
+    upper = ":SENS:CURR:RANG:AUTO:ULIM"
+    transport.values.update({lower: "2e-9", upper: "2e-7"})
+    start = len(transport.commands)
+    verification = driver.configure(driver.config)
+    commands = transport.commands[start:]
+
+    assert commands.index(f"{lower} 2E-11") < commands.index(f"{upper} 0.02")
+    assert commands.index(f"{upper} 0.02") < commands.index(":SENS:CURR:RANG:AUTO ON")
+    assert verification["current_autorange_limits_A"] == {"lower": 20e-12, "upper": 20e-3}
+    assert not transport.output
+
+
+def test_picoamp_reference_changes_only_the_measurement_range():
+    driver, transport = configured()
+    driver.authorize_start(driver.config)
+    driver.output_on()
+    driver.set_voltage(0.1)
+    first = driver.read()
+    start = len(transport.commands)
+
+    status = driver.raise_picoamp_range(2e-9)
+
+    assert status["current_range"] == 2e-9
+    assert status["current_autorange"] is False
+    assert status["zero_correct"] is True
+    assert status["output_state"] == "ON"
+    assert [c for c in transport.commands[start:] if not c.endswith("?")] == [
+        ":SENS:CURR:RANG 2E-09"
+    ]
+    assert driver.read().reading_number == first.reading_number + 1
+
+
+def test_picoamp_reference_refuses_to_lower_an_existing_range():
+    driver, transport = configured(range_change_at_read=1)
+    driver.authorize_start(driver.config)
+    driver.output_on()
+    driver.read()
+    start = len(transport.commands)
+
+    with pytest.raises(ProtocolError, match="requires a measured 20 or 200 pA range"):
+        driver.raise_picoamp_range(2e-9)
+
+    assert all(command.endswith("?") for command in transport.commands[start:])
+
+
 @pytest.mark.parametrize("voltage", [float("nan"), float("inf"), -1, 10.001])
 def test_voltage_policy(voltage):
     driver, transport = configured()

@@ -37,6 +37,7 @@
 | `:SYST:INT?` | Q·없음 | `0`/`1`; `1`은 케이블 미연결에서도 가능 | 3.22.16, 3-137 | 확인/미시험 |
 | `:SENS:FUNC 'CURR'/'RES'`, `?` | W/Q·측정 기능 | current/resistance 기능명; 따옴표·DC 표기 검사 | 3.19.2, 3-85 | 확인/미시험 |
 | `:SENS:CURR:RANG:AUTO <ON/OFF>`, `?` | W/Q·전류 autorange | `0`/`1`; Auto V-Source와 독립 | 3.19.6, 3-90~92; Table 3-10, 3-48 | 확인/미시험 |
+| `:SENS:CURR:RANG:AUTO:LLIM <A>`, `?`; `:ULIM <A>`, `?` | W/Q·전류 autorange 하한·상한 | A 단위. ARM에서 20 pA·20 mA 설정을 조회해 필요하면 변경하고 AUTO 활성화 뒤 재확인 | 3.19.6, 3-91~92 | 확인/미시험 |
 | `:SENS:CURR:RANG <A>`, `?` | W/Q·전류 범위 | 수치 A; 장비 선택 range readback 검사 | 3.19.6, 3-90~92 | 확인/미시험 |
 | `:SENS:CURR:NPLC <n>`, `?`; `:AUTO OFF`, `?` | W/Q·적분·자동 선택 | 0.01~10 NPLC; AUTO=`0` | 3.19.5, 3-89 | 확인/미시험 |
 | `:SENS:RES:VSC MAN`, `?` | W/Q·저항 V-source 제어 | `MAN`; AUTO는 40/400 V를 선택하므로 사용 안 함 | 3.19.16, 3-102 | 확인/미시험 |
@@ -101,6 +102,12 @@ Status는 `N` 정상, `Z` zero check, `O` overflow, `U` underflow, `R` reference
 RNUM counter는 전원 투입 또는 `:SYST:RNUM:RES` 후 0부터 시작합니다(3-77, 3-133). 이 프로그램은 host READ 순서에서 중복/역행 counter를 fresh sample로 받아들이지 않습니다. 불연속은 내부 conversion/reset 가능성과 구분하여 기록하며 누락 데이터의 증명으로 단정하지 않습니다. Buffer/pre-trigger의 별도 counter·음수 reading 번호는 이 host profile 대상이 아닙니다.
 
 3-78의 VSO는 source 출력에 관한 보고값이며 standby에서는 0 V로 보고됩니다. `:SOUR:VOLT?` 설정값이나 VSO를 독립 DUT 전압 측정으로 표시하지 않습니다. Source limit 상태가 켜지면 설정 전압 기반 V/I는 무효이며 중단합니다. Status query와 reading은 원자적 snapshot이 아닙니다.
+
+## v0.9.2.2의 낮은 전류 범위 재판독
+
+FVMI AUTO는 ARM에서 전류 자동 범위의 하한 20 pA와 상한 20 mA를 확인합니다. 측정 중 20 pA 또는 200 pA로 조회된 범위에서 `N` 상태의 판독이 해당 범위의 75% 이상이고 전압·판독 번호·보호 조건이 유효하면 같은 소스 전압에서 2 nA로 범위를 높입니다. 매뉴얼 3-91에 따르면 유효한 `:SENS:CURR:RANG <A>`를 보내면 장비가 AUTO를 해제합니다. 새 범위와 AUTO 해제, 안전 상태, 오류 큐를 확인하고 범위 안정화 뒤 `:READ?`로 다시 판독합니다.
+
+유효한 재판독을 측정에 사용하고 원래 판독과 재판독의 전류·범위·응답 원문을 통신 및 이벤트 기록에 남깁니다. 확인된 고정 범위에서 새 판독이 `O`이고 적용한 보호 한계를 판독하려면 범위가 더 높아야 하는 경우에만 다시 범위를 높입니다. 그 외의 overflow나 보호 조건 위반은 보호 중단으로 처리합니다. 매뉴얼 2-60의 Zero Correct 조건에 따라 다음 ARM 전에는 하향 전환하지 않습니다. v0.9.2.2의 실제 장비 범위 전환 및 판독은 실측 검증이 남아 있습니다.
 
 ## 원문 자체의 불일치와 실제 장비에서 남은 확인
 

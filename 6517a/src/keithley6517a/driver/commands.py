@@ -5,10 +5,20 @@ paths follow the explicit full commands on printed page 3-108, not indentation
 in Table 3-11. No internal resistive-limit resistance is assumed.
 """
 
+from math import isclose
+
 MANUAL_VERIFIED = True
 MANUAL_SHA256 = "3c02f1e97a0fd101cbc77a09aae87b1d0ce43e45b9bc46d433e671e8dea78adb"
 MANUAL_REVISION = "6517A-900-01 Rev. D, May 2003"
 FORMAT = "READ,STAT,UNIT,RNUM,VSO"
+CURRENT_RANGES_A = (2e-11, 2e-10, 2e-9, 2e-8, 2e-7, 2e-6, 2e-5, 2e-4, 2e-3, 2e-2)
+PICOAMP_RANGES_A = CURRENT_RANGES_A[:2]
+PICOAMP_REFERENCE_RANGES_A = CURRENT_RANGES_A[2:]
+
+
+def current_range_matches(actual, nominal):
+    return actual is not None and isclose(actual, nominal, rel_tol=1e-6, abs_tol=1e-15)
+
 
 # Table 3-15 (3-57/58), 3.24.4-6 (3-143/144): Arm Layer 1 has NO delay.
 ONE_SHOT_PROFILE = (

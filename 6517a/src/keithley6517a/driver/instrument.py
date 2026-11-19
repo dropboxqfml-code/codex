@@ -16,14 +16,21 @@ from ..config import RunConfig
 from ..transport.base import CommunicationError, UnsupportedOperation
 from .commands import (
     COMMON_PROFILE,
+    CURRENT_RANGES_A,
     FORMAT,
     MANUAL_REVISION,
     MANUAL_SHA256,
     MANUAL_VERIFIED,
     ONE_SHOT_PROFILE,
+    PICOAMP_RANGES_A,
+    PICOAMP_REFERENCE_RANGES_A,
+    current_range_matches,
     function_profile,
 )
 from .parser import ProtocolError, parse_reading
+
+_CURRENT_RANGE = ":SENS:CURR:RANG"
+_CURRENT_AUTO_LIMITS = (("LLIM", CURRENT_RANGES_A[0]), ("ULIM", CURRENT_RANGES_A[-1]))
 
 
 def _get(config, name, default=None):
@@ -67,6 +74,7 @@ class Instrument:
         self.io_guard = None
         self._configured_snapshot = None
         self._start_permit = None
+        self._read_since_output_on = False
         self._commissioning = {
             "ready": False,
             "fixture_id": "",
@@ -357,9 +365,17 @@ class Instrument:
         self._set(":SOUR:CURR:RLIM:STAT", "ON" if resistive_limit else "OFF", resistive_limit)
         native = self.mode == "NATIVE_RESISTANCE"
         self._set(":SENS:FUNC", "'RES'" if native else "'CURR'", "RES" if native else "CURR")
-        range_key = ":SENS:RES:MAN:CRANG" if native else ":SENS:CURR:RANG"
+        range_key = ":SENS:RES:MAN:CRANG" if native else _CURRENT_RANGE
         auto = _get(config, "current_autorange", True)
         self._set(range_key + ":AUTO", "OFF", False)
+        auto_limits = _CURRENT_AUTO_LIMITS if auto and not native else ()
+        # Range limits persist in the meter. Restore the full AUTO window with
+        # output OFF before ranging through its lowest measurement range.
+        for limit, range_A in auto_limits:
+            key = f"{range_key}:AUTO:{limit}"
+            actual = self._number(self._query(key + "?"))
+            if not current_range_matches(actual, range_A):
+                self._set(key, range_A, range_A)
         # 2-60: zero correction survives uprange, requires re-zero on downrange.
         # Start auto-ranging from the lowest 20 pA range so it never goes below zeroed range.
         zero_range = 20e-12 if auto else _get(config, "current_range_A", 2e-9)
@@ -404,6 +420,8 @@ class Instrument:
             self._check_errors("zero correction retained after zero check OFF")
             zero_method = "enable_while_zero_check_on"
         self._set(range_key + ":AUTO", "ON" if auto else "OFF", auto)
+        for limit, range_A in auto_limits:
+            self._verify(f"{range_key}:AUTO:{limit}?", range_A)
         self._verify(":SENS:RES:VSC?", "MAN")
         self._verify(":SOUR:VOLT?", 0)
         self._check_errors("final configuration")
@@ -435,6 +453,9 @@ class Instrument:
             "zero_correct_temperature_C": _get(config, "temperature_C"),
             "zero_correct_valid_for_uprange_per_manual": True,
             "zero_correct_native_mode_hardware_verified": False,
+            "current_autorange_limits_A": (
+                {"lower": auto_limits[0][1], "upper": auto_limits[1][1]} if auto_limits else None
+            ),
             "nplc": _get(config, "nplc", 10),
             "line_frequency_hz": _get(config, "line_frequency_hz", 60),
             "line_frequency_basis": "USER_PROVIDED_NOT_INDEPENDENTLY_QUERIED",
@@ -500,6 +521,7 @@ class Instrument:
         self._write(":OUTP1 ON")
         self._verify(":OUTP1?", True)
         self.output_state = "ON"
+        self._read_since_output_on = False
 
     def set_voltage(self, voltage):
         if not self.configured:
@@ -538,6 +560,63 @@ class Instrument:
         self._check_errors("source voltage step")
         self.voltage_programmed = actual
         return actual
+
+    def _require_range_change_safety(self, status):
+        if (
+            status["output_state"] != "ON"
+            or status["interlock"] != 1
+            or status["current_limit"]
+            or status["zero_check"]
+            or not status["zero_correct"]
+            or (
+                _get(self.config, "setup_policy") != "operator_low_voltage"
+                and status["fixture_installation_confirmed"] is False
+            )
+        ):
+            raise ProtocolError("Picoamp range verification blocked by instrument safety state")
+
+    def raise_picoamp_range(self, reference_A, *, previous_reference_A=None):
+        """Switch from the pA AUTO reading or an existing comparison range strictly upward."""
+        if reference_A not in PICOAMP_REFERENCE_RANGES_A or (
+            previous_reference_A is not None
+            and (
+                previous_reference_A not in PICOAMP_REFERENCE_RANGES_A
+                or reference_A <= previous_reference_A
+            )
+        ):
+            raise ValueError("Picoamp comparison requires a supported upward reference range")
+        if (
+            not self.configured
+            or self._configured_snapshot != _snapshot(self.config)
+            or self.output_state != "ON"
+            or self.mode != "FVMI_CURRENT"
+            or _get(self.config, "current_autorange", True) is not True
+            or not self._read_since_output_on
+        ):
+            raise ProtocolError("Picoamp range verification requires a running FVMI AUTO reading")
+        self._require_real_approval(self.config)
+        self._verify(":SENS:FUNC?", "CURR")
+        self._verify(_CURRENT_RANGE + ":AUTO?", previous_reference_A is None)
+        before = self.safety_status()
+        self._require_range_change_safety(before)
+        if previous_reference_A is None and not any(
+            current_range_matches(before["current_range"], range_A) for range_A in PICOAMP_RANGES_A
+        ):
+            raise ProtocolError("Picoamp range verification requires a measured 20 or 200 pA range")
+        if previous_reference_A is not None and not current_range_matches(
+            before["current_range"], previous_reference_A
+        ):
+            raise ProtocolError("Picoamp comparison range changed before upward switch")
+        # Manual 3-91: a valid manual range setting disables AUTO. Manual
+        # 2-60: zero correction survives this upward range change.
+        self._set(_CURRENT_RANGE, reference_A, reference_A)
+        self._verify(_CURRENT_RANGE + ":AUTO?", False)
+        after = self.safety_status()
+        self._require_range_change_safety(after)
+        if not current_range_matches(after["current_range"], reference_A):
+            raise ProtocolError("Picoamp reference range changed after readback")
+        self._check_errors("picoamp reference range")
+        return {**after, "current_autorange": False}
 
     def safety_status(self):
         if not self._identified:
@@ -598,6 +677,7 @@ class Instrument:
         expected_source = self.voltage_programmed if self.output_state == "ON" else 0.0
         if abs(parsed.voltage_reported - expected_source) > resolution / 2 + 1e-10:
             raise ProtocolError("Reported source setting mismatch")
+        self._read_since_output_on = self.output_state == "ON"
         return parsed
 
     def safe_off(self):

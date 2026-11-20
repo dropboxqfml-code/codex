@@ -45,6 +45,9 @@ jobs:
           .venv/Scripts/ruff.exe check .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           .venv/Scripts/ruff.exe format --check .
+      - name: Verify Chrome focus recovery and native saving
+        run: |
+          .venv/Scripts/python.exe -m pytest -q --maxfail=1 -rA tests/test_windows_automatic_post.py tests/test_windows_completion_focus.py
       - name: Run unit tests and real CMD lookup regression checks
         run: |
           $PSNativeCommandUseErrorActionPreference = $false

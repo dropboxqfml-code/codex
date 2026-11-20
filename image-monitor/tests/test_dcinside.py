@@ -236,8 +236,10 @@ def test_real_browser_body_scope_lazy_decode_and_exclusion_reasons(page):
     )
     unverified_url = URL.replace("7036949", "999")
     current = page(html, url=unverified_url)
-    snapshot = inspect_post(current, expected_url=unverified_url, observed_at=NOW, timeout_ms=1500)
-    assert [image["body_order"] for image in snapshot["images"]] == [1, 6]
+    snapshot = inspect_post(current, expected_url=unverified_url, observed_at=NOW)
+    assert [image["body_order"] for image in snapshot["images"]] == [1, 6], [
+        (image["body_order"], image["reason"]) for image in snapshot["pending_images"]
+    ]
     assert all(image["natural_width"] == 4 for image in snapshot["images"])
     assert {item["reason"] for item in snapshot["excluded_images"]} == {
         "comment_content",

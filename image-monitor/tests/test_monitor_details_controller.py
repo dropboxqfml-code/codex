@@ -621,11 +621,17 @@ def test_automatic_detail_resumes_same_slot_after_pause(tmp_path, controllers):
 
 
 def test_new_list_gap_during_cooldown_prevents_reserved_automatic_detail(tmp_path, controllers):
+    cooldown_entered, gap_committed = threading.Event(), threading.Event()
+
     class ChangedCoverageClock(Clock):
         def wait_for(self, event, seconds):
-            self.advance(seconds)
-            persist(tmp_path, self, complete=False)
+            assert not cooldown_entered.is_set(), "Expected a single reserved detail cooldown"
+            cooldown_entered.set()
+            assert gap_committed.wait(10), "External scan did not finish during the cooldown"
 
+    # Keep first-time schema creation out of the worker synchronization deadlines.
+    with QueueStore(tmp_path / "watch.sqlite"):
+        pass
     clock = ChangedCoverageClock()
     calls = []
 
@@ -637,12 +643,25 @@ def test_new_list_gap_during_cooldown_prevents_reserved_automatic_detail(tmp_pat
         calls.append("detail")
 
     value = create(controllers, tmp_path, details, clock=clock, cycle=cycle)
-    value.start()
-    assert value.wait_stopped(3)
+    try:
+        value.start()
+        assert cooldown_entered.wait(10), value.status()
+        waiting = value.status()
+        assert waiting["phase"] == "waiting" and waiting["task_kind"] == "auto_details"
+        assert waiting["remaining_seconds"] == 60
+        clock.advance(waiting["remaining_seconds"])
+        persist(tmp_path, clock, complete=False)
+    finally:
+        gap_committed.set()
+    assert value.wait_stopped(10), value.status()
     status = value.status()
     assert calls == ["list"]
-    assert status["phase"] == "needs_review" and status["reason"] == "scan_requires_review"
+    assert status["phase"] == "needs_review" and status["reason"] == "scan_requires_review", status
     assert status["detail_pending_count"] == 1 and status["auto_details_checked"] == 0
+    with QueueStore(tmp_path / "watch.sqlite", read_only=True) as queue:
+        state = WatchStore(queue).get_state(MONITOR_SCOPE)
+        assert state["generation"] == 2 and not state["latest_scan"]["complete"]
+        assert CandidateDetailStore(queue).list_details(MONITOR_SCOPE) == []
 
 
 @pytest.mark.parametrize("http", [429, 503])

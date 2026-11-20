@@ -42,14 +42,16 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
         "published_at_raw": published.strftime("%Y.%m.%d %H:%M:%S"),
     }
     first, second = POSTS
-    paths = {
-        first: ("/render-first.png", "/render-photo.jpg", "/render-animation.gif", "/last.png"),
-        second: ("/render-photo.jpg",),
-    }
     images = fixture_assets(title)
-    last = BytesIO()
-    Image.new("RGB", (7, 6), "teal").save(last, format="PNG")
-    images["/last.png"] = ("image/png", last.getvalue())
+    first_paths = ["/render-first.png", "/render-photo.jpg", "/render-animation.gif"]
+    for slot in range(4, 11):
+        path = f"/render-{slot}.png"
+        payload = BytesIO()
+        Image.new("RGB", (slot + 3, slot + 2), (slot * 20, 128, 144)).save(payload, format="PNG")
+        images[path] = ("image/png", payload.getvalue())
+        first_paths.append(path)
+    assert len({images[path][1] for path in first_paths}) == 10
+    paths = {first: first_paths, second: ["/render-photo.jpg"]}
     assets = {path: images[path] for post_paths in paths.values() for path in post_paths}
     for post_id, post_paths in paths.items():
         document = _html(title, header, image_paths=post_paths)
@@ -138,7 +140,7 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
             "posts_saved",
         ):
             assert result[count] == 2, result
-        assert result["files_verified"] == 5, result
+        assert result["files_verified"] == 11, result
         expected_inputs = [
             (_post_url(post_id), origin + path)
             for post_id, post_paths in paths.items()

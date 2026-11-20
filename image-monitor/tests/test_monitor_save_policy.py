@@ -135,8 +135,8 @@ def test_individually_reviewed_but_mixed_scopes_cannot_make_a_permit(candidate_w
         make_candidate_save_permit(candidate, baseline, detail)
 
 
-@pytest.mark.parametrize("count", [0, 3])
-def test_monitor_permit_keeps_the_existing_one_or_two_image_limit(count):
+@pytest.mark.parametrize("count", [0, 11])
+def test_monitor_permit_rejects_counts_outside_one_to_ten(count):
     with pytest.raises(CandidateSavePolicyError):
         make_candidate_save_permit(*monitor_evidence(image_count=count))
 

@@ -47,7 +47,17 @@ jobs:
           .venv/Scripts/ruff.exe format --check .
       - name: Verify Chrome focus recovery and native saving
         run: |
-          .venv/Scripts/python.exe -m pytest -q --maxfail=1 -rA tests/test_windows_automatic_post.py tests/test_windows_completion_focus.py
+          $PSNativeCommandUseErrorActionPreference = $false
+          New-Item -ItemType Directory -Force reports | Out-Null
+          .venv/Scripts/python.exe -m pytest -q --maxfail=1 --tb=short tests/test_windows_automatic_post.py tests/test_windows_completion_focus.py *> reports/windows-focus.txt
+          $pytestExit = $LASTEXITCODE
+          $output = Get-Content -Raw -LiteralPath reports/windows-focus.txt
+          Write-Host $output
+          if ($pytestExit -ne 0) {
+            $escaped = $output.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Host "::error title=Windows native focus failure::$escaped"
+          }
+          exit $pytestExit
       - name: Run unit tests and real CMD lookup regression checks
         run: |
           $PSNativeCommandUseErrorActionPreference = $false
@@ -93,5 +103,6 @@ jobs:
           path: |
             image-monitor/reports/windows-pytest.xml
             image-monitor/reports/pytest-output.txt
+            image-monitor/reports/windows-focus.txt
           if-no-files-found: warn
           retention-days: 14

@@ -98,7 +98,7 @@ def test_owns_one_fresh_headless_system_browser_and_closes_only_it(browser_sessi
     driver.chromium.launch.assert_called_once_with(
         executable_path=choice + ".exe",
         headless=True,
-        timeout=15_000,
+        timeout=45_000,
         args=["--disable-background-networking"],
     )
     driver.chromium.launch_persistent_context.assert_not_called()

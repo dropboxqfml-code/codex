@@ -78,7 +78,7 @@ def test_candidate_uses_owned_headless_lifecycle_and_one_dom_observation(browser
     driver.chromium.launch.assert_called_once_with(
         executable_path="chrome.exe",
         headless=True,
-        timeout=15_000,
+        timeout=45_000,
         args=["--disable-background-networking"],
     )
     browser.new_context.assert_called_once_with(accept_downloads=False)

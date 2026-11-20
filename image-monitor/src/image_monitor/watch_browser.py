@@ -97,7 +97,7 @@ class HeadlessWatchBrowser:
             self._owned_browser = driver.chromium.launch(
                 executable_path=str(executable),
                 headless=True,
-                timeout=15_000,
+                timeout=45_000,
                 args=["--disable-background-networking"],
             )
             self.browser_version = self._owned_browser.version

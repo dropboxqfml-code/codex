@@ -41,6 +41,8 @@ def main():
         "RUN_MONITOR.cmd",
         "RUN_MONITOR_RESUME.cmd",
         "RUN_AUTO_COLLECT.cmd",
+        "RUN_AUTO_MONITOR.cmd",
+        "TEST_AUTO_MONITOR.cmd",
         "CHECK_LAST_LIST.cmd",
         "RUN_MONITOR_SAVE.cmd",
         "RUN_MONITOR_FINISH.cmd",

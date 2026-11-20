@@ -1,12 +1,17 @@
-"""Inspect up to three queued monitor posts and automatically save one verified body."""
+"""Inspect queued monitor posts and automatically save one verified body."""
+
+from contextlib import nullcontext
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_runtime import run_candidate_trial
 from image_monitor.monitor_auto_selection import search_monitor_candidates
 from image_monitor.monitor_batch_runtime import run_monitor_batch, share_batch_report
+from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_save_ledger import _roots
+from image_monitor.monitor_settings import load_monitor_settings
 from image_monitor.post_worker import run_post_save
+from image_monitor.watch_image_search import MAX_NEW_DETAILS
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
 from image_monitor.watch_store import MONITOR_SCOPE
@@ -41,9 +46,17 @@ def _save_status(save, expected_images):
     }.get(status, "monitor_collect_review")
 
 
-def _collect(report, roots, clock, detail_runner, save_runner):
+def _collect(report, roots, clock, detail_runner, save_runner, *, session_turn, should_stop):
+    max_wait = load_monitor_settings(roots[0])["interval_seconds"] if session_turn else 60
     report["browser_closed"] = None
-    search, target = search_monitor_candidates(*roots, clock=clock, detail_runner=detail_runner)
+    search, target = search_monitor_candidates(
+        *roots,
+        clock=clock,
+        detail_runner=detail_runner,
+        max_new_details=1 if session_turn else MAX_NEW_DETAILS,
+        max_wait_seconds=max_wait,
+        should_stop=should_stop,
+    )
     report.update(
         search=search,
         reason=search["reason"],
@@ -65,11 +78,19 @@ def _collect(report, roots, clock, detail_runner, save_runner):
     # An independent pilot can impose a new wait after selection. Re-enter the
     # batch with the original immutable binding; never substitute another post.
     for attempt in range(2):
+        if stop_requested(should_stop):
+            report.update(status="monitor_collect_cancelled", reason="requested_stop")
+            return
         report.update(
             native_save_tasks_started=None, worker_images_completed=None, browser_closed=None
         )
         save = run_monitor_batch(
-            *roots, max_tasks=1, monitor_handoff=target, clock=clock, save_runner=save_runner
+            *roots,
+            max_tasks=1,
+            monitor_handoff=target,
+            clock=clock,
+            save_runner=save_runner,
+            should_stop=should_stop,
         )
         report.update(
             native_save_tasks_started=save["tasks_started"],
@@ -87,9 +108,11 @@ def _collect(report, roots, clock, detail_runner, save_runner):
         due = _stored_time(save["next_eligible_at_local"])
         report["next_eligible_at"] = _stamp(due)
         remaining = (due - clock.now()).total_seconds()
-        if remaining > 60:
+        if remaining > max_wait:
             break
-        clock.wait(max(0, remaining))
+        if not wait_until(clock, due, should_stop):
+            report.update(status="monitor_collect_cancelled", reason="requested_stop")
+            return
 
     public = share_batch_report(save)
     status = _save_status(public, search["eligible_body_images"])
@@ -107,16 +130,17 @@ def _collect(report, roots, clock, detail_runner, save_runner):
     )
 
 
-def run_monitor_collect(
+def _run_monitor_collect(
     watch_root,
     legacy_root,
     work_root,
     *,
-    clock=None,
-    detail_runner=run_candidate_trial,
-    save_runner=run_post_save,
+    clock,
+    detail_runner,
+    save_runner,
+    session_turn,
+    should_stop,
 ):
-    """Use the desktop monitor lease across selection, waiting, saving, and verification."""
     report = {
         "schema_version": 1,
         "program_version": PUBLIC_VERSION,
@@ -144,8 +168,21 @@ def run_monitor_collect(
         elif not database.is_file():
             report.update(reason="stored_monitor_data_invalid")
         else:
-            with watch_run_lock(database, MONITOR_SCOPE, purpose="monitor"):
-                _collect(report, roots, clock or _Clock(), detail_runner, save_runner)
+            lease = (
+                nullcontext()
+                if session_turn
+                else watch_run_lock(database, MONITOR_SCOPE, purpose="monitor")
+            )
+            with lease:
+                _collect(
+                    report,
+                    roots,
+                    clock or _Clock(),
+                    detail_runner,
+                    save_runner,
+                    session_turn=session_turn,
+                    should_stop=should_stop,
+                )
     except WatchRunBusy:
         report.update(status="monitor_collect_busy", reason="another_monitor_is_open")
     except KeyboardInterrupt:
@@ -153,6 +190,51 @@ def run_monitor_collect(
     except Exception:
         report.update(reason="collection_requires_review")
     return report
+
+
+def run_monitor_collect(
+    watch_root,
+    legacy_root,
+    work_root,
+    *,
+    clock=None,
+    detail_runner=run_candidate_trial,
+    save_runner=run_post_save,
+):
+    """Own the monitor lease while checking up to three bodies and saving one post."""
+    return _run_monitor_collect(
+        watch_root,
+        legacy_root,
+        work_root,
+        clock=clock,
+        detail_runner=detail_runner,
+        save_runner=save_runner,
+        session_turn=False,
+        should_stop=None,
+    )
+
+
+def collect_session_turn(
+    watch_root,
+    legacy_root,
+    work_root,
+    *,
+    clock,
+    should_stop=None,
+    detail_runner=run_candidate_trial,
+    save_runner=run_post_save,
+):
+    """Check up to one new body and save one post under the caller's monitor lease."""
+    return _run_monitor_collect(
+        watch_root,
+        legacy_root,
+        work_root,
+        clock=clock,
+        detail_runner=detail_runner,
+        save_runner=save_runner,
+        session_turn=True,
+        should_stop=should_stop,
+    )
 
 
 def monitor_collect_exit_code(report):

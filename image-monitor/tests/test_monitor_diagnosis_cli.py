@@ -261,6 +261,16 @@ def test_watch_detail_opens_one_result_and_preserves_the_cli_exit_code(tmp_path,
             'if "%AUTO_COLLECT_ONCE%"=="1" goto start_auto_collect',
             "auto_collect_once",
         ),
+        (
+            "RUN_AUTO_MONITOR.cmd",
+            'if "%AUTO_MONITOR%"=="1" goto start_auto_monitor',
+            "auto_monitor",
+        ),
+        (
+            "TEST_AUTO_MONITOR.cmd",
+            'if "%AUTO_MONITOR%"=="1" goto start_auto_monitor',
+            "auto_monitor",
+        ),
     ],
 )
 @pytest.mark.parametrize("code", [0, 2])
@@ -280,6 +290,7 @@ def test_watch_command_uses_exact_roots_and_opens_one_result(
     wrapper.write_bytes((PROJECT / wrapper.name).read_bytes())
     (folder / "args_fixture.py").write_text(
         "import json, sys\nprint(json.dumps(sys.argv[1:], ensure_ascii=False))\n"
+        "print('fixture startup diagnostic', file=sys.stderr)\n"
         f"sys.exit({code})\n",
         encoding="ascii",
     )
@@ -297,7 +308,7 @@ def test_watch_command_uses_exact_roots_and_opens_one_result(
     content = log.read_text("utf-8")
     if stage == "monitor_resume_once":
         expected_args = ["--work-root", str(appdata / "ImageMonitorWatch")]
-    elif stage == "auto_collect_once":
+    elif stage in {"auto_collect_once", "auto_monitor"}:
         expected_args = [
             "--watch-root",
             str(appdata / "ImageMonitorWatch"),
@@ -306,6 +317,8 @@ def test_watch_command_uses_exact_roots_and_opens_one_result(
             "--work-root",
             str(appdata / "ImageMonitorBatch"),
         ]
+        if wrapper_name == "TEST_AUTO_MONITOR.cmd":
+            expected_args.extend(["--max-cycles", "2"])
     else:
         expected_args = [
             "--watch-root",
@@ -318,6 +331,10 @@ def test_watch_command_uses_exact_roots_and_opens_one_result(
         if stage == "watch_images":
             expected_args.extend(["--browser", "chrome"])
     assert json.dumps(expected_args, ensure_ascii=False) in content
+    if stage == "auto_monitor":
+        assert "fixture startup diagnostic" in content
+        prompt = "two-cycle test" if wrapper_name.startswith("TEST") else "Press ENTER"
+        assert prompt in result.stdout
     lines = content.splitlines()
     assert [line for line in lines if line.startswith("STAGE:")] == [f"STAGE: {stage}"]
     assert f"{stage.replace('_', ' ').capitalize()} exit code: {code}" in lines
@@ -332,6 +349,8 @@ def test_watch_command_uses_exact_roots_and_opens_one_result(
         ("CHECK_WATCH_IMAGES.cmd", "WATCH_IMAGES_CHECK"),
         ("RUN_MONITOR_RESUME.cmd", "MONITOR_RESUME_ONCE"),
         ("RUN_AUTO_COLLECT.cmd", "AUTO_COLLECT_ONCE"),
+        ("RUN_AUTO_MONITOR.cmd", "AUTO_MONITOR"),
+        ("TEST_AUTO_MONITOR.cmd", "AUTO_MONITOR"),
     ],
 )
 def test_incomplete_watch_bundle_opens_one_setup_error_result(tmp_path, wrapper_name, stage):

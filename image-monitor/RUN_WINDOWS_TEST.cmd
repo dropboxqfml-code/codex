@@ -28,6 +28,10 @@ set "WATCH_IMAGES=0"
 set "WATCH_IMAGES_CHECK=0"
 set "MONITOR_RESUME_ONCE=0"
 set "AUTO_COLLECT_ONCE=0"
+set "AUTO_MONITOR=0"
+set "AUTO_MONITOR_LIMIT="
+if /i "%~1"=="--auto-monitor" goto auto_monitor_arguments
+if /i "%~1"=="--test-auto-monitor" goto auto_monitor_arguments
 if /i "%~1"=="--auto-collect-once" goto auto_collect_arguments
 if /i "%~1"=="--monitor-resume-once" goto monitor_resume_arguments
 if /i "%~1"=="--watch-images-check" goto watch_images_check_arguments
@@ -55,6 +59,16 @@ if /i "%~1"=="--save-post" goto option_save_post
 if /i "%~1"=="--resume-preinput" goto option_resume_preinput
 >&2 echo Unsupported test launcher argument. Use the supplied CMD files.
 exit /b 2
+
+:auto_monitor_arguments
+if not "%~2"=="" exit /b 2
+set "CHECK_LABEL=continuous automatic image monitoring"
+if /i "%~1"=="--test-auto-monitor" set "CHECK_LABEL=automatic image monitoring for two cycles"
+if /i "%~1"=="--test-auto-monitor" set "AUTO_MONITOR_LIMIT=--max-cycles 2"
+set "AUTO_MONITOR=1"
+set "WATCH_RESULT=AUTO_MONITOR"
+set "WATCH_EXIT_CODE="
+goto new_log
 
 :auto_collect_arguments
 if not "%~2"=="" exit /b 2
@@ -365,6 +379,7 @@ if exist "%LOG_FILE%" goto new_log
 >"%LOG_FILE%" echo Image Monitor - %CHECK_LABEL%
 if errorlevel 1 goto log_unavailable
 if "%AUTO_COLLECT_ONCE%"=="1" >>"%LOG_FILE%" echo Save the eligible body images of at most one monitored post. Keep dedicated Chrome in front during saving.
+if "%AUTO_MONITOR%"=="1" goto check_project
 if "%AUTO_COLLECT_ONCE%"=="1" goto check_project
 if "%MONITOR_RESUME_ONCE%"=="1" >>"%LOG_FILE%" echo Check the next pending post from the previous monitor session in background Chrome if its turn is due.
 if "%MONITOR_RESUME_ONCE%"=="1" goto check_project
@@ -448,6 +463,7 @@ echo Installing locked project dependencies...
 >>"%LOG_FILE%" echo STAGE: install_dependencies
 "%UV_EXE%" --no-progress sync --locked --extra windows --python 3.12.14 --managed-python >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto failed
+if "%AUTO_MONITOR%"=="1" goto start_auto_monitor
 if "%AUTO_COLLECT_ONCE%"=="1" goto start_auto_collect
 if "%MONITOR_RESUME_ONCE%"=="1" goto start_monitor_resume
 if "%WATCH_IMAGES_CHECK%"=="1" goto check_watch_images
@@ -586,6 +602,17 @@ if not "%MONITOR_FINISH_CODE%"=="0" goto failed
 echo Monitor candidate verification finished. Opening the result file.
 start "" notepad.exe "%LOG_FILE%"
 exit /b 0
+
+:start_auto_monitor
+if defined AUTO_MONITOR_LIMIT echo The two-cycle test stops automatically and opens its result in Notepad.
+if not defined AUTO_MONITOR_LIMIT echo Press ENTER in this window between saves to stop and open the result.
+echo Keep dedicated Chrome in front during a save.
+>>"%LOG_FILE%" echo STAGE: auto_monitor
+set "IMAGE_MONITOR_CONSOLE_PROGRESS=1"
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor auto-monitor --watch-root "%LOCALAPPDATA%\ImageMonitorWatch" --legacy-root "%LOCALAPPDATA%\ImageMonitorMonitorSave" --work-root "%LOCALAPPDATA%\ImageMonitorBatch" %AUTO_MONITOR_LIMIT% >>"%LOG_FILE%" 2>&1
+set "WATCH_EXIT_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Auto monitor exit code: %WATCH_EXIT_CODE%
+goto finish_watch_result
 
 :start_auto_collect
 echo Checking for one eligible post. If dedicated Chrome opens, keep it in front until saving finishes.
@@ -741,6 +768,7 @@ goto failed
 >>"%LOG_FILE%" echo uv is not installed and WinGet is unavailable. Send this file for help.
 goto failed
 :failed
+if "%AUTO_MONITOR%"=="1" goto watch_result_failed
 if "%AUTO_COLLECT_ONCE%"=="1" goto watch_result_failed
 if "%MONITOR_RESUME_ONCE%"=="1" goto watch_result_failed
 if "%WATCH_IMAGES_CHECK%"=="1" goto watch_result_failed

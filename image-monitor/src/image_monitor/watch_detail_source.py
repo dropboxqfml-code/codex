@@ -11,6 +11,11 @@ def recent_scan_candidates(queue, scope, state):
     plan = verified_recent_plan(queue, scope, state)
     if plan is None:
         return None, []
+    return scan_plan_candidates(queue, scope, state, plan)
+
+
+def scan_plan_candidates(queue, scope, state, plan):
+    """Match a replayed list plan to durable candidate identities in display order."""
     latest = state["latest_scan"]
     scan_id = latest["scan_id"]
     # A previously known post may have been seen again. First and latest scan

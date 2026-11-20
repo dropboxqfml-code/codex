@@ -5,6 +5,7 @@ from image_monitor.candidate_runtime import run_candidate_trial
 from image_monitor.candidate_save_policy import classify_stored_candidate_image
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.monitor_batch_runtime import _candidate, reconstruct_permit
+from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_operations import load_monitor_operations
 from image_monitor.monitor_save_ledger import (
     LEDGER_NAME,
@@ -96,7 +97,15 @@ def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setu
 
 
 def search_monitor_candidates(
-    watch_root, legacy_root, batch_root, *, clock=None, detail_runner=run_candidate_trial
+    watch_root,
+    legacy_root,
+    batch_root,
+    *,
+    clock=None,
+    detail_runner=run_candidate_trial,
+    max_new_details=MAX_NEW_DETAILS,
+    max_wait_seconds=60,
+    should_stop=None,
 ):
     """Return an anonymous summary and a private, exact handoff for one native save."""
     clock = clock or _Clock()
@@ -114,12 +123,16 @@ def search_monitor_candidates(
     fresh_posts = set()
     setup_retry = False
     try:
+        if type(max_new_details) is not int or not 1 <= max_new_details <= MAX_NEW_DETAILS:
+            raise ValueError("Invalid collection detail budget")
+        if type(max_wait_seconds) is not int or not 60 <= max_wait_seconds <= 300:
+            raise ValueError("Invalid collection wait budget")
         roots = _roots(watch_root, legacy_root, batch_root)
         watch = roots[0]
         database = _plain_path(watch / "watch.sqlite")
         interval = load_monitor_settings(watch)["interval_seconds"]
         while True:
-            ops = load_monitor_operations(*roots, now=clock.now())
+            ops = load_monitor_operations(*roots, now=clock.now(), should_stop=should_stop)
             if ops["status"] in {"busy", "cancelled"}:
                 report.update(status=ops["status"], reason=ops["reason"])
                 break
@@ -171,7 +184,7 @@ def search_monitor_candidates(
                         status="no_candidates", reason="no_remaining_unattempted_candidates"
                     )
                     break
-                if handoff is None and len(fresh_posts) >= MAX_NEW_DETAILS:
+                if handoff is None and len(fresh_posts) >= max_new_details:
                     report.update(status="limit", reason="fresh_detail_limit")
                     break
                 if ops["wait_until"] is not None:
@@ -189,12 +202,17 @@ def search_monitor_candidates(
                 break
             if wait > 0:
                 report["next_eligible_at"] = _stamp(due)
-                if wait > 60 or waited_for is not None:
+                if wait > max_wait_seconds or waited_for is not None:
                     report.update(status="waiting", reason="persisted_cooldown")
                     break
                 waited_for = choice
-                clock.wait(wait)
+                if not wait_until(clock, due, should_stop):
+                    report.update(status="cancelled", reason="requested_stop")
+                    break
                 continue
+            if stop_requested(should_stop):
+                report.update(status="cancelled", reason="requested_stop")
+                break
             waited_for = None
             report["next_eligible_at"] = None
             if handoff is not None:
@@ -212,6 +230,7 @@ def search_monitor_candidates(
                 interval_seconds=interval,
                 monitor_target=pending,
                 clock=clock,
+                **({"should_stop": should_stop} if should_stop is not None else {}),
             )
             closed = trial.get("browser_closed")
             report["browser_closed"] = closed if type(closed) is bool else None

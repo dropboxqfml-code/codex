@@ -1,0 +1,215 @@
+"""One eligible Chrome list scan for the automatic monitor."""
+
+import sqlite3
+from pathlib import Path
+
+from image_monitor.artifact_files import _plain_path
+from image_monitor.monitor_clock import stop_requested
+from image_monitor.native_ui import NativeUIError
+from image_monitor.queue import QueueError, QueueStore
+from image_monitor.watch_detail_source import recent_scan_candidates, scan_plan_candidates
+from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
+from image_monitor.watch_planner import next_poll_at, plan_scan
+from image_monitor.watch_runtime import (
+    DEFAULT_SCOPE,
+    _control,
+    _cycle_summary,
+    _eligibility,
+    _stamp,
+    _stored_time,
+    confirmed_monitor_scan,
+    matches_partial_coverage_scan,
+    run_watch_trial,
+)
+from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
+
+_EMPTY = {"generation": 0, "baseline": None, "checkpoint": None, "latest_scan": None}
+
+
+def _result(status, reason, *, due=None, closed=None, added=0):
+    return {
+        "status": status,
+        "reason": reason,
+        "new_candidates": added,
+        "next_eligible_at": _stamp(due) if due is not None else None,
+        "browser_closed": closed,
+    }
+
+
+def _source(queue, now, interval):
+    summary = queue.summary()
+    if summary["posts"] or summary["jobs"]:
+        raise QueueError("List discovery requires a dedicated database")
+    state = WatchStore(queue).get_state(MONITOR_SCOPE)
+    eligibility, due = _eligibility(queue, state, now)
+    if eligibility == "blocked":
+        return state, eligibility, None
+    finished = _control(state).get("finished_at")
+    if finished is not None:
+        due = max(due, next_poll_at(_stored_time(finished), interval))
+    if queue.schema_version >= 5:
+        last_detail = queue.connection.execute(
+            "SELECT MAX(finished_at) FROM candidate_details WHERE watch_name=? AND gallery_type=? "
+            "AND gallery_id=? AND keyword=? AND search_type=?",
+            MONITOR_SCOPE.key(),
+        ).fetchone()[0]
+        if last_detail is not None:
+            due = max(due, next_poll_at(_stored_time(last_detail), interval))
+    return state, "waiting" if due > now else "ready", due
+
+
+def _completed_scan(queue, before, after, raw):
+    """Replay a complete scan from the state observed before launching Chrome."""
+    latest = after["latest_scan"]
+    record = latest["result"]
+    observed = record["private_observation"]
+    pages = observed["pages"]
+    visits = observed["navigation"]
+    control = _control(after)
+    if (
+        observed.get("status") != "observed"
+        or control.get("transport_status") != "observed"
+        or control.get("http_status") != observed.get("http_status")
+        or not 1 <= len(pages) <= (1 if before["baseline"] is None else 2)
+        or len(visits) != len(pages)
+        or observed.get("http_status") != visits[-1]["http_status"]
+        or any(
+            type(v["http_status"]) is not int
+            or not 200 <= v["http_status"] < 300
+            or p["url"] != v["url"]
+            for p, v in zip(pages, visits, strict=True)
+        )
+    ):
+        raise QueueError("List document navigation is unconfirmed")
+    plan = plan_scan(
+        MONITOR_SCOPE, before, pages, _stored_time(latest["observed_at"]), allow_verified_live=True
+    )
+    matches, _ = scan_plan_candidates(queue, MONITOR_SCOPE, after, plan)
+    if matches is None:
+        raise QueueError("Stored candidate identities differ from the replayed list")
+    added = matches["new_candidates"]
+    stored_plan = {k: v for k, v in record.items() if k not in ("private_observation", "control")}
+    summary = _cycle_summary(
+        observed, plan, {"generation": after["generation"], "candidates_added": added}
+    )
+    gap = queue.connection.execute(
+        "SELECT 1 FROM watch_gaps WHERE scan_id=?", (latest["scan_id"],)
+    ).fetchone()
+    if (
+        not plan["complete"]
+        or len(plan["scan_result"]["pages"]) != len(pages)
+        or gap is not None
+        or plan["checkpoint"] != latest["checkpoint"]
+        or after["checkpoint"] != latest["checkpoint"]
+        or after["updated_at"] != latest["observed_at"]
+        or after["baseline"] != (plan["baseline"] or before["baseline"])
+        or stored_plan != plan["scan_result"]
+        or raw.get("cycles") != [summary]
+        or raw.get("new_candidates") != added
+        or (plan["baseline"] is not None and added != 0)
+    ):
+        raise QueueError("Stored list observations differ from the completed scan")
+    return "baseline" if plan["baseline"] is not None else "complete", added
+
+
+def _verified_scan(database, queue, before, after, raw):
+    latest = after["latest_scan"]
+    if (
+        latest is None
+        or after["generation"] != before["generation"] + 1
+        or latest["generation"] != after["generation"]
+        or raw.get("cycles_requested") != 1
+        or raw.get("cycles_completed") != 1
+        or raw.get("browser") != "chrome"
+        or not confirmed_monitor_scan(database, latest, expected_report=raw)
+    ):
+        raise QueueError("The current Chrome list scan has no matching final receipt")
+    if latest["complete"]:
+        return _completed_scan(queue, before, after, raw)
+    if (
+        before["baseline"] is not None
+        and after["baseline"] == before["baseline"]
+        and after["checkpoint"] == before["checkpoint"]
+        and raw.get("recent_pages_verified") is True
+        and matches_partial_coverage_scan(queue, MONITOR_SCOPE, after, raw)
+    ):
+        matches, _ = recent_scan_candidates(queue, MONITOR_SCOPE, after)
+        if matches is not None and matches["new_candidates"] == raw["new_candidates"]:
+            return "partial", matches["new_candidates"]
+    raise QueueError("The partial list scan has no verified recent page pair")
+
+
+def run_auto_discovery(
+    watch_root, *, interval_seconds, clock, should_stop=None, run_cycle=run_watch_trial
+):
+    """Check durable eligibility, run one scan, and verify the exact saved result."""
+    closed = None
+    try:
+        if stop_requested(should_stop):
+            return _result("cancelled", "requested_stop")
+        if type(interval_seconds) is not int or not 60 <= interval_seconds <= 300:
+            raise ValueError("Invalid list interval")
+        _stamp(clock.now())
+        base = _plain_path(Path(watch_root))
+        if base.drive.startswith("\\\\"):
+            raise ValueError("The monitor requires a local state directory")
+        base.mkdir(parents=True, exist_ok=True)
+        database = _plain_path(base / "watch.sqlite")
+        with watch_run_lock(database, DEFAULT_SCOPE):
+            before = _EMPTY
+            if database.exists():
+                with QueueStore(database, read_only=True) as queue:
+                    before, status, due = _source(queue, clock.now(), interval_seconds)
+                if status == "blocked":
+                    return _result("blocked", "access_block_requires_review")
+                if status == "waiting":
+                    return _result("waiting", "persisted_cooldown", due=due)
+        raw = run_cycle(
+            base,
+            "chrome",
+            cycles=1,
+            interval_seconds=interval_seconds,
+            clock=clock,
+            scope=MONITOR_SCOPE,
+            should_stop=should_stop,
+        )
+        closed = raw.get("browser_closed") if type(raw.get("browser_closed")) is bool else None
+        if closed is not True:
+            return _result("review", "owned_browser_cleanup_unconfirmed", closed=closed)
+        status = raw.get("status")
+        if status == "watch_busy":
+            return _result("busy", "another_worker_active", closed=closed)
+        if status == "watch_test_cancelled":
+            return _result("cancelled", "requested_stop", closed=closed)
+        with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database, read_only=True) as queue:
+            after, eligibility, due = _source(queue, clock.now(), interval_seconds)
+            if eligibility == "blocked":
+                return _result("blocked", "access_block_requires_review", closed=closed)
+            if status == "watch_waiting" and eligibility == "waiting":
+                return _result("waiting", "persisted_cooldown", due=due, closed=closed)
+            if status == "watch_test_failed":
+                if (
+                    eligibility == "waiting"
+                    and after["generation"] == before["generation"] + 1
+                    and _control(after).get("http_status") in (429, 503)
+                    and raw.get("cycles_completed") == 1
+                    and raw["cycles"][0]["generation"] == after["generation"]
+                    and raw["cycles"][0]["http_status"] == _control(after)["http_status"]
+                ):
+                    return _result("waiting", "service_wait", due=due, closed=closed)
+                return _result("review", "list_scan_requires_review", closed=closed)
+            kind, added = _verified_scan(database, queue, before, after, raw)
+            return _result(kind, raw.get("reason"), due=due, closed=closed, added=added)
+    except WatchRunBusy:
+        return _result("busy", "another_worker_active", closed=closed)
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        IndexError,
+        AttributeError,
+        sqlite3.Error,
+        NativeUIError,
+    ):
+        return _result("review", "list_scan_requires_review", closed=closed)

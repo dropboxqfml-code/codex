@@ -1,5 +1,7 @@
-﻿중단된 게시글 자동 저장 이어가기 (0.5.0-alpha.2)
+﻿목록 감시와 이미지 자동 저장 시험 (0.5.0-alpha.3)
 
-1. 이전 감시를 실행한 PC에서 ZIP을 새 폴더에 풀고 image-monitor 폴더의 RUN_AUTO_COLLECT.cmd를 더블클릭하세요.
-2. 전용 Chrome 창을 앞에 두세요. ‘이 창에서 저장 계속’ 버튼이 보일 때만 한 번 누르세요.
-3. 메모장이 열리면 방금 생성된 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개를 이 채팅에 첨부해 주세요.
+1. 이전 시험을 한 PC에서 ZIP을 새 폴더에 풀고, image-monitor 폴더의 TEST_AUTO_MONITOR.cmd를 더블클릭하세요.
+2. 전용 Chrome이 열리면 저장이 끝날 때까지 앞에 두세요. ‘이 창에서 저장 계속’ 버튼이 보이면 한 번 누르세요.
+3. 최대 두 주기 후 메모장이 열리면 방금 생성된 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개를 이 채팅에 첨부해 주세요.
+
+평소에 계속 감시하려면 RUN_AUTO_MONITOR.cmd를 실행하세요. 종료하려면 저장이 끝난 뒤 실행 창에서 Enter를 누르세요.

@@ -376,7 +376,7 @@ def share_watch_report(report):
     return {key: report[key] for key in keys if key in report}
 
 
-def confirmed_monitor_scan(database: Path, latest: dict) -> bool:
+def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None) -> bool:
     """Verify browser cleanup for this exact monitor scan using its final local report."""
     if not isinstance(latest, dict) or not isinstance(latest.get("result"), dict):
         return False
@@ -389,6 +389,8 @@ def confirmed_monitor_scan(database: Path, latest: dict) -> bool:
         return False
     try:
         report = _read_json(database.parent / "runs" / run_id / "report.json")
+        if expected_report is not None and report != expected_report:
+            return False
         if not isinstance(report, dict) or report.get("closed_monitor_scan") != {
             "run_id": run_id,
             "scan_id": latest["scan_id"],

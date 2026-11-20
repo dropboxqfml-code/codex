@@ -102,6 +102,7 @@ def main() -> int:
         ),
         ("monitor-save-one", "Run one native save requested by the local monitor"),
         ("auto-collect-once", "Inspect stored monitor candidates and automatically save one post"),
+        ("auto-monitor", "Repeatedly check the list and collect eligible post images"),
         ("monitor-batch-finish", "Reconcile completed monitor batch files without saving again"),
         ("watch-images", "Check recent posts for body images and offer to save one post in Chrome"),
         ("watch-images-check", "Verify the last completed recent-post image save on disk"),
@@ -113,6 +114,10 @@ def main() -> int:
         monitor_batch.add_argument("--work-root", type=Path, required=True)
         if name == "watch-images":
             monitor_batch.add_argument("--browser", choices=("chrome",), default="chrome")
+        if name == "auto-monitor":
+            monitor_batch.add_argument(
+                "--max-cycles", type=int, help="Stop after this many cycles (default: continuous)"
+            )
     site = commands.add_parser(
         "site-inspect", help="Read one public post DOM in an isolated browser; never save images"
     )
@@ -141,6 +146,14 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "auto-monitor":
+        if args.max_cycles is not None and args.max_cycles < 1:
+            parser.error("--max-cycles must be at least 1")
+        from image_monitor.auto_monitor_cli import run_auto_monitor_cli
+
+        return run_auto_monitor_cli(
+            args.watch_root, args.legacy_root, args.work_root, args.max_cycles
+        )
     if args.command == "auto-collect-once":
         from image_monitor.monitor_collect import monitor_collect_exit_code, run_monitor_collect
 

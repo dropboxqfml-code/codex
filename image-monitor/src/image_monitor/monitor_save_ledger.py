@@ -612,11 +612,12 @@ def batch_service_blocked(watch_database: Path) -> bool:
     )
 
 
-def monitor_save_claims(watch_database):
+def monitor_save_claims(watch_database, *, managed_only=False):
     """Return posts already reserved in the other reviewed pilot for this same gallery."""
     return {
         task["post_id"]
         for task in _ledger_records(_plain_path(Path(watch_database).absolute()), MONITOR_SCOPE)
+        if not managed_only or task["output_kind"] == "managed"
     }
 
 
@@ -628,6 +629,22 @@ def recent_save_claims(watch_database):
         "An unfinished recent save requires review",
     )
     return {task["post_id"] for task in tasks}
+
+
+def other_monitor_save_claims(watch_database):
+    """Posts reserved by a prior fixed selection or the independent recent-save ledger."""
+    from image_monitor.candidate_save_selection import (
+        MANIFEST_NAME,
+        MONITOR_MANIFEST_NAME,
+        read_selection,
+    )
+
+    claimed = recent_save_claims(watch_database)
+    for name in (MANIFEST_NAME, MONITOR_MANIFEST_NAME):
+        selection = read_selection(watch_database.parent / name)
+        if selection is not None:
+            claimed.add(selection["post_id"])
+    return claimed
 
 
 def _ledger_records(database, scope):

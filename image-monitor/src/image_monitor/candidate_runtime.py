@@ -169,6 +169,7 @@ def run_candidate_trial(
     expected_scan_id=None,
     recent_scan_only=False,
     recent_target=None,
+    monitor_target=None,
 ):
     require_windows()
     if browser not in {"chrome", "edge"}:
@@ -193,6 +194,15 @@ def run_candidate_trial(
         or not all(isinstance(key, str) and key for key in recent_target)
     ):
         raise NativeUIError("A pinned recent candidate requires its scan and post identities")
+    if monitor_target is not None and (
+        scope != _MONITOR_SCOPE
+        or max_candidates != 1
+        or expected_scan_id is not None
+        or not isinstance(monitor_target, tuple)
+        or len(monitor_target) != 2
+        or not all(isinstance(key, str) and key for key in monitor_target)
+    ):
+        raise NativeUIError("A pinned monitor candidate requires one exact discovery and post")
     clock = clock or _Clock()
     _stamp(clock.now())
     base = Path(work_root).resolve()
@@ -306,6 +316,29 @@ def run_candidate_trial(
                                 state,
                                 post_id=recent_target[1] if recent_target else None,
                             )
+                        elif monitor_target is not None:
+                            from image_monitor.monitor_save_ledger import (
+                                monitor_save_claims,
+                                other_monitor_save_claims,
+                            )
+
+                            claimed = other_monitor_save_claims(database) | monitor_save_claims(
+                                database
+                            )
+                            batch = store.list_pending(scope, limit=1, exclude_posts=claimed)
+                            if (
+                                not batch
+                                or (
+                                    batch[0]["first_scan_id"],
+                                    batch[0]["post_id"],
+                                )
+                                != monitor_target
+                            ):
+                                report.update(
+                                    status="candidate_no_pending",
+                                    reason="monitor_candidate_changed",
+                                )
+                                return report
                         else:
                             batch = store.list_pending(scope, limit=max_candidates)
                         if recent_scan_only and report["source_scan"] is None:

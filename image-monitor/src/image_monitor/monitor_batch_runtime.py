@@ -28,10 +28,12 @@ from image_monitor.monitor_save_ledger import (
     RECENT_LEDGER_NAME,
     LedgerStore,
     monitor_save_claims,
+    other_monitor_save_claims,
     recent_save_claims,
     task_native_base,
     task_work_root,
 )
+from image_monitor.monitor_settings import load_monitor_settings
 from image_monitor.native_probe import write_report
 from image_monitor.native_state import PendingSave, session_id, shared_state_path
 from image_monitor.native_ui import NativeSaveLock, NativeUIError, require_windows
@@ -122,10 +124,21 @@ def _preflight(task, permit, legacy_root, batch_root, native_session):
 class _NavigationObserver:
     """Persist service controls and the owned browser identity before navigation."""
 
-    def __init__(self, queue, ledger, task, clock, *, require_identity=True, scope=MONITOR_SCOPE):
+    def __init__(
+        self,
+        queue,
+        ledger,
+        task,
+        clock,
+        *,
+        require_identity=True,
+        scope=MONITOR_SCOPE,
+        interval_seconds=60,
+    ):
         self.queue, self.ledger, self.task, self.clock = queue, ledger, task, clock
         self.scope = scope
         self.require_identity = require_identity
+        self.interval_seconds = interval_seconds
         self.http_status = self.next_at = self.browser_identity = None
         self.blocked = False
 
@@ -143,7 +156,7 @@ class _NavigationObserver:
         elif self.require_identity:
             raise NativeUIError("The owned batch browser identity is missing")
         started = self.clock.now()
-        self.next_at = next_poll_at(started)
+        self.next_at = next_poll_at(started, interval_seconds=self.interval_seconds)
         self.queue.defer_service(SERVICE_SCOPE, self.next_at)
         control = {
             "blocked": False,
@@ -158,7 +171,7 @@ class _NavigationObserver:
 
     def after(self, response, error):
         finished = self.clock.now()
-        self.next_at = next_poll_at(finished)
+        self.next_at = next_poll_at(finished, interval_seconds=self.interval_seconds)
         self.queue.defer_service(SERVICE_SCOPE, self.next_at)
         self.http_status = response.status if response is not None else None
         self.blocked = self.http_status in {401, 403}
@@ -393,6 +406,7 @@ def share_batch_report(report):
         "http_status",
         "next_eligible_at_local",
         "worker_last_stage",
+        "worker_images_completed",
         "native_stage",
         "native_file_type",
         "native_suggested_suffix",
@@ -477,6 +491,15 @@ def _recent_detail(queue, state, handoff):
     return candidate, detail, permit
 
 
+def _monitor_detail(queue, state, handoff):
+    candidate = _candidate(queue, handoff["post_id"])
+    detail = CandidateDetailStore(queue).get(handoff["attempt_id"])
+    permit = make_candidate_save_permit(candidate, state["baseline"], detail)
+    if permit.fingerprint != handoff["fingerprint"]:
+        raise QueueError("The selected monitor permit changed")
+    return candidate, detail, permit
+
+
 def run_recent_save(
     watch_root, legacy_root, save_root, handoff, *, clock=None, save_runner=run_post_save
 ):
@@ -508,10 +531,19 @@ def run_monitor_batch(
     save_runner=run_post_save,
     should_stop=None,
     recent_handoff=None,
+    monitor_handoff=None,
 ):
     require_windows()
     scope = DEFAULT_SCOPE if recent_handoff is not None else MONITOR_SCOPE
     ledger_name = RECENT_LEDGER_NAME if recent_handoff is not None else LEDGER_NAME
+    automatic = monitor_handoff is not None
+    if automatic and (
+        recent_handoff is not None
+        or max_tasks != 1
+        or not isinstance(monitor_handoff, dict)
+        or set(monitor_handoff) != {"post_id", "attempt_id", "fingerprint"}
+    ):
+        raise NativeUIError("Automatic saving requires one exact monitor candidate")
     if recent_handoff is not None and max_tasks != 1:
         raise NativeUIError("A recent save requires exactly one task")
     if type(max_tasks) is not int or not 1 <= max_tasks <= 2:
@@ -540,6 +572,8 @@ def run_monitor_batch(
         "schema_version": 1,
         "mode": "recent_candidate_native_save"
         if recent_handoff is not None
+        else "bounded_monitor_automatic_save"
+        if automatic
         else "bounded_monitor_candidate_native_batch",
         "status": "monitor_batch_manual_review",
         "last_stage": "existing_watch_check",
@@ -558,6 +592,8 @@ def run_monitor_batch(
         "max_tasks": max_tasks,
         "saved_files": [],
     }
+    if automatic:
+        report["worker_images_completed"] = 0
     active = ledger = None
     database = _plain_path(watch_root / "watch.sqlite")
     try:
@@ -580,8 +616,14 @@ def run_monitor_batch(
                         selected = _recent_detail(queue, state, recent_handoff)
                         if selected[0]["post_id"] in _prior_pilot_claims(watch_root, legacy_root):
                             raise QueueError("An earlier pilot already owns this physical post")
+                    elif automatic:
+                        recent_claims = other_monitor_save_claims(database)
+                        selected = _monitor_detail(queue, state, monitor_handoff)
                     else:
                         recent_claims = recent_save_claims(database)
+                    interval = (
+                        load_monitor_settings(watch_root)["interval_seconds"] if automatic else 60
+                    )
                     with NativeSaveLock():
                         _clear_pending()
                     ledger_path = _plain_path(watch_root / ledger_name)
@@ -626,17 +668,24 @@ def run_monitor_batch(
                                 elif task["status"] == "unavailable":
                                     report["unavailable_count"] += 1
                             stop_if_requested()
-                            if selected is not None:
-                                candidate, detail, permit = selected
-                                previous = ledger.get_for_post(candidate["post_id"])
-                                task = ledger.plan(candidate, detail, permit, now=clock.now())
-                                report["tasks_planned"] = int(previous is None)
-                                pending = [task] if task["status"] == "planned" else []
-                            else:
+                            if recent_handoff is None:
                                 report["adopted_count"] = _adopt_legacy(
                                     queue, ledger, watch_root, legacy_root, batch_root, clock
                                 )
                                 report["already_completed_count"] += report["adopted_count"]
+                            if selected is not None:
+                                candidate, detail, permit = selected
+                                previous = ledger.get_for_post(candidate["post_id"])
+                                if automatic and candidate["post_id"] in recent_claims:
+                                    report.update(
+                                        status="monitor_batch_no_candidates",
+                                        reason="selected_candidate_already_claimed",
+                                    )
+                                    return report
+                                task = ledger.plan(candidate, detail, permit, now=clock.now())
+                                report["tasks_planned"] = int(previous is None)
+                                pending = [task] if task["status"] == "planned" else []
+                            else:
                                 report["last_stage"] = "candidate_planning"
                                 for detail in _details(queue):
                                     stop_if_requested()
@@ -716,13 +765,16 @@ def run_monitor_batch(
                                     browser_closed=None,
                                     shared_pending_retained=None,
                                 )
+                                if automatic:
+                                    report["worker_images_completed"] = None
                                 observer = _NavigationObserver(
                                     queue,
                                     ledger,
                                     active,
                                     clock,
-                                    require_identity=save_runner is run_post_save,
+                                    require_identity=automatic or save_runner is run_post_save,
                                     scope=scope,
+                                    interval_seconds=interval,
                                 )
                                 try:
                                     worker = save_runner(
@@ -731,6 +783,7 @@ def run_monitor_batch(
                                         permit.post_url,
                                         candidate_permit=permit,
                                         navigation_observer=observer,
+                                        **({"automatic_start": True} if automatic else {}),
                                     )
                                     if not isinstance(worker, dict):
                                         raise QueueError(
@@ -751,6 +804,19 @@ def run_monitor_batch(
                                     http_status=observer.http_status,
                                     worker_last_stage=worker.get("last_stage"),
                                 )
+                                if automatic:
+                                    counts = worker.get("job_counts")
+                                    if (
+                                        isinstance(counts, dict)
+                                        and all(
+                                            type(counts.get(key)) is int
+                                            and 0 <= counts[key] <= permit.image_count
+                                            for key in ("observed", "completed", "unresolved")
+                                        )
+                                        and counts["completed"] + counts["unresolved"]
+                                        == counts["observed"]
+                                    ):
+                                        report["worker_images_completed"] = counts["completed"]
                                 for key in (
                                     "native_stage",
                                     "native_file_type",

@@ -18,6 +18,8 @@ from image_monitor.dcinside import parse_snapshot
 from image_monitor.native_state import PendingSave
 from image_monitor.native_ui import NativeFocusError, NativeUIError
 from image_monitor.queue import QueueStore
+from image_monitor.watch_runtime import DEFAULT_SCOPE
+from image_monitor.watch_store import MONITOR_SCOPE
 
 
 def observation(*, changed=False, count=1):
@@ -90,6 +92,8 @@ def pilot(monkeypatch):
         navigation=[],
         navigation_failure=None,
         cancel_resume=False,
+        window_titles=[],
+        guarded_inspections=[],
     )
     monkeypatch.setattr(worker, "require_windows", lambda: None)
     monkeypatch.setattr(worker, "NativeSaveLock", nullcontext)
@@ -120,9 +124,17 @@ def pilot(monkeypatch):
                     raise values.navigation_failure
                 return SimpleNamespace(status=200)
 
-            return SimpleNamespace(goto=navigate)
+            return SimpleNamespace(
+                goto=navigate,
+                url=values.expected_url,
+                evaluate=lambda script, title: values.window_titles.append(title),
+            )
 
         def inspect(self, _page, _url, **_options):
+            guard = _options.get("before_interaction")
+            values.guarded_inspections.append(guard is not None)
+            if guard is not None:
+                guard()
             return (
                 values.snapshots.pop(0)
                 if values.snapshots
@@ -130,6 +142,9 @@ def pilot(monkeypatch):
             )
 
         def bind(self, _process, title):
+            if values.window_titles:
+                assert title == values.window_titles[-1]
+
             def assert_ready():
                 if not values.focus_ready:
                     raise NativeFocusError("Fixture foreground is outside the bound window")
@@ -431,17 +446,16 @@ def candidate_observation(*, count=1):
     )
 
 
-def candidate_permit(snapshot):
+def candidate_permit(snapshot, scope=DEFAULT_SCOPE):
     from image_monitor.candidate_policy import classify_candidate_detail
     from image_monitor.candidate_save_policy import make_candidate_save_permit
-    from image_monitor.watch_runtime import DEFAULT_SCOPE
 
     observed = datetime.fromisoformat(snapshot["observed_at"])
     baseline = {"observed_at": "2026-11-14T00:59:00+00:00", "mode": "new"}
     scope = dict(
         zip(
             ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type"),
-            DEFAULT_SCOPE.key(),
+            scope.key(),
             strict=True,
         )
     )
@@ -478,6 +492,84 @@ def candidate_permit(snapshot):
         },
     }
     return make_candidate_save_permit(candidate, baseline, detail)
+
+
+def automatic_candidate(pilot, count=1):
+    snapshot = candidate_observation(count=count)
+    permit = candidate_permit(snapshot, MONITOR_SCOPE)
+    pilot.expected_url = permit.post_url
+    pilot.snapshots = [deepcopy(snapshot), deepcopy(snapshot)]
+    return {
+        "url": permit.post_url,
+        "candidate_permit": permit,
+        "navigation_observer": SimpleNamespace(
+            before=lambda: pilot.navigation.append("before"),
+            after=lambda response, error: pilot.navigation.append(
+                ("after", response.status, error)
+            ),
+        ),
+        "automatic_start": True,
+    }
+
+
+def test_automatic_save_binds_foreground_and_rechecks_permit_without_a_button(pilot):
+    report = worker.run_post_save(pilot.root, **automatic_candidate(pilot, count=2))
+    assert report["status"] == "post_completed" and report["browser_closed"]
+    assert pilot.navigation == ["before", "goto", ("after", 200, None)]
+    assert len(pilot.window_titles) == 1 and pilot.window_titles[0].startswith("Image Monitor ")
+    assert pilot.guarded_inspections == [True, True]
+    assert pilot.approvals == [] and pilot.approval_count == 0
+    assert [item["saved_filename"] for item in report["saved_files"]] == ["001.png", "002.png"]
+    assert pilot.armed == [("input_armed", "saving"), ("input_armed", "saving")]
+
+
+@pytest.mark.parametrize("problem", ["bare_url", "trial_scope", "no_observer", "string_flag"])
+def test_automatic_save_only_accepts_explicit_monitored_work(pilot, problem):
+    options = automatic_candidate(pilot)
+    if problem == "bare_url":
+        options.update(url=worker.DEFAULT_POST_URL, candidate_permit=None, navigation_observer=None)
+    elif problem == "trial_scope":
+        options["candidate_permit"] = candidate_permit(pilot.snapshots[0])
+    elif problem == "no_observer":
+        options.pop("navigation_observer")
+    else:
+        options["automatic_start"] = "true"
+    with pytest.raises(NativeUIError):
+        worker.run_post_save(pilot.root, **options)
+    assert pilot.runtimes == [] and not pilot.pending.exists()
+
+
+def test_automatic_save_without_foreground_closes_before_first_inspection(pilot):
+    pilot.focus_ready = False
+    report = worker.run_post_save(pilot.root, **automatic_candidate(pilot))
+    assert report["status"] == "manual_review" and report["error_type"] == "NativeFocusError"
+    assert report["last_stage"] == "automatic_foreground_check"
+    assert pilot.guarded_inspections == [] and pilot.approvals == [] and pilot.native_calls == 0
+    assert report["browser_closed"] and not report["shared_pending_retained"]
+
+
+def test_automatic_save_rejects_post_change_before_native_input(pilot):
+    options = automatic_candidate(pilot)
+    pilot.snapshots[-1]["nickname"] = "changed"
+    report = worker.run_post_save(pilot.root, **options)
+    assert report["last_stage"] == "post_recheck" and report["status"] == "manual_review"
+    assert pilot.guarded_inspections == [True, True] and pilot.native_calls == 0
+    assert report["browser_closed"] and not pilot.pending.exists()
+
+
+@pytest.mark.parametrize("failure", ["second_preinput_focus", "second_completion"])
+def test_automatic_partial_failure_preserves_first_file_and_stops(pilot, failure):
+    pilot.failure = failure
+    report = worker.run_post_save(pilot.root, **automatic_candidate(pilot, count=2))
+    assert report["status"] == "manual_review"
+    assert report["job_counts"] == {"observed": 2, "completed": 1, "unresolved": 1}
+    assert pilot.approvals == [] and pilot.approval_count == 0 and pilot.native_calls == 2
+    assert report["browser_closed"] == (failure == "second_preinput_focus")
+    assert pilot.pending.exists() == (failure == "second_completion")
+    with QueueStore(pilot.root / "session-1/queue.sqlite", read_only=True) as store:
+        first, second = store.list_jobs()
+        assert store.get_artifact(first["job_id"])["phase"] == "finalized"
+        assert second["status"] == ("queued" if failure == "second_preinput_focus" else "paused_ui")
 
 
 def test_candidate_controller_preserves_discovery_time_and_ambiguous_original_name(pilot):

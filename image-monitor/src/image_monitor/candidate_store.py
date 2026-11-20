@@ -86,7 +86,7 @@ class CandidateDetailStore:
     def __init__(self, queue: QueueStore):
         self.queue = queue
 
-    def list_pending(self, scope: WatchScope, *, limit: int = 2) -> list[dict]:
+    def list_pending(self, scope: WatchScope, *, limit: int = 2, exclude_posts=()) -> list[dict]:
         key, limit = _scope(scope), _limit(limit)
         if self.queue.schema_version < 5:
             return []
@@ -95,12 +95,13 @@ class CandidateDetailStore:
             for row in self.queue.connection.execute(
                 "SELECT c.* FROM watch_candidates c WHERE "
                 "c.watch_name=? AND c.gallery_type=? AND c.gallery_id=? "
-                "AND c.keyword=? AND c.search_type=? AND NOT EXISTS ("
+                "AND c.keyword=? AND c.search_type=? "
+                "AND c.post_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS ("
                 "SELECT 1 FROM candidate_details d WHERE d.watch_name=c.watch_name "
                 "AND d.gallery_type=c.gallery_type AND d.gallery_id=c.gallery_id "
                 "AND d.keyword=c.keyword AND d.search_type=c.search_type AND d.post_id=c.post_id) "
                 "ORDER BY c.first_seen_at,c.post_id LIMIT ?",
-                (*key, limit),
+                (*key, json.dumps([_post_id(post) for post in exclude_posts]), limit),
             )
         ]
 

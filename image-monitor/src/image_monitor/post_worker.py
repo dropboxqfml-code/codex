@@ -229,6 +229,7 @@ def _wait_for_next_image(
     *,
     force_resume=False,
     candidate_permit=None,
+    automatic_start=False,
 ):
     report["last_stage"] = "pre_input_check"
     if not force_resume:
@@ -239,6 +240,8 @@ def _wait_for_next_image(
             pass
     report["focus_pauses"] = report.get("focus_pauses", 0) + 1
     report["focus_at_pause"] = ui.focus_snapshot()
+    if automatic_start:
+        raise NativeFocusError("Automatic saving stopped when the dedicated window lost focus")
     report["last_stage"] = "waiting_for_user_resume"
     nonce, _title = install_approval(
         page,
@@ -360,10 +363,13 @@ def run_post_save(
     resume_preinput: bool = False,
     candidate_permit: "CandidateSavePermit | None" = None,
     navigation_observer=None,
+    automatic_start: bool = False,
 ) -> dict:
     require_windows()
     if browser != "chrome":
         raise NativeUIError("Integrated completion is currently verified for Chrome only")
+    if type(automatic_start) is not bool:
+        raise NativeUIError("Automatic start must be an explicit boolean")
     target = validate_post_url(url)
     if candidate_permit is not None:
         from image_monitor.candidate_save_policy import CandidateSavePermit
@@ -383,6 +389,15 @@ def run_post_save(
         or not callable(getattr(navigation_observer, "after", None))
     ):
         raise NativeUIError("A navigation observer requires reviewed candidate saving")
+    if automatic_start:
+        from image_monitor.watch_store import MONITOR_SCOPE
+
+        if (
+            candidate_permit is None
+            or candidate_permit.watch_name != MONITOR_SCOPE.watch_name
+            or navigation_observer is None
+        ):
+            raise NativeUIError("Automatic saving requires an observed monitor candidate")
     base = Path(work_root).resolve()
     if str(base).startswith("\\\\"):
         raise NativeUIError("A local post-save work root is required")
@@ -460,8 +475,23 @@ def run_post_save(
                         navigation_observer.after(response, navigation_error)
                 if response is None or response.status >= 400:
                     raise NativeUIError("The document response prevented post saving")
+                if automatic_start:
+                    report["last_stage"] = "automatic_foreground_check"
+                    if validate_post_url(page.url)["canonical_url"] != target["canonical_url"]:
+                        raise NativeUIError("The dedicated browser navigated to a different post")
+                    # The active tab's title identifies our HWND. Bind it before even
+                    # inspecting the images, since the inspection can scroll the page.
+                    title = f"Image Monitor automatic save {uuid.uuid4().hex}"
+                    page.evaluate("title => { document.title = title; }", title)
+                    ui = runtime.bind(process, title)
+                    ui.assert_target_ready()
+                    report["last_stage"] = "post_inspection"
                 snapshot = _inspect_for_save(
-                    runtime, page, target["canonical_url"], candidate_permit=candidate_permit
+                    runtime,
+                    page,
+                    target["canonical_url"],
+                    before_interaction=ui.assert_target_ready if ui is not None else None,
+                    candidate_permit=candidate_permit,
                 )
                 queued = _enqueue_for_save(store, snapshot, candidate_permit)
                 ids = [item["job_id"] for item in queued["jobs"]]
@@ -474,12 +504,13 @@ def run_post_save(
                 ):
                     raise NativeUIError("Some image jobs require review before another save")
                 if pending_jobs:
-                    nonce, title = install_approval(
-                        page, snapshot, save_root, progress=report["job_counts"]
-                    )
-                    ui = runtime.bind(process, title)
-                    report["last_stage"] = "waiting_for_user_start"
-                    wait_for_approval(page, ui, nonce)
+                    if not automatic_start:
+                        nonce, title = install_approval(
+                            page, snapshot, save_root, progress=report["job_counts"]
+                        )
+                        ui = runtime.bind(process, title)
+                        report["last_stage"] = "waiting_for_user_start"
+                        wait_for_approval(page, ui, nonce)
                     report["last_stage"] = "post_recheck"
                     fresh = _inspect_for_save(
                         runtime,
@@ -515,6 +546,7 @@ def run_post_save(
                                 run_directory / "report.json",
                                 force_resume=force_resume,
                                 candidate_permit=candidate_permit,
+                                automatic_start=automatic_start,
                             )
                             force_resume = False
                             job = store.claim_next(uuid.uuid4().hex, datetime.now(UTC), job_ids=ids)

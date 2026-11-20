@@ -292,13 +292,20 @@ def select_candidate_save(
     existing = read_selection(path)
     claims = set()
     if not queue.read_only:
-        from image_monitor.monitor_save_ledger import recent_save_claims
+        from image_monitor.monitor_save_ledger import monitor_save_claims, recent_save_claims
 
         claims = recent_save_claims(database)
+        # An existing monitor manifest can verify its own adopted legacy task.
+        # New selections in either pilot must honor every managed output root.
+        claims.update(
+            monitor_save_claims(
+                database, managed_only=existing is not None and scope.key() == MONITOR_SCOPE
+            )
+        )
     baseline = WatchStore(queue).get_state(scope)["baseline"]
     if existing is not None:
         if existing["post_id"] in claims:
-            raise QueueError("The frozen post has already been claimed by a recent save")
+            raise QueueError("The frozen post has already been claimed by another save")
         if existing["scope"] != dict(zip(_SCOPE_KEYS, scope.key(), strict=True)):
             raise QueueError("The frozen candidate selection belongs to another watch scope")
         candidate = _candidate(queue, scope, existing["post_id"])

@@ -101,6 +101,7 @@ def main() -> int:
             "Save at most two inspected monitor candidates, skipping completed work",
         ),
         ("monitor-save-one", "Run one native save requested by the local monitor"),
+        ("auto-collect-once", "Inspect stored monitor candidates and automatically save one post"),
         ("monitor-batch-finish", "Reconcile completed monitor batch files without saving again"),
         ("watch-images", "Check recent posts for body images and offer to save one post in Chrome"),
         ("watch-images-check", "Verify the last completed recent-post image save on disk"),
@@ -140,6 +141,17 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "auto-collect-once":
+        from image_monitor.monitor_collect import monitor_collect_exit_code, run_monitor_collect
+
+        try:
+            report = run_monitor_collect(args.watch_root, args.legacy_root, args.work_root)
+        except KeyboardInterrupt:
+            parser.exit(130, "Automatic collection cancelled.\n")
+        except Exception as error:
+            parser.exit(2, f"Automatic collection stopped ({type(error).__name__}).\n")
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return monitor_collect_exit_code(report)
     if args.command == "monitor-resume-once":
         from image_monitor.monitor_resume_once import (
             monitor_resume_once_exit_code,

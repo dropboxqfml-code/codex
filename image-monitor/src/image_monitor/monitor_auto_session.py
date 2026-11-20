@@ -10,6 +10,7 @@ from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_collect import collect_session_turn
 from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
+from image_monitor.post_worker import share_setup_diagnostics
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
 from image_monitor.watch_store import MONITOR_SCOPE
@@ -48,9 +49,10 @@ def _record_collection(report, turn):
     if turn.get("setup_retry_started"):
         last["setup_retry_started"] = True
     if turn.get("save") is not None:
-        for key in ("worker_last_stage", "native_stage", "error_type", "completion_setup_reason"):
+        for key in ("worker_last_stage", "native_stage", "error_type"):
             if turn["save"].get(key) is not None:
                 last[key] = turn["save"][key]
+        last.update(share_setup_diagnostics(turn["save"], stage_key="worker_last_stage"))
     report["last_collection"] = last
     report["new_details_checked"] += _count(turn, "new_details_checked", 1)
     started = turn["native_save_tasks_started"]

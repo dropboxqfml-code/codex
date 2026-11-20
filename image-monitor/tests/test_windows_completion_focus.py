@@ -16,6 +16,20 @@ from image_monitor.post_worker import NativeRuntime
 pytestmark = windows_ci_only
 
 
+def focus_owned_omnibox(page, ui):
+    """Move real keyboard focus to this fixture's toolbar, keeping its page visible."""
+    window = ui.desktop.window(handle=ui.target_hwnd).wrapper_object()
+    edits = [
+        e for e in window.descendants(control_type="Edit") if e.is_visible() and e.is_enabled()
+    ]
+    assert len(edits) == 1
+    ui.assert_control_ready(edits[0], window)
+    edits[0].element_info.element.SetFocus()
+    page.wait_for_function("document.visibilityState === 'visible' && !document.hasFocus()")
+    ui.assert_target_ready()
+    return window
+
+
 def test_visible_page_behind_its_own_omnibox_accepts_one_focus_click(tmp_path, monkeypatch):
     from ctypes import wintypes
 
@@ -34,17 +48,7 @@ def test_visible_page_behind_its_own_omnibox_accepts_one_focus_click(tmp_path, m
         title = f"Image Monitor content focus {uuid.uuid4().hex}"
         page.goto(f"data:text/html,<title>{title}</title><main>Owned fixture</main>")
         ui = bind_and_foreground_ci_window(process, page)
-        window = ui.desktop.window(handle=ui.target_hwnd).wrapper_object()
-        # This page contains no fields. Focus only the owned Chrome toolbar
-        # edit control. Keyboard shortcuts could accidentally target another app.
-        edits = [
-            e for e in window.descendants(control_type="Edit") if e.is_visible() and e.is_enabled()
-        ]
-        assert len(edits) == 1
-        ui.assert_control_ready(edits[0], window)
-        edits[0].element_info.element.SetFocus()
-        page.wait_for_function("document.visibilityState === 'visible' && !document.hasFocus()")
-        ui.assert_target_ready()
+        window = focus_owned_omnibox(page, ui)
 
         original = page.evaluate_handle
         clicks = []
@@ -76,6 +80,8 @@ def test_visible_page_behind_its_own_omnibox_accepts_one_focus_click(tmp_path, m
             pytest.fail("The owned source focus control did not appear in the Chrome UI tree")
 
         monkeypatch.setattr(page, "evaluate_handle", click_focus_hint)
+        # Exercise the user fallback when the automatic control cannot restore focus.
+        monkeypatch.setattr(BrowserCompletion, "_click_focus_control", lambda self: None)
         original_html = page.content()
         with BrowserCompletion(
             runtime.browser, runtime.context, page, "chrome", ui=ui, allow_focus_prompt=True

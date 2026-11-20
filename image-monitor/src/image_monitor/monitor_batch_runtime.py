@@ -13,7 +13,6 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from image_monitor.artifact_files import _plain_path
-from image_monitor.browser_completion import COMPLETION_SETUP_REASONS
 from image_monitor.candidate_finish import _paths, verify_completed_candidate_files
 from image_monitor.candidate_policy import classify_candidate_detail
 from image_monitor.candidate_save_policy import make_candidate_save_permit
@@ -40,7 +39,7 @@ from image_monitor.native_probe import write_report
 from image_monitor.native_state import PendingSave, session_id, shared_state_path
 from image_monitor.native_ui import NativeSaveLock, NativeUIError, require_windows
 from image_monitor.paths import destination, plan_folder
-from image_monitor.post_worker import run_post_save
+from image_monitor.post_worker import run_post_save, share_setup_diagnostics
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.retry import retry_after
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
@@ -419,14 +418,7 @@ def share_batch_report(report):
         "shutdown",
     )
     public = {key: report[key] for key in fields if key in report}
-    setup_reason = report.get("completion_setup_reason")
-    if (
-        public.get("worker_last_stage") == "completion_setup"
-        and public.get("error_type") == "BrowserCompletionError"
-        and isinstance(setup_reason, str)
-        and setup_reason in COMPLETION_SETUP_REASONS
-    ):
-        public["completion_setup_reason"] = setup_reason
+    public.update(share_setup_diagnostics(report, stage_key="worker_last_stage"))
     error_type = public.get("error_type")
     if error_type is not None and (
         not isinstance(error_type, str)
@@ -852,12 +844,7 @@ def run_monitor_batch(
                                     http_status=observer.http_status,
                                     worker_last_stage=worker.get("last_stage"),
                                 )
-                                setup_reason = worker.get("completion_setup_reason")
-                                if (
-                                    isinstance(setup_reason, str)
-                                    and setup_reason in COMPLETION_SETUP_REASONS
-                                ):
-                                    report["completion_setup_reason"] = setup_reason
+                                report.update(share_setup_diagnostics(worker))
                                 if automatic:
                                     counts = worker.get("job_counts")
                                     if (

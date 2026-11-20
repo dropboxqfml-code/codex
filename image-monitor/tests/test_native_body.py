@@ -140,6 +140,31 @@ def no_click(page, ui):
     assert "dialog" not in ui.calls
 
 
+@pytest.mark.parametrize("lose_focus_on", [1, 3])
+def test_source_document_focus_is_checked_before_arming_and_right_click(
+    page, tmp_path, lose_focus_on
+):
+    current = page()
+    armed = []
+
+    def focus_guard(count):
+        if count == lose_focus_on:
+            current.evaluate("Object.defineProperty(document, 'hasFocus', {value: () => false})")
+
+    ui = NativeUI(current, guard=focus_guard)
+    with pytest.raises(NativeFocusError, match="source document lost focus"):
+        save_body_image(
+            current,
+            ui,
+            post_url=URL,
+            image=observed(),
+            staging_directory=tmp_path,
+            before_native_input=lambda: armed.append(True),
+        )
+    assert bool(armed) == (lose_focus_on == 3)
+    no_click(current, ui)
+
+
 def test_exact_image_uses_native_suggestion_extension_and_preserves_source_metadata(page, tmp_path):
     current = page()
     ui = NativeUI(current, suggested=r"C:\arbitrary\..\do-not-use-this-name.JPEG")

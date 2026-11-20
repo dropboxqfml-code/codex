@@ -80,14 +80,7 @@ def isolate_desktop(monkeypatch, marker):
     )
 
 
-def test_two_auto_cycles_preserve_prior_recovery_and_reopen_without_duplicate(
-    monkeypatch, pilot, session_data
-):
-    data = session_data
-    clock = FakeClock(datetime.now(UTC) + timedelta(seconds=62))
-    events = []
-    owned = []
-
+def local_workers(monkeypatch, pilot, clock, events, owned):
     def inspect(candidate, stamp):
         events.append(("detail", candidate["post_id"], stamp))
         body = detail_snapshot(candidate, observed_at=stamp, published=stamp)
@@ -124,6 +117,45 @@ def test_two_auto_cycles_preserve_prior_recovery_and_reopen_without_duplicate(
         pilot.snapshots = [reference, reference]
         return post_worker.run_post_save(task_root, browser, url, **options)
 
+    return detail, save
+
+
+def auto_session(roots, clock, pages, events, owned, detail, save):
+    def list_backend(*_args, **_kwargs):
+        outcome = pages.popleft()
+
+        def scan(stamp):
+            result = outcome(stamp)
+            events.append(("list", result["pages"][0]["rows"][0]["post_id"], stamp))
+            return result
+
+        browser = ScriptedBrowser([scan])
+        owned.append(browser)
+        return browser
+
+    return partial(
+        run_auto_monitor,
+        *roots,
+        clock=clock,
+        scan_runner=partial(
+            run_auto_discovery,
+            run_cycle=partial(watch_runtime.run_watch_trial, backend_factory=list_backend),
+        ),
+        collect_runner=partial(
+            monitor_collect.collect_session_turn, detail_runner=detail, save_runner=save
+        ),
+    )
+
+
+def test_two_auto_cycles_preserve_prior_recovery_and_reopen_without_duplicate(
+    monkeypatch, pilot, session_data
+):
+    data = session_data
+    clock = FakeClock(datetime.now(UTC) + timedelta(seconds=62))
+    events = []
+    owned = []
+
+    detail, save = local_workers(monkeypatch, pilot, clock, events, owned)
     roots = data.watch, data.legacy, data.batch
     baseline = observed(lambda stamp: snapshot([200], stamp, links=[link()]))
     assert run_scan(data.watch, clock, baseline)["status"] == "watch_test_completed"
@@ -158,31 +190,8 @@ def test_two_auto_cycles_preserve_prior_recovery_and_reopen_without_duplicate(
     assert len(reports) == 2
     events.clear()
 
-    pages = deque([(204, 203), (205, 204), (205, 204)])
-
-    def list_backend(*_args, **_kwargs):
-        ids = pages.popleft()
-
-        def scan(stamp):
-            events.append(("list", str(ids[0]), stamp))
-            return listing(*ids)(stamp)
-
-        browser = ScriptedBrowser([scan])
-        owned.append(browser)
-        return browser
-
-    session = partial(
-        run_auto_monitor,
-        *roots,
-        clock=clock,
-        scan_runner=partial(
-            run_auto_discovery,
-            run_cycle=partial(watch_runtime.run_watch_trial, backend_factory=list_backend),
-        ),
-        collect_runner=partial(
-            monitor_collect.collect_session_turn, detail_runner=detail, save_runner=save
-        ),
-    )
+    pages = deque([listing(204, 203), listing(205, 204), listing(205, 204)])
+    session = auto_session(roots, clock, pages, events, owned, detail, save)
     report = session(max_cycles=2)
     assert report["status"] == "auto_monitor_completed", json.dumps(report, indent=2)
     assert report["reason"] == "cycle_limit_reached" and report["browser_closed"]

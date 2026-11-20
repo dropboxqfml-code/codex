@@ -15,8 +15,25 @@ from image_monitor.native_ui import NativeUIError
 _DOWNLOADS_URL = "chrome://downloads/"
 _MAX_ITEMS = 1_000
 _SETUP_TIMEOUT = 8
+_FOCUS_SETTLE_DELAY = 0.4
 _FOCUS_HINT_DELAY = 0.8
 _FOCUS_TIMEOUT = 20
+# A trusted pointer event inside this sandbox cannot bubble to an article
+# handler. The frame has no scripts, navigation, forms, or network resources.
+_FOCUS_FRAME_HTML = '<!doctype html><button type="button">저장 창 활성화</button>'
+_FOCUS_FRAME = """markup => {
+    const frame = document.createElement('iframe');
+    frame.setAttribute('sandbox', '');
+    frame.title = '저장 창 활성화';
+    frame.style.cssText = 'position:fixed;top:12px;left:12px;width:150px;height:44px;' +
+        'border:0;z-index:2147483647';
+    frame.srcdoc = markup;
+    document.documentElement.append(frame);
+    return frame;
+}"""
+_OWNED_FRAME = """(frame, markup) => frame.isConnected && frame.ownerDocument === document &&
+    frame.parentElement === document.documentElement && frame.getAttribute('sandbox') === '' &&
+    frame.srcdoc === markup && !frame.hasAttribute('src')"""
 # Keep our control outside the article. The returned handle identifies only
 # this new node even if the page already contains similarly named elements.
 _FOCUS_HINT = """() => {
@@ -87,6 +104,11 @@ _SETUP_MESSAGES = {
     "The Chrome downloads manager is missing": "downloads_manager_missing",
 }
 COMPLETION_SETUP_REASONS = frozenset(_SETUP_MESSAGES.values())
+SETUP_FOCUS_STAGES = frozenset({"before_target_creation", "after_target_creation"})
+SETUP_FOCUS_RECOVERIES = frozenset(
+    {"not_attempted", "control_clicked", "waiting_for_user", "focus_restored"}
+)
+SETUP_FOCUS_LOSSES = frozenset({"first", "repeated"})
 
 
 def completion_setup_reason(message: str) -> str | None:
@@ -121,7 +143,9 @@ class BrowserCompletion:
         self.browser_kind = browser_kind
         self.ui = ui
         self._allow_focus_prompt = allow_focus_prompt is True
-        self._used_focus_wait = False
+        self._focus_deadlines = {}
+        self._focus_click_phases = set()
+        self._focus_losses = 0
         self._session = None
         self._target_id = None
         self._page = None
@@ -200,37 +224,112 @@ class BrowserCompletion:
         if not self._source_focused():
             raise BrowserCompletionError("The source document did not have focus")
 
-    def _ensure_setup_focus(self):
-        """Wait once for a visible document inside the already-foreground HWND."""
-        if self._source_focused():
-            return 0
-        if not self._allow_focus_prompt or self._used_focus_wait:
-            raise BrowserCompletionError("The source document did not have focus")
-        self._used_focus_wait = True
-        started = time.monotonic()
-        hint = None
-        focused = False
+    @staticmethod
+    def _remove_focus_control(control):
         try:
-            while not focused:
-                elapsed = time.monotonic() - started
-                if elapsed >= _FOCUS_TIMEOUT:
-                    raise BrowserCompletionError("The source document did not have focus")
-                if elapsed >= _FOCUS_HINT_DELAY and hint is None:
-                    hint = self.source_page.evaluate_handle(_FOCUS_HINT)
-                self.source_page.wait_for_timeout(min(100, (_FOCUS_TIMEOUT - elapsed) * 1_000))
-                focused = self._source_focused()
+            control.evaluate("node => node.remove()")
         finally:
-            if hint is not None:
+            control.dispose()
+
+    def _click_focus_control(self):
+        """Send one ordinary Playwright click to an exact, isolated button."""
+        if self._source_focused():
+            return False
+        node = None
+        button = None
+        try:
+            try:
+                node = self.source_page.evaluate_handle(_FOCUS_FRAME, _FOCUS_FRAME_HTML)
+                frame = node.as_element().content_frame()
+                if frame is None:
+                    return False
+                button = frame.wait_for_selector("button:only-child", state="visible", timeout=650)
+                if (
+                    button is None
+                    or frame.url != "about:srcdoc"
+                    or node.evaluate(_OWNED_FRAME, _FOCUS_FRAME_HTML) is not True
+                ):
+                    return False
+                # Actionability includes hit testing in both the parent and the frame.
+                button.click(trial=True, timeout=400)
+            except Exception:
+                # A CSP may reject srcdoc, or an overlay may intercept the
+                # actionability check. The separate human prompt is still available.
+                return False
+            if self._source_focused():
+                return False
+            try:
+                if node.evaluate(_OWNED_FRAME, _FOCUS_FRAME_HTML) is not True:
+                    return False
+                button.click(timeout=400)
+                return True
+            except Exception:
+                return False
+        finally:
+            try:
                 try:
-                    hint.evaluate("node => node.remove()")
-                    hint.dispose()
-                except Exception as error:
-                    if focused:
+                    if button is not None:
+                        button.dispose()
+                finally:
+                    if node is not None:
+                        self._remove_focus_control(node)
+            except Exception as error:
+                raise BrowserCompletionError(
+                    "The temporary source focus control could not be removed"
+                ) from error
+
+    def _ensure_setup_focus(self):
+        """Restore only the visible source within its already-foreground window."""
+        phase = "after_target_creation" if self._target_id is not None else "before_target_creation"
+        recovery = "not_attempted"
+        try:
+            if self._source_focused():
+                return 0
+            self._focus_losses += 1
+            if not self._allow_focus_prompt:
+                raise BrowserCompletionError("The source document did not have focus")
+            started = time.monotonic()
+            deadline = self._focus_deadlines.setdefault(phase, started + _FOCUS_TIMEOUT)
+            hint = None
+            try:
+                while True:
+                    now = time.monotonic()
+                    if now >= deadline:
+                        raise BrowserCompletionError("The source document did not have focus")
+                    if (
+                        now - started >= _FOCUS_SETTLE_DELAY
+                        and phase not in self._focus_click_phases
+                    ):
+                        self._focus_click_phases.add(phase)
+                        if self._click_focus_control():
+                            recovery = "control_clicked"
+                        if self._source_focused():
+                            break
+                    if now - started >= _FOCUS_HINT_DELAY and hint is None:
+                        hint = self.source_page.evaluate_handle(_FOCUS_HINT)
+                        recovery = "waiting_for_user"
+                    self.source_page.wait_for_timeout(min(100, (deadline - now) * 1_000))
+                    if self._source_focused():
+                        break
+                recovery = "focus_restored"
+            finally:
+                if hint is not None:
+                    try:
+                        self._remove_focus_control(hint)
+                    except Exception as error:
                         raise BrowserCompletionError(
                             "The temporary source focus control could not be removed"
                         ) from error
-        self._assert_source_ready()
-        return time.monotonic() - started
+            if not self._source_focused():
+                self._focus_losses += 1
+                raise BrowserCompletionError("The source document did not have focus")
+            return time.monotonic() - started
+        except BrowserCompletionError as error:
+            error.setup_focus_stage = phase
+            error.setup_focus_recovery = recovery
+            if self._focus_losses:
+                error.setup_focus_loss = "first" if self._focus_losses == 1 else "repeated"
+            raise
 
     def _find_created_page(self):
         if self._page is not None:

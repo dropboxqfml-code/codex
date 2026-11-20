@@ -9,7 +9,7 @@ from pathlib import Path, PureWindowsPath
 from urllib.parse import urlsplit
 
 from image_monitor import dcinside
-from image_monitor.native_ui import NativeUIError
+from image_monitor.native_ui import NativeFocusError, NativeUIError
 
 _SUPPORTED_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 _LOAD_TIMEOUT_MS = 15_000
@@ -225,8 +225,16 @@ def save_body_image(
             ):
                 raise NativeUIError("Exact body image changed before native saving finished")
 
+        def focused_source():
+            if (
+                page.evaluate("document.visibilityState === 'visible' && document.hasFocus()")
+                is not True
+            ):
+                raise NativeFocusError("The visible source document lost focus before image input")
+
         ui.stage = "image_load"
         ui.assert_target_ready()
+        focused_source()
         if before_native_input is not None:
             before_native_input()
             # Persistence may take time. Recheck ownership and the pinned image
@@ -241,6 +249,7 @@ def save_body_image(
         ui.stage = "right_click"
         ui.assert_target_ready()
         same_image()
+        focused_source()
         selected.click(button="right", timeout=_LOAD_TIMEOUT_MS)
         ui.click_save_image_menu()
         target = None

@@ -15,6 +15,10 @@ from image_monitor.artifact_files import (
     recover_finalizations,
 )
 from image_monitor.browser_completion import (
+    COMPLETION_SETUP_REASONS,
+    SETUP_FOCUS_LOSSES,
+    SETUP_FOCUS_RECOVERIES,
+    SETUP_FOCUS_STAGES,
     BrowserCompletion,
     BrowserCompletionError,
     completion_setup_reason,
@@ -329,6 +333,31 @@ def _confirm_browser_closed(pending: dict, timeout=5) -> bool:
         time.sleep(0.1)
 
 
+def _known_setup_codes(fields, reason):
+    codes = {}
+    if isinstance(reason, str) and reason in COMPLETION_SETUP_REASONS:
+        codes["completion_setup_reason"] = reason
+    for key, choices in (
+        ("setup_focus_stage", SETUP_FOCUS_STAGES),
+        ("setup_focus_recovery", SETUP_FOCUS_RECOVERIES),
+        ("setup_focus_loss", SETUP_FOCUS_LOSSES),
+    ):
+        value = fields.get(key)
+        if isinstance(value, str) and value in choices:
+            codes[key] = value
+    return codes
+
+
+def share_setup_diagnostics(report, *, stage_key="last_stage"):
+    """Return only known Chrome setup codes from this worker failure."""
+    if (
+        report.get(stage_key) == "completion_setup"
+        and report.get("error_type") == "BrowserCompletionError"
+    ):
+        return _known_setup_codes(report, report.get("completion_setup_reason"))
+    return {}
+
+
 def share_worker_report(report: dict) -> dict:
     # Keep the user TXT small. Original names and complete post/URL metadata stay in
     # the owned private sidecar, not in published logs or exception messages.
@@ -362,9 +391,8 @@ def share_worker_report(report: dict) -> dict:
         and report.get("error_type") == "BrowserCompletionError"
     ):
         reason = completion_setup_reason(report.get("reason"))
-        if reason is not None:
-            public["completion_setup_reason"] = reason
-        else:
+        public.update(_known_setup_codes(report, reason))
+        if reason is None:
             public["reason"] = "completion_setup_failed"
     return public
 
@@ -690,8 +718,7 @@ def run_post_save(
                 error, BrowserCompletionError
             ):
                 reason = completion_setup_reason(report["reason"])
-                if reason is not None:
-                    report["completion_setup_reason"] = reason
+                report.update(_known_setup_codes(vars(error), reason))
             diagnostics = getattr(error, "shutdown_diagnostics", None)
             if isinstance(diagnostics, dict):
                 report["shutdown"] = diagnostics

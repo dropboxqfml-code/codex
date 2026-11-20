@@ -1,6 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 
@@ -235,6 +235,15 @@ def automatic_reader(owned):
     )
 
 
+def focus_controls(owned):
+    frame_node, hint = MagicMock(), MagicMock()
+    owned.source.evaluate_handle.side_effect = [frame_node, hint]
+    frame = frame_node.as_element.return_value.content_frame.return_value
+    frame.url = "about:srcdoc"
+    frame_node.evaluate.return_value = True
+    return frame_node, frame.wait_for_selector.return_value, hint
+
+
 def test_settles_visible_source_focus_before_creating_any_reader(owned_browser):
     owned = owned_browser
     original_send = owned.session.send.side_effect
@@ -256,6 +265,8 @@ def test_settles_visible_source_focus_before_creating_any_reader(owned_browser):
 
 def test_focus_hint_is_removed_and_model_still_gets_its_bounded_initialization(owned_browser):
     owned = owned_browser
+    frame_node, button, hint = focus_controls(owned)
+    button.click.side_effect = TimeoutError("Frame is covered")
     owned.source.evaluate.side_effect = lambda script: (
         script != "document.hasFocus()" or owned.clock.now >= 5
     )
@@ -264,7 +275,9 @@ def test_focus_hint_is_removed_and_model_still_gets_its_bounded_initialization(o
         automatic_reader(owned).__enter__()
     assert completion_setup_reason(str(exc.value)) == "downloads_target_missing"
     assert 13 <= owned.clock.now < 13.3
-    hint = owned.source.evaluate_handle.return_value
+    assert button.click.call_args_list == [call(trial=True, timeout=400)]
+    frame_node.evaluate.assert_called_with("node => node.remove()")
+    frame_node.dispose.assert_called_once()
     hint.evaluate.assert_called_once_with("node => node.remove()")
     hint.dispose.assert_called_once()
     owned.source.bring_to_front.assert_not_called()
@@ -283,16 +296,93 @@ def test_foreign_window_during_initial_focus_wait_cannot_open_reader(owned_brows
 
 def test_blurred_visible_document_cannot_open_reader_after_prompt_timeout(owned_browser):
     owned = owned_browser
+    frame_node, button, hint = focus_controls(owned)
+    frame_node.evaluate.return_value = False  # No longer the original sandboxed frame.
     owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()"
-    with pytest.raises(BrowserCompletionError, match="did not have focus"):
+    with pytest.raises(BrowserCompletionError, match="did not have focus") as exc:
         automatic_reader(owned).__enter__()
     assert owned.clock.now == pytest.approx(20)
     owned.session.send.assert_not_called()
-    owned.source.evaluate_handle.assert_called_once()
-    owned.source.evaluate_handle.return_value.evaluate.assert_called_once_with(
-        "node => node.remove()"
-    )
+    assert exc.value.setup_focus_stage == "before_target_creation"
+    assert exc.value.setup_focus_recovery == "waiting_for_user"
+    assert exc.value.setup_focus_loss == "first"
+    button.click.assert_not_called()
+    frame_node.dispose.assert_called_once()
+    hint.evaluate.assert_called_once_with("node => node.remove()")
+    hint.dispose.assert_called_once()
     owned.source.bring_to_front.assert_not_called()
+
+
+@pytest.mark.parametrize("restored_after_creation", [True, False])
+def test_each_setup_phase_can_restore_focus_after_an_earlier_restoration(
+    owned_browser, restored_after_creation
+):
+    owned = owned_browser
+    reader = automatic_reader(owned)
+    nodes = [MagicMock(), MagicMock()]
+    hint = MagicMock()
+    focused = False
+    owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()" or focused
+    owned.source.evaluate_handle.side_effect = [*nodes, hint]
+    buttons = []
+
+    def focus(trial=False, **kwargs):
+        nonlocal focused
+        if not trial and (reader._target_id is None or restored_after_creation):
+            focused = True
+
+    for node in nodes:
+        frame = node.as_element.return_value.content_frame.return_value
+        frame.url = "about:srcdoc"
+        node.evaluate.return_value = True
+        button = frame.wait_for_selector.return_value
+        button.click.side_effect = focus
+        buttons.append(button)
+
+    original = owned.session.send.side_effect
+
+    def blur_after_creation(command, *args, **kwargs):
+        nonlocal focused
+        if command == "Target.createTarget":
+            assert focused
+            focused = False
+        return original(command, *args, **kwargs)
+
+    owned.session.send.side_effect = blur_after_creation
+    if restored_after_creation:
+        with reader:
+            assert focused
+        hint.evaluate.assert_not_called()
+    else:
+        with pytest.raises(BrowserCompletionError) as exc:
+            reader.__enter__()
+        assert exc.value.setup_focus_stage == "after_target_creation"
+        assert exc.value.setup_focus_recovery == "waiting_for_user"
+        assert exc.value.setup_focus_loss == "repeated"
+        hint.dispose.assert_called_once()
+    for button, node in zip(buttons, nodes, strict=True):
+        assert button.click.call_args_list == [call(trial=True, timeout=400), call(timeout=400)]
+        node.evaluate.assert_called_with("node => node.remove()")
+        node.dispose.assert_called_once()
+    owned.source.bring_to_front.assert_not_called()
+
+
+def test_ownership_changed_during_actionability_prevents_dispatch(owned_browser):
+    owned = owned_browser
+    node, button, hint = focus_controls(owned)
+    owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()"
+
+    def change_foreground(*, trial, timeout):
+        assert trial and timeout
+        owned.ui.user32.GetForegroundWindow.return_value = 456
+
+    button.click.side_effect = change_foreground
+    with pytest.raises(BrowserCompletionError, match="lost foreground"):
+        automatic_reader(owned).__enter__()
+    assert button.click.call_args_list == [call(trial=True, timeout=400)]
+    node.dispose.assert_called_once()
+    hint.evaluate.assert_not_called()
+    owned.session.send.assert_not_called()
 
 
 def test_focus_loss_during_save_does_not_use_startup_grace(owned_browser):

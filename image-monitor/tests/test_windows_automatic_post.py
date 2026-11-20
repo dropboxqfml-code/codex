@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from test_monitor_candidate_native import _freeze_monitor_candidate
 from test_windows_candidate_save import POST_URL, CandidatePageView
+from test_windows_completion_focus import focus_owned_omnibox
 from test_windows_monitor_batch import _html
 from test_windows_post_pipeline import (
     close_ci_browser,
@@ -94,6 +95,7 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
         inspections = []
         native_calls = []
         navigation = []
+        focus_losses = []
         observer = SimpleNamespace(
             before=lambda: navigation.append("start"),
             after=lambda response, error: navigation.append((response.status, error)),
@@ -103,7 +105,38 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
         def native_save(page, ui, **options):
             native_calls.append(page.url)
             ui.assert_target_ready()
+            assert page.evaluate("document.hasFocus()") is True
+            assert page.evaluate("window.fixtureInputEvents") == []
+            assert page.locator("iframe").count() == 0
             return real_save(page, ui, **options)
+
+        class DownloadsRoundTrip(post_worker.BrowserCompletion):
+            def __enter__(self):
+                self.source_page.evaluate("""() => {
+                    window.fixtureInputEvents = [];
+                    for (const kind of ['pointerdown', 'mousedown', 'click']) {
+                        document.addEventListener(kind, e => {
+                            if (e.isTrusted) window.fixtureInputEvents.push(e.type);
+                        }, true);
+                    }
+                }""")
+                focus_owned_omnibox(self.source_page, self.ui)
+                focus_losses.append("initial")
+                return super().__enter__()
+
+            def _read_model(self):
+                model = super()._read_model()
+                if model["items_available"] and focus_losses == ["initial"]:
+                    # User returned to the article's tab; Chrome's toolbar still holds focus.
+                    self.ui.assert_target_ready()
+                    self._page.bring_to_front()
+                    self.source_page.wait_for_function("document.hidden", timeout=5_000)
+                    self.source_page.bring_to_front()
+                    self.source_page.wait_for_function("!document.hidden", timeout=5_000)
+                    assert self.ui.user32.GetForegroundWindow() == self.ui.target_hwnd
+                    focus_owned_omnibox(self.source_page, self.ui)
+                    focus_losses.append("after_downloads")
+                return model
 
         class LocalRuntime(post_worker.NativeRuntime):
             def launch(self, profile, browser_kind):
@@ -135,6 +168,7 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
         pending_path = root / "pending.json"
         monkeypatch.setattr(post_worker, "shared_state_path", lambda: pending_path)
         monkeypatch.setattr(post_worker, "NativeRuntime", LocalRuntime)
+        monkeypatch.setattr(post_worker, "BrowserCompletion", DownloadsRoundTrip)
         monkeypatch.setattr(post_worker, "install_approval", unexpected_approval)
         monkeypatch.setattr(post_worker, "wait_for_approval", unexpected_approval)
         monkeypatch.setattr(post_worker, "save_body_image", native_save)
@@ -160,6 +194,7 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
                     assert not list((base / "images").iterdir())
                 else:
                     assert result["status"] == "post_completed", result
+                    assert focus_losses == ["initial", "after_downloads"]
                     assert len(inspections) >= 2 and native_calls == [POST_URL]
                     assert result["job_counts"] == {"observed": 1, "completed": 1, "unresolved": 0}
                     [saved] = result["saved_files"]

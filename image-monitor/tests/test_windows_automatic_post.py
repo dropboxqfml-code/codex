@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import tempfile
+import time
 from contextlib import ExitStack
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -26,7 +27,7 @@ from test_windows_post_pipeline import (
 )
 from test_windows_post_pipeline import pytestmark as windows_ci_only
 
-from image_monitor import post_worker
+from image_monitor import native_ui, post_worker
 from image_monitor.dcinside import inspect_post
 from image_monitor.native_probe import browser_executable
 from image_monitor.native_state import session_id
@@ -151,13 +152,40 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
             def bind(self, process, title):
                 ui = super().bind(process, title)
                 foreground_ci_window(self.page, ui)
-                if distract:
-                    pause.enter_context(owned_ci_focus_distractor(ui))
+                other = pause.enter_context(owned_ci_focus_distractor(ui))
+                wait = ui.wait_for_initial_foreground
+                if stay_in_background:
+                    # Keep the other window in front through the deadline.
+                    ui.wait_for_initial_foreground = lambda: wait(timeout=0.5)
+                else:
+
+                    def return_to_chrome(delay):
+                        # This fixture acts only after a real Windows foreground poll failed.
+                        assert ui.user32.GetForegroundWindow() == other["hwnd"]
+                        assert not inspections and not native_calls
+                        time.sleep(delay)
+                        other["close"]()
+                        foreground_ci_window(self.page, ui)
+                        restored.append(ui.target_hwnd)
+
+                    def wait_for_switch():
+                        with monkeypatch.context() as polling:
+                            polling.setattr(
+                                native_ui,
+                                "time",
+                                SimpleNamespace(
+                                    monotonic=time.monotonic,
+                                    sleep=return_to_chrome,
+                                ),
+                            )
+                            wait()
+
+                    ui.wait_for_initial_foreground = wait_for_switch
                 return ui
 
             def inspect(self, page, url, *, before_interaction=None):
                 inspections.append(url)
-                assert not distract
+                assert not stay_in_background
                 assert before_interaction is not None
                 assert page.locator("#image-monitor-save-panel").count() == 0
                 return super().inspect(page, url, before_interaction=before_interaction)
@@ -173,8 +201,9 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
         monkeypatch.setattr(post_worker, "wait_for_approval", unexpected_approval)
         monkeypatch.setattr(post_worker, "save_body_image", native_save)
 
-        for distract in (True, False):
-            work = root / ("away" if distract else "ready")
+        restored = []
+        for stay_in_background in (True, False):
+            work = root / ("away" if stay_in_background else "ready")
             with ExitStack() as pause:
                 result = post_worker.run_post_save(
                     work,
@@ -187,13 +216,16 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
             assert not pending_path.exists()
             base = work / f"session-{session_id()}"
             with QueueStore(base / "queue.sqlite", read_only=True) as queue:
-                if distract:
+                if stay_in_background:
                     assert result["error_type"] == "NativeFocusError", result
+                    assert result["last_stage"] == "automatic_foreground_check"
+                    assert not restored
                     assert not inspections and not native_calls
                     assert result["saved_files"] == [] and queue.list_jobs() == []
                     assert not list((base / "images").iterdir())
                 else:
                     assert result["status"] == "post_completed", result
+                    assert len(restored) == 1
                     assert focus_losses == ["initial", "after_downloads"]
                     assert len(inspections) >= 2 and native_calls == [POST_URL]
                     assert result["job_counts"] == {"observed": 1, "completed": 1, "unresolved": 0}

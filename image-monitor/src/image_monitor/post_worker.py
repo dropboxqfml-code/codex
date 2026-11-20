@@ -526,7 +526,7 @@ def run_post_save(
                     title = f"Image Monitor automatic save {uuid.uuid4().hex}"
                     page.evaluate("title => { document.title = title; }", title)
                     ui = runtime.bind(process, title)
-                    ui.assert_target_ready()
+                    ui.wait_for_initial_foreground()
                     report["last_stage"] = "post_inspection"
                 snapshot = _inspect_for_save(
                     runtime,

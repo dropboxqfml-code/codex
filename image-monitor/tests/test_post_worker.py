@@ -85,6 +85,7 @@ def pilot(monkeypatch):
         approvals=[],
         armed=[],
         focus_ready=True,
+        initial_foreground_waits=0,
         focus_resumes=0,
         focus_prompts=[],
         resume_save_counts=[],
@@ -150,9 +151,14 @@ def pilot(monkeypatch):
                 if not values.focus_ready:
                     raise NativeFocusError("Fixture foreground is outside the bound window")
 
+            def wait_for_initial_foreground():
+                values.initial_foreground_waits += 1
+                assert_ready()
+
             return SimpleNamespace(
                 stage="fixture",
                 expected_window_title=title,
+                wait_for_initial_foreground=wait_for_initial_foreground,
                 assert_target_ready=assert_ready,
                 focus_snapshot=lambda: {"target_foreground": values.focus_ready},
                 browser_suggested_filename=None,
@@ -520,6 +526,7 @@ def test_automatic_save_binds_foreground_and_rechecks_permit_without_a_button(pi
     assert pilot.navigation == ["before", "goto", ("after", 200, None)]
     assert len(pilot.window_titles) == 1 and pilot.window_titles[0].startswith("Image Monitor ")
     assert pilot.guarded_inspections == [True, True]
+    assert pilot.initial_foreground_waits == 1
     assert pilot.approvals == [] and pilot.approval_count == 0
     assert pilot.focus_prompts == [True]
     assert [item["saved_filename"] for item in report["saved_files"]] == ["001.png", "002.png"]
@@ -547,6 +554,7 @@ def test_automatic_save_without_foreground_closes_before_first_inspection(pilot)
     report = worker.run_post_save(pilot.root, **automatic_candidate(pilot))
     assert report["status"] == "manual_review" and report["error_type"] == "NativeFocusError"
     assert report["last_stage"] == "automatic_foreground_check"
+    assert pilot.initial_foreground_waits == 1
     assert pilot.guarded_inspections == [] and pilot.approvals == [] and pilot.native_calls == 0
     assert report["browser_closed"] and not report["shared_pending_retained"]
 

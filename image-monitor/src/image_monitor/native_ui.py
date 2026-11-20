@@ -146,6 +146,7 @@ class WindowsUI:
             ctypes.POINTER(wintypes.DWORD),
         ]
         self.user32.IsWindow.argtypes = [wintypes.HWND]
+        self.user32.IsWindowEnabled.argtypes = [wintypes.HWND]
         self.user32.IsWindowVisible.argtypes = [wintypes.HWND]
         self.user32.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
         self.user32.GetWindow.restype = wintypes.HWND
@@ -430,7 +431,7 @@ class WindowsUI:
             snapshot["diagnostic_error_type"] = type(error).__name__
         return snapshot
 
-    def assert_ready(self) -> None:
+    def _assert_bound_desktop(self) -> None:
         handle = self.user32.OpenInputDesktop(0, False, 0x0001)  # DESKTOP_READOBJECTS
         if not handle:
             raise NativeUIError("Input desktop unavailable: pause until user checks session")
@@ -447,6 +448,9 @@ class WindowsUI:
         finally:
             self.user32.CloseDesktop(handle)
         self._assert_target_exists()
+
+    def assert_ready(self) -> None:
+        self._assert_bound_desktop()
         hwnd = self.user32.GetForegroundWindow()
         if not hwnd or not self.belongs_to_target(hwnd):
             raise NativeFocusError(
@@ -458,6 +462,29 @@ class WindowsUI:
         self.assert_ready()
         if self._root_window(self.user32.GetForegroundWindow()) != self.target_hwnd:
             raise NativeFocusError("The probe page itself is not in the foreground")
+
+    def wait_for_initial_foreground(self, *, timeout: float = 20.0) -> None:
+        """Allow the user or Windows to foreground the bound Chrome after launch."""
+        if type(timeout) not in (int, float) or not 0 < timeout <= 20:
+            raise ValueError("Initial foreground wait must be within 20 seconds")
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            self._assert_bound_desktop()
+            if not self.user32.IsWindowEnabled(self.target_hwnd):
+                raise NativeUIError("The bound browser window is disabled")
+            foreground = self.user32.GetForegroundWindow()
+            if foreground:
+                pid = self._window_pid(foreground)
+                if not self.user32.IsWindow(foreground) or not pid:
+                    raise NativeUIError("The Windows foreground window is invalid")
+                if pid in self.process_ids():
+                    if self._root_window(foreground) != self.target_hwnd:
+                        raise NativeUIError("A different window of the owned browser is active")
+                    return
+            remaining = deadline - time.monotonic()
+            if remaining > 0:
+                time.sleep(min(0.2, remaining))
+        raise NativeFocusError("Foreground focus is outside the bound probe window; input stopped")
 
     def assert_control_ready(self, control, window) -> None:
         self.assert_ready()

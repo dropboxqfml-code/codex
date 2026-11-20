@@ -615,7 +615,7 @@ set "WATCH_EXIT_CODE=%ERRORLEVEL%"
 goto finish_watch_result
 
 :start_auto_collect
-echo Checking for one eligible post. If dedicated Chrome opens, keep it in front until saving finishes.
+echo If dedicated Chrome opens, switch to it and leave it in front until saving finishes.
 >>"%LOG_FILE%" echo STAGE: auto_collect_once
 "%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor auto-collect-once --watch-root "%LOCALAPPDATA%\ImageMonitorWatch" --legacy-root "%LOCALAPPDATA%\ImageMonitorMonitorSave" --work-root "%LOCALAPPDATA%\ImageMonitorBatch" >>"%LOG_FILE%" 2>&1
 set "WATCH_EXIT_CODE=%ERRORLEVEL%"

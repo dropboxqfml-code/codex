@@ -11,6 +11,7 @@ from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_collect import collect_session_turn
 from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
+from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON
 from image_monitor.post_worker import share_setup_diagnostics
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
@@ -47,12 +48,34 @@ def _record_collection(report, turn):
     # Both adapters return public, bounded reports. Keep only the last outcome
     # and last verified files; a multi-day session never accumulates a history.
     last = {key: turn[key] for key in ("status", "reason")}
+    search = turn.get("search")
+    if (
+        isinstance(search, dict)
+        and search.get("previous_failure_reason") == FOREGROUND_RETRY_REASON
+    ):
+        last["previous_failure_reason"] = FOREGROUND_RETRY_REASON
     if turn.get("setup_retry_started"):
         last["setup_retry_started"] = True
     if turn.get("save") is not None:
         for key in ("worker_last_stage", "native_stage", "error_type"):
             if turn["save"].get(key) is not None:
                 last[key] = turn["save"][key]
+        focus = turn["save"].get("focus_at_failure")
+        if last.get("worker_last_stage") == "automatic_foreground_check" and isinstance(
+            focus, dict
+        ):
+            flags = {
+                key: focus[key]
+                for key in (
+                    "target_exists",
+                    "target_foreground",
+                    "belongs_to_target",
+                    "foreground_identified",
+                )
+                if type(focus.get(key)) is bool
+            }
+            if flags:
+                last["focus_at_failure"] = flags
         last.update(share_setup_diagnostics(turn["save"], stage_key="worker_last_stage"))
     report["last_collection"] = last
     report["new_details_checked"] += _count(turn, "new_details_checked", 1)

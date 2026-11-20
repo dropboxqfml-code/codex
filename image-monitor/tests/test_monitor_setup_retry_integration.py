@@ -1,4 +1,4 @@
-"""Reopen a pre-input alpha.1 task and save its original image on a second invocation."""
+"""Reopen the original native task after a confirmed stop before image input."""
 
 import hashlib
 import json
@@ -37,6 +37,7 @@ from image_monitor import (
 )
 from image_monitor.browser_completion import BrowserCompletionError
 from image_monitor.candidate_store import CandidateDetailStore
+from image_monitor.native_ui import NativeFocusError
 from image_monitor.queue import QueueStore
 from image_monitor.watch_store import MONITOR_SCOPE
 
@@ -79,7 +80,55 @@ def failed_enter(self):
     raise BrowserCompletionError("The bound source page lost its identity or foreground")
 
 
-def test_saved_alpha1_preinput_task_retries_its_original_post_once(monkeypatch, request):
+def no_initial_foreground(fault, *, windows):
+    bind = post_worker.NativeRuntime.bind
+
+    def bind_without_foreground(runtime, process, title):
+        ui = bind(runtime, process, title)
+        if windows:
+            # Only the owned UI instance sees the transient null GetForegroundWindow().
+            # Its production desktop, Chrome process, title and HWND checks still run.
+            user32 = ui.user32
+
+            class NullForeground:
+                def GetForegroundWindow(self):
+                    return 0
+
+                def __getattr__(self, name):
+                    return getattr(user32, name)
+
+            ui.user32 = NullForeground()
+        else:
+
+            def failed_guard():
+                raise NativeFocusError(
+                    "Foreground focus is outside the bound probe window; input stopped"
+                )
+
+            ui.stage = "desktop_guard"
+            ui.assert_target_ready = failed_guard
+            ui.focus_snapshot = lambda: {
+                "target_hwnd": 1234,
+                "foreground_hwnd": None,
+                "foreground_pid": None,
+                "foreground_class": None,
+                "target_exists": True,
+                "belongs_to_target": False,
+                "target_foreground": False,
+            }
+        # Produce the released alpha.5 immediate-guard failure on either worker version.
+        ui.wait_for_initial_foreground = ui.assert_target_ready
+        return ui
+
+    fault.setattr(post_worker.NativeRuntime, "bind", bind_without_foreground)
+
+
+@pytest.mark.parametrize(
+    "stage",
+    ["completion_setup", "automatic_foreground_check"],
+    ids=["alpha1_completion", "alpha5_foreground"],
+)
+def test_saved_preinput_task_retries_its_original_post_once(monkeypatch, request, stage):
     pytest.importorskip("playwright.sync_api")
     windows = sys.platform == "win32"
     if windows and (
@@ -177,27 +226,46 @@ def test_saved_alpha1_preinput_task_retries_its_original_post_once(monkeypatch, 
             )
 
         with monkeypatch.context() as fault:
-            fault.setattr(post_worker.BrowserCompletion, "__enter__", failed_enter)
+            if stage == "completion_setup":
+                fault.setattr(post_worker.BrowserCompletion, "__enter__", failed_enter)
+            else:
+                no_initial_foreground(fault, windows=windows)
             first = collect()
         assert first["status"] == "monitor_collect_review", first
-        assert first["save"]["error_type"] == "BrowserCompletionError", json.dumps(first, indent=2)
-        assert first["save"]["worker_last_stage"] == "completion_setup"
-        assert first["worker_images_completed"] == first["files_verified"] == 0
+        assert first["save"]["worker_last_stage"] == stage, json.dumps(first, indent=2)
+        assert first["files_verified"] == 0 and saved_content(data) == previous_files
         assert first["browser_closed"] and not marker.exists()
         with ledger(data) as records:
             failed = records.get_for_post(post_id)
         assert failed["status"] == "needs_review"
         base = data.batch / "tasks" / failed["task_id"] / f"session-{failed['native_session']}"
         with QueueStore(base / "queue.sqlite", read_only=True) as queue:
-            [untouched] = queue.list_jobs()
-            assert untouched["status"] == "queued" and not queue.history(untouched["job_id"])
             assert queue.list_artifacts() == []
+            queued = queue.list_jobs()
+            if stage == "completion_setup":
+                [untouched] = queued
+                assert untouched["status"] == "queued" and not queue.history(untouched["job_id"])
+            else:
+                assert queued == [] and queue.summary()["posts"] == 0
         [old_report] = (base / "runs").glob("*/report.json")
         old = json.loads(old_report.read_bytes())
-        # The first alpha had only its private exception reason. Verify a real
-        # pre-input stop can reopen without depending on diagnostic fields added later.
-        assert old.pop("completion_setup_reason") == "source_identity_or_foreground_changed"
-        old_report.write_text(json.dumps(old), encoding="utf-8")
+        if stage == "completion_setup":
+            assert first["worker_images_completed"] == 0
+            assert first["save"]["error_type"] == "BrowserCompletionError"
+            # Alpha.1 had only its private exception reason.
+            assert old.pop("completion_setup_reason") == "source_identity_or_foreground_changed"
+            old_report.write_text(json.dumps(old), encoding="utf-8")
+        else:
+            assert first["worker_images_completed"] is None
+            assert first["save"]["error_type"] == "NativeFocusError"
+            assert old["native_stage"] == "desktop_guard" and "job_counts" not in old
+            assert old["focus_at_failure"]["target_exists"] is True
+            assert old["focus_at_failure"]["foreground_hwnd"] is None
+            assert old["focus_at_failure"]["target_foreground"] is False
+            assert "active_attempt" not in old and old["shared_pending_retained"] is False
+            assert (
+                old["reason"] == "Foreground focus is outside the bound probe window; input stopped"
+            )
         retained = old_report.read_bytes()
         monkeypatch.setattr(monitor_setup_retry, "shared_state_path", lambda: marker)
         if not windows:
@@ -208,10 +276,19 @@ def test_saved_alpha1_preinput_task_retries_its_original_post_once(monkeypatch, 
         recovered = collect()
         assert recovered["status"] == "monitor_collect_saved", json.dumps(recovered, indent=2)
         assert recovered["setup_retry_started"] and recovered["new_details_checked"] == 0
-        assert (
-            recovered["search"]["previous_completion_setup_reason"]
-            == "source_identity_or_foreground_changed"
-        )
+        if stage == "completion_setup":
+            assert (
+                recovered["search"]["previous_completion_setup_reason"]
+                == "source_identity_or_foreground_changed"
+            )
+        else:
+            assert recovered["search"]["reason"] == "automatic_foreground_retry_ready"
+            assert (
+                recovered["save"]["previous_failure_reason"] == "automatic_foreground_unconfirmed"
+            )
+            assert (
+                recovered["search"]["previous_failure_reason"] == "automatic_foreground_unconfirmed"
+            )
         assert recovered["native_save_tasks_started"] == recovered["files_verified"] == 1
         assert recovered["browser_closed"] and not marker.exists()
         assert old_report.read_bytes() == retained
@@ -225,13 +302,21 @@ def test_saved_alpha1_preinput_task_retries_its_original_post_once(monkeypatch, 
         with ledger(data) as records:
             assert len(records.list_tasks()) == 3
             assert all(task["status"] == "completed" for task in records.list_tasks())
-            assert records.get_for_post(post_id)["task_id"] == failed["task_id"]
+            done_task = records.get_for_post(post_id)
+            for key in ("task_id", "detail_attempt_id", "permit_fingerprint"):
+                assert done_task[key] == failed[key]
+            assert done_task["control"]["setup_retry"]["prior_run"] == old_report.parent.name
         with QueueStore(base / "queue.sqlite", read_only=True) as queue:
             [done] = queue.list_jobs()
-            assert done["status"] == "completed" and done["job_id"] == untouched["job_id"]
+            assert done["status"] == "completed"
+            [artifact] = queue.list_artifacts()
+            assert artifact["job_id"] == done["job_id"]
+            if queued:
+                assert done["job_id"] == queued[0]["job_id"]
         files = saved_content(data)
         assert len(files) == 6 and all(files[p] == v for p, v in previous_files.items())
         [image] = [p for p in files.keys() - previous_files.keys() if p.name == "001.png"]
         assert image.parent.name == post_id
+        assert hashlib.sha256(image.read_bytes()).hexdigest() == artifact["verification"]["sha256"]
         if windows:
             assert image.read_bytes() == png[1]

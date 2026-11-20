@@ -2,7 +2,7 @@
 
 The caller holds the shared watch lease. This separate database never changes
 the discovery schema or native image queues. An explicit retry can resume a
-failed completion setup after the caller proves that native input never began.
+failed setup after the caller proves that native input never began.
 """
 
 import json
@@ -248,7 +248,10 @@ def is_setup_retry_candidate(task):
         task["status"] == "needs_review"
         and task["output_kind"] == "managed"
         and task["result"]
-        == {"worker_status": "manual_review", "error_type": "BrowserCompletionError"}
+        in (
+            {"worker_status": "manual_review", "error_type": "BrowserCompletionError"},
+            {"worker_status": "manual_review", "error_type": "NativeFocusError"},
+        )
         and task["control"].get("blocked") is False
         and task["control"].get("in_flight") is False
         and task["control"].get("http_status") == 200

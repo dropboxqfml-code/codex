@@ -15,7 +15,11 @@ from image_monitor.monitor_save_ledger import (
     other_monitor_save_claims,
 )
 from image_monitor.monitor_settings import load_monitor_settings
-from image_monitor.monitor_setup_retry import verify_setup_retry
+from image_monitor.monitor_setup_retry import (
+    FOREGROUND_RETRY_EXHAUSTED,
+    FOREGROUND_RETRY_REASON,
+    verify_setup_retry,
+)
 from image_monitor.native_ui import NativeSaveLock
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_image_search import MAX_NEW_DETAILS
@@ -42,6 +46,8 @@ def _handoff(permit):
 
 def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setup_retry):
     watch, legacy, batch = roots
+    report.pop("previous_failure_reason", None)
+    report.pop("previous_completion_setup_reason", None)
     claimed = other_monitor_save_claims(watch / "watch.sqlite")
     ledger_path = _plain_path(watch / LEDGER_NAME)
     if ledger_path.exists():
@@ -54,11 +60,26 @@ def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setu
                 if not setup_retry or len(unfinished) != 1 or unfinished[0]["post_id"] in claimed:
                     raise QueueError("An unfinished monitor save requires review")
                 task = unfinished[0]
+                if (
+                    task["status"] == "needs_review"
+                    and isinstance(task["control"].get("setup_retry"), dict)
+                    and task["result"]
+                    == {
+                        "worker_status": "manual_review",
+                        "error_type": "NativeFocusError",
+                        "reason": FOREGROUND_RETRY_EXHAUSTED,
+                    }
+                ):
+                    report.update(status="review", reason=FOREGROUND_RETRY_EXHAUSTED)
+                    return None, None
                 permit = reconstruct_permit(queue, task)
                 with NativeSaveLock():
                     prior_run, prior_reason = verify_setup_retry(ledger, task, permit)
                 report["eligible_body_images"] = permit.image_count
-                report["previous_completion_setup_reason"] = prior_reason
+                if prior_reason == FOREGROUND_RETRY_REASON:
+                    report["previous_failure_reason"] = prior_reason
+                else:
+                    report["previous_completion_setup_reason"] = prior_reason
                 return _handoff(permit) | {
                     "retry_task_id": task["task_id"],
                     "prior_run": prior_run,
@@ -93,6 +114,7 @@ def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setu
     )
     if pending:
         return None, (pending[0]["first_scan_id"], pending[0]["post_id"])
+    report.update(status="no_candidates", reason="no_remaining_unattempted_candidates")
     return None, None
 
 
@@ -180,9 +202,6 @@ def search_monitor_candidates(
                     setup_retry=setup_retry,
                 )
                 if handoff is None and pending is None:
-                    report.update(
-                        status="no_candidates", reason="no_remaining_unattempted_candidates"
-                    )
                     break
                 if handoff is None and len(fresh_posts) >= max_new_details:
                     report.update(status="limit", reason="fresh_detail_limit")
@@ -216,10 +235,12 @@ def search_monitor_candidates(
             waited_for = None
             report["next_eligible_at"] = None
             if handoff is not None:
-                report.update(
-                    status="ready",
-                    reason="completion_setup_retry_ready" if setup_retry else "save_ready",
-                )
+                reason = "save_ready"
+                if report.get("previous_failure_reason") == FOREGROUND_RETRY_REASON:
+                    reason = "automatic_foreground_retry_ready"
+                elif setup_retry:
+                    reason = "completion_setup_retry_ready"
+                report.update(status="ready", reason=reason)
                 return report, handoff
             report["browser_closed"] = None
             trial = detail_runner(

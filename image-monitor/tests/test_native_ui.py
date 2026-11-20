@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from image_monitor import native_ui
 from image_monitor.native_ui import NativeFocusError, NativeUIError, WindowsUI
 
 
@@ -92,6 +93,70 @@ def test_other_app_focus_is_rejected():
     with pytest.raises(NativeFocusError, match="outside") as caught:
         ui.assert_ready()
     assert isinstance(caught.value, NativeUIError)
+
+
+@pytest.fixture
+def foreground_sleeps(monkeypatch):
+    sleeps = []
+    clock = SimpleNamespace(monotonic=lambda: sum(sleeps), sleep=sleeps.append)
+    monkeypatch.setattr(native_ui, "time", clock)
+    return sleeps
+
+
+def test_launch_wait_observes_null_and_another_app_until_the_target_gets_focus(foreground_sleeps):
+    ui = desktop_guard()
+    ui.user32.GetForegroundWindow.side_effect = [None, 999, 100]
+    ui.wait_for_initial_foreground(timeout=1)
+    assert foreground_sleeps == [0.2, 0.2]
+    assert ui.desktop.windows.call_count == ui.user32.OpenInputDesktop.call_count == 3
+    ui.user32.SetForegroundWindow.assert_not_called()
+    ui.user32.SetFocus.assert_not_called()
+    ui.user32.SendInput.assert_not_called()
+
+
+@pytest.mark.parametrize("foreground", [0, 999])
+def test_launch_wait_times_out_without_claiming_or_activating_a_window(
+    foreground_sleeps, foreground
+):
+    ui = desktop_guard(foreground_hwnd=foreground)
+    with pytest.raises(NativeFocusError, match="outside the bound"):
+        ui.wait_for_initial_foreground(timeout=0.3)
+    assert sum(foreground_sleeps) == pytest.approx(0.3)
+    ui.user32.SetForegroundWindow.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [
+        ({"name": "Winlogon"}, "not active"),
+        ({"available": False}, "desktop unavailable"),
+        ({"foreground_hwnd": 77}, "foreground window is invalid"),
+        ({"foreground_hwnd": 200}, "different window"),
+        ({"foreground_hwnd": 300}, "different window"),
+    ],
+)
+def test_launch_wait_aborts_on_unsafe_desktop_or_frame(foreground_sleeps, settings, message):
+    ui = desktop_guard(**settings)
+    with pytest.raises(NativeUIError, match=message) as error:
+        ui.wait_for_initial_foreground(timeout=1)
+    assert not isinstance(error.value, NativeFocusError)
+    assert foreground_sleeps == []
+
+
+def test_launch_wait_rechecks_unique_binding_every_poll(foreground_sleeps):
+    ui = desktop_guard(foreground_hwnd=999)
+    ui.desktop.windows.side_effect = [[wrapper(100)], []]
+    with pytest.raises(NativeUIError, match="bound probe window"):
+        ui.wait_for_initial_foreground(timeout=1)
+    assert foreground_sleeps == [0.2]
+
+
+def test_launch_wait_rejects_disabled_target_even_if_it_is_foreground(foreground_sleeps):
+    ui = desktop_guard()
+    ui.user32.IsWindowEnabled.return_value = False
+    with pytest.raises(NativeUIError, match="disabled"):
+        ui.wait_for_initial_foreground(timeout=1)
+    assert foreground_sleeps == []
 
 
 def test_owned_windows_exclude_foreign_browser_and_dialog():

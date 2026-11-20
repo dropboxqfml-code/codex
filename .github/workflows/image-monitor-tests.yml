@@ -49,7 +49,7 @@ jobs:
         run: |
           $PSNativeCommandUseErrorActionPreference = $false
           New-Item -ItemType Directory -Force reports | Out-Null
-          .venv/Scripts/python.exe -m pytest -q --maxfail=1 --tb=short tests/test_windows_automatic_post.py tests/test_windows_completion_focus.py tests/test_windows_auto_session.py *> reports/windows-focus.txt
+          .venv/Scripts/python.exe -m pytest -q --maxfail=1 --tb=short tests/test_windows_automatic_post.py tests/test_windows_completion_focus.py tests/test_windows_auto_session.py tests/test_monitor_setup_retry_integration.py *> reports/windows-focus.txt
           $pytestExit = $LASTEXITCODE
           $output = Get-Content -Raw -LiteralPath reports/windows-focus.txt
           Write-Host $output

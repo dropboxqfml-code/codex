@@ -38,7 +38,11 @@ from image_monitor.monitor_save_ledger import (
     task_work_root,
 )
 from image_monitor.monitor_settings import load_monitor_settings
-from image_monitor.monitor_setup_retry import verify_setup_retry
+from image_monitor.monitor_setup_retry import (
+    FOREGROUND_RETRY_EXHAUSTED,
+    FOREGROUND_RETRY_REASON,
+    verify_setup_retry,
+)
 from image_monitor.native_probe import write_report
 from image_monitor.native_state import PendingSave, session_id, shared_state_path
 from image_monitor.native_ui import NativeSaveLock, NativeUIError, require_windows
@@ -388,6 +392,21 @@ def _deadline(report, due):
     report["next_eligible_at_local"] = due.astimezone(ZoneInfo("Asia/Seoul")).isoformat()
 
 
+def _public_initial_focus(snapshot):
+    if not isinstance(snapshot, dict):
+        return {}
+    flags = {
+        key: snapshot[key]
+        for key in ("target_exists", "target_foreground", "belongs_to_target")
+        if type(snapshot.get(key)) is bool
+    }
+    if "foreground_hwnd" in snapshot:
+        handle = snapshot["foreground_hwnd"]
+        if handle is None or type(handle) is int and handle >= 0:
+            flags["foreground_identified"] = bool(handle)
+    return flags
+
+
 def share_batch_report(report):
     fields = (
         "schema_version",
@@ -423,6 +442,19 @@ def share_batch_report(report):
         "shutdown",
     )
     public = {key: report[key] for key in fields if key in report}
+    if (
+        report.get("setup_retry_started") is True
+        and report.get("previous_failure_reason") == FOREGROUND_RETRY_REASON
+    ):
+        public["previous_failure_reason"] = FOREGROUND_RETRY_REASON
+    if (
+        report.get("mode") == "bounded_monitor_automatic_save"
+        and report.get("worker_last_stage") == "automatic_foreground_check"
+    ):
+        for key in ("focus_at_failure", "focus_at_pause"):
+            flags = _public_initial_focus(public.pop(key, None))
+            if flags:
+                public[key] = flags
     public.update(share_setup_diagnostics(report, stage_key="worker_last_stage"))
     error_type = public.get("error_type")
     if error_type is not None and (
@@ -797,13 +829,17 @@ def run_monitor_batch(
                                 if retrying:
                                     report["last_stage"] = "setup_retry_evidence"
                                     with NativeSaveLock():
-                                        prior_run, _ = verify_setup_retry(ledger, task, permit)
+                                        prior_run, prior_reason = verify_setup_retry(
+                                            ledger, task, permit
+                                        )
                                         if prior_run != monitor_handoff["prior_run"]:
                                             raise QueueError("The prior native setup run changed")
                                         active = ledger.start_setup_retry(
                                             task, prior_run=prior_run, now=clock.now()
                                         )
                                     report["setup_retry_started"] = True
+                                    if prior_reason == FOREGROUND_RETRY_REASON:
+                                        report["previous_failure_reason"] = prior_reason
                                 else:
                                     if work_root.exists() and any(work_root.iterdir()):
                                         raise QueueError(
@@ -912,13 +948,25 @@ def run_monitor_batch(
                                     )
                                     continue
                                 if not _worker_completed(worker, permit, observer):
+                                    failure = {
+                                        "worker_status": worker.get("status"),
+                                        "error_type": worker.get("error_type"),
+                                    }
+                                    reason = "native_batch_task_requires_review"
+                                    if (
+                                        automatic
+                                        and worker.get("last_stage") == "automatic_foreground_check"
+                                        and failure["worker_status"] == "manual_review"
+                                        and failure["error_type"] == "NativeFocusError"
+                                    ):
+                                        reason = FOREGROUND_RETRY_REASON
+                                        if report["setup_retry_started"]:
+                                            reason = FOREGROUND_RETRY_EXHAUSTED
+                                            failure["reason"] = reason
                                     ledger.finish(
                                         active["task_id"],
                                         status="needs_review",
-                                        result={
-                                            "worker_status": worker.get("status"),
-                                            "error_type": worker.get("error_type"),
-                                        },
+                                        result=failure,
                                         now=clock.now(),
                                     )
                                     active = None
@@ -926,7 +974,7 @@ def run_monitor_batch(
                                         status="monitor_batch_cancelled"
                                         if worker.get("error_type") == "KeyboardInterrupt"
                                         else "monitor_batch_manual_review",
-                                        reason="native_batch_task_requires_review",
+                                        reason=reason,
                                         error_type=worker.get("error_type"),
                                     )
                                     if observer.blocked:

@@ -115,6 +115,31 @@ def test_baseline_skips_older_work_then_verified_partial_can_collect(tmp_path):
         pass
 
 
+def test_session_keeps_only_safe_initial_foreground_flags_in_last_collection(tmp_path):
+    turn = collection("review", reason="automatic_foreground_retry_exhausted")
+    turn.update(
+        setup_retry_started=True,
+        search={"previous_failure_reason": "automatic_foreground_unconfirmed"},
+        save={
+            "worker_last_stage": "automatic_foreground_check",
+            "error_type": "NativeFocusError",
+            "focus_at_failure": {
+                "target_exists": True,
+                "foreground_identified": False,
+                "target_foreground": "unknown",
+                "foreground_hwnd": 9876,
+                "foreground_class": "private",
+            },
+        },
+    )
+    report, _ = session(tmp_path, Clock(), [scan()], [turn])
+    assert report["status"] == "auto_monitor_review"
+    last = report["last_collection"]
+    assert last["previous_failure_reason"] == "automatic_foreground_unconfirmed"
+    assert last["reason"] == "automatic_foreground_retry_exhausted"
+    assert last["focus_at_failure"] == {"target_exists": True, "foreground_identified": False}
+
+
 def test_cooldown_before_list_and_collection_retries_the_same_phase(tmp_path):
     clock = Clock()
     report, events = session(

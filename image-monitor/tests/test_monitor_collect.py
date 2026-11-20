@@ -50,6 +50,33 @@ def forbidden(*args, **kwargs):
 
 
 @pytest.mark.parametrize(
+    ("expected", "reported", "listed", "status"),
+    [
+        (10, 10, 10, "saved"),
+        (10, 10, 4, "review"),
+        (10, 11, 10, "review"),
+        (11, 11, 11, "review"),
+        (1, True, 1, "review"),
+    ],
+)
+def test_a_complete_monitor_post_requires_all_expected_file_receipts(
+    expected, reported, listed, status
+):
+    report = {
+        "status": "monitor_batch_completed",
+        "reason": None,
+        "last_stage": "complete",
+        "browser_closed": True,
+        "shared_pending_retained": False,
+        "tasks_started": 1,
+        "tasks_completed": 1,
+        "saved_file_count": reported,
+        "saved_files": [{"saved_filename": f"{slot:03d}.png"} for slot in range(1, listed + 1)],
+    }
+    assert collect._save_status(report, expected) == "monitor_collect_" + status
+
+
+@pytest.mark.parametrize(
     ("scope", "manifest", "posts"),
     [
         (DEFAULT_SCOPE, MANIFEST_NAME, ("102",)),

@@ -30,7 +30,8 @@ def _post_url(post_id):
     return f"https://gall.dcinside.com/board/view/?id=comic_new6&no={post_id}"
 
 
-def _html(title, header):
+def _html(title, header, *, image_paths=("/render-first.png",)):
+    body = "".join(f'<img src="{path}" style="width:240px;height:180px">' for path in image_paths)
     return (
         '<!doctype html><meta charset="utf-8">'
         f"<title>{title}</title>"
@@ -41,7 +42,7 @@ def _html(title, header):
         f"{header['published_at_raw']}</span></div>"
         '<div class="appending_file"><a href="#" title="unproven-name.png">'
         'Unproven name</a></div><div class="write_div">'
-        '<img src="/render-first.png" style="width:240px;height:180px"></div>'
+        f"{body}</div>"
     ).encode()
 
 

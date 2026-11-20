@@ -380,3 +380,13 @@ def test_adapter_import_does_not_import_native_runtime_in_the_worker(tmp_path):
         cwd=Path(__file__).parents[1],
     )
     assert completed.returncode == 0, completed.stderr.decode()
+
+
+def test_finish_rejects_a_complete_looking_eleventh_file():
+    value = report()
+    value.update(files_verified=11, job_counts={"observed": 11, "completed": 11, "unresolved": 0})
+    value["saved_files"] = [
+        value["saved_files"][0] | {"saved_filename": f"{i:03d}.png"} for i in range(1, 12)
+    ]
+    with pytest.raises(ValueError):
+        action._parse_report(json.dumps(value).encode(), 0)

@@ -110,11 +110,11 @@ def run_candidate_finish_trial(
                         "Existing candidate selection and save records are required"
                     )
                 report["last_stage"] = "completed_report_check"
-                previous = read_completed_report(native_base, pending)
                 with QueueStore(database, read_only=True) as watch_store:
                     permit = select_candidate_save(watch_store, scope, manifest)
                 if permit is None:
                     raise NativeUIError("The original saved candidate could not be verified")
+                previous = read_completed_report(native_base, pending, permit=permit)
                 report["last_stage"] = "local_file_verification"
                 with QueueStore(native_database, read_only=True) as native_store:
                     verified = finish_completed_candidate(
@@ -149,7 +149,7 @@ def run_candidate_finish_trial(
                         files_verified=0,
                         saved_files=[],
                     )
-                    latest_report = read_completed_report(native_base, pending)
+                    latest_report = read_completed_report(native_base, pending, permit=permit)
                     if latest_report != previous:
                         raise NativeUIError("The completed save report changed during shutdown")
                     with QueueStore(native_database, read_only=True) as native_store:

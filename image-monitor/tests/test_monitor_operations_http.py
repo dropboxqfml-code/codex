@@ -241,7 +241,8 @@ def test_work_projection_rejects_nested_private_values_even_in_known_fields(port
     assert "private" not in json.dumps(shared)
 
 
-def test_save_results_and_partial_cycle_counts_reach_status_and_shared_txt(portal):
+@pytest.mark.parametrize("file_count", [2, 10])
+def test_save_results_and_partial_cycle_counts_reach_status_and_shared_txt(portal, file_count):
     fields = dict(
         partial_cycles=3,
         operations_can_save=False,
@@ -249,7 +250,7 @@ def test_save_results_and_partial_cycle_counts_reach_status_and_shared_txt(porta
         operations_save_reason=None,
         operations_save_tasks_started=1,
         operations_save_tasks_completed=1,
-        operations_save_files_verified=2,
+        operations_save_files_verified=file_count,
         operations_save_browser_closed=True,
         operations_save_error_type=None,
     )

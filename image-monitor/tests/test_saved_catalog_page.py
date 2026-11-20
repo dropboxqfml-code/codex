@@ -430,7 +430,25 @@ def test_metadata_only_results_and_long_row_payload_stay_bounded_at_mobile_width
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
-@pytest.mark.parametrize("filename", ["001.jpeg", "001.tif", "001.PNG", "003.jpg", "001.svg"])
+def test_ten_file_slots_are_visible_as_one_group(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    filenames = [f"{slot:03d}.png" for slot in range(1, 11)]
+    state.snapshot.update(
+        saved_files_verified=10,
+        saved_preview_count=0,
+        saved_files=[
+            saved_file(None, saved_filename=name, group_id=FIRST_ID, preview_available=False)
+            for name in filenames
+        ],
+    )
+    page.goto(BASE_URL)
+    expect(page.locator("#saved-files h3")).to_have_text([f"저장 묶음 1 · {n}" for n in filenames])
+    assert state.image_requests == state.actions == []
+
+
+@pytest.mark.parametrize("filename", ["001.jpeg", "001.tif", "001.PNG", "011.jpg", "001.svg"])
 def test_only_fixed_saved_filenames_are_shown(portal, filename):
     from playwright.sync_api import expect
 

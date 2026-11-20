@@ -32,7 +32,7 @@ def allow_controlled_windows_wrapper(monkeypatch):
     monkeypatch.setattr(runtime, "require_windows", lambda: None)
 
 
-def seed_monitor(watch_root):
+def seed_monitor(watch_root, *, image_count=1):
     """Keep an earlier trial and add two independently observed monitor candidates."""
     observations = seed(watch_root)
     baseline = {"observed_at": BASELINE.isoformat(), "anchor_ids": ["200"], "mode": "new"}
@@ -79,7 +79,7 @@ def seed_monitor(watch_root):
                 baseline_observed_at=BASELINE,
                 started_at=NOW - timedelta(seconds=90),
             )
-            observed = snapshot(candidate, NOW - timedelta(seconds=85), count=1)
+            observed = snapshot(candidate, NOW - timedelta(seconds=85), count=image_count)
             observations[candidate["post_url"]] = observed
             details.finish(
                 attempt["attempt_id"],

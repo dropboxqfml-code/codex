@@ -16,6 +16,7 @@ from image_monitor.dcinside import _shared_no_identity, validate_post_url
 
 MAX_PERMIT_BYTES = 4 * 1024 * 1024
 MAX_SAVE_IMAGES = 2
+MAX_MONITOR_SAVE_IMAGES = 10
 REVIEWED_SCOPE = ("검색 감시 시험", "normal", "comic_new6", "ai", "search_subject_memo")
 MONITOR_SCOPE = ("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
 SCOPE_FIELDS = ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type")
@@ -68,7 +69,13 @@ def _uuid(value):
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{32}", value) is not None
 
 
-def _image_signature(snapshot, *, inspection_only=False):
+def _image_limit(candidate):
+    # _confirmed_detail requires the candidate and detail to share a known scope.
+    scope = tuple(candidate[key] for key in SCOPE_FIELDS)
+    return MAX_MONITOR_SAVE_IMAGES if scope == MONITOR_SCOPE else MAX_SAVE_IMAGES
+
+
+def _image_signature(snapshot):
     _require(isinstance(snapshot, dict), "A candidate snapshot is required")
     diagnostics = snapshot.get("diagnostics")
     _require(
@@ -83,10 +90,6 @@ def _image_signature(snapshot, *, inspection_only=False):
     pending = snapshot.get("pending_images")
     counts = snapshot.get("image_counts")
     _require(isinstance(images, list) and len(images) <= 500, "Invalid candidate image inventory")
-    if not inspection_only:
-        _require(
-            1 <= len(images) <= MAX_SAVE_IMAGES, "This pilot requires one or two candidate images"
-        )
     _require(
         isinstance(excluded, list) and len(excluded) <= 500, "Candidate exclusions are invalid"
     )
@@ -331,7 +334,11 @@ def _validate_payload(payload):
         time_status == "at_or_after_baseline",
         "Candidate publication time was not confirmed after the baseline",
     )
-    _image_signature(snapshot)
+    included, _ = _image_signature(snapshot)
+    _require(
+        1 <= len(included) <= _image_limit(candidate),
+        "Candidate image count is outside the save limit",
+    )
     return candidate, baseline, detail, snapshot
 
 
@@ -463,10 +470,10 @@ def classify_stored_candidate_image(candidate, baseline, detail):
         if time_status in {"unavailable", "before_baseline"}:
             return time_status, None
         images = snapshot.get("images")
-        if isinstance(images, list) and not 1 <= len(images) <= MAX_SAVE_IMAGES:
+        if isinstance(images, list) and not 1 <= len(images) <= _image_limit(candidate):
             # A listed attachment never establishes that an image appeared in the body.
             # Check every occurrence, including unresolved loads and excluded elements.
-            included, excluded = _image_signature(snapshot, inspection_only=True)
+            included, excluded = _image_signature(snapshot)
             if included:
                 return "outside_save_limit", None
             if not excluded and snapshot["diagnostics"].get("image_shapes"):

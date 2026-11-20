@@ -3,6 +3,7 @@
 from html import escape
 
 from image_monitor import PUBLIC_VERSION
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
 
 _PAGE = r"""<!doctype html>
 <html lang="ko">
@@ -692,10 +693,11 @@ input:disabled{background:#f4f6f4;color:#7d8985}
         const groupId = typeof row.group_id === 'string' && /^[0-9a-f]{32}$/.test(row.group_id) ?
           row.group_id : null;
         if (!groups.has(groupId)) groups.set(groupId, groups.size + 1);
+        const name = typeof row.saved_filename === 'string' ? row.saved_filename : '';
+        const slot = Number(name.slice(0, 3));
         return {
-          name: typeof row.saved_filename === 'string' &&
-            /^00[12]\.(?:jpg|png|webp|gif|bmp|tiff)$/.test(row.saved_filename) ?
-            row.saved_filename : '저장 이미지',
+          name: /^[0-9]{3}\.(?:jpg|png|webp|gif|bmp|tiff)$/.test(name) &&
+            slot >= 1 && slot <= __MAX_MONITOR_SAVE_IMAGES__ ? name : '저장 이미지',
           group: groupId === null ? null : groups.get(groupId),
           format: formats.includes(row.detected_format) ? row.detected_format : '형식 확인 필요',
           size: count(row.file_size), width: count(row.width), height: count(row.height),
@@ -1032,6 +1034,8 @@ def render_monitor_page(*, script_nonce: str) -> str:
     """Render the application version and the escaped server-generated CSP nonce."""
     if not isinstance(script_nonce, str) or not script_nonce:
         raise ValueError("A script nonce is required")
-    return _PAGE.replace("__PUBLIC_VERSION__", PUBLIC_VERSION).replace(
-        "__SCRIPT_NONCE__", escape(script_nonce, quote=True)
+    return (
+        _PAGE.replace("__PUBLIC_VERSION__", PUBLIC_VERSION)
+        .replace("__MAX_MONITOR_SAVE_IMAGES__", str(MAX_MONITOR_SAVE_IMAGES))
+        .replace("__SCRIPT_NONCE__", escape(script_nonce, quote=True))
     )

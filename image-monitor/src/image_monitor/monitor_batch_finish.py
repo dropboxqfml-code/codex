@@ -18,6 +18,7 @@ from image_monitor.candidate_finish import (
     read_completed_report,
     verify_completed_candidate_files,
 )
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES, MAX_SAVE_IMAGES
 from image_monitor.completed_browser_close import close_completed_browser
 from image_monitor.monitor_save_ledger import (
     LEDGER_NAME,
@@ -142,8 +143,8 @@ def _finish_pending(
     base = task_native_base(task, batch_root, legacy_root)
     native_database = _regular(base / "queue.sqlite")
     report["last_stage"] = "completed_report_check"
-    previous = read_completed_report(base, pending)
     permit = _permit(watch, ledger, task)
+    previous = read_completed_report(base, pending, permit=permit)
     report["last_stage"] = "local_file_verification"
     with QueueStore(native_database, read_only=True) as native:
         verified = finish_completed_candidate(
@@ -156,9 +157,9 @@ def _finish_pending(
         _require(_browser_absent(is_running, pending), "The previous batch browser remains active")
     report["browser_closed"] = True
     report.update(last_stage="final_local_file_verification", files_verified=0, saved_files=[])
-    latest_report = read_completed_report(base, pending)
-    _require(latest_report == previous, "The completed batch report changed during shutdown")
     permit = _permit(watch, ledger, task)
+    latest_report = read_completed_report(base, pending, permit=permit)
+    _require(latest_report == previous, "The completed batch report changed during shutdown")
     with QueueStore(native_database, read_only=True) as native:
         verified = finish_completed_candidate(
             native, permit, base=base, pending=pending, report=latest_report
@@ -224,9 +225,14 @@ def share_batch_finish_report(report):
         "job_counts",
     )
     public = {key: report[key] for key in fields if key in report}
+    limit = (
+        MAX_MONITOR_SAVE_IMAGES
+        if report.get("mode") == "completed_monitor_batch_local_finish"
+        else MAX_SAVE_IMAGES
+    )
     public["saved_files"] = [
         {key: item[key] for key in _FILE_FIELDS if key in item}
-        for item in report.get("saved_files", [])[:2]
+        for item in report.get("saved_files", [])[:limit]
         if isinstance(item, dict)
     ]
     return public

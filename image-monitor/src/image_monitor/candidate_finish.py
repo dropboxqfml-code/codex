@@ -22,7 +22,7 @@ from image_monitor.artifact_files import (
     _relative_path,
     _source_metadata,
 )
-from image_monitor.candidate_save_policy import CandidateSavePermit
+from image_monitor.candidate_save_policy import MAX_SAVE_IMAGES, CandidateSavePermit
 from image_monitor.native_probe import exclusive_digest
 from image_monitor.native_ui import NativeUIError
 from image_monitor.paths import FolderPlan, destination, plan_folder
@@ -130,7 +130,7 @@ def _read_json(path):
     return json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
 
 
-def _report(report, run_directory, save_root, count=None):
+def _report(report, run_directory, save_root, permit=None):
     _require(
         isinstance(report, dict)
         and type(report.get("schema_version")) is int
@@ -151,24 +151,30 @@ def _report(report, run_directory, save_root, count=None):
         "report_path" not in report or report["report_path"] == str(run_directory / "report.json"),
         "The private candidate report identifies another run",
     )
+    if permit is None:
+        image_counts = range(1, MAX_SAVE_IMAGES + 1)
+    else:
+        _require(isinstance(permit, CandidateSavePermit), "A frozen candidate permit is required")
+        image_counts = (permit.image_count,)
     counts = report.get("job_counts")
     _require(
         isinstance(counts, dict)
         and set(counts) == {"observed", "completed", "unresolved"}
         and all(type(value) is int for value in counts.values())
-        and 1 <= counts["observed"] <= 2
+        and counts["observed"] in image_counts
         and counts["observed"] == counts["completed"]
-        and counts["unresolved"] == 0
-        and (count is None or counts["observed"] == count),
+        and counts["unresolved"] == 0,
         "The candidate report does not show every image completed",
     )
 
 
-def read_completed_report(base: Path, pending: dict) -> dict:
+def read_completed_report(
+    base: Path, pending: dict, *, permit: CandidateSavePermit | None = None
+) -> dict:
     """Read the pending run's exact bounded worker report, without writing it."""
     _, run_directory, save_root = _paths(base, pending)
     report = _read_json(run_directory / "report.json")
-    _report(report, run_directory, save_root)
+    _report(report, run_directory, save_root, permit)
     return report
 
 
@@ -203,7 +209,7 @@ def finish_completed_candidate(
     _require(isinstance(permit, CandidateSavePermit), "A frozen candidate permit is required")
     permit.validate()
     base, run_directory, save_root = _paths(base, pending)
-    _report(report, run_directory, save_root, permit.image_count)
+    _report(report, run_directory, save_root, permit)
     summary, _ = verify_completed_candidate_files(store, permit, base=base)
     return summary
 

@@ -80,10 +80,11 @@ def isolate_desktop(monkeypatch, marker):
     )
 
 
-def local_workers(monkeypatch, pilot, clock, events, owned):
+def local_workers(monkeypatch, pilot, clock, events, owned, *, image_counts=None):
     def inspect(candidate, stamp):
         events.append(("detail", candidate["post_id"], stamp))
-        body = detail_snapshot(candidate, observed_at=stamp, published=stamp)
+        count = image_counts[candidate["post_id"]] if image_counts is not None else 1
+        body = detail_snapshot(candidate, observed_at=stamp, published=stamp, count=count)
         body.update(title="Synthetic controller fixture", nickname="fx")
         return {
             "status": "observed",

@@ -1,14 +1,17 @@
 """Run two automatic collection cycles through an owned Windows Chrome desktop."""
 
+import hashlib
 import json
 import os
 import tempfile
 from contextlib import ExitStack
 from datetime import UTC, datetime, timedelta
 from functools import partial
+from io import BytesIO
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from PIL import Image
 from test_monitor_auto_session_integration import listing
 from test_monitor_setup_retry_integration import use_windows_browser
 from test_watch_runtime import BrowserFactory, FakeClock, link, observed, snapshot
@@ -38,17 +41,20 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
         "nickname": "fx",
         "published_at_raw": published.strftime("%Y.%m.%d %H:%M:%S"),
     }
-    document = _html(title, header)
-    images = fixture_assets(title)
-    paths = dict(zip(POSTS, ("/render-first.png", "/render-photo.jpg"), strict=True))
-    assets = {path: images[path] for path in paths.values()}
-    for post_id, path in paths.items():
-        assets["/post-" + post_id] = (
-            "text/html; charset=utf-8",
-            document.replace(b"/render-first.png", path.encode()),
-        )
-
     first, second = POSTS
+    paths = {
+        first: ("/render-first.png", "/render-photo.jpg", "/render-animation.gif", "/last.png"),
+        second: ("/render-photo.jpg",),
+    }
+    images = fixture_assets(title)
+    last = BytesIO()
+    Image.new("RGB", (7, 6), "teal").save(last, format="PNG")
+    images["/last.png"] = ("image/png", last.getvalue())
+    assets = {path: images[path] for post_paths in paths.values() for path in post_paths}
+    for post_id, post_paths in paths.items():
+        document = _html(title, header, image_paths=post_paths)
+        assets["/post-" + post_id] = ("text/html; charset=utf-8", document)
+
     anchor = "900000100"
     scan_browser = BrowserFactory(
         observed(lambda stamp: snapshot([anchor], stamp, links=[link()])),
@@ -75,6 +81,7 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
 
         target_urls = [_post_url(first), _post_url(second)]
         details, saves, outcomes = [], [], []
+        native_inputs = []
 
         class LocalPage(CandidatePageView):
             def goto(self, url, **options):
@@ -94,6 +101,14 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
             assert url in target_urls
             with monkeypatch.context() as desktop:
                 use_windows_browser(desktop, cleanup, origin, url, saves)
+                save_image = post_worker.save_body_image
+
+                def record_native_save(page, ui, **kwargs):
+                    ui.assert_target_ready()
+                    native_inputs.append((page.url, kwargs["image"]["display_url"]))
+                    return save_image(page, ui, **kwargs)
+
+                desktop.setattr(post_worker, "save_body_image", record_native_save)
                 result = post_worker.run_post_save(work, browser, url, **options)
                 outcomes.append(
                     {key: result[key] for key in ("status", "last_stage", "error_type")}
@@ -121,9 +136,15 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
             "new_candidates",
             "new_details_checked",
             "posts_saved",
-            "files_verified",
         ):
             assert result[count] == 2, result
+        assert result["files_verified"] == 5, result
+        expected_inputs = [
+            (_post_url(post_id), origin + path)
+            for post_id, post_paths in paths.items()
+            for path in post_paths
+        ]
+        assert native_inputs == expected_inputs
         assert details == saves == target_urls
         with LedgerStore(
             watch / LEDGER_NAME,
@@ -137,22 +158,37 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
                 (second, "completed"),
             ]
         saved_files = {}
-        for post_id, image_path in paths.items():
-            [output] = batch.glob(f"tasks/*/session-*/images/**/{post_id}/001.*")
-            assert output.name == "001" + Path(image_path).suffix
-            assert output.read_bytes() == images[image_path][1]
-            metadata = output.with_name("metadata.json")
-            evidence = json.loads(metadata.read_bytes())["images"][0]["artifact"]["completion"]
-            assert evidence["state"] == "COMPLETE"
-            assert evidence["source_confirmed"] and evidence["destination_confirmed"]
-            for file in (output, metadata):
-                saved_files[file] = (file.stat().st_mtime_ns, file.read_bytes())
+        for post_id, post_paths in paths.items():
+            [metadata] = batch.glob(f"tasks/*/session-*/images/**/{post_id}/metadata.json")
+            saved_files[metadata] = (metadata.stat().st_mtime_ns, metadata.read_bytes())
+            entries = json.loads(metadata.read_bytes())["images"]
+            for slot, (path, entry) in enumerate(zip(post_paths, entries, strict=True), start=1):
+                artifact = entry["artifact"]
+                assert entry["status"] == "completed"
+                assert entry["file_slot"] == artifact["body_order"] == slot
+                assert artifact["display_url"] == origin + path
+                name = f"{slot:03d}{Path(path).suffix}"
+                assert artifact["saved_filename"] == name
+                assert artifact["save_method"] == "native_context_menu_save_image_as"
+                output = metadata.with_name(name)
+                expected = images[path][1]
+                assert output.read_bytes() == expected
+                evidence = artifact["completion"]
+                digest = hashlib.sha256(expected).hexdigest()
+                assert artifact["verification"]["sha256"] == evidence["exclusive_sha256"] == digest
+                assert evidence["state"] == "COMPLETE"
+                assert evidence["source_confirmed"] and evidence["destination_confirmed"]
+                saved_files[output] = (output.stat().st_mtime_ns, expected)
 
         repeat = session(max_cycles=1)
         assert repeat["status"] == "auto_monitor_completed", repeat
         assert repeat["cycles_completed"] == repeat["list_checks"] == 1
         assert repeat["new_candidates"] == repeat["posts_saved"] == repeat["files_verified"] == 0
+        assert native_inputs == expected_inputs
         assert details == saves == target_urls
+        assert set(saved_files) == {
+            file for file in batch.glob("tasks/*/session-*/images/**/*") if file.is_file()
+        }
         assert all(
             (file.stat().st_mtime_ns, file.read_bytes()) == item
             for file, item in saved_files.items()

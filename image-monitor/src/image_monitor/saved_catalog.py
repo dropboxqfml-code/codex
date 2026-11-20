@@ -15,7 +15,7 @@ from pathlib import Path
 
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_finish import verify_completed_candidate_files
-from image_monitor.candidate_save_policy import MONITOR_SCOPE
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES, MONITOR_SCOPE
 from image_monitor.candidate_save_selection import (
     MONITOR_MANIFEST_NAME,
     read_selection,
@@ -218,6 +218,14 @@ def _check_native_children(root, sessions, *, legacy=False):
         raise ValueError("Saved native output has no frozen registry binding")
 
 
+def valid_monitor_filename(name):
+    return (
+        isinstance(name, str)
+        and re.fullmatch(r"[0-9]{3}\.(?:jpg|png|webp|gif|bmp|tiff)", name) is not None
+        and 1 <= int(name[:3]) <= MAX_MONITOR_SAVE_IMAGES
+    )
+
+
 def _verify_source(native_base, permit, should_stop):
     """Return private proofs only after checking one exact frozen native root."""
     native_base = _plain_path(native_base)
@@ -235,13 +243,13 @@ def _verify_source(native_base, permit, should_stop):
         summary, proofs = verify_completed_candidate_files(store, permit, base=native_base)
     if (
         not isinstance(proofs, list)
-        or not 1 <= len(proofs) <= 2
+        or not 1 <= len(proofs) <= MAX_MONITOR_SAVE_IMAGES
         or len(proofs) != permit.image_count
         or not isinstance(summary.get("saved_files"), list)
         or len(summary["saved_files"]) != len(proofs)
     ):
         raise ValueError("The saved-catalog verifier returned inconsistent files")
-    names = set()
+    slots = set()
     for proof in proofs:
         _stop(should_stop)
         path = _plain_path(Path(proof["path"]))
@@ -250,12 +258,12 @@ def _verify_source(native_base, permit, should_stop):
             not path.is_absolute()
             or not path.is_relative_to(native_base / "images")
             or path.name != name
-            or not isinstance(name, str)
-            or not re.fullmatch(r"00[12]\.(?:jpg|png|webp|gif|bmp|tiff)", name)
-            or name in names
+            or not valid_monitor_filename(name)
+            or int(name[:3]) > permit.image_count
+            or name[:3] in slots
         ):
             raise ValueError("A saved preview proof is outside its owned image root")
-        names.add(name)
+        slots.add(name[:3])
     return proofs
 
 
@@ -478,39 +486,19 @@ def load_saved_catalog(
             # never freeze a new candidate as a side effect of opening the UI.
             if read_selection(manifest) is None:
                 return _snapshot("empty", "existing_saved_candidate_required")
-            with (
-                QueueStore(database, read_only=True) as watch_store,
-                QueueStore(native_database, read_only=True) as native_store,
-            ):
+            with QueueStore(database, read_only=True) as watch_store:
                 if watch_store.summary()["posts"] or watch_store.summary()["jobs"]:
                     raise ValueError("Saved-catalog discovery data contains image work")
                 permit = select_candidate_save(watch_store, _MONITOR_SCOPE, manifest)
                 if permit is None:
                     raise ValueError("The saved monitor selection could not be verified")
-                _stop(should_stop)
-                summary, proofs = verify_completed_candidate_files(
-                    native_store, permit, base=native_base
-                )
-                if (
-                    not isinstance(proofs, list)
-                    or not 1 <= len(proofs) <= 2
-                    or len(proofs) != permit.image_count
-                    or len(summary["saved_files"]) != len(proofs)
-                ):
-                    raise ValueError("The saved-catalog verifier returned inconsistent files")
+                proofs = _verify_source(native_base, permit, should_stop)
                 _stop(should_stop)
                 images = {}
                 files = []
                 total_bytes = 0
                 for proof in proofs:
                     _stop(should_stop)
-                    path = _plain_path(Path(proof["path"]))
-                    if (
-                        not path.is_absolute()
-                        or not path.is_relative_to(native_base / "images")
-                        or path.name != proof["saved_filename"]
-                    ):
-                        raise ValueError("A saved preview proof is outside its owned image root")
                     item = {key: proof[key] for key in _FILE_FIELDS}
                     content_type = PREVIEW_CONTENT_TYPES.get(proof["detected_format"])
                     size = proof["file_size"]

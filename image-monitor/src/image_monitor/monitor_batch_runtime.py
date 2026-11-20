@@ -15,7 +15,11 @@ from zoneinfo import ZoneInfo
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_finish import _paths, verify_completed_candidate_files
 from image_monitor.candidate_policy import classify_candidate_detail
-from image_monitor.candidate_save_policy import make_candidate_save_permit
+from image_monitor.candidate_save_policy import (
+    MAX_MONITOR_SAVE_IMAGES,
+    MAX_SAVE_IMAGES,
+    make_candidate_save_permit,
+)
 from image_monitor.candidate_save_selection import (
     MANIFEST_NAME,
     MONITOR_MANIFEST_NAME,
@@ -49,6 +53,7 @@ from image_monitor.watch_store import WatchScope, WatchStore, _record
 
 MONITOR_SCOPE = WatchScope("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
 MAX_DETAILS = 64
+MAX_BATCH_POSTS = 2
 _FILE_FIELDS = ("saved_filename", "detected_format", "file_size", "width", "height", "frames")
 
 
@@ -425,12 +430,20 @@ def share_batch_report(report):
         or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,79}", error_type)
     ):
         public["error_type"] = None
+    files = report.get("saved_files", [])
+    mode = report.get("mode")
+    limit = MAX_SAVE_IMAGES
+    if mode in {"bounded_monitor_candidate_native_batch", "bounded_monitor_automatic_save"}:
+        limit = MAX_MONITOR_SAVE_IMAGES
+        if (
+            mode == "bounded_monitor_candidate_native_batch"
+            and report.get("max_tasks") == MAX_BATCH_POSTS
+        ):
+            limit *= MAX_BATCH_POSTS
+    public["saved_file_count"] = len(files)
     public["saved_files"] = [
-        {key: item[key] for key in _FILE_FIELDS if key in item}
-        for item in report.get("saved_files", [])[:4]
+        {key: item[key] for key in _FILE_FIELDS if key in item} for item in files[:limit]
     ]
-    if report.get("mode") == "recent_candidate_native_save":
-        public["saved_file_count"] = len(report.get("saved_files", []))
     return public
 
 
@@ -529,7 +542,7 @@ def run_monitor_batch(
     legacy_root,
     batch_root,
     *,
-    max_tasks=2,
+    max_tasks=MAX_BATCH_POSTS,
     clock=None,
     save_runner=run_post_save,
     should_stop=None,
@@ -555,7 +568,7 @@ def run_monitor_batch(
         raise NativeUIError("Automatic saving requires one exact monitor candidate")
     if recent_handoff is not None and max_tasks != 1:
         raise NativeUIError("A recent save requires exactly one task")
-    if type(max_tasks) is not int or not 1 <= max_tasks <= 2:
+    if type(max_tasks) is not int or not 1 <= max_tasks <= MAX_BATCH_POSTS:
         raise NativeUIError("Choose one or two new batch save attempts")
     if should_stop is not None and (max_tasks != 1 or not callable(should_stop)):
         raise NativeUIError("A dashboard stop condition requires a single save attempt")

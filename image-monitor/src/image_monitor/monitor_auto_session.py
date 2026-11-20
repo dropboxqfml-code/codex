@@ -5,6 +5,7 @@ from datetime import timedelta
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
 from image_monitor.monitor_auto_discovery import run_auto_discovery
 from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_collect import collect_session_turn
@@ -61,7 +62,7 @@ def _record_collection(report, turn):
         report["native_save_tasks_started"] = None
     elif report["native_save_tasks_started"] is not None:
         report["native_save_tasks_started"] += _count(turn, "native_save_tasks_started", 1)
-    count = _count(turn, "files_verified", 2)
+    count = _count(turn, "files_verified", MAX_MONITOR_SAVE_IMAGES)
     if turn["status"] == "monitor_collect_saved":
         if not (
             turn["browser_closed"] is True

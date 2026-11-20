@@ -16,6 +16,7 @@ from image_monitor.candidate_finish import (
     read_completed_report,
 )
 from image_monitor.candidate_policy import classify_candidate_detail
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
 from image_monitor.candidate_save_selection import (
     MANIFEST_NAME,
     MONITOR_MANIFEST_NAME,
@@ -288,7 +289,7 @@ def _detail_row(queue, detail):
         raise ValueError("Completed detail image counts are invalid")
     if classification["time_status"] == "before_baseline" or included == pending == 0:
         return "save_unavailable", "save_unavailable", included
-    if pending or not 1 <= included <= 2:
+    if pending or not 1 <= included <= MAX_MONITOR_SAVE_IMAGES:
         return "candidate_detail_needs_review", "candidate_detail_requires_review", included
     _candidate_record, permit = _eligible_permit(queue, detail)
     return "save_ready", "save_ready", permit.image_count
@@ -309,7 +310,7 @@ def _can_finish(queue, tasks, pending, legacy, batch, should_stop):
     _stop(should_stop)
     try:
         if pending is not None:
-            previous = read_completed_report(base, pending)
+            previous = read_completed_report(base, pending, permit=permit)
             with QueueStore(_plain_path(base / "queue.sqlite"), read_only=True) as native:
                 finish_completed_candidate(
                     native, permit, base=base, pending=pending, report=previous

@@ -23,7 +23,7 @@ def completed():
     }
 
 
-def batch_report():
+def batch_report(file_count=2):
     return {
         "schema_version": 1,
         "mode": "bounded_monitor_candidate_native_batch",
@@ -32,14 +32,15 @@ def batch_report():
         "max_tasks": 1,
         "tasks_started": 1,
         "tasks_completed": 1,
-        "saved_files": [{"saved_filename": "PRIVATE"}, {"path": "PRIVATE"}],
+        "saved_files": [{"saved_filename": "PRIVATE"} for _ in range(file_count)],
         "browser_closed": True,
         "shared_pending_retained": False,
         "report_path": "PRIVATE",
     }
 
 
-def test_dashboard_cli_sets_one_attempt_and_prints_only_counts(tmp_path, monkeypatch):
+@pytest.mark.parametrize("file_count", [2, 10])
+def test_dashboard_cli_sets_one_attempt_and_prints_only_counts(tmp_path, monkeypatch, file_count):
     from types import SimpleNamespace
 
     roots = [tmp_path / name for name in ("watch & 1", "legacy", "batch")]
@@ -47,7 +48,7 @@ def test_dashboard_cli_sets_one_attempt_and_prints_only_counts(tmp_path, monkeyp
 
     def run(*args, max_tasks, should_stop):
         calls.append((args, max_tasks, should_stop()))
-        return batch_report()
+        return batch_report(file_count)
 
     monkeypatch.setitem(
         sys.modules, "image_monitor.monitor_batch_runtime", SimpleNamespace(run_monitor_batch=run)
@@ -56,7 +57,7 @@ def test_dashboard_cli_sets_one_attempt_and_prints_only_counts(tmp_path, monkeyp
     with os.fdopen(read_fd, "rb") as stream, os.fdopen(write_fd, "wb", buffering=0) as control:
         control.write(action._START)
         result = action.run_dashboard_child(*roots, stream=stream)
-        assert result == completed()
+        assert result == completed() | {"files_verified": file_count}
     assert calls == [(tuple(roots), 1, False)]
 
 
@@ -95,7 +96,7 @@ def test_dashboard_launch_uses_fixed_absolute_paths_and_protocol(monkeypatch, tm
         ({"tasks_started": True}, 0),
         ({"tasks_completed": 2}, 0),
         ({"files_verified": 0}, 0),
-        ({"files_verified": 3}, 0),
+        ({"files_verified": 11}, 0),
         ({"browser_closed": False}, 0),
         ({"error_type": "/private"}, 0),
         ({}, 2),

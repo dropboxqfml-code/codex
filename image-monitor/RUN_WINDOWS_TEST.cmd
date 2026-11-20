@@ -414,7 +414,7 @@ if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Watching begins only after you choose St
 if "%MONITOR%"=="1" >>"%LOG_FILE%" echo After a successful list check, the monitor can inspect one unattempted candidate before the next list check.
 if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Existing saved monitor images are verified locally when the screen opens; no site request or native input starts for this check.
 if "%MONITOR%"=="1" >>"%LOG_FILE%" echo Watching inspects candidates in the background. To save one eligible post, stop watching and request a save in the dashboard, then confirm in dedicated Chrome.
-if "%MONITOR_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo Native saving of one frozen candidate from the local monitor, at most two reviewed images.
+if "%MONITOR_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo Native saving of one frozen candidate from the local monitor, up to ten verified body images.
 if "%MONITOR_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo Review the dedicated Chrome window and click its save-start button once. Keep that window in front until saving finishes.
 if "%MONITOR_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo Existing watch records and earlier saved files are preserved. This save uses its separate monitor output directory.
 if "%MONITOR_SAVE_TEST%"=="1" >>"%LOG_FILE%" echo No automatic recovery, new list scan, or continuous image saving is started. This single TXT opens automatically.

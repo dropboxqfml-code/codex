@@ -98,7 +98,7 @@ def test_baseline_skips_older_work_then_verified_partial_can_collect(tmp_path):
         tmp_path,
         clock,
         [scan("baseline"), scan("partial", candidates=3)],
-        [collection("saved", details=1, files=2)],
+        [collection("saved", details=1, files=10)],
         progress=progress,
     )
     assert events == [("scan", 0), ("scan", 120), ("collect", 120)]
@@ -107,8 +107,8 @@ def test_baseline_skips_older_work_then_verified_partial_can_collect(tmp_path):
     assert (
         report["partial_list_checks"] == report["new_details_checked"] == report["posts_saved"] == 1
     )
-    assert report["new_candidates"] == 3 and report["files_verified"] == 2
-    assert report["last_saved_files"][-1]["saved_filename"] == "002.png"
+    assert report["new_candidates"] == 3 and report["files_verified"] == 10
+    assert report["last_saved_files"][-1]["saved_filename"] == "010.png"
     assert report["status"] == "auto_monitor_completed" and auto_monitor_exit_code(report) == 0
     assert clock.waits == [120]
     with watch_run_lock(tmp_path / "watch" / "watch.sqlite", MONITOR_SCOPE, purpose="monitor"):

@@ -229,6 +229,7 @@ def test_shared_cooldown_is_utc_and_does_not_hide_ready_counts(local_data):
     assert result["wait_until"] == due.isoformat(timespec="microseconds")
 
 
+@pytest.mark.parametrize("completed_batch", [1, 10], indirect=True)
 def test_pending_completed_proof_enables_only_explicit_finish_without_mutation(local_finish):
     value = local_finish
     before = {path: path.read_bytes() for path in value.root.rglob("*") if path.is_file()}
@@ -236,6 +237,8 @@ def test_pending_completed_proof_enables_only_explicit_finish_without_mutation(l
     assert result["can_finish"] is True, result
     assert result["reason"] == "completed_save_can_finish"
     assert result["save_completed"] == 0 and result["save_needs_review"] == 1
+    [pending] = [row for row in result["rows"] if row["status"] == "save_needs_review"]
+    assert pending["image_count"] == value.permit.image_count
     assert value.marker.exists()
     assert all(path.read_bytes() == contents for path, contents in before.items())
     with LedgerStore(

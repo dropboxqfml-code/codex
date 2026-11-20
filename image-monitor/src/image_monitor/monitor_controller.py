@@ -14,6 +14,7 @@ from pathlib import Path
 
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_runtime import run_candidate_trial
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
 from image_monitor.monitor_diagnosis import PROFILE_GAP, read_latest_list_diagnosis
 from image_monitor.monitor_settings import (
     load_monitor_settings,
@@ -692,7 +693,7 @@ class MonitorController:
             or report.get("status") not in FINISH_ACTION_STATUSES
             or report.get("reason") not in FINISH_ACTION_REASONS
             or type(report.get("files_verified")) is not int
-            or not 0 <= report["files_verified"] <= 2
+            or not 0 <= report["files_verified"] <= MAX_MONITOR_SAVE_IMAGES
         ):
             raise QueueError("Completed reconciliation returned an invalid report")
         return {
@@ -840,6 +841,9 @@ class MonitorController:
     @staticmethod
     def _saved_snapshot(snapshot):
         """Project and validate a bounded loader result before publishing it."""
+        from image_monitor.monitor_save_ledger import MAX_TASKS
+        from image_monitor.saved_catalog import valid_monitor_filename
+
         summary = getattr(snapshot, "summary", None)
         images = getattr(snapshot, "images", None)
         if not isinstance(summary, dict) or not isinstance(images, dict):
@@ -856,12 +860,12 @@ class MonitorController:
             not isinstance(files, list)
             or not 0 <= len(files) <= 20
             or type(verified) is not int
-            or not 0 <= verified <= 2000
+            or verified < 0
             or type(omitted) is not int
             or omitted != verified - len(files)
             or type(groups) is not int
-            or not 0 <= groups <= min(1000, verified)
-            or verified > 2 * groups
+            or not 0 <= groups <= min(MAX_TASKS, verified)
+            or verified > MAX_MONITOR_SAVE_IMAGES * groups
             or type(preview_count) is not int
             or not 0 <= preview_count <= len(files)
             or len(images) != preview_count
@@ -881,11 +885,10 @@ class MonitorController:
             available, image_id = row.get("preview_available"), row.get("preview_id")
             group_id = row.get("group_id")
             if (
-                not isinstance(name, str)
-                or not re.fullmatch(r"00[12]\.(?:jpg|png|webp|gif|bmp|tiff)", name)
+                not valid_monitor_filename(name)
                 or group_id is not None
                 and (not isinstance(group_id, str) or not re.fullmatch(r"[0-9a-f]{32}", group_id))
-                or (group_id, name) in names
+                or (group_id, name[:3]) in names
                 or detected not in _SAVED_EXTENSIONS
                 or not name.endswith("." + _SAVED_EXTENSIONS[detected])
                 or type(available) is not bool
@@ -895,7 +898,7 @@ class MonitorController:
                 )
             ):
                 raise QueueError("Saved catalog file metadata is invalid")
-            names.add((group_id, name))
+            names.add((group_id, name[:3]))
             group_counts[group_id] = group_counts.get(group_id, 0) + 1
             if available:
                 if (
@@ -924,7 +927,7 @@ class MonitorController:
             set(images) != expected_ids
             or total > _MAX_TOTAL_PREVIEW_BYTES
             or len(group_counts) > groups
-            or any(count > 2 for count in group_counts.values())
+            or any(count > MAX_MONITOR_SAVE_IMAGES for count in group_counts.values())
             or None in group_counts
             and (len(group_counts) != 1 or groups != 1)
             or not omitted

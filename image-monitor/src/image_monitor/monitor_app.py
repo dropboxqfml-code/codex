@@ -11,6 +11,7 @@ from pathlib import Path
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
 from image_monitor.monitor_controller import MONITOR_SCOPE, MonitorController
 from image_monitor.monitor_page import render_monitor_page
 from image_monitor.monitor_save_action import SAVE_ACTION_REASONS, SAVE_ACTION_STATUSES
@@ -174,7 +175,7 @@ def _public_operations(status):
     for key, maximum in (
         ("operations_save_tasks_started", 1),
         ("operations_save_tasks_completed", 1),
-        ("operations_save_files_verified", 2),
+        ("operations_save_files_verified", MAX_MONITOR_SAVE_IMAGES),
     ):
         value = status.get(key)
         result[key] = value if type(value) is int and 0 <= value <= maximum else 0

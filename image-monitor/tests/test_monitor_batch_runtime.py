@@ -48,11 +48,11 @@ class Clock:
 
 
 @pytest.fixture
-def data(monkeypatch):
+def data(monkeypatch, request):
     with tempfile.TemporaryDirectory(prefix="ib-") as folder:
         root = Path(folder).resolve()
         watch, legacy, batch = root / "w", root / "l", root / "b"
-        observations = seed_monitor(watch)
+        observations = seed_monitor(watch, image_count=getattr(request, "param", 1))
         # Short fixture authors keep the unchanged production Windows budget
         # meaningful even under the runner's long temporary-directory prefix.
         with QueueStore(watch / "watch.sqlite") as queue:
@@ -106,6 +106,7 @@ def finalize(root, permit, snapshot, now, *, native_filename="native-image.png")
     base.mkdir(parents=True, exist_ok=True)
     snapshot = deepcopy(snapshot)
     snapshot["observed_at"] = now.isoformat()
+    artifacts = []
     with QueueStore(base / "queue.sqlite") as queue:
         queued = enqueue_candidate_snapshot(queue, snapshot, permit=permit)
         for entry in queued["jobs"]:
@@ -122,7 +123,7 @@ def finalize(root, permit, snapshot, now, *, native_filename="native-image.png")
             verified = verify_image(staging, writer_finished=True).to_dict()
             queue.transition(job["job_id"], job["lease_token"], "saving")
             queue.transition(job["job_id"], job["lease_token"], "verifying")
-            finalize_saved_image(
+            artifact = finalize_saved_image(
                 queue,
                 job["job_id"],
                 job["lease_token"],
@@ -141,6 +142,8 @@ def finalize(root, permit, snapshot, now, *, native_filename="native-image.png")
                 browser_suggested_filename="invented" + staging.suffix,
                 saved_at=now,
             )
+            artifacts.append(artifact)
+    return artifacts
 
 
 class Runner:
@@ -669,3 +672,19 @@ def test_dashboard_stop_during_started_native_work_preserves_its_verified_result
     assert outcome["status"] == "monitor_batch_completed"
     assert outcome["tasks_completed"] == 1 and len(runner.calls) == 1
     assert outcome["tasks_remaining"] == 1
+
+
+@pytest.mark.parametrize("data", [10], indirect=True)
+def test_two_monitor_posts_verify_twenty_files_and_reopen_without_more_saves(data):
+    report = run(data)
+    assert report["status"] == "monitor_batch_completed" and report["tasks_completed"] == 2, report
+    shared = runtime.share_batch_report(report)
+    names = [f"{slot:03d}.png" for slot in range(1, 11)]
+    assert shared["saved_file_count"] == 20
+    assert [item["saved_filename"] for item in shared["saved_files"]] == names + names
+    for path in data.batch.glob("tasks/*/session-1/images/**/metadata.json"):
+        entries = json.loads(path.read_bytes())["images"]
+        assert [entry["artifact"]["saved_filename"] for entry in entries] == names
+    assert len(list(data.batch.glob("tasks/*/session-1/images/**/010.png"))) == 2
+    again = run(data, Runner(data, fail=True))
+    assert again["tasks_started"] == 0 and again["already_completed_count"] == 2

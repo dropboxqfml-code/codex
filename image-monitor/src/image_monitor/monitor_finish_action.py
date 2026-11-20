@@ -13,6 +13,8 @@ import threading
 import time
 from pathlib import Path
 
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
+
 FINISH_ACTION_STATUSES = frozenset(
     {
         "batch_finish_completed",
@@ -311,10 +313,10 @@ def _parse_report(raw, returncode):
         or type(report["close_attempted"]) is not bool
         or report["files_preserved"] is not True
         or report["metadata_preserved"] is not True
-        or not _integer(report["files_verified"], 0, 2)
+        or not _integer(report["files_verified"], 0, MAX_MONITOR_SAVE_IMAGES)
         or not _integer(report["tasks_completed"], 0, 1)
         or not isinstance(report["saved_files"], list)
-        or len(report["saved_files"]) > 2
+        or len(report["saved_files"]) > MAX_MONITOR_SAVE_IMAGES
         or not all(_valid_file(item) for item in report["saved_files"])
     ):
         raise ValueError("Invalid report values")
@@ -323,7 +325,7 @@ def _parse_report(raw, returncode):
         if (
             not isinstance(counts, dict)
             or set(counts) != {"observed", "completed", "unresolved"}
-            or not all(_integer(value, 0, 2) for value in counts.values())
+            or not all(_integer(value, 0, MAX_MONITOR_SAVE_IMAGES) for value in counts.values())
             or counts["observed"] < 1
             or counts["completed"] != counts["observed"]
             or counts["unresolved"] != 0

@@ -6,6 +6,7 @@ import sys
 import threading
 from pathlib import Path
 
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
 from image_monitor.monitor_finish_action import (
     _integer,
     _reject_number,
@@ -89,7 +90,7 @@ def validate_save_result(report):
         or reason not in _STATUS_REASONS[status]
         or not _integer(started, 0, 1)
         or not _integer(completed, 0, started)
-        or not _integer(files, 0, 2)
+        or not _integer(files, 0, MAX_MONITOR_SAVE_IMAGES)
         or (closed is not None and type(closed) is not bool)
     ):
         raise ValueError("Invalid dashboard save report values")

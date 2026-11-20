@@ -5,6 +5,7 @@ from contextlib import nullcontext
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_runtime import run_candidate_trial
+from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
 from image_monitor.monitor_auto_selection import search_monitor_candidates
 from image_monitor.monitor_batch_runtime import run_monitor_batch, share_batch_report
 from image_monitor.monitor_clock import stop_requested, wait_until
@@ -23,8 +24,10 @@ def _save_status(save, expected_images):
         if (
             save["reason"] is None
             and save["tasks_started"] == save["tasks_completed"] == 1
-            and 1 <= expected_images <= 2
-            and len(save["saved_files"]) == expected_images
+            and type(expected_images) is int
+            and 1 <= expected_images <= MAX_MONITOR_SAVE_IMAGES
+            and type(save.get("saved_file_count")) is int
+            and save["saved_file_count"] == expected_images == len(save["saved_files"])
             and save["shared_pending_retained"] is False
             and save["last_stage"] == "complete"
         ):
@@ -71,7 +74,12 @@ def _collect(report, roots, clock, detail_runner, save_runner, *, session_turn, 
         if search["status"] in {"no_candidates", "limit", "waiting", "busy", "review", "cancelled"}:
             report["status"] = "monitor_collect_" + search["status"]
         return
-    if target is None or not 1 <= search["eligible_body_images"] <= 2:
+    expected_images = search["eligible_body_images"]
+    if (
+        target is None
+        or type(expected_images) is not int
+        or not 1 <= expected_images <= MAX_MONITOR_SAVE_IMAGES
+    ):
         report.update(reason="verified_candidate_required")
         return
 
@@ -115,7 +123,7 @@ def _collect(report, roots, clock, detail_runner, save_runner, *, session_turn, 
             return
 
     public = share_batch_report(save)
-    status = _save_status(public, search["eligible_body_images"])
+    status = _save_status(public, expected_images)
     files = public["saved_files"] if status == "monitor_collect_saved" else []
     due = public.get("next_eligible_at_local")
     report.update(

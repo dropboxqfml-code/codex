@@ -307,6 +307,58 @@ def test_pilot_rejects_zero_or_more_than_two_images(count):
 
 
 @pytest.mark.parametrize(
+    ("count", "outcome"),
+    [
+        (0, "no_body_images_observed"),
+        (3, "save_ready"),
+        (10, "save_ready"),
+        (11, "outside_save_limit"),
+    ],
+)
+def test_monitor_rechecks_the_entire_body_against_its_own_limit(count, outcome):
+    candidate, baseline, detail = candidate_evidence(image_count=count)
+    candidate["watch_name"] = detail["watch_name"] = "목록 감시"
+    observed, permit = classify_stored_candidate_image(candidate, baseline, detail)
+    assert observed == outcome
+    if outcome != "save_ready":
+        assert permit is None
+        with pytest.raises(CandidateSavePolicyError):
+            make_candidate_save_permit(candidate, baseline, detail)
+        return
+    assert permit.image_count == count
+    fresh = copy.deepcopy(snapshot_from(detail))
+    assert len(permit.authorize_snapshot(fresh)["images"]) == count
+    fresh["images"][-1]["natural_height"] += 1
+    with pytest.raises(CandidateSavePolicyError, match="image set"):
+        permit.authorize_snapshot(fresh)
+
+
+@pytest.mark.parametrize(
+    ("scope", "alpha4_fingerprint"),
+    [
+        ("검색 감시 시험", "8a321453ec908bee002e1f98b728fdd12e07708561e9b40913692d5878ed66e6"),
+        ("목록 감시", "5296ad0aae3c11ef61ff9a794fd227c74a6285a4f17c059100070be71870f6a8"),
+    ],
+)
+def test_alpha4_ledger_bindings_still_match_existing_two_image_evidence(scope, alpha4_fingerprint):
+    candidate, baseline, detail = candidate_evidence()
+    candidate["watch_name"] = detail["watch_name"] = scope
+    permit = make_candidate_save_permit(candidate, baseline, detail)
+    assert permit.fingerprint == alpha4_fingerprint
+
+
+def test_neither_a_mismatched_scope_nor_an_unresolved_later_image_can_authorize_a_subset():
+    candidate, baseline, detail = candidate_evidence(image_count=10)
+    candidate["watch_name"] = "목록 감시"
+    assert classify_stored_candidate_image(candidate, baseline, detail) == ("needs_review", None)
+    detail["watch_name"] = candidate["watch_name"]
+    snapshot = snapshot_from(detail)
+    snapshot["pending_images"].append({"body_order": 11, "reason": "image_not_loaded"})
+    snapshot["image_counts"].update(body_occurrences=11, pending=1)
+    assert classify_stored_candidate_image(candidate, baseline, detail) == ("needs_review", None)
+
+
+@pytest.mark.parametrize(
     "change",
     [
         lambda c, b, d: c.update(watch_name="Other watch"),

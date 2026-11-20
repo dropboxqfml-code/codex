@@ -64,12 +64,12 @@ def search(roots, *outcomes):
 
 
 @pytest.mark.parametrize(
-    "skipped,count", [(body(0), "no_body_images_observed"), (body(3), "outside_save_limit")]
+    "skipped,count", [(body(0), "no_body_images_observed"), (body(11), "outside_save_limit")]
 )
 def test_empty_or_oversized_deleted_then_real_typed_handoff(roots, skipped, count):
-    report, binding = search(roots, skipped, deleted, body(2))
+    report, binding = search(roots, skipped, deleted, body(10))
     assert report["status"] == "ready", report
-    assert report["new_details_checked"] == 3 and report["eligible_body_images"] == 2
+    assert report["new_details_checked"] == 3 and report["eligible_body_images"] == 10
     assert report["outcome_counts"] == {count: 1, "unavailable": 1, "save_ready": 1}
     assert len(roots[3].waits) == 3 and all(value == 60 for value in roots[3].waits)
     with QueueStore(roots[0] / "watch.sqlite", read_only=True) as queue:

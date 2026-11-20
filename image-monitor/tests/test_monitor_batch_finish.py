@@ -13,14 +13,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from PIL import Image
 from test_candidate_finish_runtime import database_dump, json_write
 from test_candidate_save_runtime import NOW
+from test_monitor_batch_runtime import finalize
 from test_monitor_save_runtime import seed_monitor, source_evidence
 
 from image_monitor import candidate_finish as finish_core
 from image_monitor import monitor_batch_finish as runtime
-from image_monitor.artifact_files import finalize_saved_image
 from image_monitor.candidate_save_policy import make_candidate_save_permit
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.monitor_controller import MONITOR_SCOPE
@@ -34,7 +33,6 @@ from image_monitor.native_state import PendingSave
 from image_monitor.native_ui import NativeUIError
 from image_monitor.post_pipeline import enqueue_candidate_snapshot
 from image_monitor.queue import QueueStore
-from image_monitor.validation import verify_image
 from image_monitor.watch_lock import watch_run_lock
 from image_monitor.watch_runtime import DEFAULT_SCOPE
 from image_monitor.watch_store import WatchStore
@@ -51,12 +49,13 @@ def ledger(value, **options):
 
 
 @pytest.fixture
-def completed_batch(monkeypatch):
+def completed_batch(monkeypatch, request):
     # Preserve the production Windows path budget with a short fixture root.
     with tempfile.TemporaryDirectory(prefix="imbf-") as directory:
         root = Path(directory).resolve()
         watch_root, legacy_root, batch_root = root / "watch", root / "legacy", root / "batch"
-        seed_monitor(watch_root)
+        image_count = getattr(request, "param", 1)
+        seed_monitor(watch_root, image_count=image_count)
         with QueueStore(watch_root / "watch.sqlite", read_only=True) as watch:
             candidate = WatchStore(watch).list_candidates(MONITOR_SCOPE)[0]
             baseline = WatchStore(watch).get_state(MONITOR_SCOPE)["baseline"]
@@ -80,51 +79,9 @@ def completed_batch(monkeypatch):
         base = task_native_base(task, batch_root, legacy_root)
         run_directory = base / "runs" / uuid.uuid4().hex
         (run_directory / "browser-profile").mkdir(parents=True)
-        snapshot = deepcopy(permit.reference_snapshot)
-        snapshot["observed_at"] = (NOW + timedelta(seconds=5)).isoformat()
-        with QueueStore(base / "queue.sqlite") as native:
-            queued = enqueue_candidate_snapshot(native, snapshot, permit=permit)
-            claim = native.claim_next(
-                "batch-local-fixture",
-                NOW + timedelta(seconds=10),
-                job_ids=[item["job_id"] for item in queued["jobs"]],
-            )
-            assert claim is not None
-            image = claim["source"]["image"]
-            staging = (
-                base
-                / "images"
-                / "_staging"
-                / claim["job_id"]
-                / uuid.uuid4().hex
-                / "native-image.png"
-            )
-            staging.parent.mkdir(parents=True)
-            Image.new("RGB", (image["natural_width"], image["natural_height"]), "#315781").save(
-                staging, format="PNG"
-            )
-            verified = verify_image(staging, writer_finished=True).to_dict()
-            native.transition(claim["job_id"], claim["lease_token"], "saving")
-            native.transition(claim["job_id"], claim["lease_token"], "verifying")
-            artifact = finalize_saved_image(
-                native,
-                claim["job_id"],
-                claim["lease_token"],
-                observation_id=claim["source"]["observation_id"],
-                save_root=base / "images",
-                staging_file=staging,
-                verification=verified,
-                completion_evidence={
-                    "state": "COMPLETE",
-                    "destination_confirmed": True,
-                    "source_confirmed": True,
-                    "destination": str(staging),
-                    "source_url": image["display_url"],
-                    "exclusive_sha256": verified["sha256"],
-                },
-                browser_suggested_filename="owned-fixture-name.png",
-                saved_at=NOW + timedelta(seconds=15),
-            )
+        artifacts = finalize(
+            base.parent, permit, permit.reference_snapshot, NOW + timedelta(seconds=15)
+        )
         marker = root / "shared-pending.json"
         state = PendingSave(marker)
         pending = state.begin(run_directory)
@@ -139,9 +96,10 @@ def completed_batch(monkeypatch):
             "reason": "Dedicated browser did not close; inspect it manually",
             "browser_closed": False,
             "shared_pending_retained": True,
-            "job_counts": {"observed": 1, "completed": 1, "unresolved": 0},
+            "job_counts": {"observed": image_count, "completed": image_count, "unresolved": 0},
             "saved_files": [
                 {"saved_filename": Path(artifact["final_path"]).name, **artifact["verification"]}
+                for artifact in artifacts
             ],
             "output_directory": str(base / "images"),
             "report_path": str(run_directory / "report.json"),
@@ -174,7 +132,7 @@ def completed_batch(monkeypatch):
         value.__dict__.update(
             base=base,
             task_id=task["task_id"],
-            artifact=artifact,
+            artifact=artifacts[0],
             marker=marker,
             state=state,
             pending=pending,
@@ -531,12 +489,14 @@ def test_shared_report_omits_private_paths_identities_hashes_and_unbounded_files
         private_identity=completed_batch.pending,
         permit_fingerprint=completed_batch.permit.fingerprint,
     )
-    report["saved_files"] *= 4
+    report["saved_files"] *= 11
     report["saved_files"][0]["path"] = str(completed_batch.base)
     report["saved_files"][0]["sha256"] = "private-hash"
     public = runtime.share_batch_finish_report(report)
     text = json.dumps(public)
-    assert len(public["saved_files"]) == 2
+    assert len(public["saved_files"]) == 10
+    recent = runtime.share_batch_finish_report(report | {"mode": "recent_candidate_local_finish"})
+    assert len(recent["saved_files"]) == 2
     for private in (
         str(completed_batch.root),
         completed_batch.task_id,
@@ -558,3 +518,38 @@ def test_platform_guard_precedes_all_new_finish_files(tmp_path, monkeypatch):
             tmp_path / "watch", tmp_path / "legacy", tmp_path / "batch"
         )
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("completed_batch", [10], indirect=True)
+@pytest.mark.parametrize("fault", [None, "short_receipt", "changed_tenth_file"])
+def test_ten_slot_shutdown_receipt_matches_jobs_before_clearing(completed_batch, fault):
+    from image_monitor.monitor_finish_action import _parse_report
+
+    if fault == "short_receipt":
+        previous = completed_batch.previous
+        previous["job_counts"] = {"observed": 9, "completed": 9, "unresolved": 0}
+        previous["saved_files"].pop()
+        json_write(completed_batch.report_path, previous)
+    if fault == "changed_tenth_file":
+        [last_file] = (completed_batch.base / "images").rglob("010.png")
+        last_file.write_bytes(b"changed tenth file")
+    before = preserve(completed_batch)
+    report = finish(completed_batch)
+    if fault:
+        assert report["status"] == "batch_finish_manual_review" and report["files_verified"] == 0
+        assert (
+            completed_batch.marker.exists()
+            and task_record(completed_batch)["status"] == "needs_review"
+        )
+    else:
+        shared = runtime.share_batch_finish_report(report)
+        assert _parse_report(json.dumps(shared).encode(), 0) == shared
+        assert shared["files_verified"] == shared["job_counts"]["completed"] == 10
+        assert [f["saved_filename"] for f in shared["saved_files"]] == [
+            f"{slot:03d}.png" for slot in range(1, 11)
+        ]
+        assert (
+            not completed_batch.marker.exists()
+            and task_record(completed_batch)["status"] == "completed"
+        )
+    assert_preserved(completed_batch, before)

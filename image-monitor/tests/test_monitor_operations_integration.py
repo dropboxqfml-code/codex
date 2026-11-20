@@ -119,7 +119,16 @@ def test_real_overview_shows_two_completed_saves_and_one_uninspected_candidate(
         assert not external and not downloads
         if sys.platform != "win32" and not blocked:
             page.screenshot(path="/tmp/im-v23-real-overview.png", full_page=True)
-        page.get_by_role("button", name="프로그램 종료", exact=True).click()
+        # Keep Playwright servicing the routed exit request before blocking on the server thread.
+        with page.expect_response(
+            lambda reply: (
+                reply.url == server.url + "api/action"
+                and reply.request.method == "POST"
+                and reply.request.post_data_json == {"action": "exit"}
+            )
+        ) as exit_reply:
+            page.get_by_role("button", name="프로그램 종료", exact=True).click()
+        assert exit_reply.value.ok and exit_reply.value.json()["closing"] is True
         serving.join(5)
         assert not serving.is_alive()
     finally:

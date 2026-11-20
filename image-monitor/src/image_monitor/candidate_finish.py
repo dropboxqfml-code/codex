@@ -208,19 +208,8 @@ def finish_completed_candidate(
     return summary
 
 
-def verify_completed_candidate_files(
-    store: QueueStore,
-    permit: CandidateSavePermit,
-    *,
-    base: Path,
-) -> tuple[dict, list[dict]]:
-    """Read completed journals and files without needing or changing a pending save.
-
-    The caller must hold the shared watch and native locks. The public summary
-    excludes source identities and paths. Private proofs pair each exact local
-    file with its verified digest so a viewer can check its bounded byte buffer
-    before caching it; these proofs must never be included in a shared report.
-    """
+def verify_candidate_queue_jobs(store, permit, *, base):
+    """Verify the native queue's identity, frozen plan, slots and unleased jobs."""
     _require(isinstance(permit, CandidateSavePermit), "A frozen candidate permit is required")
     permit.validate()
     base = _directory(base)
@@ -276,27 +265,63 @@ def verify_completed_candidate_files(
     _require(
         store.summary()["posts"] == 1
         and len(jobs) == permit.image_count
-        and {job["file_slot"] for job in jobs} == set(range(1, permit.image_count + 1))
-        and len(store.list_artifacts()) == permit.image_count,
+        and {job["file_slot"] for job in jobs} == set(range(1, permit.image_count + 1)),
         "The native queue contains missing or unrelated candidate work",
     )
-    files = []
-    proofs = []
     expected_sources = {image["stable_key"] for image in reference["images"]}
     _require(
         {job["stable_key"] for job in jobs} == expected_sources,
         "The native image jobs differ from the frozen candidate",
     )
-    metadata_paths = set()
     for job in jobs:
         _require(
             all(job.get(key) == value for key, value in identity.items())
-            and job["status"] == "completed"
             and job["worker_id"] is None
             and job["lease_token"] is None
             and job["folder_plan"] == expected_plan,
             "A candidate image is incomplete, changed, or still owned by a worker",
         )
+    return save_root, jobs
+
+
+def verify_candidate_job_source(permit, source):
+    """Bind the exact native source snapshot to the permit that authorized these jobs."""
+    _require(isinstance(source, dict), "A candidate image lost its frozen source")
+    snapshot = source["snapshot"]
+    evidence = snapshot.get("profile_evidence", {}).get("pilot_scope", {})
+    _require(
+        snapshot.get("layout_status") == "candidate_reviewed"
+        and snapshot.get("queue_eligible") is True
+        and evidence.get("detail_attempt_id") == permit.detail_attempt_id
+        and evidence.get("permit_fingerprint") == permit.fingerprint,
+        "The native source is not bound to this reviewed candidate permit",
+    )
+    permit.authorize_snapshot(snapshot)
+
+
+def verify_completed_candidate_files(
+    store: QueueStore,
+    permit: CandidateSavePermit,
+    *,
+    base: Path,
+) -> tuple[dict, list[dict]]:
+    """Read completed journals and files without needing or changing a pending save.
+
+    The caller must hold the shared watch and native locks. The public summary
+    excludes source identities and paths. Private proofs pair each exact local
+    file with its verified digest so a viewer can check its bounded byte buffer
+    before caching it; these proofs must never be included in a shared report.
+    """
+    save_root, jobs = verify_candidate_queue_jobs(store, permit, base=base)
+    _require(
+        len(store.list_artifacts()) == permit.image_count,
+        "The native queue contains missing or unrelated candidate work",
+    )
+    files = []
+    proofs = []
+    metadata_paths = set()
+    for job in jobs:
+        _require(job["status"] == "completed", "A candidate image is incomplete")
         artifact = store.get_artifact(job["job_id"])
         _require(
             isinstance(artifact, dict)
@@ -306,17 +331,7 @@ def verify_completed_candidate_files(
             "A candidate image has no finalized owned artifact journal",
         )
         source = store.get_job_source(job["job_id"], artifact["observation_id"])
-        _require(isinstance(source, dict), "A finalized candidate lost its frozen source")
-        snapshot = source["snapshot"]
-        evidence = snapshot.get("profile_evidence", {}).get("pilot_scope", {})
-        _require(
-            snapshot.get("layout_status") == "candidate_reviewed"
-            and snapshot.get("queue_eligible") is True
-            and evidence.get("detail_attempt_id") == permit.detail_attempt_id
-            and evidence.get("permit_fingerprint") == permit.fingerprint,
-            "The finalized source is not bound to this reviewed candidate permit",
-        )
-        permit.authorize_snapshot(snapshot)
+        verify_candidate_job_source(permit, source)
         verification = artifact["verification"]
         directory = _directory(destination(save_root, FolderPlan(**job["folder_plan"])))
         final = _relative_path(save_root, artifact["final_relative"])

@@ -14,7 +14,11 @@ from image_monitor.artifact_files import (
     finalize_saved_image,
     recover_finalizations,
 )
-from image_monitor.browser_completion import BrowserCompletion
+from image_monitor.browser_completion import (
+    BrowserCompletion,
+    BrowserCompletionError,
+    completion_setup_reason,
+)
 from image_monitor.dcinside import DCSnapshotError, inspect_post, validate_post_url
 from image_monitor.native_body import save_body_image
 from image_monitor.native_probe import (
@@ -352,7 +356,17 @@ def share_worker_report(report: dict) -> dict:
         "preinput_recovery",
         "shutdown",
     )
-    return {key: report[key] for key in keys if key in report}
+    public = {key: report[key] for key in keys if key in report}
+    if (
+        report.get("last_stage") == "completion_setup"
+        and report.get("error_type") == "BrowserCompletionError"
+    ):
+        reason = completion_setup_reason(report.get("reason"))
+        if reason is not None:
+            public["completion_setup_reason"] = reason
+        else:
+            public["reason"] = "completion_setup_failed"
+    return public
 
 
 def run_post_save(
@@ -526,7 +540,12 @@ def run_post_save(
                     ids = [item["job_id"] for item in queued["jobs"]]
                     report["last_stage"] = "completion_setup"
                     with BrowserCompletion(
-                        runtime.browser, runtime.context, page, browser, ui=ui
+                        runtime.browser,
+                        runtime.context,
+                        page,
+                        browser,
+                        ui=ui,
+                        allow_focus_prompt=automatic_start,
                     ) as completion:
                         force_resume = False
                         while True:
@@ -667,6 +686,12 @@ def run_post_save(
                 )
         except BaseException as error:
             report.update(error_type=type(error).__name__, reason=_safe_reason(error))
+            if report["last_stage"] == "completion_setup" and isinstance(
+                error, BrowserCompletionError
+            ):
+                reason = completion_setup_reason(report["reason"])
+                if reason is not None:
+                    report["completion_setup_reason"] = reason
             diagnostics = getattr(error, "shutdown_diagnostics", None)
             if isinstance(diagnostics, dict):
                 report["shutdown"] = diagnostics

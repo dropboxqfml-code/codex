@@ -4,7 +4,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from image_monitor.browser_completion import BrowserCompletion, BrowserCompletionError
+from image_monitor.browser_completion import (
+    BrowserCompletion,
+    BrowserCompletionError,
+    completion_setup_reason,
+)
 
 SOURCE = "https://cdn.example/image?opaque=private"
 DESTINATION = Path("C:/ImageMonitor/_staging/unique-image.png")
@@ -175,9 +179,17 @@ def test_duplicate_destination_records_are_ambiguous(owned_browser):
 
 
 @pytest.mark.parametrize(
-    "change", ["page_title", "page_url", "window_title", "foreground", "focus"]
+    ("change", "expected"),
+    [
+        ("page_title", "source_identity_changed"),
+        ("page_url", "source_identity_changed"),
+        ("window_title", "source_window_changed"),
+        ("foreground", "source_foreground_changed"),
+        ("hidden", "source_document_hidden"),
+        ("focus", "source_document_unfocused"),
+    ],
 )
-def test_background_tab_must_not_change_source_identity_or_focus(owned_browser, change):
+def test_background_tab_must_not_change_source_identity_or_focus(owned_browser, change, expected):
     owned = owned_browser
     original_send = owned.session.send.side_effect
 
@@ -192,24 +204,111 @@ def test_background_tab_must_not_change_source_identity_or_focus(owned_browser, 
                 owned.ui._window_text.return_value = "Downloads - Google Chrome"
             elif change == "foreground":
                 owned.ui.user32.GetForegroundWindow.return_value = 456
-            else:
+            elif change == "hidden":
                 owned.source.evaluate.return_value = False
+            else:
+                owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()"
         return response
 
     owned.session.send.side_effect = changed_by_creation
-    with pytest.raises(BrowserCompletionError, match="identity or foreground"):
+    with pytest.raises(BrowserCompletionError) as exc:
         owned.reader.__enter__()
+    assert completion_setup_reason(str(exc.value)) == expected
+    assert owned.clock.now == 0
+    owned.downloads.evaluate.assert_not_called()
     assert owned.session.send.call_args_list[-1].args[0] == "Target.closeTarget"
 
 
 def test_focus_loss_during_wait_stops_before_reading_a_completion(owned_browser):
     owned = owned_browser
-    with pytest.raises(BrowserCompletionError, match="identity or foreground"):
+    with pytest.raises(BrowserCompletionError, match="lost foreground"):
         with owned.reader as reader:
             owned.downloads.evaluate.return_value = model([complete_row()])
             owned.ui.user32.GetForegroundWindow.return_value = 456
             reader.wait_for_completion(DESTINATION, SOURCE, owned.ui)
     assert owned.downloads.evaluate.call_count == 1  # Initial, empty model only.
+
+
+def automatic_reader(owned):
+    return BrowserCompletion(
+        owned.browser, owned.context, owned.source, "chrome", ui=owned.ui, allow_focus_prompt=True
+    )
+
+
+def test_settles_visible_source_focus_before_creating_any_reader(owned_browser):
+    owned = owned_browser
+    original_send = owned.session.send.side_effect
+
+    def ensure_source_settled(command, *args, **kwargs):
+        assert owned.clock.now >= 0.3
+        return original_send(command, *args, **kwargs)
+
+    owned.source.evaluate.side_effect = lambda script: (
+        script != "document.hasFocus()" or owned.clock.now >= 0.3
+    )
+    owned.session.send.side_effect = ensure_source_settled
+    with automatic_reader(owned):
+        pass
+    assert owned.clock.now == pytest.approx(0.3)
+    owned.source.bring_to_front.assert_not_called()
+    owned.source.evaluate_handle.assert_not_called()
+
+
+def test_focus_hint_is_removed_and_model_still_gets_its_bounded_initialization(owned_browser):
+    owned = owned_browser
+    owned.source.evaluate.side_effect = lambda script: (
+        script != "document.hasFocus()" or owned.clock.now >= 5
+    )
+    owned.context.pages = [owned.source]
+    with pytest.raises(BrowserCompletionError) as exc:
+        automatic_reader(owned).__enter__()
+    assert completion_setup_reason(str(exc.value)) == "downloads_target_missing"
+    assert 13 <= owned.clock.now < 13.3
+    hint = owned.source.evaluate_handle.return_value
+    hint.evaluate.assert_called_once_with("node => node.remove()")
+    hint.dispose.assert_called_once()
+    owned.source.bring_to_front.assert_not_called()
+
+
+def test_foreign_window_during_initial_focus_wait_cannot_open_reader(owned_browser):
+    owned = owned_browser
+    owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()"
+    owned.ui.user32.GetForegroundWindow.side_effect = [123, 123, 456]
+    with pytest.raises(BrowserCompletionError, match="lost foreground"):
+        automatic_reader(owned).__enter__()
+    owned.session.send.assert_not_called()
+    assert owned.clock.now == pytest.approx(0.1)
+    owned.source.evaluate_handle.assert_not_called()
+
+
+def test_blurred_visible_document_cannot_open_reader_after_prompt_timeout(owned_browser):
+    owned = owned_browser
+    owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()"
+    with pytest.raises(BrowserCompletionError, match="did not have focus"):
+        automatic_reader(owned).__enter__()
+    assert owned.clock.now == pytest.approx(20)
+    owned.session.send.assert_not_called()
+    owned.source.evaluate_handle.assert_called_once()
+    owned.source.evaluate_handle.return_value.evaluate.assert_called_once_with(
+        "node => node.remove()"
+    )
+    owned.source.bring_to_front.assert_not_called()
+
+
+def test_focus_loss_during_save_does_not_use_startup_grace(owned_browser):
+    owned = owned_browser
+    with pytest.raises(BrowserCompletionError, match="did not have focus"):
+        with owned.reader:
+            owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()"
+            owned.reader.wait_for_completion(DESTINATION, SOURCE, owned.ui)
+    assert owned.clock.now == 0
+
+
+def test_private_error_text_is_never_used_as_a_public_setup_reason():
+    assert completion_setup_reason("private path " + SOURCE) is None
+    assert completion_setup_reason("The bound source page lost its identity or foreground") == (
+        "source_identity_or_foreground_changed"
+    )
 
 
 def test_a_different_tab_with_same_internal_url_is_never_inspected(owned_browser):

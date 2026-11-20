@@ -13,6 +13,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from image_monitor.artifact_files import _plain_path
+from image_monitor.browser_completion import COMPLETION_SETUP_REASONS
 from image_monitor.candidate_finish import _paths, verify_completed_candidate_files
 from image_monitor.candidate_policy import classify_candidate_detail
 from image_monitor.candidate_save_policy import make_candidate_save_permit
@@ -34,6 +35,7 @@ from image_monitor.monitor_save_ledger import (
     task_work_root,
 )
 from image_monitor.monitor_settings import load_monitor_settings
+from image_monitor.monitor_setup_retry import verify_setup_retry
 from image_monitor.native_probe import write_report
 from image_monitor.native_state import PendingSave, session_id, shared_state_path
 from image_monitor.native_ui import NativeSaveLock, NativeUIError, require_windows
@@ -407,6 +409,7 @@ def share_batch_report(report):
         "next_eligible_at_local",
         "worker_last_stage",
         "worker_images_completed",
+        "setup_retry_started",
         "native_stage",
         "native_file_type",
         "native_suggested_suffix",
@@ -416,6 +419,14 @@ def share_batch_report(report):
         "shutdown",
     )
     public = {key: report[key] for key in fields if key in report}
+    setup_reason = report.get("completion_setup_reason")
+    if (
+        public.get("worker_last_stage") == "completion_setup"
+        and public.get("error_type") == "BrowserCompletionError"
+        and isinstance(setup_reason, str)
+        and setup_reason in COMPLETION_SETUP_REASONS
+    ):
+        public["completion_setup_reason"] = setup_reason
     error_type = public.get("error_type")
     if error_type is not None and (
         not isinstance(error_type, str)
@@ -537,11 +548,17 @@ def run_monitor_batch(
     scope = DEFAULT_SCOPE if recent_handoff is not None else MONITOR_SCOPE
     ledger_name = RECENT_LEDGER_NAME if recent_handoff is not None else LEDGER_NAME
     automatic = monitor_handoff is not None
+    handoff_fields = {"post_id", "attempt_id", "fingerprint"}
+    retrying = isinstance(monitor_handoff, dict) and set(monitor_handoff) == handoff_fields | {
+        "retry_task_id",
+        "prior_run",
+    }
     if automatic and (
         recent_handoff is not None
         or max_tasks != 1
         or not isinstance(monitor_handoff, dict)
-        or set(monitor_handoff) != {"post_id", "attempt_id", "fingerprint"}
+        or not retrying
+        and set(monitor_handoff) != handoff_fields
     ):
         raise NativeUIError("Automatic saving requires one exact monitor candidate")
     if recent_handoff is not None and max_tasks != 1:
@@ -594,6 +611,7 @@ def run_monitor_batch(
     }
     if automatic:
         report["worker_images_completed"] = 0
+        report["setup_retry_started"] = False
     active = ledger = None
     database = _plain_path(watch_root / "watch.sqlite")
     try:
@@ -646,9 +664,19 @@ def run_monitor_batch(
                         }
                         if existing_directories - managed_ids:
                             raise QueueError("Existing batch output has no original task binding")
-                        if any(
-                            t["status"] in {"started", "needs_review"} for t in ledger.list_tasks()
+                        unfinished = [
+                            t
+                            for t in ledger.list_tasks()
+                            if t["status"] in {"started", "needs_review"}
+                        ]
+                        if retrying and (
+                            len(unfinished) != 1
+                            or unfinished[0]["task_id"] != monitor_handoff["retry_task_id"]
+                            or unfinished[0]["status"] != "needs_review"
+                            or unfinished[0]["post_id"] != monitor_handoff["post_id"]
                         ):
+                            report.update(reason="setup_retry_binding_changed")
+                        elif unfinished and not retrying:
                             report.update(reason="unfinished_batch_requires_reconcile")
                         elif any(
                             t["output_kind"] == "legacy" and t["status"] != "completed"
@@ -682,9 +710,13 @@ def run_monitor_batch(
                                         reason="selected_candidate_already_claimed",
                                     )
                                     return report
-                                task = ledger.plan(candidate, detail, permit, now=clock.now())
-                                report["tasks_planned"] = int(previous is None)
-                                pending = [task] if task["status"] == "planned" else []
+                                if retrying:
+                                    task = unfinished[0]
+                                    pending = [task]
+                                else:
+                                    task = ledger.plan(candidate, detail, permit, now=clock.now())
+                                    report["tasks_planned"] = int(previous is None)
+                                    pending = [task] if task["status"] == "planned" else []
                             else:
                                 report["last_stage"] = "candidate_planning"
                                 for detail in _details(queue):
@@ -746,19 +778,35 @@ def run_monitor_batch(
                                         )
                                         break
                                 permit = reconstruct_permit(queue, task, scope)
+                                if (
+                                    retrying
+                                    and permit.fingerprint != monitor_handoff["fingerprint"]
+                                ):
+                                    raise QueueError("The prior setup attempt's permit changed")
                                 native_session = session_id()
                                 _preflight(task, permit, legacy_root, batch_root, native_session)
                                 work_root = task_work_root(task, batch_root, legacy_root)
-                                if work_root.exists() and any(work_root.iterdir()):
-                                    raise QueueError(
-                                        "A planned batch task already has native output"
-                                    )
                                 # After starting a durable task the native worker owns it
                                 # through verification and cleanup, even if the dashboard exits.
                                 stop_if_requested()
-                                active = ledger.start(
-                                    task["task_id"], clock.now(), native_session=native_session
-                                )
+                                if retrying:
+                                    report["last_stage"] = "setup_retry_evidence"
+                                    with NativeSaveLock():
+                                        prior_run, _ = verify_setup_retry(ledger, task, permit)
+                                        if prior_run != monitor_handoff["prior_run"]:
+                                            raise QueueError("The prior native setup run changed")
+                                        active = ledger.start_setup_retry(
+                                            task, prior_run=prior_run, now=clock.now()
+                                        )
+                                    report["setup_retry_started"] = True
+                                else:
+                                    if work_root.exists() and any(work_root.iterdir()):
+                                        raise QueueError(
+                                            "A planned batch task already has native output"
+                                        )
+                                    active = ledger.start(
+                                        task["task_id"], clock.now(), native_session=native_session
+                                    )
                                 report["tasks_started"] += 1
                                 report.update(
                                     last_stage="native_post_worker",
@@ -804,6 +852,12 @@ def run_monitor_batch(
                                     http_status=observer.http_status,
                                     worker_last_stage=worker.get("last_stage"),
                                 )
+                                setup_reason = worker.get("completion_setup_reason")
+                                if (
+                                    isinstance(setup_reason, str)
+                                    and setup_reason in COMPLETION_SETUP_REASONS
+                                ):
+                                    report["completion_setup_reason"] = setup_reason
                                 if automatic:
                                     counts = worker.get("job_counts")
                                     if (

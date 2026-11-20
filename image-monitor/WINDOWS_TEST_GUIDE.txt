@@ -1,5 +1,5 @@
-﻿게시글 한 건 자동 저장 (0.5.0-alpha.1)
+﻿중단된 게시글 자동 저장 이어가기 (0.5.0-alpha.2)
 
-1. 감시를 실행했던 PC에서 ZIP을 새 폴더에 풀고 image-monitor 폴더의 RUN_AUTO_COLLECT.cmd를 더블클릭하세요.
-2. 전용 Chrome 창이 열리면 그대로 앞에 두세요. 버튼을 누를 필요 없이 저장이 진행됩니다.
-3. 메모장이 열리면 같은 폴더에 방금 생성된 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개를 이 채팅에 첨부해 주세요.
+1. 이전 감시를 실행한 PC에서 ZIP을 새 폴더에 풀고 image-monitor 폴더의 RUN_AUTO_COLLECT.cmd를 더블클릭하세요.
+2. 전용 Chrome 창을 앞에 두세요. ‘이 창에서 저장 계속’ 버튼이 보일 때만 한 번 누르세요.
+3. 메모장이 열리면 방금 생성된 WINDOWS_TEST_RESULT-숫자-숫자.txt 한 개를 이 채팅에 첨부해 주세요.

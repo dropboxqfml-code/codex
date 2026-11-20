@@ -14,6 +14,8 @@ from image_monitor.monitor_save_ledger import (
     other_monitor_save_claims,
 )
 from image_monitor.monitor_settings import load_monitor_settings
+from image_monitor.monitor_setup_retry import verify_setup_retry
+from image_monitor.native_ui import NativeSaveLock
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_image_search import MAX_NEW_DETAILS
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
@@ -37,7 +39,7 @@ def _handoff(permit):
     }
 
 
-def _choice(queue, state, roots, details, assessed, fresh_posts, report):
+def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setup_retry):
     watch, legacy, batch = roots
     claimed = other_monitor_save_claims(watch / "watch.sqlite")
     ledger_path = _plain_path(watch / LEDGER_NAME)
@@ -45,14 +47,29 @@ def _choice(queue, state, roots, details, assessed, fresh_posts, report):
         with LedgerStore(
             ledger_path, watch_root=watch, legacy_root=legacy, batch_root=batch, read_only=True
         ) as ledger:
-            for task in ledger.list_tasks():
-                if task["status"] in {"started", "needs_review"}:
+            tasks = ledger.list_tasks()
+            unfinished = [t for t in tasks if t["status"] in {"started", "needs_review"}]
+            if setup_retry or unfinished:
+                if not setup_retry or len(unfinished) != 1 or unfinished[0]["post_id"] in claimed:
                     raise QueueError("An unfinished monitor save requires review")
+                task = unfinished[0]
+                permit = reconstruct_permit(queue, task)
+                with NativeSaveLock():
+                    prior_run, prior_reason = verify_setup_retry(ledger, task, permit)
+                report["eligible_body_images"] = permit.image_count
+                report["previous_completion_setup_reason"] = prior_reason
+                return _handoff(permit) | {
+                    "retry_task_id": task["task_id"],
+                    "prior_run": prior_run,
+                }, None
+            for task in tasks:
                 if task["status"] == "planned" and task["post_id"] not in claimed:
                     permit = reconstruct_permit(queue, task)
                     report["eligible_body_images"] = permit.image_count
                     return _handoff(permit), None
                 claimed.add(task["post_id"])
+    elif setup_retry:
+        raise QueueError("The prior monitor save ledger disappeared")
     for detail in details:
         attempt = detail["attempt_id"]
         if detail["status"] != "completed" or detail["post_id"] in claimed:
@@ -95,6 +112,7 @@ def search_monitor_candidates(
     assessed = {}
     waited_for = None
     fresh_posts = set()
+    setup_retry = False
     try:
         roots = _roots(watch_root, legacy_root, batch_root)
         watch = roots[0]
@@ -107,9 +125,13 @@ def search_monitor_candidates(
                 break
             # The dashboard marks out-of-range bodies for review. The collection's
             # classifier can verify these observations and skip them individually.
+            setup_retry = (
+                ops["status"] == "needs_review" and ops["reason"] == "save_requires_review"
+            )
             if (
                 ops["status"] == "needs_review"
                 and ops["reason"] != "candidate_detail_requires_review"
+                and not setup_retry
             ):
                 report["reason"] = ops["reason"]
                 break
@@ -135,7 +157,14 @@ def search_monitor_candidates(
                 ):
                     raise QueueError("Expected a durable completed body observation")
                 handoff, pending = _choice(
-                    queue, state, roots, details, assessed, fresh_posts, report
+                    queue,
+                    state,
+                    roots,
+                    details,
+                    assessed,
+                    fresh_posts,
+                    report,
+                    setup_retry=setup_retry,
                 )
                 if handoff is None and pending is None:
                     report.update(
@@ -169,7 +198,10 @@ def search_monitor_candidates(
             waited_for = None
             report["next_eligible_at"] = None
             if handoff is not None:
-                report.update(status="ready", reason="save_ready")
+                report.update(
+                    status="ready",
+                    reason="completion_setup_retry_ready" if setup_retry else "save_ready",
+                )
                 return report, handoff
             report["browser_closed"] = None
             trial = detail_runner(
@@ -225,5 +257,10 @@ def search_monitor_candidates(
     except KeyboardInterrupt:
         report.update(status="cancelled", reason="requested_stop")
     except Exception:
-        report.update(status="review", reason="monitor_evidence_requires_review")
+        report.update(
+            status="review",
+            reason="setup_retry_evidence_unconfirmed"
+            if setup_retry
+            else "monitor_evidence_requires_review",
+        )
     return report, None

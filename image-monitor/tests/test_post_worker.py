@@ -86,6 +86,7 @@ def pilot(monkeypatch):
         armed=[],
         focus_ready=True,
         focus_resumes=0,
+        focus_prompts=[],
         resume_save_counts=[],
         save_approval_counts=[],
         expected_url=worker.DEFAULT_POST_URL,
@@ -187,8 +188,8 @@ def pilot(monkeypatch):
     monkeypatch.setattr(worker, "wait_for_approval", approve)
 
     class Completion:
-        def __init__(self, *_args, **_kwargs):
-            pass
+        def __init__(self, *_args, allow_focus_prompt, **_kwargs):
+            values.focus_prompts.append(allow_focus_prompt)
 
         def __enter__(self):
             return self
@@ -254,6 +255,7 @@ def pilot(monkeypatch):
 def test_controller_saves_frozen_observation_and_rerun_never_repeats_native_input(pilot):
     report = worker.run_post_save(pilot.root)
     assert report["status"] == "post_completed"
+    assert pilot.focus_prompts == [False]
     assert report["browser_closed"] and not report["shared_pending_retained"]
     assert report["job_counts"] == {"observed": 1, "completed": 1, "unresolved": 0}
     assert not pilot.pending.exists()
@@ -519,6 +521,7 @@ def test_automatic_save_binds_foreground_and_rechecks_permit_without_a_button(pi
     assert len(pilot.window_titles) == 1 and pilot.window_titles[0].startswith("Image Monitor ")
     assert pilot.guarded_inspections == [True, True]
     assert pilot.approvals == [] and pilot.approval_count == 0
+    assert pilot.focus_prompts == [True]
     assert [item["saved_filename"] for item in report["saved_files"]] == ["001.png", "002.png"]
     assert pilot.armed == [("input_armed", "saving"), ("input_armed", "saving")]
 

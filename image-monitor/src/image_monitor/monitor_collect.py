@@ -74,6 +74,7 @@ def _collect(report, roots, clock, detail_runner, save_runner):
         report.update(
             native_save_tasks_started=save["tasks_started"],
             worker_images_completed=save["worker_images_completed"],
+            setup_retry_started=save["setup_retry_started"],
             browser_closed=save["browser_closed"],
         )
         if (
@@ -124,6 +125,7 @@ def run_monitor_collect(
         "reason": None,
         "new_details_checked": 0,
         "native_save_tasks_started": 0,
+        "setup_retry_started": False,
         "worker_images_completed": 0,
         "files_verified": 0,
         "saved_files": [],

@@ -1,9 +1,8 @@
 """Durable, single-attempt saves for independently frozen monitor candidates.
 
 The caller holds the shared watch lease. This separate database never changes
-the discovery schema or native image queues. A started or uncertain attempt is
-not eligible for another native run; only completed-file reconciliation may
-resolve it without new input.
+the discovery schema or native image queues. An explicit retry can resume a
+failed completion setup after the caller proves that native input never began.
 """
 
 import json
@@ -241,6 +240,21 @@ def task_native_base(task, batch_root, legacy_root):
         type(session) is int and 0 <= session <= 2**32 - 1, "A frozen native session is required"
     )
     return _root(task_work_root(task, batch_root, legacy_root) / f"session-{session}")
+
+
+def is_setup_retry_candidate(task):
+    """This ledger shape is necessary but not sufficient proof of a pre-input failure."""
+    return (
+        task["status"] == "needs_review"
+        and task["output_kind"] == "managed"
+        and task["result"]
+        == {"worker_status": "manual_review", "error_type": "BrowserCompletionError"}
+        and task["control"].get("blocked") is False
+        and task["control"].get("in_flight") is False
+        and task["control"].get("http_status") == 200
+        and isinstance(task["control"].get("browser_identity"), dict)
+        and "setup_retry" not in task["control"]
+    )
 
 
 class LedgerStore:
@@ -558,6 +572,55 @@ class LedgerStore:
             _require(changed == 1, "The planned task changed before starting")
             return self.get_task(task_id)
 
+    def start_setup_retry(self, task, *, prior_run, now):
+        """Consume the proved setup-only retry under the caller's watch and native locks."""
+        stamp = _stamp(now)
+        with self._write():
+            latest = self.get_task(task["task_id"])
+            _require(
+                self.scope == MONITOR_SCOPE and latest == task and is_setup_retry_candidate(latest),
+                "The failed setup task changed before retry",
+            )
+            control = latest["control"]
+            _require(
+                _uuid(prior_run)
+                and control["browser_identity"].get("run_directory")
+                == str(
+                    task_native_base(latest, self.batch_root, self.legacy_root) / "runs" / prior_run
+                )
+                and stamp >= _stored_stamp(latest["finished_at"]),
+                "The previous attempt is not bound to this retry",
+            )
+            _require(
+                all(
+                    other["control"]["blocked"] is False
+                    and other["control"].get("in_flight") is not True
+                    and (
+                        other["task_id"] == latest["task_id"]
+                        or other["status"] not in {"started", "needs_review"}
+                    )
+                    for other in self.list_tasks()
+                ),
+                "An additional unfinished task or service block requires review",
+            )
+            receipt = {
+                "started_at": stamp,
+                "prior_run": prior_run,
+                "prior_started_at": latest["started_at"],
+                "prior_finished_at": latest["finished_at"],
+                "prior_control": control,
+            }
+            self.connection.execute(
+                "UPDATE save_tasks SET status='started',started_at=?,finished_at=NULL,"
+                "result_json=NULL,control_json=? WHERE task_id=?",
+                (
+                    stamp,
+                    _json(control | {"setup_retry": receipt}, "Setup retry receipt"),
+                    task["task_id"],
+                ),
+            )
+            return self.get_task(task["task_id"])
+
     def finish(self, task_id, *, status, result, now):
         _require(status in _RESULT_STATES, "A finished ledger task needs a final status")
         return self._finish(task_id, status=status, result=result, now=now, allowed={"started"})
@@ -587,10 +650,13 @@ class LedgerStore:
 
     def update_control(self, task_id, control):
         _control(control)
-        encoded = _json(control, "Ledger navigation control")
         with self._write():
             task = self.get_task(task_id)
             _require(task is not None, "Ledger navigation requires an existing task")
+            _require("setup_retry" not in control, "Only the retry transition may set its receipt")
+            if "setup_retry" in task["control"]:
+                control = control | {"setup_retry": task["control"]["setup_retry"]}
+            encoded = _json(control, "Ledger navigation control")
             _require(
                 not task["control"]["blocked"] or control["blocked"] is True,
                 "A monitor save access block requires explicit manual recovery",

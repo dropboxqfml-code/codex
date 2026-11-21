@@ -7,6 +7,7 @@ import os
 import sys
 import tempfile
 import time
+import traceback
 from contextlib import ExitStack
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -193,7 +194,16 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
         def unexpected_approval(*args, **kwargs):
             pytest.fail("The explicitly started worker requested an additional click")
 
+        errors = []
+        safe_reason = post_worker._safe_reason
+
+        def record_worker_error(error):
+            # The worker deliberately masks fixture assertions in its public reason.
+            errors.append("".join(traceback.format_exception(error, limit=-3)))
+            return safe_reason(error)
+
         pending_path = root / "pending.json"
+        monkeypatch.setattr(post_worker, "_safe_reason", record_worker_error)
         monkeypatch.setattr(post_worker, "shared_state_path", lambda: pending_path)
         monkeypatch.setattr(post_worker, "NativeRuntime", LocalRuntime)
         monkeypatch.setattr(post_worker, "BrowserCompletion", DownloadsRoundTrip)
@@ -204,6 +214,7 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
         restored = []
         for stay_in_background in (True, False):
             work = root / ("away" if stay_in_background else "ready")
+            errors.clear()
             with ExitStack() as pause:
                 result = post_worker.run_post_save(
                     work,
@@ -212,19 +223,24 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
                     navigation_observer=observer,
                     automatic_start=True,
                 )
-            assert result["browser_closed"] and not result["shared_pending_retained"], result
+            diagnostic = (
+                f"stage={result['last_stage']} native={result.get('native_stage')} "
+                f"focus={result.get('focus_at_failure')} milestones={focus_losses}\n"
+                + "".join(errors)
+            )
+            assert result["browser_closed"] and not result["shared_pending_retained"], diagnostic
             assert not pending_path.exists()
             base = work / f"session-{session_id()}"
             with QueueStore(base / "queue.sqlite", read_only=True) as queue:
                 if stay_in_background:
-                    assert result["error_type"] == "NativeFocusError", result
+                    assert result["error_type"] == "NativeFocusError", diagnostic
                     assert result["last_stage"] == "automatic_foreground_check"
                     assert not restored
                     assert not inspections and not native_calls
                     assert result["saved_files"] == [] and queue.list_jobs() == []
                     assert not list((base / "images").iterdir())
                 else:
-                    assert result["status"] == "post_completed", result
+                    assert result["status"] == "post_completed", diagnostic
                     assert len(restored) == 1
                     assert focus_losses == ["initial", "after_downloads"]
                     assert len(inspections) >= 2 and native_calls == [POST_URL]

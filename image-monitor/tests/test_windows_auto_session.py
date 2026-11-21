@@ -131,9 +131,7 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
 
                     desktop.setattr(post_worker, "_wait_for_next_image", switch_before_seventh)
                 result = post_worker.run_post_save(work, browser, url, **options)
-                outcomes.append(
-                    {key: result[key] for key in ("status", "last_stage", "error_type")}
-                )
+                outcomes.append((result["last_stage"], result["error_type"], result.get("reason")))
                 return result
 
         session = partial(
@@ -151,8 +149,8 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
         )
         if lose_focus:
             stopped = session(max_cycles=1)
-            assert stopped["status"] == "auto_monitor_review", (stopped, outcomes)
-            assert stopped["last_collection"]["worker_last_stage"] == "pre_input_check"
+            assert stopped["status"] == "auto_monitor_review", outcomes
+            assert stopped["last_collection"]["worker_last_stage"] == "pre_input_check", outcomes
             assert stopped["browser_closed"] and not marker.exists()
             assert len(native_inputs) == 6
             [directory] = batch.glob(f"tasks/*/session-*/images/**/{first}")
@@ -166,7 +164,10 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
             original_report = report.read_bytes()
 
             recovered = session(max_cycles=1)
-            assert recovered["status"] == "auto_monitor_completed", (recovered, outcomes)
+            assert recovered["status"] == "auto_monitor_completed", (
+                recovered["reason"],
+                outcomes,
+            )
             assert recovered["new_details_checked"] == recovered["new_candidates"] == 0
             assert recovered["posts_saved"] == recovered["native_save_tasks_started"] == 1
             assert recovered["files_verified"] == 10
@@ -180,7 +181,10 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
         else:
             cycles = 2
         result = session(max_cycles=cycles)
-        assert result["status"] == "auto_monitor_completed", (result, outcomes)
+        assert result["status"] == "auto_monitor_completed", (
+            result["reason"],
+            outcomes,
+        )
         for count in (
             "cycles_completed",
             "list_checks",

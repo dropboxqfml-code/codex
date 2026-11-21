@@ -33,6 +33,8 @@ def scan(status="complete", *, due=None, candidates=0, reason=None, closed=True)
         "next_eligible_at": due,
         "new_candidates": candidates,
         "browser_closed": closed,
+        "page_limit": 1 if status == "baseline" else 2,
+        "pages_checked": 1 if status == "baseline" else 2,
     }
 
 

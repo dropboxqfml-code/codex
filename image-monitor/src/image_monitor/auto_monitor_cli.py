@@ -53,6 +53,10 @@ def _show_progress(report, stream):
         previous = report["previously_verified_files"]
         new = report["newly_saved_files"]
         message += f" (기존 {previous}장, 새로 저장 {new}장)"
+    last_list = report.get("last_list")
+    if last_list and last_list.get("page_limit", 0) > 2:
+        outcome = "확인 완료" if last_list["status"] == "complete" else "미확인 구간 남음"
+        message += f" | 목록 {last_list['pages_checked']}쪽 확인 · {outcome}"
     due = report.get("next_eligible_at")
     if phase == "waiting" and due:
         local_time = datetime.fromisoformat(due).astimezone()

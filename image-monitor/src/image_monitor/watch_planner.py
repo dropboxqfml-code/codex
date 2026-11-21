@@ -555,19 +555,24 @@ def plan_scan(
 
 
 def plan_verified_page_prefix(scope, state, pages, observed_at):
-    """Keep first-page observations when only the adjacent page's layout is unverified."""
-    if state.get("baseline") is None or pages[1].get("layout_status") != "unverified":
+    """Keep the verified prefix when only the last linked page has an unverified layout."""
+    if (
+        state.get("baseline") is None
+        or len(pages) < 2
+        or pages[-1].get("layout_status") != "unverified"
+    ):
         return None
     try:
-        prefix = plan_scan(scope, state, pages[:1], observed_at, allow_verified_live=True)
+        prefix = plan_scan(scope, state, pages[:-1], observed_at, allow_verified_live=True)
         # Check the failed page's URL, scope, timestamps and row identities
         # without upgrading its layout or including any of its observations.
-        following = _page(pages[1], _scope(scope), observed_at, "unverified")
+        following = _page(pages[-1], _scope(scope), observed_at, "unverified")
         if (
             prefix["gap_reason"] not in {"anchor_not_reached", "overlap_incomplete"}
+            or len(prefix["scan_result"]["pages"]) != len(pages) - 1
             or prefix["scan_result"]["follow_up"] != _cursor(following)
-            or _stored_time(pages[1].get("observed_at"), "second page observed_at")
-            < _stored_time(pages[0].get("observed_at"), "first page observed_at")
+            or _stored_time(pages[-1].get("observed_at"), "last page observed_at")
+            < _stored_time(pages[-2].get("observed_at"), "preceding page observed_at")
         ):
             return None
     except WatchPlanError:
@@ -575,7 +580,9 @@ def plan_verified_page_prefix(scope, state, pages, observed_at):
     prefix["gap_reason"] = "list_profile_unverified_or_incomplete"
     prefix["checkpoint"] = state["checkpoint"]
     prefix["scan_result"].update(
-        layout_status="unverified", gap_reason=prefix["gap_reason"], verified_prefix_pages=1
+        layout_status="unverified",
+        gap_reason=prefix["gap_reason"],
+        verified_prefix_pages=len(pages) - 1,
     )
     return prefix
 

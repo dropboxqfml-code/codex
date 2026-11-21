@@ -15,7 +15,7 @@ from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON, PARTIAL_R
 from image_monitor.post_worker import share_setup_diagnostics
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
-from image_monitor.watch_store import MONITOR_SCOPE
+from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE
 
 _FINISHED_COLLECTIONS = {
     "monitor_collect_no_candidates",
@@ -206,6 +206,14 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
         elif phase == "scanning" and status in {"complete", "partial", "baseline"}:
             if closed is not True:
                 return _finish(report, "review", "owned_browser_cleanup_unconfirmed")
+            limit = _count(turn, "page_limit", MAX_MONITOR_SCAN_PAGES)
+            pages = _count(turn, "pages_checked", limit)
+            if not pages or (limit == 1) != (status == "baseline"):
+                return _finish(report, "review", "invalid_list_page_count")
+            report["last_list"].update(pages_checked=pages, page_limit=limit)
+            if limit > 2:
+                report["gap_followup_checks"] += 1
+                report["gap_followups_completed"] += int(status == "complete")
             report["list_checks"] += 1
             report["partial_list_checks"] += int(status == "partial")
             report["new_candidates"] += _count(turn, "new_candidates")
@@ -255,6 +263,8 @@ def run_auto_monitor(
         "cycles_completed": 0,
         "list_checks": 0,
         "partial_list_checks": 0,
+        "gap_followup_checks": 0,
+        "gap_followups_completed": 0,
         "new_candidates": 0,
         "new_details_checked": 0,
         "native_save_tasks_started": 0,

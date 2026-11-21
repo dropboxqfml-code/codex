@@ -51,7 +51,8 @@ class ScriptedBrowser:
     def __exit__(self, *_):
         self.browser_closed = True
 
-    def scan(self, scope, observed_at, *, max_pages):
+    def scan(self, scope, observed_at, *, max_pages, follow_up_state=None):
+        assert (follow_up_state is not None) == (max_pages > 2)
         self.calls.append((scope, observed_at, max_pages))
         assert self.outcomes, "The runner made an unexpected extra website request"
         return self.outcomes.pop(0)(observed_at)

@@ -15,10 +15,12 @@ from image_monitor.watch_runtime import (
     _control,
     _cycle_summary,
     _eligibility,
+    _observed_page_chain,
     _stamp,
     _stored_time,
     confirmed_monitor_scan,
     matches_partial_coverage_scan,
+    monitor_page_budget,
     run_watch_trial,
 )
 from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
@@ -58,7 +60,7 @@ def _source(queue, now, interval):
     return state, "waiting" if due > now else "ready", due
 
 
-def _completed_scan(queue, before, after, raw):
+def _completed_scan(queue, before, after, raw, page_limit):
     """Replay a complete scan from the state observed before launching Chrome."""
     latest = after["latest_scan"]
     record = latest["result"]
@@ -70,7 +72,6 @@ def _completed_scan(queue, before, after, raw):
         observed.get("status") != "observed"
         or control.get("transport_status") != "observed"
         or control.get("http_status") != observed.get("http_status")
-        or not 1 <= len(pages) <= (1 if before["baseline"] is None else 2)
         or len(visits) != len(pages)
         or observed.get("http_status") != visits[-1]["http_status"]
         or any(
@@ -90,7 +91,10 @@ def _completed_scan(queue, before, after, raw):
     added = matches["new_candidates"]
     stored_plan = {k: v for k, v in record.items() if k not in ("private_observation", "control")}
     summary = _cycle_summary(
-        observed, plan, {"generation": after["generation"], "candidates_added": added}
+        observed,
+        plan,
+        {"generation": after["generation"], "candidates_added": added},
+        follow_up_page_limit=page_limit if page_limit > 2 else None,
     )
     gap = queue.connection.execute(
         "SELECT 1 FROM watch_gaps WHERE scan_id=?", (latest["scan_id"],)
@@ -112,7 +116,7 @@ def _completed_scan(queue, before, after, raw):
     return "baseline" if plan["baseline"] is not None else "complete", added
 
 
-def _verified_scan(database, queue, before, after, raw):
+def _verified_scan(database, queue, before, after, raw, page_limit):
     latest = after["latest_scan"]
     if (
         latest is None
@@ -124,8 +128,20 @@ def _verified_scan(database, queue, before, after, raw):
         or not confirmed_monitor_scan(database, latest, expected_report=raw)
     ):
         raise QueueError("The current Chrome list scan has no matching final receipt")
+    control = _control(after)
+    observation = latest["result"]["private_observation"]
+    if page_limit > 2:
+        recorded = control.get("follow_up_page_limit")
+        if type(recorded) is not int or recorded != page_limit:
+            raise QueueError("The stored follow-up limit differs from the prior verified scan")
+        if not _observed_page_chain(observation, page_limit):
+            raise QueueError("The follow-up navigation evidence is incomplete")
+    elif "follow_up_page_limit" in control:
+        raise QueueError("The previous scan did not authorize a follow-up")
+    if not 1 <= len(observation["pages"]) <= page_limit:
+        raise QueueError("List scan exceeded its authorized page limit")
     if latest["complete"]:
-        return _completed_scan(queue, before, after, raw)
+        return _completed_scan(queue, before, after, raw, page_limit)
     if (
         before["baseline"] is not None
         and after["baseline"] == before["baseline"]
@@ -136,7 +152,7 @@ def _verified_scan(database, queue, before, after, raw):
         matches, _ = recent_scan_candidates(queue, MONITOR_SCOPE, after)
         if matches is not None and matches["new_candidates"] == raw["new_candidates"]:
             return "partial", matches["new_candidates"]
-    raise QueueError("The partial list scan has no verified recent page pair")
+    raise QueueError("The partial list scan has no verified sequence of recent pages")
 
 
 def run_auto_discovery(
@@ -157,13 +173,15 @@ def run_auto_discovery(
         database = _plain_path(base / "watch.sqlite")
         with watch_run_lock(database, DEFAULT_SCOPE):
             before = _EMPTY
+            page_limit = 1
             if database.exists():
                 with QueueStore(database, read_only=True) as queue:
                     before, status, due = _source(queue, clock.now(), interval_seconds)
-                if status == "blocked":
-                    return _result("blocked", "access_block_requires_review")
-                if status == "waiting":
-                    return _result("waiting", "persisted_cooldown", due=due)
+                    if status == "blocked":
+                        return _result("blocked", "access_block_requires_review")
+                    if status == "waiting":
+                        return _result("waiting", "persisted_cooldown", due=due)
+                    page_limit = monitor_page_budget(database, queue, before)
         raw = run_cycle(
             base,
             "chrome",
@@ -172,6 +190,7 @@ def run_auto_discovery(
             clock=clock,
             scope=MONITOR_SCOPE,
             should_stop=should_stop,
+            follow_up_gaps=True,
         )
         closed = raw.get("browser_closed") if type(raw.get("browser_closed")) is bool else None
         if closed is not True:
@@ -198,8 +217,11 @@ def run_auto_discovery(
                 ):
                     return _result("waiting", "service_wait", due=due, closed=closed)
                 return _result("review", "list_scan_requires_review", closed=closed)
-            kind, added = _verified_scan(database, queue, before, after, raw)
-            return _result(kind, raw.get("reason"), due=due, closed=closed, added=added)
+            kind, added = _verified_scan(database, queue, before, after, raw, page_limit)
+            return _result(kind, raw.get("reason"), due=due, closed=closed, added=added) | {
+                "page_limit": page_limit,
+                "pages_checked": raw["cycles"][0]["page_count"],
+            }
     except WatchRunBusy:
         return _result("busy", "another_worker_active", closed=closed)
     except (

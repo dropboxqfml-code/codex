@@ -2,6 +2,7 @@
 
 from image_monitor.search_list import MAX_ROWS, PROFILE_ISSUES, reviewed_structure_issue
 from image_monitor.watch_planner import WatchPlanError, _exclusion_evidence, _safe_exclusion
+from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES
 
 DIAGNOSIS_REASONS = frozenset(
     {
@@ -159,13 +160,18 @@ def public_list_diagnosis(value):
     pages = value.get("pages")
     if reason is None or not isinstance(pages, list):
         return None
+    extended = _count(value.get("follow_up_page_limit"), MAX_MONITOR_SCAN_PAGES, 3)
+    page_limit = extended or 2
     return {
         "reason": reason,
         "transport": _category(value.get("transport"), _TRANSPORT),
         "transport_error_code": _category(value.get("transport_error_code"), _TRANSPORT_ERRORS),
         "http_status": _count(value.get("http_status"), 599, 100),
         "planner_issue": _category(value.get("planner_issue"), PLANNER_ISSUES),
-        "pages": [_public_page(_mapping(page), index) for index, page in enumerate(pages[:2], 1)],
+        **({"follow_up_page_limit": extended} if extended else {}),
+        "pages": [
+            _public_page(_mapping(page), index) for index, page in enumerate(pages[:page_limit], 1)
+        ],
     }
 
 
@@ -267,6 +273,9 @@ def diagnose_list_scan(latest_scan):
     if reason is None or not (outcome or result.get("planner_issue")):
         return None
     pages = outcome.get("pages")
+    extended = _count(
+        _mapping(result.get("control")).get("follow_up_page_limit"), MAX_MONITOR_SCAN_PAGES, 3
+    )
     return public_list_diagnosis(
         {
             "reason": reason,
@@ -274,7 +283,10 @@ def diagnose_list_scan(latest_scan):
             "transport_error_code": outcome.get("error_code"),
             "http_status": outcome.get("http_status"),
             "planner_issue": result.get("planner_issue"),
-            "pages": [diagnose_list_page(page, i) for i, page in enumerate(pages[:2], 1)]
+            "follow_up_page_limit": extended,
+            "pages": [
+                diagnose_list_page(page, i) for i, page in enumerate(pages[: extended or 2], 1)
+            ]
             if isinstance(pages, list)
             else [],
         }

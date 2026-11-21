@@ -225,3 +225,16 @@ def test_empty_absent_and_resolved_diagnostics():
         "planner_issue": None,
         "pages": [],
     }
+
+
+@pytest.mark.parametrize(("limit", "count"), [(3, 3), (4, 4), (5, 2), (True, 2), ("4", 2)])
+def test_follow_up_diagnostics_include_failure_on_last_requested_page(limit, count):
+    pages = [{"status": "observed", "layout_status": "site_verified", "rows": []} for _ in range(5)]
+    pages[count - 1].update(status="missing_list", layout_status="unverified")
+    latest = scan(*pages)
+    latest["result"]["control"] = {"follow_up_page_limit": limit}
+    diagnosis = diagnose_list_scan(latest)
+    assert [page["page"] for page in diagnosis["pages"]] == list(range(1, count + 1))
+    assert diagnosis["pages"][-1]["status"] == "missing_list"
+    assert diagnosis.get("follow_up_page_limit") == (count if count > 2 else None)
+    assert public_list_diagnosis(diagnosis) == diagnosis

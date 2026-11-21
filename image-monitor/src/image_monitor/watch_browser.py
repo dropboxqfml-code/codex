@@ -4,7 +4,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 from image_monitor.dcinside import DCSnapshotError
-from image_monitor.list_inspection import _adjacent_page
+from image_monitor.list_inspection import _adjacent_latest_link
 from image_monitor.native_probe import browser_executable
 from image_monitor.native_ui import require_windows
 from image_monitor.paths import aware
@@ -16,7 +16,8 @@ from image_monitor.search_list import (
     validate_list_url,
 )
 from image_monitor.site_inspection import _error_code
-from image_monitor.watch_store import WatchScope
+from image_monitor.watch_planner import WatchPlanError, plan_scan
+from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE, WatchScope
 
 _SETTLE_ISSUES = frozenset(
     {
@@ -212,8 +213,10 @@ class HeadlessWatchBrowser:
         finally:
             page.remove_listener("framenavigated", navigated)
 
-    def scan(self, scope: WatchScope, observed_at: datetime, max_pages: int = 2) -> dict:
-        """Read fresh latest page one and at most one actual adjacent page link.
+    def scan(
+        self, scope: WatchScope, observed_at: datetime, max_pages: int = 2, *, follow_up_state=None
+    ) -> dict:
+        """Read the latest page and consecutive links within the passed scan budget.
 
         Each navigation runs once. A recognized incomplete render may receive
         one more DOM observation. Earlier pages survive a later page failure.
@@ -228,8 +231,13 @@ class HeadlessWatchBrowser:
         if not isinstance(observed_at, datetime):
             raise ValueError("observed_at must be a timezone-aware datetime")
         scan_time = aware(observed_at).astimezone(UTC)
-        if type(max_pages) is not int or not 1 <= max_pages <= 2:
-            raise ValueError("max_pages must be 1 or 2")
+        extended = follow_up_state is not None
+        if extended and (scope != MONITOR_SCOPE or self.browser != "chrome"):
+            raise ValueError("A list gap follow-up requires the reviewed Chrome monitor")
+        if type(max_pages) is not int or not (
+            3 <= max_pages <= MAX_MONITOR_SCAN_PAGES if extended else 1 <= max_pages <= 2
+        ):
+            raise ValueError("max_pages is outside the requested scan budget")
         # Construct this independently on every cycle; never reuse a prior URL.
         target = validate_list_url(
             build_list_url(scope.gallery_type, scope.gallery_id, scope.keyword, 1, None)
@@ -279,11 +287,30 @@ class HeadlessWatchBrowser:
                 result["pages"].append(snapshot)
                 if self._stop_requested():
                     return result | {"status": "cancelled", "reason": "requested_stop"}
-                if index == 0 and max_pages == 2:
-                    adjacent = _adjacent_page(target, snapshot)
-                    if "url" in adjacent:
-                        url = adjacent["url"]
-                        continue
+                if index + 1 == max_pages:
+                    break
+                adjacent = _adjacent_latest_link(target, snapshot)
+                if "url" not in adjacent:
+                    break
+                if extended:
+                    if not 200 <= status < 300 or result["retry_after"] is not None:
+                        break
+                    # Consult only this run's fresh observations before spending
+                    # another request. A completed overlap or uncertain row stops here.
+                    prefix = plan_scan(
+                        scope, follow_up_state, result["pages"], scan_time, allow_verified_live=True
+                    )
+                    if (
+                        prefix["gap_reason"] not in {"anchor_not_reached", "overlap_incomplete"}
+                        or prefix["scan_result"]["follow_up"]["canonical_url"] != adjacent["url"]
+                    ):
+                        break
+                url = adjacent["url"]
+                target = validate_list_url(url)
+                continue
+            except WatchPlanError:
+                # Let the runtime persist the actual unverified observation and its gap.
+                break
             except Exception as error:
                 return self._failure(result, error, "inspection_error")
             break

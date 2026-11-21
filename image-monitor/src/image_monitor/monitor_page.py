@@ -479,9 +479,11 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       conflicting_empty_marker: '빈 목록 표시와 관찰한 행이 서로 맞지 않음'};
     const lines = [];
     let pageIssue = false;
-    const pages = Array.isArray(diagnosis.pages) ? diagnosis.pages.slice(0, 2) : [];
+    const pageLimit = [3, 4].includes(diagnosis.follow_up_page_limit) ?
+      diagnosis.follow_up_page_limit : 2;
+    const pages = Array.isArray(diagnosis.pages) ? diagnosis.pages.slice(0, pageLimit) : [];
     for (const page of pages) {
-      if (!page || ![1, 2].includes(page.page)) continue;
+      if (!page || !Number.isInteger(page.page) || page.page < 1 || page.page > pageLimit) continue;
       const issue = page.profile_issue;
       const knownIssue = typeof issue === 'string' && Object.hasOwn(profileIssues, issue);
       const statusLabel = typeof page.status === 'string' &&
@@ -846,7 +848,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     const explanation = Object.hasOwn(reasons, reason) ? reasons[reason] :
       (phase === 'needs_review' && Object.hasOwn(reasons, gap) ? reasons[gap] : null);
     const coverageText = gap === 'anchor_not_reached' ?
-      '최근 두 페이지에서 이전 확인 지점을 찾지 못했습니다. ' +
+      '이번 목록 탐색에서 이전 확인 지점을 찾지 못했습니다. ' +
       '그 사이의 글은 일부 누락됐을 수 있습니다.' :
       gap === 'overlap_incomplete' ?
         '이전 확인 지점에 도달했습니다. 다음 페이지까지 겹쳐 확인하는 절차가 남았습니다.' : '';

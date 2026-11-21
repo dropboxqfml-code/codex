@@ -1,5 +1,6 @@
 """The automatic session may hand off only its own verified single list scan."""
 
+import json
 from datetime import timedelta
 from pathlib import Path
 
@@ -53,6 +54,8 @@ def test_first_then_two_complete_turns_and_adjusted_deadline(tmp_path):
         "new_candidates": 0,
         "next_eligible_at": watch_runtime._stamp(clock.now() + timedelta(seconds=60)),
         "browser_closed": True,
+        "page_limit": 1,
+        "pages_checked": 1,
     }
     clock.wait(60)
     delayed = preflight(tmp_path, clock, interval=180)
@@ -89,7 +92,8 @@ def test_only_verified_partial_can_proceed(tmp_path, outcome, status, added):
 
 
 @pytest.mark.parametrize(
-    "tamper", ["cleanup", "missing", "count", "marker", "stale", "navigation", "candidate"]
+    "tamper",
+    ["cleanup", "missing", "count", "marker", "stale", "navigation", "candidate", "unearned_limit"],
 )
 def test_unconfirmed_receipt_or_navigation_stops_handoff(tmp_path, tamper):
     old = []
@@ -115,6 +119,18 @@ def test_unconfirmed_receipt_or_navigation_stops_handoff(tmp_path, tamper):
             with QueueStore(tmp_path / "watch.sqlite") as queue:
                 queue.connection.execute(
                     "UPDATE watch_candidates SET post_id='500' WHERE post_id='104'"
+                )
+        if tamper == "unearned_limit":
+            with QueueStore(tmp_path / "watch.sqlite") as queue:
+                scan_id = report["closed_monitor_scan"]["scan_id"]
+                stored = queue.connection.execute(
+                    "SELECT result_json FROM watch_scans WHERE scan_id=?", (scan_id,)
+                ).fetchone()
+                record = json.loads(stored[0])
+                record["control"]["follow_up_page_limit"] = 3
+                queue.connection.execute(
+                    "UPDATE watch_scans SET result_json=? WHERE scan_id=?",
+                    (json.dumps(record), scan_id),
                 )
         return old[0] if tamper == "stale" else report
 

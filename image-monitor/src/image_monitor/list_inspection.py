@@ -170,8 +170,14 @@ def _adjacent_page(target: dict, snapshot: dict) -> dict:
     """Choose only one actual, revalidated adjacent link in the latest search window."""
     if target["page"] != 1 or target["search_pos"] is not None:
         return {"status": "skipped", "reason": "initial_page_is_not_latest_page_one"}
+    return _adjacent_latest_link(target, snapshot)
+
+
+def _adjacent_latest_link(target: dict, snapshot: dict) -> dict:
+    """Find one observed consecutive link without changing the search window."""
     if (
-        snapshot.get("status") != "observed"
+        target["search_pos"] is not None
+        or snapshot.get("status") != "observed"
         or snapshot.get("counts", {}).get("list_containers") != 1
         or not snapshot.get("rows")
     ):

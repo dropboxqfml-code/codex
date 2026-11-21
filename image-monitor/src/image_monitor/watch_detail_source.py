@@ -1,9 +1,9 @@
-"""Select an unattempted post first discovered in the latest verified two-page scan."""
+"""Select an unattempted post first discovered in the latest verified list scan."""
 
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.search_list import MAX_ROWS
 from image_monitor.watch_runtime import confirmed_monitor_scan, verified_recent_plan
-from image_monitor.watch_store import MONITOR_SCOPE, _record
+from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE, _record
 
 
 def recent_scan_candidates(queue, scope, state):
@@ -18,6 +18,16 @@ def scan_plan_candidates(queue, scope, state, plan):
     """Match a replayed list plan to durable candidate identities in display order."""
     latest = state["latest_scan"]
     scan_id = latest["scan_id"]
+    pages = latest["result"]["private_observation"]["pages"]
+    page_count = len(plan["scan_result"]["pages"])
+    page_limit = MAX_MONITOR_SCAN_PAGES if scope == MONITOR_SCOPE else 2
+    if (
+        not 1 <= page_count <= page_limit
+        or len(pages) != page_count
+        or any(len(page["rows"]) + len(page.get("excluded_rows", [])) > MAX_ROWS for page in pages)
+    ):
+        return None, []
+    row_limit = sum(len(page["rows"]) for page in pages)
     # A previously known post may have been seen again. First and latest scan
     # identities distinguish it from a newly discovered candidate.
     rows = queue.connection.execute(
@@ -26,9 +36,9 @@ def scan_plan_candidates(queue, scope, state, plan):
         "keyword,search_type,post_id) WHERE c.watch_name=? AND c.gallery_type=? "
         "AND c.gallery_id=? AND c.keyword=? AND c.search_type=? "
         "AND (c.first_scan_id=? OR c.latest_scan_id=?) LIMIT ?",
-        (*scope.key(), scan_id, scan_id, MAX_ROWS * 2 + 1),
+        (*scope.key(), scan_id, scan_id, row_limit + 1),
     ).fetchall()
-    if len(rows) > MAX_ROWS * 2:
+    if len(rows) > row_limit:
         return None, []
     stored = {row["post_id"]: row for row in rows}
     planned = {candidate["post_id"]: candidate["post_url"] for candidate in plan["candidates"]}
@@ -48,13 +58,12 @@ def scan_plan_candidates(queue, scope, state, plan):
             if row["first_seen_at"] != latest["observed_at"]:
                 return None, []
             candidates.append(_record(row))
-    pages = latest["result"]["private_observation"]["pages"]
     summary = {
         "generation": state["generation"],
         "coverage": "complete" if plan["complete"] else "partial",
         "gap_reason": plan["gap_reason"],
         "page_count": len(pages),
-        "ordinary_rows": sum(len(page["rows"]) for page in pages),
+        "ordinary_rows": row_limit,
         "new_candidates": len(candidates),
         "unattempted_candidates": sum(row["attempt_id"] is None for row in candidates),
     }

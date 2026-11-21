@@ -39,6 +39,7 @@ class WatchScope:
 
 
 MONITOR_SCOPE = WatchScope("목록 감시", "normal", "comic_new6", "ai", "search_subject_memo")
+MAX_MONITOR_SCAN_PAGES = 4
 
 _SCOPE_WHERE = "watch_name=? AND gallery_type=? AND gallery_id=? AND keyword=? AND search_type=?"
 

@@ -9,13 +9,18 @@ from test_watch_runtime import (
     BrowserFactory,
     FakeClock,
     baseline_outcome,
+    link,
     new_posts_outcome,
+    snapshot,
 )
 
 from image_monitor import candidate_runtime, watch_runtime
 from image_monitor.queue import QueueStore
+from image_monitor.watch_detail_source import scan_plan_candidates
 from image_monitor.watch_lock import watch_run_lock
+from image_monitor.watch_planner import plan_scan
 from image_monitor.watch_runtime import DEFAULT_SCOPE, SERVICE_SCOPE
+from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
 
 
 @pytest.fixture
@@ -133,3 +138,38 @@ def test_removing_database_during_wait_never_initializes_a_new_one(tmp_path, cur
     report = resume(tmp_path, current)
     assert report["reason"] == "source_scan_changed"
     assert not database.exists() and (tmp_path / "previous.sqlite").is_file()
+
+
+def test_dense_three_page_scan_reconciles_previous_and_new_rows_after_reopen(tmp_path):
+    path = tmp_path / "watch.sqlite"
+    clock = FakeClock()
+    with QueueStore(path) as queue:
+        store = WatchStore(queue)
+        for count in (1, 2, 3):
+            now = clock.now()
+            if count == 1:
+                pages = baseline_outcome(now)["pages"]
+            else:
+                pages = [
+                    snapshot(range(650, 450, -1), now, links=[link(2)]),
+                    snapshot(range(450, 250, -1), now, page=2, links=[link(3)]),
+                    snapshot([250, 249], now, page=3, links=[link(4)]),
+                ][:count]
+            plan = plan_scan(
+                MONITOR_SCOPE, store.get_state(MONITOR_SCOPE), pages, now, allow_verified_live=True
+            )
+            plan["scan_result"]["private_observation"] = {"pages": pages}
+            persisted = store.persist_scan(MONITOR_SCOPE, **plan)
+            assert persisted["candidates_added"] == {1: 0, 2: 400, 3: 2}[count]
+            clock.wait(60)
+
+    with QueueStore(path, read_only=True) as queue:
+        store = WatchStore(queue)
+        state = store.get_state(MONITOR_SCOPE)
+        summary, candidates = scan_plan_candidates(queue, MONITOR_SCOPE, state, plan)
+        assert summary["page_count"] == 3 and summary["ordinary_rows"] == 402
+        assert summary["new_candidates"] == summary["unattempted_candidates"] == 2
+        assert [row["post_id"] for row in candidates] == ["250", "249"]
+        assert state["checkpoint"]["anchor_ids"] == ["100", "99"]
+        assert len(store.list_gaps(MONITOR_SCOPE)) == 2
+        assert scan_plan_candidates(queue, DEFAULT_SCOPE, state, plan) == (None, [])

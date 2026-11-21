@@ -25,7 +25,7 @@ from image_monitor.watch_planner import (
     plan_scan,
     plan_verified_page_prefix,
 )
-from image_monitor.watch_store import MONITOR_SCOPE, WatchScope, WatchStore
+from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE, WatchScope, WatchStore
 
 SERVICE_SCOPE = "dcinside"
 PARTIAL_COVERAGE_GAPS = frozenset({"anchor_not_reached", "overlap_incomplete"})
@@ -170,10 +170,10 @@ def _empty_plan(state, observed_at, reason, scope=DEFAULT_SCOPE):
     }
 
 
-def _cycle_summary(outcome, plan, persisted):
+def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
     pages = outcome.get("pages", [])
     exclusions = [row for page in pages for row in page.get("excluded_rows", [])]
-    return {
+    summary = {
         "generation": persisted["generation"],
         "status": outcome["status"],
         "http_status": outcome.get("http_status"),
@@ -204,10 +204,13 @@ def _cycle_summary(outcome, plan, persisted):
         "baseline_created": plan["baseline"] is not None,
         "new_candidates": persisted["candidates_added"],
     }
+    if follow_up_page_limit is not None:
+        summary["follow_up_page_limit"] = follow_up_page_limit
+    return summary
 
 
-def _observed_page_pair(outcome):
-    """Both snapshots must correspond to actual successful document navigations."""
+def _observed_page_chain(outcome, max_pages=2):
+    """Require one successful document navigation per snapshot, in page order."""
     if not isinstance(outcome, dict):
         return False
     pages = outcome.get("pages", [])
@@ -215,11 +218,19 @@ def _observed_page_pair(outcome):
     if (
         outcome.get("status") != "observed"
         or not isinstance(pages, list)
-        or len(pages) != 2
+        or not 2 <= len(pages) <= max_pages
         or not isinstance(visits, list)
-        or len(visits) != 2
+        or len(visits) != len(pages)
+        or (max_pages > 2 and outcome.get("retry_after") is not None)
     ):
         return False
+    return _matched_documents(pages, visits, follow_up=max_pages > 2) and (
+        outcome.get("http_status") == visits[-1]["http_status"]
+    )
+
+
+def _matched_documents(pages, visits, *, follow_up):
+    previous = None
     for page, visit in zip(pages, visits, strict=True):
         if not isinstance(page, dict) or not isinstance(visit, dict):
             return False
@@ -230,13 +241,61 @@ def _observed_page_pair(outcome):
             or visit.get("url") != page.get("url")
             or page.get("status") != "observed"
             or not page.get("rows")
+            or (follow_up and visit.get("retry_after") is not None)
         ):
             return False
-    return outcome.get("http_status") == visits[-1]["http_status"]
+        if follow_up:
+            try:
+                stamp = _stored_time(page.get("observed_at"))
+            except QueueError:
+                return False
+            if previous is not None and stamp < previous:
+                return False
+            previous = stamp
+    return True
+
+
+def _follow_up_transport(outcome, limit):
+    pages, visits = outcome.get("pages"), outcome.get("navigation")
+    if (
+        not isinstance(pages, list)
+        or not isinstance(visits, list)
+        or not len(pages) <= len(visits) <= limit
+        or any(not isinstance(v, dict) for v in visits)
+    ):
+        return False
+    if outcome["status"] == "observed":
+        if not pages or len(pages) != len(visits) or outcome.get("retry_after") is not None:
+            return False
+    elif len(visits) > len(pages) + 1:
+        return False
+    if visits and outcome.get("http_status") != visits[-1].get("http_status"):
+        return False
+    # A failed final document (e.g. HTTP 429) has a navigation but no snapshot.
+    return _matched_documents(pages, visits[: len(pages)], follow_up=True)
+
+
+def _plan_observation(scope, state, outcome, observed_at, follow_up_limit):
+    pages = outcome.get("pages", [])
+    if follow_up_limit and not _follow_up_transport(outcome, follow_up_limit):
+        return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
+    try:
+        plan = plan_scan(scope, state, pages, observed_at, allow_verified_live=True)
+        if follow_up_limit and plan["complete"] and len(plan["scan_result"]["pages"]) != len(pages):
+            return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
+        return plan
+    except WatchPlanError as error:
+        reason = "list_profile_unverified_or_incomplete"
+        prefix = None
+        if error.issue == "snapshot_layout" and _observed_page_chain(outcome, follow_up_limit or 2):
+            prefix = plan_verified_page_prefix(scope, state, pages, observed_at)
+        plan = prefix or _empty_plan(state, observed_at, reason, scope)
+        plan["scan_result"]["planner_issue"] = error.issue
+        return plan
 
 
 def verified_recent_plan(queue, scope, state):
-    """Replay the latest two-page scan from the checkpoint that preceded it."""
+    """Replay the latest verified list chain from the checkpoint that preceded it."""
     latest = state["latest_scan"]
     scope_fields = ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type")
     if not (
@@ -254,8 +313,17 @@ def verified_recent_plan(queue, scope, state):
     result = latest["result"]
     observed = result.get("private_observation", {})
     control = _control(state)
+    page_limit = 2
+    if "follow_up_page_limit" in control:
+        page_limit = control["follow_up_page_limit"]
+        if (
+            scope != MONITOR_SCOPE
+            or type(page_limit) is not int
+            or not 3 <= page_limit <= MAX_MONITOR_SCAN_PAGES
+        ):
+            return None
     if (
-        not _observed_page_pair(observed)
+        not _observed_page_chain(observed, page_limit)
         or control.get("transport_status") != "observed"
         or control.get("blocked") is not False
         or control.get("http_status") != observed.get("http_status")
@@ -297,7 +365,7 @@ def verified_recent_plan(queue, scope, state):
     if (
         planned["complete"] != latest["complete"]
         or planned["gap_reason"] != latest["gap_reason"]
-        or len(planned["scan_result"]["pages"]) != 2
+        or len(planned["scan_result"]["pages"]) != len(pages)
         or planned["checkpoint"] != latest["checkpoint"]
         or planned["scan_result"]
         != {k: v for k, v in result.items() if k not in ("control", "private_observation")}
@@ -338,6 +406,7 @@ def matches_partial_coverage_scan(queue, scope, state, report):
         latest["result"]["private_observation"],
         planned,
         {"generation": state["generation"], "candidates_added": added},
+        follow_up_page_limit=latest["result"]["control"].get("follow_up_page_limit"),
     )
     return (
         report.get("cycles") == [summary]
@@ -425,6 +494,31 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
         return False
 
 
+def monitor_page_budget(database, queue, state):
+    """Widen one page only after a closed, replayable partial Chrome scan."""
+    if state.get("baseline") is None:
+        return 1
+    latest = state.get("latest_scan")
+    if not latest or latest.get("gap_reason") not in PARTIAL_COVERAGE_GAPS:
+        return 2
+    try:
+        run_id = latest["result"]["control"]["monitor_run_id"]
+        if not _uuid(run_id):
+            return 2
+        receipt = _read_json(database.parent / "runs" / run_id / "report.json")
+        if (
+            confirmed_monitor_scan(database, latest, expected_report=receipt)
+            and receipt.get("browser") == "chrome"
+            and receipt.get("recent_pages_verified") is True
+            and receipt.get("cycles_requested") == 1
+            and matches_partial_coverage_scan(queue, MONITOR_SCOPE, state, receipt)
+        ):
+            return min(receipt["cycles"][0]["page_count"] + 1, MAX_MONITOR_SCAN_PAGES)
+    except (OSError, ValueError, TypeError, KeyError, QueueError, CandidateFinishError):
+        pass
+    return 2
+
+
 def run_watch_trial(
     work_root: Path,
     browser="chrome",
@@ -435,6 +529,7 @@ def run_watch_trial(
     clock=None,
     scope=DEFAULT_SCOPE,
     should_stop=None,
+    follow_up_gaps=False,
 ):
     require_windows()
     if browser not in {"chrome", "edge"} or type(cycles) is not int or not 1 <= cycles <= 2:
@@ -449,6 +544,10 @@ def run_watch_trial(
         reviewed_scope = False
     if not reviewed_scope:
         raise NativeUIError("The watch trial requires the reviewed gallery and search scope")
+    if type(follow_up_gaps) is not bool or (
+        follow_up_gaps and (scope != MONITOR_SCOPE or browser != "chrome" or cycles != 1)
+    ):
+        raise NativeUIError("List gap follow-up requires one automatic Chrome monitor cycle")
     if should_stop is not None and not callable(should_stop):
         raise NativeUIError("The watch stop condition must be callable")
     clock = clock or _Clock()
@@ -544,6 +643,10 @@ def run_watch_trial(
                             break
                         observed_at = clock.now()
                         report["last_stage"] = "list_observation"
+                        page_limit = 1 if state["baseline"] is None else 2
+                        if follow_up_gaps:
+                            page_limit = monitor_page_budget(database, queue, state)
+                        follow_up_limit = page_limit if page_limit > 2 else None
                         # Commit before navigation so cancellation or a process failure
                         # cannot immediately repeat the same request on the next run.
                         queue.defer_service(
@@ -554,7 +657,8 @@ def run_watch_trial(
                             outcome = backend.scan(
                                 scope,
                                 observed_at,
-                                max_pages=1 if state["baseline"] is None else 2,
+                                max_pages=page_limit,
+                                **({"follow_up_state": state} if follow_up_limit else {}),
                             )
                         finally:
                             finished_at = clock.now()
@@ -562,20 +666,9 @@ def run_watch_trial(
                                 SERVICE_SCOPE,
                                 next_poll_at(finished_at, interval_seconds=interval_seconds),
                             )
-                        pages = outcome.get("pages", [])
-                        reason = None
-                        try:
-                            plan = plan_scan(
-                                scope, state, pages, observed_at, allow_verified_live=True
-                            )
-                        except WatchPlanError as error:
-                            reason = "list_profile_unverified_or_incomplete"
-                            plan = None
-                            if error.issue == "snapshot_layout" and _observed_page_pair(outcome):
-                                plan = plan_verified_page_prefix(scope, state, pages, observed_at)
-                            if plan is None:
-                                plan = _empty_plan(state, observed_at, reason, scope)
-                            plan["scan_result"]["planner_issue"] = error.issue
+                        plan = _plan_observation(
+                            scope, state, outcome, observed_at, follow_up_limit
+                        )
                         cancelled = outcome["status"] == "cancelled" or stopped()
                         failed = outcome["status"] != "observed" and not cancelled
                         if failed or cancelled:
@@ -607,10 +700,14 @@ def run_watch_trial(
                         }
                         if scope == MONITOR_SCOPE:
                             plan["scan_result"]["control"]["monitor_run_id"] = run_directory.name
+                        if follow_up_limit is not None:
+                            plan["scan_result"]["control"]["follow_up_page_limit"] = follow_up_limit
                         plan["scan_result"]["private_observation"] = outcome
                         report["last_stage"] = "persist_scan"
                         persisted = store.persist_scan(scope, **plan)
-                        summary = _cycle_summary(outcome, plan, persisted)
+                        summary = _cycle_summary(
+                            outcome, plan, persisted, follow_up_page_limit=follow_up_limit
+                        )
                         report["cycles"].append(summary)
                         report["cycles_completed"] += 1
                         report["new_candidates"] += persisted["candidates_added"]

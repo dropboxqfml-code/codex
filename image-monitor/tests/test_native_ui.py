@@ -1,4 +1,5 @@
 import ctypes
+import sys
 from ctypes import wintypes
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -70,6 +71,18 @@ def wrapper(hwnd):
     window.process_id.return_value = 999 if hwnd == 999 else 10
     window.element_info = SimpleNamespace(control_type="Window", identity=hwnd)
     return window
+
+
+def test_incomplete_native_window_enumeration_cannot_establish_uniqueness(monkeypatch):
+    def partial_enumeration(callback, context):
+        callback(100, context)
+        raise OSError("Desktop enumeration was interrupted")
+
+    monkeypatch.setitem(
+        sys.modules, "win32gui", SimpleNamespace(EnumWindows=partial_enumeration, error=OSError)
+    )
+    with pytest.raises(NativeUIError, match="enumerate native top-level windows"):
+        WindowsUI._top_level_hwnds()
 
 
 def test_locked_desktop_stops_before_foreground_inspection():

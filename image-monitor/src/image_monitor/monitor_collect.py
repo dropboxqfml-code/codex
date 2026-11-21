@@ -18,7 +18,7 @@ from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
 from image_monitor.watch_store import MONITOR_SCOPE
 
 
-def _save_status(save, expected_images):
+def _save_status(save, expected_images, expected_previous=None):
     status = save["status"]
     if status == "monitor_batch_completed" and save["browser_closed"] is True:
         if (
@@ -31,6 +31,18 @@ def _save_status(save, expected_images):
             and save["shared_pending_retained"] is False
             and save["last_stage"] == "complete"
         ):
+            if expected_previous is not None or save.get("partial_retry_started"):
+                if not (
+                    type(expected_previous) is int
+                    and 0 < expected_previous < expected_images
+                    and save.get("partial_retry_started") is True
+                    and save.get("setup_retry_started") is False
+                    and type(save.get("previously_verified_files")) is int
+                    and save["previously_verified_files"] == expected_previous
+                    and type(save.get("newly_saved_files")) is int
+                    and save["newly_saved_files"] == expected_images - expected_previous
+                ):
+                    return "monitor_collect_review"
             return "monitor_collect_saved"
         if save["reason"] == "candidate_unavailable" and save["shared_pending_retained"] is False:
             return "monitor_collect_unavailable"
@@ -104,6 +116,7 @@ def _collect(report, roots, clock, detail_runner, save_runner, *, session_turn, 
             native_save_tasks_started=save["tasks_started"],
             worker_images_completed=save["worker_images_completed"],
             setup_retry_started=save["setup_retry_started"],
+            partial_retry_started=save.get("partial_retry_started", False),
             browser_closed=save["browser_closed"],
         )
         if (
@@ -123,7 +136,7 @@ def _collect(report, roots, clock, detail_runner, save_runner, *, session_turn, 
             return
 
     public = share_batch_report(save)
-    status = _save_status(public, expected_images)
+    status = _save_status(public, expected_images, search.get("previously_verified_files"))
     files = public["saved_files"] if status == "monitor_collect_saved" else []
     due = public.get("next_eligible_at_local")
     report.update(
@@ -136,6 +149,10 @@ def _collect(report, roots, clock, detail_runner, save_runner, *, session_turn, 
         next_eligible_at=_stamp(_stored_time(due)) if due else None,
         browser_closed=public["browser_closed"],
     )
+    if public.get("partial_retry_started") and "previously_verified_files" in public:
+        report["previously_verified_files"] = public["previously_verified_files"]
+        if status == "monitor_collect_saved":
+            report["newly_saved_files"] = public["newly_saved_files"]
 
 
 def _run_monitor_collect(
@@ -158,6 +175,7 @@ def _run_monitor_collect(
         "new_details_checked": 0,
         "native_save_tasks_started": 0,
         "setup_retry_started": False,
+        "partial_retry_started": False,
         "worker_images_completed": 0,
         "files_verified": 0,
         "saved_files": [],

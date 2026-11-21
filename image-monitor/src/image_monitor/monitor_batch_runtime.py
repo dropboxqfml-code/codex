@@ -41,6 +41,8 @@ from image_monitor.monitor_settings import load_monitor_settings
 from image_monitor.monitor_setup_retry import (
     FOREGROUND_RETRY_EXHAUSTED,
     FOREGROUND_RETRY_REASON,
+    PARTIAL_RETRY_EXHAUSTED,
+    PARTIAL_RETRY_REASON,
     verify_setup_retry,
 )
 from image_monitor.native_probe import write_report
@@ -354,6 +356,35 @@ def _worker_completed(worker, permit, observer):
     )
 
 
+def _focus_stop_reason(worker, completed, total, retrying):
+    if worker.get("status") == "manual_review" and worker.get("error_type") == "NativeFocusError":
+        if worker.get("last_stage") == "automatic_foreground_check":
+            return FOREGROUND_RETRY_EXHAUSTED if retrying else FOREGROUND_RETRY_REASON
+        if (
+            worker.get("last_stage") == "pre_input_check"
+            and worker.get("reason")
+            == "Automatic saving stopped when the dedicated window lost focus"
+            and type(completed) is int
+            and 0 < completed < total
+            and "active_attempt" not in worker
+            and "last_preinput_attempt" not in worker
+        ):
+            return PARTIAL_RETRY_EXHAUSTED if retrying else PARTIAL_RETRY_REASON
+    return "native_batch_task_requires_review"
+
+
+def _verified_new_files(worker, verified, previous):
+    """Match this invocation’s fresh native saves to exactly the verified suffix."""
+    suffix = verified["saved_files"][previous:]
+    saved = worker.get("saved_files")
+    if not isinstance(saved, list) or not suffix or len(saved) != len(suffix):
+        raise QueueError("The resumed native worker did not return the remaining file slots")
+    for fresh, expected in zip(saved, suffix, strict=True):
+        if not isinstance(fresh, dict) or any(fresh.get(k) != expected[k] for k in _FILE_FIELDS):
+            raise QueueError("The resumed native worker returned a different file slot")
+    return len(suffix)
+
+
 def _unavailable_without_work(worker, observer, task, legacy_root, batch_root):
     """A missing post is terminal only when no native/image work ever began."""
     if not (
@@ -433,6 +464,7 @@ def share_batch_report(report):
         "worker_last_stage",
         "worker_images_completed",
         "setup_retry_started",
+        "partial_retry_started",
         "native_stage",
         "native_file_type",
         "native_suggested_suffix",
@@ -448,9 +480,17 @@ def share_batch_report(report):
     ):
         public["previous_failure_reason"] = FOREGROUND_RETRY_REASON
     if (
-        report.get("mode") == "bounded_monitor_automatic_save"
-        and report.get("worker_last_stage") == "automatic_foreground_check"
+        report.get("partial_retry_started") is True
+        and report.get("previous_failure_reason") == PARTIAL_RETRY_REASON
     ):
+        public["previous_failure_reason"] = PARTIAL_RETRY_REASON
+        for key in ("previously_verified_files", "newly_saved_files"):
+            value = report.get(key)
+            if type(value) is int and 0 < value < MAX_MONITOR_SAVE_IMAGES:
+                public[key] = value
+    if report.get("mode") == "bounded_monitor_automatic_save" and report.get(
+        "worker_last_stage"
+    ) in ("automatic_foreground_check", "pre_input_check"):
         for key in ("focus_at_failure", "focus_at_pause"):
             flags = _public_initial_focus(public.pop(key, None))
             if flags:
@@ -586,10 +626,11 @@ def run_monitor_batch(
     ledger_name = RECENT_LEDGER_NAME if recent_handoff is not None else LEDGER_NAME
     automatic = monitor_handoff is not None
     handoff_fields = {"post_id", "attempt_id", "fingerprint"}
-    retrying = isinstance(monitor_handoff, dict) and set(monitor_handoff) == handoff_fields | {
-        "retry_task_id",
-        "prior_run",
-    }
+    retry_fields = handoff_fields | {"retry_task_id", "prior_run"}
+    retrying = isinstance(monitor_handoff, dict) and set(monitor_handoff) in (
+        retry_fields,
+        retry_fields | {"previously_verified_files"},
+    )
     if automatic and (
         recent_handoff is not None
         or max_tasks != 1
@@ -649,6 +690,7 @@ def run_monitor_batch(
     if automatic:
         report["worker_images_completed"] = 0
         report["setup_retry_started"] = False
+        report["partial_retry_started"] = False
     active = ledger = None
     database = _plain_path(watch_root / "watch.sqlite")
     try:
@@ -829,15 +871,33 @@ def run_monitor_batch(
                                 if retrying:
                                     report["last_stage"] = "setup_retry_evidence"
                                     with NativeSaveLock():
-                                        prior_run, prior_reason = verify_setup_retry(
+                                        prior_run, prior_reason, previous = verify_setup_retry(
                                             ledger, task, permit
                                         )
-                                        if prior_run != monitor_handoff["prior_run"]:
-                                            raise QueueError("The prior native setup run changed")
+                                        expected_previous = monitor_handoff.get(
+                                            "previously_verified_files", 0
+                                        )
+                                        if (
+                                            prior_run != monitor_handoff["prior_run"]
+                                            or type(expected_previous) is not int
+                                            or previous != expected_previous
+                                            or (prior_reason == PARTIAL_RETRY_REASON)
+                                            != ("previously_verified_files" in monitor_handoff)
+                                        ):
+                                            raise QueueError(
+                                                "The prior native run or verified prefix changed"
+                                            )
                                         active = ledger.start_setup_retry(
                                             task, prior_run=prior_run, now=clock.now()
                                         )
-                                    report["setup_retry_started"] = True
+                                    if prior_reason == PARTIAL_RETRY_REASON:
+                                        report.update(
+                                            partial_retry_started=True,
+                                            previously_verified_files=previous,
+                                            previous_failure_reason=prior_reason,
+                                        )
+                                    else:
+                                        report["setup_retry_started"] = True
                                     if prior_reason == FOREGROUND_RETRY_REASON:
                                         report["previous_failure_reason"] = prior_reason
                                 else:
@@ -953,15 +1013,17 @@ def run_monitor_batch(
                                         "error_type": worker.get("error_type"),
                                     }
                                     reason = "native_batch_task_requires_review"
-                                    if (
-                                        automatic
-                                        and worker.get("last_stage") == "automatic_foreground_check"
-                                        and failure["worker_status"] == "manual_review"
-                                        and failure["error_type"] == "NativeFocusError"
-                                    ):
-                                        reason = FOREGROUND_RETRY_REASON
-                                        if report["setup_retry_started"]:
-                                            reason = FOREGROUND_RETRY_EXHAUSTED
+                                    if automatic:
+                                        reason = _focus_stop_reason(
+                                            worker,
+                                            report["worker_images_completed"],
+                                            permit.image_count,
+                                            retrying,
+                                        )
+                                        if reason in (
+                                            FOREGROUND_RETRY_EXHAUSTED,
+                                            PARTIAL_RETRY_EXHAUSTED,
+                                        ):
                                             failure["reason"] = reason
                                     ledger.finish(
                                         active["task_id"],
@@ -993,6 +1055,12 @@ def run_monitor_batch(
                                         verified = verify_task_files(
                                             active, permit, legacy_root, batch_root
                                         )
+                                        if report.get("partial_retry_started"):
+                                            new_count = _verified_new_files(
+                                                worker,
+                                                verified,
+                                                report["previously_verified_files"],
+                                            )
                                 except BaseException as error:
                                     ledger.finish(
                                         active["task_id"],
@@ -1009,6 +1077,8 @@ def run_monitor_batch(
                                     now=clock.now(),
                                 )
                                 active = None
+                                if report.get("partial_retry_started"):
+                                    report["newly_saved_files"] = new_count
                                 report["tasks_completed"] += 1
                                 report["saved_files"].extend(verified["saved_files"])
                                 report.update(

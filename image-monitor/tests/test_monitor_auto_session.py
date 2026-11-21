@@ -140,6 +140,44 @@ def test_session_keeps_only_safe_initial_foreground_flags_in_last_collection(tmp
     assert last["focus_at_failure"] == {"target_exists": True, "foreground_identified": False}
 
 
+def test_session_retains_verified_prefix_and_new_file_totals_across_subsequent_cycles(tmp_path):
+    resumed = collection("saved", files=10)
+    resumed.update(
+        partial_retry_started=True,
+        previously_verified_files=6,
+        newly_saved_files=4,
+        search={"previous_failure_reason": "between_images_foreground_lost"},
+    )
+    report, _ = session(
+        tmp_path,
+        Clock(),
+        [scan(), scan(), scan()],
+        [resumed, collection("saved", files=2), collection()],
+        cycles=3,
+    )
+    assert report["status"] == "auto_monitor_completed", report
+    assert report["last_collection"]["status"] == "monitor_collect_no_candidates"
+    assert report["posts_saved"] == 2 and report["files_verified"] == 12
+    assert report["previously_verified_files"] == 6 and report["newly_saved_files"] == 6
+
+
+@pytest.mark.parametrize("previous,new,used", [(6, 5, True), (10, 0, True), (6, 4, False)])
+def test_session_rejects_inconsistent_partial_counts_without_counting_a_save(
+    tmp_path, previous, new, used
+):
+    turn = collection("saved", files=10)
+    turn.update(
+        partial_retry_started=used,
+        previously_verified_files=previous,
+        newly_saved_files=new,
+        search={"previous_failure_reason": "between_images_foreground_lost"},
+    )
+    report, _ = session(tmp_path, Clock(), [scan()], [turn], cycles=1)
+    assert report["status"] == "auto_monitor_review"
+    assert report["posts_saved"] == report["files_verified"] == 0
+    assert report["previously_verified_files"] == report["newly_saved_files"] == 0
+
+
 def test_cooldown_before_list_and_collection_retries_the_same_phase(tmp_path):
     clock = Clock()
     report, events = session(

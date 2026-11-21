@@ -56,7 +56,7 @@ def test_mixing_another_binding_or_prior_native_run_cannot_rearm_a_task(data, mo
 
     def verify(store, task, permit):
         verified.append(task["task_id"])
-        return "b" * 32, None
+        return "b" * 32, None, 0
 
     monkeypatch.setattr(batch, "verify_setup_retry", verify)
     result = run(data, forbidden, max_tasks=1, monitor_handoff=target)

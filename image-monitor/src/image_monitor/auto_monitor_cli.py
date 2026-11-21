@@ -47,8 +47,12 @@ def _show_progress(report, stream):
         return
     message = (
         f"{messages[phase]} | 완료 {report['cycles_completed']}주기 · "
-        f"저장 {report['posts_saved']}개 게시글, {report['files_verified']}장"
+        f"게시글 {report['posts_saved']}건 · 검증 {report['files_verified']}장"
     )
+    if report.get("previously_verified_files"):
+        previous = report["previously_verified_files"]
+        new = report["newly_saved_files"]
+        message += f" (기존 {previous}장, 새로 저장 {new}장)"
     due = report.get("next_eligible_at")
     if phase == "waiting" and due:
         local_time = datetime.fromisoformat(due).astimezone()

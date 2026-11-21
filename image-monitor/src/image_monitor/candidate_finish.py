@@ -21,8 +21,9 @@ from image_monitor.artifact_files import (
     _plain_path,
     _relative_path,
     _source_metadata,
+    _staging_relative,
 )
-from image_monitor.candidate_save_policy import MAX_SAVE_IMAGES, CandidateSavePermit
+from image_monitor.candidate_save_policy import MAX_SAVE_IMAGES, MONITOR_SCOPE, CandidateSavePermit
 from image_monitor.native_probe import exclusive_digest
 from image_monitor.native_ui import NativeUIError
 from image_monitor.paths import FolderPlan, destination, plan_folder
@@ -323,6 +324,75 @@ def verify_completed_candidate_files(
         len(store.list_artifacts()) == permit.image_count,
         "The native queue contains missing or unrelated candidate work",
     )
+    return _verify_finalized_files(store, permit, save_root, jobs, total=len(jobs))
+
+
+def verify_partial_candidate_files(store, permit, *, base):
+    """Prove an ordered finalized prefix and untouched suffix before resuming a monitor save.
+
+    The caller holds the native and watch locks. Private proofs also carry the job ID and
+    exact verification data used to compare the original worker's completed-file receipt.
+    """
+    save_root, jobs = verify_candidate_queue_jobs(store, permit, base=base)
+    artifacts = {entry["job_id"]: entry for entry in store.list_artifacts()}
+    prefix = jobs[: len(artifacts)]
+    _require(
+        permit.watch_name == MONITOR_SCOPE[0]
+        and 0 < len(prefix) < len(jobs)
+        and set(artifacts) == {job["job_id"] for job in prefix},
+        "Partial recovery requires a proper finalized prefix of one monitor post",
+    )
+    _require(
+        store.connection.execute("SELECT 1 FROM attempts LIMIT 1").fetchone() is None,
+        "A partially saved candidate has earlier attempts requiring review",
+    )
+    for job, image in zip(jobs, permit.reference_snapshot["images"], strict=True):
+        _require(
+            all(job[key] == image[key] for key in ("stable_key", "display_url", "body_order"))
+            and job["service_scope"] == "dcinside"
+            and job["attempt_count"] == 0
+            and all(
+                job[key] is None
+                for key in (
+                    "first_failure_at",
+                    "next_retry_at",
+                    "server_not_before",
+                    "last_error",
+                )
+            ),
+            "Partial recovery requires the original file order and untouched retry history",
+        )
+    for job in jobs[len(prefix) :]:
+        _require(job["status"] == "queued", "A remaining image is no longer queued")
+        verify_candidate_job_source(permit, store.get_job_source(job["job_id"]))
+
+    summary, proofs = _verify_finalized_files(store, permit, save_root, prefix, total=len(jobs))
+    files = set()
+    directories = set()
+    for proof, job in zip(proofs, prefix, strict=True):
+        artifact = artifacts[job["job_id"]]
+        proof.update(job_id=job["job_id"], verification=artifact["verification"])
+        final = proof["path"]
+        files.update((final, final.parent / "metadata.json"))
+        staging = _relative_path(save_root, artifact["staging_relative"])
+        _staging_relative(save_root, staging, job["job_id"])
+        for path in (final, staging):
+            directories.update(
+                parent for parent in path.parents if parent.is_relative_to(save_root)
+            )
+    # Walk exclusively through the known output/staging directories. Reject unexpected
+    # files, directories or reparse points before a second worker can send any input.
+    pending = [save_root]
+    while pending:
+        for child in _directory(pending.pop()).iterdir():
+            if child in directories:
+                pending.append(child)
+            else:
+                _require(child in files, "The partially saved candidate has unexpected output")
+    return summary, proofs
+
+
+def _verify_finalized_files(store, permit, save_root, jobs, *, total):
     files = []
     proofs = []
     metadata_paths = set()
@@ -387,7 +457,11 @@ def verify_completed_candidate_files(
         proofs.append({"path": final, "sha256": actual["sha256"]} | public_file)
     return (
         {
-            "job_counts": {"observed": len(jobs), "completed": len(jobs), "unresolved": 0},
+            "job_counts": {
+                "observed": total,
+                "completed": len(jobs),
+                "unresolved": total - len(jobs),
+            },
             "saved_files": files,
             "files_preserved": True,
             "metadata_preserved": True,

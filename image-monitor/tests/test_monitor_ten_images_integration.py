@@ -212,3 +212,131 @@ def test_uncertain_seventh_image_preserves_six_finalized_files_without_another_s
     with QueueStore(base / "queue.sqlite", read_only=True) as queue:
         assert sorted(queue.list_jobs(), key=lambda j: j["file_slot"]) == jobs
         assert queue.list_artifacts() == artifacts
+
+
+def lose_foreground_between_files(monkeypatch, pilot, completed):
+    wait_for_image = post_worker._wait_for_next_image
+
+    def switch_window(runtime, page, ui, snapshot, root, report, path, **kwargs):
+        if report["job_counts"]["completed"] == completed:
+            pilot.focus_ready = False
+            # Last successful Windows save exited the file dialog. A different
+            # live window now has focus before the worker may claim the next job.
+            ui.stage = "save_dialog"
+            ui.focus_snapshot = lambda: {
+                "target_hwnd": 1234,
+                "foreground_hwnd": 5678,
+                "foreground_pid": 99,
+                "foreground_class": "FixtureWindow",
+                "target_exists": True,
+                "belongs_to_target": False,
+                "target_foreground": False,
+            }
+        return wait_for_image(runtime, page, ui, snapshot, root, report, path, **kwargs)
+
+    monkeypatch.setattr(post_worker, "_wait_for_next_image", switch_window)
+
+
+def test_preclaim_stop_after_six_reopens_same_post_and_saves_last_four(monitor, pilot, monkeypatch):
+    scan(monitor, 202, 200)
+    with monkeypatch.context() as interruption:
+        lose_foreground_between_files(interruption, pilot, completed=6)
+        first = monitor.collect()
+    assert first["status"] == "monitor_collect_review", first
+    assert first["save"]["worker_last_stage"] == "pre_input_check"
+    assert first["worker_images_completed"] == len(pilot.saves) == 6
+    assert first["browser_closed"] and not monitor.data.marker.exists()
+    with ledger(monitor.data) as store:
+        [task] = store.list_tasks()
+        assert task["post_id"] == "202" and task["status"] == "needs_review"
+    base = post_base(monitor.data, "202")
+    [first_report] = (base / "runs").glob("*/report.json")
+    prior_report_bytes = first_report.read_bytes()
+    prefix = saved_post(base)
+    prior_metadata = json.loads(prefix.pop("metadata.json")[0])["images"]
+    assert list(sorted(prefix)) == [
+        "001.png",
+        "002.jpg",
+        "003.webp",
+        "004.gif",
+        "005.png",
+        "006.jpg",
+    ]
+    with QueueStore(base / "queue.sqlite", read_only=True) as queue:
+        prior_jobs = sorted(queue.list_jobs(), key=lambda j: j["file_slot"])
+        assert [j["status"] for j in prior_jobs] == ["completed"] * 6 + ["queued"] * 4
+        assert all(not queue.history(j["job_id"]) for j in prior_jobs[6:])
+
+    pilot.focus_ready = True
+    monitor.events.clear()
+    recovered = monitor.collect()
+    assert recovered["status"] == "monitor_collect_saved", recovered
+    assert recovered["native_save_tasks_started"] == 1 and recovered["new_details_checked"] == 0
+    assert recovered["partial_retry_started"] and not recovered["setup_retry_started"]
+    assert recovered["previously_verified_files"] == 6 and recovered["newly_saved_files"] == 4
+    assert recovered["files_verified"] == 10
+    assert [entry[:2] for entry in monitor.events] == [("save", "202")]
+    assert recovered["browser_closed"] and not monitor.data.marker.exists()
+    with ledger(monitor.data) as store:
+        [done] = store.list_tasks()
+        assert done["status"] == "completed"
+        for key in (
+            "task_id",
+            "post_id",
+            "permit_fingerprint",
+            "detail_attempt_id",
+            "relative_root",
+        ):
+            assert done[key] == task[key]
+    with QueueStore(monitor.data.watch / "watch.sqlite", read_only=True) as queue:
+        permit = reconstruct_permit(queue, done)
+        assert pilot.saves == [image["stable_key"] for image in permit.reference_snapshot["images"]]
+    files = saved_post(base)
+    assert all(files[name] == state for name, state in prefix.items())
+    assert first_report.read_bytes() == prior_report_bytes
+    metadata = json.loads(files["metadata.json"][0])["images"]
+    assert [m["artifact"] for m in metadata[:6]] == [m["artifact"] for m in prior_metadata[:6]]
+    with QueueStore(base / "queue.sqlite", read_only=True) as queue:
+        jobs = sorted(queue.list_jobs(), key=lambda j: j["file_slot"])
+        assert [j["job_id"] for j in jobs] == [j["job_id"] for j in prior_jobs]
+        assert all(j["status"] == "completed" for j in jobs)
+        for entry, result in zip(metadata, recovered["saved_files"], strict=True):
+            filename = result["saved_filename"]
+            assert entry["artifact"]["saved_filename"] == filename
+            assert (
+                entry["artifact"]["verification"]["sha256"]
+                == hashlib.sha256(files[filename][0]).hexdigest()
+            )
+    again = monitor.collect()
+    assert again["status"] == "monitor_collect_no_candidates", again
+    assert again["native_save_tasks_started"] == 0 and len(pilot.saves) == 10
+    assert saved_post(base) == files
+
+
+def test_second_between_image_stop_retains_files_and_does_not_rearm(monitor, pilot, monkeypatch):
+    scan(monitor, 202, 200)
+    for saved_count, reason in [
+        (6, "between_images_foreground_lost"),
+        (8, "between_images_retry_exhausted"),
+    ]:
+        pilot.focus_ready = True
+        with monkeypatch.context() as interruption:
+            lose_foreground_between_files(interruption, pilot, completed=saved_count)
+            result = monitor.collect()
+        assert result["status"] == "monitor_collect_review" and result["reason"] == reason, result
+        assert result["worker_images_completed"] == len(pilot.saves) == saved_count
+        assert result["browser_closed"] and not monitor.data.marker.exists()
+        assert result["files_verified"] == 0
+    assert result["partial_retry_started"] and not result["setup_retry_started"]
+    assert result["previously_verified_files"] == 6 and "newly_saved_files" not in result
+    base = post_base(monitor.data, "202")
+    files = saved_post(base)
+    with ledger(monitor.data) as store:
+        [task] = store.list_tasks()
+        assert task["status"] == "needs_review"
+    again = monitor.collect()
+    assert again["reason"] == "between_images_retry_exhausted" and again["save"] is None, again
+    assert again["native_save_tasks_started"] == 0 and len(pilot.saves) == 8
+    assert not again["partial_retry_started"] and saved_post(base) == files
+    with ledger(monitor.data) as store:
+        assert store.list_tasks() == [task]

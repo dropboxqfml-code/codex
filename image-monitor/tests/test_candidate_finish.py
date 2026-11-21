@@ -14,8 +14,10 @@ from types import SimpleNamespace
 import pytest
 from PIL import Image
 from test_candidate_save_policy import candidate_evidence, snapshot_from
+from test_monitor_save_policy import monitor_evidence
 
 from image_monitor.artifact_files import finalize_saved_image
+from image_monitor.candidate_finish import CandidateFinishError, verify_partial_candidate_files
 from image_monitor.candidate_save_policy import make_candidate_save_permit
 from image_monitor.native_ui import NativeUIError
 from image_monitor.post_pipeline import enqueue_candidate_snapshot
@@ -38,6 +40,15 @@ def local_exclusive_digest(monkeypatch):
 
 @pytest.fixture
 def completed():
+    yield from candidate_output(candidate_evidence(image_count=2), completed_images=2)
+
+
+@pytest.fixture
+def partial_candidate():
+    yield from candidate_output(monitor_evidence(image_count=3), completed_images=1)
+
+
+def candidate_output(evidence, *, completed_images):
     directory = tempfile.TemporaryDirectory(
         prefix="imf-", dir=os.environ.get("RUNNER_TEMP", tempfile.gettempdir())
     )
@@ -46,7 +57,7 @@ def completed():
         base = Path(directory.name) / "session-1"
         run = base / "runs" / uuid.uuid4().hex
         (run / "browser-profile").mkdir(parents=True)
-        candidate, baseline, detail = candidate_evidence()
+        candidate, baseline, detail = evidence
         permit = make_candidate_save_permit(candidate, baseline, detail)
         snapshot = copy.deepcopy(snapshot_from(detail))
         now = datetime(2026, 11, 16, 9, tzinfo=UTC)
@@ -55,7 +66,7 @@ def completed():
         queued = enqueue_candidate_snapshot(store, snapshot, permit=permit)
         files = []
         artifacts = []
-        for order in range(2):
+        for order in range(completed_images):
             claim = store.claim_next("finish-fixture", now)
             store.transition(claim["job_id"], claim["lease_token"], "saving")
             store.transition(claim["job_id"], claim["lease_token"], "verifying")
@@ -117,7 +128,11 @@ def completed():
             "browser_closed": False,
             "shared_pending_retained": True,
             "output_directory": str(base / "images"),
-            "job_counts": {"observed": 2, "completed": 2, "unresolved": 0},
+            "job_counts": {
+                "observed": permit.image_count,
+                "completed": completed_images,
+                "unresolved": permit.image_count - completed_images,
+            },
             "saved_files": files,
             "report_path": str(run / "report.json"),
         }
@@ -291,3 +306,80 @@ def test_bounded_private_report_reader_preserves_duplicate_json(completed):
     with pytest.raises((ValueError, NativeUIError)):
         read_completed_report(completed.base, completed.pending)
     assert path.read_text() == content
+
+
+def test_partial_prefix_proves_exact_file_receipt_and_preserves_all_work(partial_candidate):
+    value = partial_candidate
+    before = preserved(value)
+    summary, proofs = verify_partial_candidate_files(value.store, value.permit, base=value.base)
+    [proof] = proofs
+    assert summary["job_counts"] == {"observed": 3, "completed": 1, "unresolved": 2}
+    assert len(summary["saved_files"]) == 1
+    assert summary["saved_files"][0]["saved_filename"] == "001.png"
+    assert "job_id" not in summary["saved_files"][0]
+    assert [
+        {
+            "job_id": proof["job_id"],
+            "saved_filename": proof["saved_filename"],
+            **proof["verification"],
+        }
+    ] == value.report["saved_files"]
+    assert proof["sha256"] == hashlib.sha256(proof["path"].read_bytes()).hexdigest()
+    assert preserved(value) == before
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "file",
+        "metadata",
+        "extra_output",
+        "extra_staging",
+        "foreign_directory",
+        "nonprefix_journal",
+        "later_lease",
+        "later_history",
+        "later_source",
+        "later_slot",
+        "later_retry",
+    ],
+)
+def test_partial_prefix_refuses_changed_output_or_attempted_suffix(partial_candidate, change):
+    value = partial_candidate
+    final = Path(value.artifacts[0]["final_path"])
+    suffix = value.jobs[1]["job_id"]
+    if change == "file":
+        Image.new("RGB", (96, 64), "green").save(final)
+    elif change == "metadata":
+        sidecar = final.with_name("metadata.json")
+        data = json.loads(sidecar.read_bytes())
+        data["images"][0]["retry"]["attempt_count"] = 5
+        sidecar.write_text(json.dumps(data))
+    elif change == "extra_output":
+        final.with_name("002.png").write_bytes(b"unverified")
+    elif change == "extra_staging":
+        staging = value.base / "images" / value.artifacts[0]["staging_relative"]
+        staging.write_bytes(b"unverified")
+    elif change == "foreign_directory":
+        (value.base / "images" / "_staging" / suffix).mkdir()
+    elif change == "nonprefix_journal":
+        value.store.connection.execute(
+            "UPDATE artifact_finalizations SET job_id=? WHERE job_id=?",
+            (suffix, value.jobs[0]["job_id"]),
+        )
+    elif change == "later_lease":
+        value.store.claim_next("other-worker", datetime.now(UTC))
+    elif change == "later_history":
+        now = datetime.now(UTC)
+        lease = value.store.claim_next("other-worker", now)
+        value.store.release_unstarted_claim(suffix, lease["lease_token"], now=now)
+    elif change == "later_source":
+        value.store.connection.execute("DELETE FROM observation_jobs WHERE job_id=?", (suffix,))
+    elif change == "later_slot":
+        value.store.connection.execute("UPDATE jobs SET file_slot=6 WHERE job_id=?", (suffix,))
+    else:
+        value.store.connection.execute("UPDATE jobs SET attempt_count=1 WHERE job_id=?", (suffix,))
+    before = preserved(value)
+    with pytest.raises(CandidateFinishError):
+        verify_partial_candidate_files(value.store, value.permit, base=value.base)
+    assert preserved(value) == before

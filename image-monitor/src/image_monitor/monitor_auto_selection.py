@@ -18,6 +18,8 @@ from image_monitor.monitor_settings import load_monitor_settings
 from image_monitor.monitor_setup_retry import (
     FOREGROUND_RETRY_EXHAUSTED,
     FOREGROUND_RETRY_REASON,
+    PARTIAL_RETRY_EXHAUSTED,
+    PARTIAL_RETRY_REASON,
     verify_setup_retry,
 )
 from image_monitor.native_ui import NativeSaveLock
@@ -48,6 +50,7 @@ def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setu
     watch, legacy, batch = roots
     report.pop("previous_failure_reason", None)
     report.pop("previous_completion_setup_reason", None)
+    report.pop("previously_verified_files", None)
     claimed = other_monitor_save_claims(watch / "watch.sqlite")
     ledger_path = _plain_path(watch / LEDGER_NAME)
     if ledger_path.exists():
@@ -60,30 +63,36 @@ def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setu
                 if not setup_retry or len(unfinished) != 1 or unfinished[0]["post_id"] in claimed:
                     raise QueueError("An unfinished monitor save requires review")
                 task = unfinished[0]
+                exhausted = (task["result"] or {}).get("reason")
                 if (
                     task["status"] == "needs_review"
                     and isinstance(task["control"].get("setup_retry"), dict)
+                    and exhausted in (FOREGROUND_RETRY_EXHAUSTED, PARTIAL_RETRY_EXHAUSTED)
                     and task["result"]
                     == {
                         "worker_status": "manual_review",
                         "error_type": "NativeFocusError",
-                        "reason": FOREGROUND_RETRY_EXHAUSTED,
+                        "reason": exhausted,
                     }
                 ):
-                    report.update(status="review", reason=FOREGROUND_RETRY_EXHAUSTED)
+                    report.update(status="review", reason=exhausted)
                     return None, None
                 permit = reconstruct_permit(queue, task)
                 with NativeSaveLock():
-                    prior_run, prior_reason = verify_setup_retry(ledger, task, permit)
+                    prior_run, prior_reason, previous = verify_setup_retry(ledger, task, permit)
                 report["eligible_body_images"] = permit.image_count
-                if prior_reason == FOREGROUND_RETRY_REASON:
-                    report["previous_failure_reason"] = prior_reason
-                else:
-                    report["previous_completion_setup_reason"] = prior_reason
-                return _handoff(permit) | {
+                handoff = _handoff(permit) | {
                     "retry_task_id": task["task_id"],
                     "prior_run": prior_run,
-                }, None
+                }
+                if prior_reason in (FOREGROUND_RETRY_REASON, PARTIAL_RETRY_REASON):
+                    report["previous_failure_reason"] = prior_reason
+                    if prior_reason == PARTIAL_RETRY_REASON:
+                        report["previously_verified_files"] = previous
+                        handoff["previously_verified_files"] = previous
+                else:
+                    report["previous_completion_setup_reason"] = prior_reason
+                return handoff, None
             for task in tasks:
                 if task["status"] == "planned" and task["post_id"] not in claimed:
                     permit = reconstruct_permit(queue, task)
@@ -236,7 +245,9 @@ def search_monitor_candidates(
             report["next_eligible_at"] = None
             if handoff is not None:
                 reason = "save_ready"
-                if report.get("previous_failure_reason") == FOREGROUND_RETRY_REASON:
+                if report.get("previous_failure_reason") == PARTIAL_RETRY_REASON:
+                    reason = "between_images_retry_ready"
+                elif report.get("previous_failure_reason") == FOREGROUND_RETRY_REASON:
                     reason = "automatic_foreground_retry_ready"
                 elif setup_retry:
                     reason = "completion_setup_retry_ready"

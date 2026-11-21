@@ -11,7 +11,7 @@ from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_collect import collect_session_turn
 from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
-from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON
+from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON, PARTIAL_RETRY_REASON
 from image_monitor.post_worker import share_setup_diagnostics
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
@@ -49,21 +49,27 @@ def _record_collection(report, turn):
     # and last verified files; a multi-day session never accumulates a history.
     last = {key: turn[key] for key in ("status", "reason")}
     search = turn.get("search")
-    if (
-        isinstance(search, dict)
-        and search.get("previous_failure_reason") == FOREGROUND_RETRY_REASON
+    if isinstance(search, dict) and search.get("previous_failure_reason") in (
+        FOREGROUND_RETRY_REASON,
+        PARTIAL_RETRY_REASON,
     ):
-        last["previous_failure_reason"] = FOREGROUND_RETRY_REASON
+        last["previous_failure_reason"] = search["previous_failure_reason"]
     if turn.get("setup_retry_started"):
         last["setup_retry_started"] = True
+    if turn.get("partial_retry_started") is True:
+        last["partial_retry_started"] = True
+        last["previously_verified_files"] = _count(
+            turn, "previously_verified_files", MAX_MONITOR_SAVE_IMAGES - 1
+        )
     if turn.get("save") is not None:
         for key in ("worker_last_stage", "native_stage", "error_type"):
             if turn["save"].get(key) is not None:
                 last[key] = turn["save"][key]
         focus = turn["save"].get("focus_at_failure")
-        if last.get("worker_last_stage") == "automatic_foreground_check" and isinstance(
-            focus, dict
-        ):
+        if last.get("worker_last_stage") in (
+            "automatic_foreground_check",
+            "pre_input_check",
+        ) and isinstance(focus, dict):
             flags = {
                 key: focus[key]
                 for key in (
@@ -94,8 +100,27 @@ def _record_collection(report, turn):
             and count == len(turn["saved_files"])
         ):
             raise ValueError("Missing verified collection result")
+        previous = 0
+        new_count = count
+        if last.get("partial_retry_started"):
+            previous = last["previously_verified_files"]
+            new_count = _count(turn, "newly_saved_files", MAX_MONITOR_SAVE_IMAGES - 1)
+            if not (
+                0 < new_count < count
+                and previous + new_count == count
+                and not last.get("setup_retry_started")
+                and last.get("previous_failure_reason") == PARTIAL_RETRY_REASON
+            ):
+                raise ValueError("Invalid verified partial-retry result")
+            last["newly_saved_files"] = new_count
+        elif last.get("previous_failure_reason") == PARTIAL_RETRY_REASON or (
+            "previously_verified_files" in turn or "newly_saved_files" in turn
+        ):
+            raise ValueError("Unexpected partial counts for an ordinary collection")
         report["posts_saved"] += 1
         report["files_verified"] += count
+        report["previously_verified_files"] += previous
+        report["newly_saved_files"] += new_count
         report["last_saved_files"] = deepcopy(turn["saved_files"])
     elif count:
         raise ValueError("Unconfirmed collection returned verified files")
@@ -235,6 +260,8 @@ def run_auto_monitor(
         "native_save_tasks_started": 0,
         "posts_saved": 0,
         "files_verified": 0,
+        "previously_verified_files": 0,
+        "newly_saved_files": 0,
         "last_saved_files": [],
         "last_list": None,
         "last_collection": None,

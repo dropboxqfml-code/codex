@@ -114,8 +114,8 @@ def test_proven_setup_retry_is_durable_even_if_it_fails_before_the_worker_makes_
     evidence, expected_reason
 ):
     store, task, permit, base, path, _, fixture = evidence
-    run, reason = retry.verify_setup_retry(store, task, permit)
-    assert run == path.parent.name and reason == expected_reason
+    run, reason, preserved = retry.verify_setup_retry(store, task, permit)
+    assert run == path.parent.name and reason == expected_reason and preserved == 0
     before = path.read_bytes()
     active = store.start_setup_retry(task, prior_run=run, now=fixture.clock.now())
     assert active["task_id"] == task["task_id"] and active["status"] == "started"

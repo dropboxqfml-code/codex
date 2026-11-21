@@ -14,7 +14,12 @@ def test_bounded_cli_separates_progress_from_result_without_reading_keyboard(
     tmp_path, monkeypatch, capsys
 ):
     roots = [tmp_path / name for name in ("watch", "older", "images")]
-    result = {"status": "auto_monitor_completed", "files_verified": 2}
+    result = {
+        "status": "auto_monitor_completed",
+        "files_verified": 10,
+        "previously_verified_files": 6,
+        "newly_saved_files": 4,
+    }
 
     def run_monitor(*paths, max_cycles, should_stop, on_progress):
         assert paths == tuple(roots)
@@ -25,7 +30,9 @@ def test_bounded_cli_separates_progress_from_result_without_reading_keyboard(
                 "phase": "waiting",
                 "cycles_completed": 1,
                 "posts_saved": 1,
-                "files_verified": 2,
+                "files_verified": 10,
+                "previously_verified_files": 6,
+                "newly_saved_files": 4,
                 "next_eligible_at": "2026-06-01T12:00:00+00:00",
             }
         )
@@ -58,6 +65,7 @@ def test_bounded_cli_separates_progress_from_result_without_reading_keyboard(
     output = capsys.readouterr()
     assert json.loads(output.out) == result
     assert "완료 1주기" in output.err and "재개 예정" in output.err
+    assert "검증 10장 (기존 6장, 새로 저장 4장)" in output.err
 
 
 def test_console_stop_polls_without_waiting_and_latches_enter(monkeypatch):

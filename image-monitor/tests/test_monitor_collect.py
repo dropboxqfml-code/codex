@@ -77,6 +77,50 @@ def test_a_complete_monitor_post_requires_all_expected_file_receipts(
 
 
 @pytest.mark.parametrize(
+    ("claimed", "new", "expected_prior", "status"),
+    [(6, 4, 6, "saved"), (7, 3, 6, "review"), (6, 3, 6, "review"), (6, 4, None, "review")],
+)
+def test_partial_save_receipt_requires_the_same_verified_prefix(
+    claimed, new, expected_prior, status
+):
+    report = {
+        "status": "monitor_batch_completed",
+        "reason": None,
+        "last_stage": "complete",
+        "browser_closed": True,
+        "shared_pending_retained": False,
+        "tasks_started": 1,
+        "tasks_completed": 1,
+        "saved_file_count": 10,
+        "saved_files": [{"saved_filename": f"{slot:03d}.png"} for slot in range(1, 11)],
+        "partial_retry_started": True,
+        "setup_retry_started": False,
+        "previously_verified_files": claimed,
+        "newly_saved_files": new,
+    }
+    assert collect._save_status(report, 10, expected_prior) == "monitor_collect_" + status
+
+
+@pytest.mark.parametrize("indices", [(0, 1), (2,), (3, 2), (2, 2)])
+def test_mismatched_native_suffix_cannot_finish_the_partial_retry(indices):
+    files = [
+        {
+            "saved_filename": f"{slot:03d}.png",
+            "width": 4,
+            "height": 3,
+            "frames": 1,
+            "detected_format": "PNG",
+            "file_size": 100 + slot,
+        }
+        for slot in range(1, 5)
+    ]
+    with pytest.raises(QueueError):
+        batch._verified_new_files(
+            {"saved_files": [files[index] for index in indices]}, {"saved_files": files}, 2
+        )
+
+
+@pytest.mark.parametrize(
     ("scope", "manifest", "posts"),
     [
         (DEFAULT_SCOPE, MANIFEST_NAME, ("102",)),

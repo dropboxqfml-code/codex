@@ -1,4 +1,4 @@
-"""Prove a failed Chrome startup or completion setup stopped before the first image attempt."""
+"""Verify which frozen image jobs can safely be retried after a closed Chrome run."""
 
 from image_monitor.artifact_files import _plain_path
 from image_monitor.browser_completion import completion_setup_reason
@@ -8,6 +8,7 @@ from image_monitor.candidate_finish import (
     _same_json,
     verify_candidate_job_source,
     verify_candidate_queue_jobs,
+    verify_partial_candidate_files,
 )
 from image_monitor.candidate_save_policy import MONITOR_SCOPE
 from image_monitor.monitor_save_ledger import is_setup_retry_candidate, task_native_base
@@ -21,6 +22,8 @@ from image_monitor.queue import SCHEMA_VERSION, QueueError, QueueStore
 
 FOREGROUND_RETRY_REASON = "automatic_foreground_unconfirmed"
 FOREGROUND_RETRY_EXHAUSTED = "automatic_foreground_retry_exhausted"
+PARTIAL_RETRY_REASON = "between_images_foreground_lost"
+PARTIAL_RETRY_EXHAUSTED = "between_images_retry_exhausted"
 
 _FOREGROUND_FIELDS = {
     "schema_version",
@@ -86,19 +89,10 @@ def _valid_focus_snapshot(focus):
     )
 
 
-def _verify_foreground_failure(report, native, run, base):
-    # This guard ran immediately after navigation, before inspection, enqueue,
-    # claim, or native input. Even zero-valued job_counts would be a later stage.
+def _verify_focus_run(report, native, run, base):
+    """Require one clean run, session and native schema from the automatic worker."""
     if (
-        set(report) != _FOREGROUND_FIELDS
-        or report["last_stage"] != "automatic_foreground_check"
-        or report["native_stage"] != "desktop_guard"
-        or report["reason"]
-        not in (
-            "Foreground focus is outside the bound probe window; input stopped",
-            "The probe page itself is not in the foreground",
-        )
-        or not isinstance(report["browser_version"], str)
+        not isinstance(report["browser_version"], str)
         or not report["browser_version"]
         or report["preinput_recovery"] is not None
         or not _same_json(
@@ -112,7 +106,7 @@ def _verify_foreground_failure(report, native, run, base):
         )
         or not _valid_focus_snapshot(report["focus_at_failure"])
     ):
-        raise QueueError("The original report does not prove an initial foreground check failure")
+        raise QueueError("The original Chrome run has incomplete focus or recovery evidence")
     if (
         any(child != base for child in base.parent.iterdir())
         or {p.name for p in run.iterdir()} != {"report.json", "browser-profile"}
@@ -124,6 +118,23 @@ def _verify_foreground_failure(report, native, run, base):
         raise QueueError("The prior foreground check contains unexpected output")
     if native.schema_version != SCHEMA_VERSION:
         raise QueueError("The prior foreground check has an unexpected native queue schema")
+
+
+def _verify_foreground_failure(report, native, run, base):
+    # This guard ran immediately after navigation, before inspection, enqueue,
+    # claim, or native input. Even zero-valued job_counts would be a later stage.
+    if (
+        set(report) != _FOREGROUND_FIELDS
+        or report["last_stage"] != "automatic_foreground_check"
+        or report["native_stage"] != "desktop_guard"
+        or report["reason"]
+        not in (
+            "Foreground focus is outside the bound probe window; input stopped",
+            "The probe page itself is not in the foreground",
+        )
+    ):
+        raise QueueError("The original report does not prove an initial foreground check failure")
+    _verify_focus_run(report, native, run, base)
     # QueueStore has verified the exact known schema. Check *every* application
     # table, including standalone discovery, service, or publication records.
     tables = native.connection.execute(
@@ -134,8 +145,41 @@ def _verify_foreground_failure(report, native, run, base):
             raise QueueError("The prior foreground check already contains durable work")
 
 
+def _partial_completed_count(report, native, permit, run, base):
+    # On alpha.6 the UI still names the previous successful save dialog. The
+    # worker records pre_input_check before claiming the next image in the loop.
+    if (
+        set(report) != _FOREGROUND_FIELDS | {"focus_pauses", "focus_at_pause", "job_counts"}
+        or report["reason"] != "Automatic saving stopped when the dedicated window lost focus"
+        or report["native_stage"] != "save_dialog"
+        or type(report["focus_pauses"]) is not int
+        or report["focus_pauses"] != 1
+        or not _valid_focus_snapshot(report["focus_at_pause"])
+        or not isinstance(report["saved_files"], list)
+        or not 0 < len(report["saved_files"]) < permit.image_count
+    ):
+        raise QueueError("The original report does not prove a stop between saved images")
+    _verify_focus_run(report, native, run, base)
+    if report["focus_at_pause"]["target_hwnd"] != report["focus_at_failure"]["target_hwnd"]:
+        raise QueueError("The focus evidence identifies different Chrome windows")
+    summary, proofs = verify_partial_candidate_files(native, permit, base=base)
+    files = [
+        {
+            "job_id": proof["job_id"],
+            "saved_filename": proof["saved_filename"],
+            **proof["verification"],
+        }
+        for proof in proofs
+    ]
+    if not _same_json(report["job_counts"], summary["job_counts"]) or not _same_json(
+        report["saved_files"], files
+    ):
+        raise QueueError("The prior report and the verified saved image prefix disagree")
+    return len(proofs)
+
+
 def verify_setup_retry(ledger, task, permit):
-    """Return the original run and safe cause while the caller holds watch and native locks.
+    """Return the original run, safe cause and preserved file count under watch and native locks.
 
     Nothing here claims a job, mutates the ledger or removes a previous report.
     A caller that releases either lock must repeat verification before starting.
@@ -157,8 +201,8 @@ def verify_setup_retry(ledger, task, permit):
     if browser_still_running(identity) is not False:
         raise QueueError("The previous owned Chrome session is not confirmed closed")
     runs = run.parent.iterdir()
-    if next(runs, None) != run or next(runs, None) is not None or any(images.iterdir()):
-        raise QueueError("The failed task already has another run or image output")
+    if next(runs, None) != run or next(runs, None) is not None:
+        raise QueueError("The failed task has a different run or multiple runs")
 
     path = run / "report.json"
     report = _read_json(path)
@@ -173,18 +217,25 @@ def verify_setup_retry(ledger, task, permit):
         or report.get("error_type") != task["result"]["error_type"]
         or report.get("browser_closed") is not True
         or report.get("shared_pending_retained") is not False
-        or report.get("saved_files") != []
         or report.get("report_path") != str(path)
         or report.get("output_directory") != str(images)
         or "active_attempt" in report
         or "last_preinput_attempt" in report
     ):
-        raise QueueError("The original worker report does not prove a pre-input setup failure")
+        raise QueueError("The original worker report does not prove a closed pre-input failure")
 
     with QueueStore(_plain_path(base / "queue.sqlite"), read_only=True) as native:
+        if (
+            report["error_type"] == "NativeFocusError"
+            and report.get("last_stage") == "pre_input_check"
+        ):
+            prefix = _partial_completed_count(report, native, permit, run, base)
+            return run.name, PARTIAL_RETRY_REASON, prefix
+        if report.get("saved_files") != [] or any(images.iterdir()):
+            raise QueueError("The failed setup already has image output")
         if report["error_type"] == "NativeFocusError":
             _verify_foreground_failure(report, native, run, base)
-            return run.name, FOREGROUND_RETRY_REASON
+            return run.name, FOREGROUND_RETRY_REASON, 0
         if report.get("last_stage") != "completion_setup" or not _same_json(
             report.get("job_counts"), {"observed": count, "completed": 0, "unresolved": count}
         ):
@@ -211,4 +262,4 @@ def verify_setup_retry(ledger, task, permit):
             ):
                 raise QueueError("A queued image shows an earlier attempt")
             verify_candidate_job_source(permit, native.get_job_source(job["job_id"]))
-    return run.name, completion_setup_reason(report.get("reason"))
+    return run.name, completion_setup_reason(report.get("reason")), 0

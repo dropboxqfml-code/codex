@@ -22,6 +22,8 @@ from test_windows_post_pipeline import fixture_assets, owned_ci_focus_distractor
 from test_windows_post_pipeline import pytestmark as windows_ci_only
 
 from image_monitor import (
+    candidate_save_policy,
+    monitor_auto_selection,
     monitor_batch_runtime,
     monitor_operations,
     monitor_setup_retry,
@@ -40,6 +42,8 @@ pytestmark = windows_ci_only
 
 @pytest.mark.parametrize("lose_focus", [False, True], ids=["ten_in_one_run", "partial_post"])
 def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkeypatch, lose_focus):
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
     clock = FakeClock(datetime.now(UTC) - timedelta(minutes=30))
     published = (clock.now() + timedelta(seconds=30)).astimezone(ZoneInfo("Asia/Seoul"))
     title = "Owned automatic session"
@@ -92,19 +96,76 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
         target_urls = [_post_url(first), _post_url(second)]
         details, saves, outcomes = [], [], []
         native_inputs = []
+        diagnostics = []
+
+        choice = monitor_auto_selection._choice
+        require = candidate_save_policy._require
+
+        def track_choice(*args, **kwargs):
+            try:
+                return choice(*args, **kwargs)
+            except Exception as error:
+                diagnostics.append(f"candidate selection: {type(error).__name__}: {error}")
+                raise
+
+        def track_permit(condition, reason):
+            if not condition:
+                diagnostics.append(f"candidate permit: {reason}")
+            require(condition, reason)
+
+        monkeypatch.setattr(monitor_auto_selection, "_choice", track_choice)
+        monkeypatch.setattr(candidate_save_policy, "_require", track_permit)
 
         class LocalPage(CandidatePageView):
             def goto(self, url, **options):
                 assert url in target_urls
                 self._post_url = url
                 details.append(url)
-                return self._page.goto(origin + "/post-" + url.split("no=")[-1], **options)
+                post_id = url.split("no=")[-1]
+                response = self._page.goto(origin + "/post-" + post_id, **options)
+                # This scenario saves known fixture images. The real inspector
+                # still independently checks each URL, occurrence, and decode.
+                try:
+                    ready = self._page.wait_for_function(
+                        """async paths => {
+                            const images = [...document.querySelectorAll('.write_div img')];
+                            if (images.length !== paths.length || images.some((img, i) =>
+                                img.currentSrc !== new URL(paths[i], location.href).href ||
+                                !img.complete || img.naturalWidth < 1 || img.naturalHeight < 1
+                            )) return false;
+                            try {
+                                await Promise.all(images.map(img => img.decode()));
+                                return true;
+                            } catch { return false; }
+                        }""",
+                        arg=paths[post_id],
+                        timeout=20_000,
+                    )
+                    ready.dispose()
+                except PlaywrightTimeoutError:
+                    pytest.fail(
+                        f"Fixture post {post_id} did not decode all {len(paths[post_id])} images"
+                    )
+                return response
 
         class LocalCandidate(HeadlessCandidateBrowser):
             def __enter__(self):
                 super().__enter__()
                 self._page = LocalPage(self._page)
                 return self
+
+        def detail(*args, **options):
+            result = run_candidate_trial(*args, backend_factory=LocalCandidate, **options)
+            diagnostics.append(
+                f"detail: {result['status']} at {result['last_stage']}, "
+                f"{result['error_type']}, completed={result['candidates_completed']}"
+            )
+            return result
+
+        def failure(report):
+            return "\n".join(
+                [report["reason"] or report["status"], *diagnostics, f"native={outcomes}"]
+            )
 
         def native(work, browser, url, **options):
             assert options["automatic_start"] is True
@@ -151,14 +212,16 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
             scan_runner=discover,
             collect_runner=partial(
                 collect_session_turn,
-                detail_runner=partial(run_candidate_trial, backend_factory=LocalCandidate),
+                detail_runner=detail,
                 save_runner=native,
             ),
         )
         if lose_focus:
             stopped = session(max_cycles=1)
-            assert stopped["status"] == "auto_monitor_review", outcomes
-            assert stopped["last_collection"]["worker_last_stage"] == "pre_input_check", outcomes
+            assert stopped["status"] == "auto_monitor_review", failure(stopped)
+            assert stopped["last_collection"]["worker_last_stage"] == "pre_input_check", failure(
+                stopped
+            )
             assert stopped["browser_closed"] and not marker.exists()
             assert len(native_inputs) == 6
             [directory] = batch.glob(f"tasks/*/session-*/images/**/{first}")
@@ -172,10 +235,7 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
             original_report = report.read_bytes()
 
             recovered = session(max_cycles=1)
-            assert recovered["status"] == "auto_monitor_completed", (
-                recovered["reason"],
-                outcomes,
-            )
+            assert recovered["status"] == "auto_monitor_completed", failure(recovered)
             assert recovered["new_details_checked"] == recovered["new_candidates"] == 0
             assert recovered["posts_saved"] == recovered["native_save_tasks_started"] == 1
             assert recovered["files_verified"] == 10
@@ -189,10 +249,7 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
         else:
             cycles = 2
         result = session(max_cycles=cycles)
-        assert result["status"] == "auto_monitor_completed", (
-            result["reason"],
-            outcomes,
-        )
+        assert result["status"] == "auto_monitor_completed", failure(result)
         for count in (
             "cycles_completed",
             "list_checks",

@@ -204,19 +204,40 @@ class WindowsUI:
         self.user32.GetClassNameW(hwnd, name, len(name))
         return name.value
 
+    @staticmethod
+    def _top_level_hwnds() -> list[int]:
+        import win32gui
+
+        handles = []
+
+        def collect(hwnd, _):
+            handles.append(hwnd)
+            return True
+
+        try:
+            win32gui.EnumWindows(collect, None)
+        except win32gui.error as error:
+            raise NativeUIError("Cannot enumerate native top-level windows") from error
+        return handles
+
     def _target_candidates(self) -> list[int]:
+        # A modal dialog can change UI Automation's desktop children while the
+        # browser owner HWND is still present. Bind and recheck native identity
+        # in the Win32 window tree; UIA is used for the actual controls.
         pids = self.process_ids()
-        return [
-            window.handle
-            for window in self.desktop.windows()
-            if self.user32.IsWindow(window.handle)
-            and self._window_pid(window.handle) in pids
-            and self._class_name(window.handle) == "Chrome_WidgetWin_1"
-            and (
-                self._window_text(window.handle) == self.expected_window_title
-                or self._window_text(window.handle).startswith(self.expected_window_title + " - ")
-            )
-        ]
+        matches = []
+        for hwnd in self._top_level_hwnds():
+            if (
+                self.user32.IsWindow(hwnd)
+                and self._window_pid(hwnd) in pids
+                and self._class_name(hwnd) == "Chrome_WidgetWin_1"
+            ):
+                title = self._window_text(hwnd)
+                if title == self.expected_window_title or title.startswith(
+                    self.expected_window_title + " - "
+                ):
+                    matches.append(hwnd)
+        return matches
 
     def _assert_target_exists(self) -> None:
         candidates = self._target_candidates()

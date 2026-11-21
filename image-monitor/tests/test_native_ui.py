@@ -29,6 +29,7 @@ def desktop_guard(name="Default", foreground_pid=10, available=True, foreground_
         999: (999, 0, 999, "Chrome_WidgetWin_1", "Another browser"),
     }
     ui.window_graph = graph
+    ui._top_level_hwnds = MagicMock(return_value=list(graph))
 
     def desktop_info(_handle, _index, buffer, _size, _needed):
         buffer.value = name
@@ -108,7 +109,7 @@ def test_launch_wait_observes_null_and_another_app_until_the_target_gets_focus(f
     ui.user32.GetForegroundWindow.side_effect = [None, 999, 100]
     ui.wait_for_initial_foreground(timeout=1)
     assert foreground_sleeps == [0.2, 0.2]
-    assert ui.desktop.windows.call_count == ui.user32.OpenInputDesktop.call_count == 3
+    assert ui._top_level_hwnds.call_count == ui.user32.OpenInputDesktop.call_count == 3
     ui.user32.SetForegroundWindow.assert_not_called()
     ui.user32.SetFocus.assert_not_called()
     ui.user32.SendInput.assert_not_called()
@@ -145,7 +146,7 @@ def test_launch_wait_aborts_on_unsafe_desktop_or_frame(foreground_sleeps, settin
 
 def test_launch_wait_rechecks_unique_binding_every_poll(foreground_sleeps):
     ui = desktop_guard(foreground_hwnd=999)
-    ui.desktop.windows.side_effect = [[wrapper(100)], []]
+    ui._top_level_hwnds.side_effect = [[100], []]
     with pytest.raises(NativeUIError, match="bound probe window"):
         ui.wait_for_initial_foreground(timeout=1)
     assert foreground_sleeps == [0.2]
@@ -294,9 +295,14 @@ def test_same_process_other_window_focus_is_rejected():
         ui.assert_ready()
 
 
-def test_target_owned_dialog_is_allowed_but_page_input_is_not():
+def test_owned_modal_remains_usable_when_uia_omits_its_parent_browser():
     ui = desktop_guard(foreground_hwnd=300)
-    ui.assert_ready()
+    # UIA presents the modal dialog as its only top-level element. Win32 still
+    # sees the bound browser HWND and the dialog's owner chain.
+    dialog = wrapper(300)
+    ui.desktop.windows.return_value = [dialog]
+    ui.user32.IsWindowEnabled.side_effect = lambda hwnd: hwnd != 100
+    ui.assert_control_ready(dialog, dialog)
     with pytest.raises(NativeFocusError, match="page itself") as caught:
         ui.assert_target_ready()
     assert isinstance(caught.value, NativeUIError)
@@ -330,7 +336,6 @@ def test_target_title_change_or_duplicate_aborts_before_input():
     assert not isinstance(caught.value, NativeFocusError)
     ui = desktop_guard()
     ui.window_graph[200] = (10, 0, 200, "Chrome_WidgetWin_1", "Unique probe 123 - Edge")
-    ui.desktop.windows.return_value = [wrapper(100), wrapper(200)]
     with pytest.raises(NativeUIError, match="ambiguous") as caught:
         ui.assert_ready()
     assert not isinstance(caught.value, NativeFocusError)

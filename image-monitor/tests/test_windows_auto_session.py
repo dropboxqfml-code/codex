@@ -131,7 +131,15 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
 
                     desktop.setattr(post_worker, "_wait_for_next_image", switch_before_seventh)
                 result = post_worker.run_post_save(work, browser, url, **options)
-                outcomes.append((result["last_stage"], result["error_type"], result.get("reason")))
+                outcomes.append(
+                    (
+                        result["last_stage"],
+                        result.get("native_stage"),
+                        len(result["saved_files"]),
+                        result["error_type"],
+                        result.get("reason"),
+                    )
+                )
                 return result
 
         session = partial(

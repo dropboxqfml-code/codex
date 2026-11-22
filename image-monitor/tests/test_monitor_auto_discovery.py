@@ -144,6 +144,19 @@ def test_unconfirmed_receipt_or_navigation_stops_handoff(tmp_path, tamper):
     result = scan(tmp_path, clock, outcome, transform=transform)
     assert (result["status"], result["new_candidates"]) == ("review", 0)
     assert result["browser_closed"] is (tamper != "cleanup")
+    expected_stage = {
+        "cleanup": "browser_close",
+        "missing": "receipt_check",
+        "count": "receipt_check",
+        "marker": "receipt_check",
+        "stale": "receipt_check",
+        "navigation": "transport_check",
+        "candidate": "candidate_check",
+        "unearned_limit": "route_check",
+    }
+    assert result["review"]["stage"] == expected_stage[tamper]
+    if tamper in {"cleanup", "missing", "count", "marker", "stale"}:
+        assert result["review"] == {"stage": expected_stage[tamper]}
 
 
 @pytest.mark.parametrize(
@@ -176,3 +189,17 @@ def test_busy_stop_and_persisted_wait_do_not_create_a_run(tmp_path):
         queue.defer_service("dcinside", clock.now() + timedelta(days=1))
     assert preflight(tmp_path, clock)["status"] == "waiting"
     assert not (tmp_path / "runs").exists()
+
+
+def test_uncommitted_worker_error_keeps_its_stage_and_no_prior_evidence(tmp_path):
+    clock = FakeClock()
+    assert scan(tmp_path, clock, baseline_outcome)["status"] == "baseline"
+    clock.wait(60)
+
+    def failed_worker(*args, **kwargs):
+        raise OSError("private browser startup details")
+
+    result = run_auto_discovery(tmp_path, interval_seconds=60, clock=clock, run_cycle=failed_worker)
+    assert result["review"] == {"stage": "browser_scan"}
+    assert result["browser_closed"] is None and result["new_candidates"] == 0
+    assert "private" not in json.dumps(result)

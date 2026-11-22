@@ -10,8 +10,9 @@ from pathlib import Path
 import pytest
 from test_monitor_save_cmd import WINDOWS, copy_launcher, run_cmd
 from test_search_list import URL, profile_row, reviewed_raw, row
+from test_watch_runtime import BrowserFactory, FakeClock, http_failure
 
-from image_monitor import PUBLIC_VERSION
+from image_monitor import PUBLIC_VERSION, watch_runtime
 from image_monitor.monitor_diagnosis import PROFILE_GAP
 from image_monitor.queue import QueueStore
 from image_monitor.search_list import parse_list_snapshot
@@ -53,20 +54,36 @@ def stored_failure(root, *, excluded_author_mismatch=False):
         )
 
 
+def stored_transport_failure(root, monkeypatch):
+    monkeypatch.setattr(watch_runtime, "require_windows", lambda: None)
+    report = watch_runtime.run_watch_trial(
+        root,
+        scope=MONITOR_SCOPE,
+        cycles=1,
+        clock=FakeClock(),
+        backend_factory=BrowserFactory(http_failure(500)),
+        follow_up_gaps=True,
+    )
+    assert report["status"] == "watch_test_failed"
+
+
 @pytest.mark.parametrize(
     ("state", "expected", "code"),
     [
         ("previous", "diagnosis_found", 0),
         ("previous_exclusion", "diagnosis_found", 0),
+        ("transport_review", "diagnosis_found", 0),
         ("missing", "watch_database_missing", 0),
         ("empty", "no_saved_diagnosis", 0),
         ("broken", "diagnosis_read_failed", 2),
     ],
 )
-def test_offline_cli_reads_bounded_existing_data(tmp_path, state, expected, code):
+def test_offline_cli_reads_bounded_existing_data(tmp_path, state, expected, code, monkeypatch):
     root = tmp_path / "retained records"
     if state in {"previous", "previous_exclusion"}:
         stored_failure(root, excluded_author_mismatch=state == "previous_exclusion")
+    elif state == "transport_review":
+        stored_transport_failure(root, monkeypatch)
     elif state == "empty":
         root.mkdir()
         with QueueStore(root / "watch.sqlite"):
@@ -74,8 +91,7 @@ def test_offline_cli_reads_bounded_existing_data(tmp_path, state, expected, code
     elif state == "broken":
         root.mkdir()
         (root / "watch.sqlite").write_bytes(b"private unreadable fixture")
-    path = root / "watch.sqlite"
-    before = path.read_bytes() if path.is_file() else None
+    before = {p: (p.read_bytes(), p.stat().st_mtime_ns) for p in root.rglob("*") if p.is_file()}
     result = subprocess.run(
         [sys.executable, "-m", "image_monitor", "monitor-diagnosis", "--work-root", str(root)],
         capture_output=True,
@@ -100,11 +116,18 @@ def test_offline_cli_reads_bounded_existing_data(tmp_path, state, expected, code
         assert page["author_cell_mismatches"] == {"pinned": {"missing": 1}}
     else:
         assert report["list_diagnosis"] is None
-    assert str(root) not in result.stdout and "PRIVATE_FIXTURE_ROW" not in result.stdout
-    if before is None:
-        assert not root.exists()
+    if state == "transport_review":
+        review = report["previous_list_review"]
+        assert review["stage"] == "watch_result" and review["http_status"] == 500
+        assert review["stage_ko"] and "PRIVATE_FIXTURE_ROW" not in str(review)
     else:
-        assert path.read_bytes() == before
+        assert report["previous_list_review"] is None
+    assert str(root) not in result.stdout and "PRIVATE_FIXTURE_ROW" not in result.stdout
+    if state == "missing":
+        assert not root.exists()
+    assert before == {
+        p: (p.read_bytes(), p.stat().st_mtime_ns) for p in root.rglob("*") if p.is_file()
+    }
 
 
 def launcher_after_setup(dispatch):
@@ -124,7 +147,10 @@ def launcher_after_setup(dispatch):
 
 
 @WINDOWS
-def test_double_click_diagnosis_dispatches_offline_cli_to_a_single_result_txt(tmp_path):
+@pytest.mark.parametrize("state", ["list_profile", "transport_review"])
+def test_double_click_diagnosis_dispatches_offline_cli_to_a_single_result_txt(
+    tmp_path, monkeypatch, state
+):
     central = launcher_after_setup('if "%MONITOR_DIAGNOSIS%"=="1" goto read_monitor_diagnosis')
     folder = tmp_path / "bundle with spaces"
     copy_launcher(folder, central)
@@ -133,13 +159,20 @@ def test_double_click_diagnosis_dispatches_offline_cli_to_a_single_result_txt(tm
     env = os.environ.copy()
     env["LOCALAPPDATA"] = str(tmp_path / "local data")
     env["FIXTURE_PYTHON"] = sys.executable
-    stored_failure(Path(env["LOCALAPPDATA"]) / "ImageMonitorWatch")
+    root = Path(env["LOCALAPPDATA"]) / "ImageMonitorWatch"
+    if state == "list_profile":
+        stored_failure(root)
+    else:
+        stored_transport_failure(root, monkeypatch)
     result = run_cmd(wrapper, [], environment=env)
     assert result.returncode == 0, result.stderr
     [log] = folder.glob("WINDOWS_TEST_RESULT-*.txt")
     content = log.read_text("utf-8")
     assert '"status": "diagnosis_found"' in content and "RESULT: STORED_LIST_DIAGNOSIS" in content
     assert "STAGE: stored_list_diagnosis" in content and "PRIVATE_FIXTURE_ROW" not in content
+    assert result.stdout.splitlines().count(f'OPEN_RESULT="{log}"') == 1
+    if state == "transport_review":
+        assert '"http_status": 500' in content and '"stage_ko"' in content
 
 
 @WINDOWS

@@ -6,6 +6,8 @@ from pathlib import Path
 from image_monitor.artifact_files import _plain_path
 from image_monitor.monitor_clock import stop_requested
 from image_monitor.monitor_gap_report import gap_route_details, search_window_start_visits
+from image_monitor.monitor_list_attempt import uncommitted_list_review
+from image_monitor.monitor_list_review import current_list_review
 from image_monitor.native_ui import NativeUIError
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_detail_source import recent_scan_candidates, scan_plan_candidates
@@ -41,6 +43,16 @@ def _result(status, reason, *, due=None, closed=None, added=0):
         "next_eligible_at": _stamp(due) if due is not None else None,
         "browser_closed": closed,
     }
+
+
+class _ScanReview(QueueError):
+    """The monitor could not verify this part of the saved list scan."""
+
+
+def _review(stage, closed, evidence=None):
+    result = _result("review", "list_scan_requires_review", closed=closed)
+    result["review"] = evidence or {"stage": stage}
+    return result
 
 
 def _source(queue, now, interval):
@@ -86,11 +98,11 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
             for p, v in zip(pages, visits, strict=True)
         )
     ):
-        raise QueueError("List document navigation is unconfirmed")
+        raise _ScanReview("transport_check")
     observed_at = _stored_time(latest["observed_at"])
     if "gap_recovery" in record or observed.get("gap_seed_route") is True:
         if "gap_recovery" in record and not (historical_source and "frontier" in historical_source):
-            raise QueueError("The stored recovery position is unconfirmed")
+            raise _ScanReview("route_check")
         plan = _plan_observation(
             MONITOR_SCOPE,
             before,
@@ -101,7 +113,7 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
             allow_seed_crossing=True,
         )
         if plan != verified_recent_plan(queue, MONITOR_SCOPE, after):
-            raise QueueError("The recovery scan differs from the verified stored plan")
+            raise _ScanReview("planner_check")
     elif "historical_follow_up" in record:
         plan = plan_historical_scan(
             MONITOR_SCOPE,
@@ -112,12 +124,12 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
             allow_head_overlap=control.get("historical_route_schema") == HEAD_OVERLAP_SCHEMA,
         )
         if plan != verified_recent_plan(queue, MONITOR_SCOPE, after):
-            raise QueueError("The completed follow-up no longer matches the stored list history")
+            raise _ScanReview("planner_check")
     else:
         plan = plan_scan(MONITOR_SCOPE, before, pages, observed_at, allow_verified_live=True)
     matches, _ = scan_plan_candidates(queue, MONITOR_SCOPE, after, plan)
     if matches is None:
-        raise QueueError("Stored candidate identities differ from the replayed list")
+        raise _ScanReview("candidate_check")
     added = matches["new_candidates"]
     stored_plan = {k: v for k, v in record.items() if k not in ("private_observation", "control")}
     summary = _cycle_summary(
@@ -142,7 +154,7 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
         or raw.get("new_candidates") != added
         or (plan["baseline"] is not None and added != 0)
     ):
-        raise QueueError("Stored list observations differ from the completed scan")
+        raise _ScanReview("scan_record")
     return "baseline" if plan["baseline"] is not None else "complete", added
 
 
@@ -157,24 +169,24 @@ def _verified_scan(database, queue, before, after, raw, page_limit, historical_s
         or raw.get("browser") != "chrome"
         or not confirmed_monitor_scan(database, latest, expected_report=raw)
     ):
-        raise QueueError("The current Chrome list scan has no matching final receipt")
+        raise _ScanReview("receipt_check")
     control = _control(after)
     record = latest["result"]
     if (isinstance(historical_source, dict) and "frontier" in historical_source) != (
         "gap_recovery" in record
     ):
-        raise QueueError("List scan did not confirm the authorized recovery route")
+        raise _ScanReview("route_check")
     observation = record["private_observation"]
     if page_limit > 2:
         recorded = control.get("follow_up_page_limit")
         if type(recorded) is not int or recorded != page_limit:
-            raise QueueError("The stored follow-up limit differs from the prior verified scan")
+            raise _ScanReview("route_check")
         if not _observed_page_chain(observation, page_limit):
-            raise QueueError("The follow-up navigation evidence is incomplete")
+            raise _ScanReview("transport_check")
     elif "follow_up_page_limit" in control:
-        raise QueueError("The previous scan did not authorize a follow-up")
+        raise _ScanReview("route_check")
     if not 1 <= len(observation["pages"]) <= page_limit:
-        raise QueueError("List scan exceeded its authorized page limit")
+        raise _ScanReview("route_check")
     if "historical_follow_up" in latest["result"]:
         marker = latest["result"]["historical_follow_up"]
         if (
@@ -183,7 +195,7 @@ def _verified_scan(database, queue, before, after, raw, page_limit, historical_s
             or marker.get("source_scan_id") != historical_source["source_scan_id"]
             or marker.get("boundary_page") != historical_source["boundary_page"]
         ):
-            raise QueueError("The historical boundary differs from the preceding verified scan")
+            raise _ScanReview("route_check")
     if latest["complete"]:
         return _completed_scan(queue, before, after, raw, page_limit, historical_source)
     if (
@@ -196,7 +208,8 @@ def _verified_scan(database, queue, before, after, raw, page_limit, historical_s
         matches, _ = recent_scan_candidates(queue, MONITOR_SCOPE, after)
         if matches is not None and matches["new_candidates"] == raw["new_candidates"]:
             return "partial", matches["new_candidates"]
-    raise QueueError("The partial list scan has no verified sequence of recent pages")
+        raise _ScanReview("candidate_check")
+    raise _ScanReview("partial_check")
 
 
 def run_auto_discovery(
@@ -210,6 +223,7 @@ def run_auto_discovery(
 ):
     """Check durable eligibility, run one scan, and verify the exact saved result."""
     closed = None
+    stage = "preflight"
     try:
         if stop_requested(should_stop):
             return _result("cancelled", "requested_stop")
@@ -226,15 +240,18 @@ def run_auto_discovery(
             page_limit = 1
             historical_source = None
             if database.exists():
+                stage = "baseline_check"
                 with QueueStore(database, read_only=True) as queue:
                     before, status, due = _source(queue, clock.now(), interval_seconds)
                     if status == "blocked":
                         return _result("blocked", "access_block_requires_review")
                     if status == "waiting":
                         return _result("waiting", "persisted_cooldown", due=due)
+                    stage = "cursor_check"
                     page_limit, historical_source = monitor_scan_policy(
                         database, queue, before, recover_long_gaps=recover_long_gaps
                     )
+        stage = "browser_scan"
         raw = run_cycle(
             base,
             "chrome",
@@ -248,12 +265,15 @@ def run_auto_discovery(
         )
         closed = raw.get("browser_closed") if type(raw.get("browser_closed")) is bool else None
         if closed is not True:
-            return _result("review", "owned_browser_cleanup_unconfirmed", closed=closed)
+            return _result("review", "owned_browser_cleanup_unconfirmed", closed=closed) | {
+                "review": {"stage": "browser_close"}
+            }
         status = raw.get("status")
         if status == "watch_busy":
             return _result("busy", "another_worker_active", closed=closed)
         if status == "watch_test_cancelled":
             return _result("cancelled", "requested_stop", closed=closed)
+        stage = "watch_result" if status == "watch_test_failed" else "queue_check"
         with (
             watch_list_lock(database, DEFAULT_SCOPE),
             QueueStore(database, read_only=True) as queue,
@@ -273,10 +293,32 @@ def run_auto_discovery(
                     and raw["cycles"][0]["http_status"] == _control(after)["http_status"]
                 ):
                     return _result("waiting", "service_wait", due=due, closed=closed)
-                return _result("review", "list_scan_requires_review", closed=closed)
-            kind, added = _verified_scan(
-                database, queue, before, after, raw, page_limit, historical_source
-            )
+                if raw.get("cycles_completed") == 0:
+                    evidence = uncommitted_list_review(
+                        database, before, after, raw, run_cycle=run_cycle
+                    )
+                else:
+                    evidence = current_list_review(database, queue, before, after, raw, stage=stage)
+                return _review(stage, closed, evidence)
+            stage = "scan_record"
+            try:
+                kind, added = _verified_scan(
+                    database, queue, before, after, raw, page_limit, historical_source
+                )
+            except _ScanReview as exc:
+                stage = str(exc)
+                evidence = current_list_review(database, queue, before, after, raw, stage=stage)
+                # A genuine partial report can document a layout failure without
+                # authorizing coverage. Distinguish it from a missing final report.
+                if (
+                    stage == "receipt_check"
+                    and evidence
+                    and evidence.get("watch_status") == "watch_test_partial"
+                    and raw.get("recent_pages_verified") is not True
+                    and "closed_monitor_scan" not in raw
+                ):
+                    evidence["stage"] = "partial_check"
+                return _review(stage, closed, evidence)
             latest = after["latest_scan"]
             record = latest["result"]
             numbers = [page["page"] for page in record["private_observation"]["pages"]]
@@ -312,4 +354,4 @@ def run_auto_discovery(
         sqlite3.Error,
         NativeUIError,
     ):
-        return _result("review", "list_scan_requires_review", closed=closed)
+        return _review(stage, closed)

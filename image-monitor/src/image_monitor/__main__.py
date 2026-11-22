@@ -65,7 +65,7 @@ def main() -> int:
     resume_once.add_argument("--work-root", type=Path, required=True)
     diagnosis = commands.add_parser(
         "monitor-diagnosis",
-        help="Read the last stored list-profile failure without starting a browser",
+        help="Read the stored list-profile diagnosis and latest monitor review from local records",
     )
     diagnosis.add_argument("--work-root", type=Path, required=True)
     watch_test = commands.add_parser(
@@ -177,10 +177,17 @@ def main() -> int:
     if args.command == "monitor-diagnosis":
         from image_monitor.artifact_files import _plain_path
         from image_monitor.monitor_diagnosis import read_latest_list_diagnosis
+        from image_monitor.monitor_list_review import previous_list_review
+        from image_monitor.monitor_list_review_text import describe_list_review
         from image_monitor.queue import QueueStore
+        from image_monitor.watch_images_check import _read_mode
         from image_monitor.watch_store import MONITOR_SCOPE
 
-        report = {"program_version": PUBLIC_VERSION, "list_diagnosis": None}
+        report = {
+            "program_version": PUBLIC_VERSION,
+            "list_diagnosis": None,
+            "previous_list_review": None,
+        }
         try:
             if args.work_root.anchor.startswith(("//", "\\\\")):
                 raise ValueError("Use a local watch directory")
@@ -188,11 +195,18 @@ def main() -> int:
             if not database.exists():
                 report["status"] = "watch_database_missing"
             else:
-                with QueueStore(database, read_only=True) as queue:
+                with (
+                    _read_mode(database) as immutable,
+                    QueueStore(database, read_only=True, immutable=immutable) as queue,
+                ):
                     evidence = read_latest_list_diagnosis(queue, MONITOR_SCOPE)
+                review = describe_list_review(previous_list_review(args.work_root))
                 report["list_diagnosis"] = evidence
+                report["previous_list_review"] = review
                 report["status"] = (
-                    "diagnosis_found" if evidence is not None else "no_saved_diagnosis"
+                    "diagnosis_found"
+                    if evidence is not None or review is not None
+                    else "no_saved_diagnosis"
                 )
         except Exception:
             report["status"] = "diagnosis_read_failed"

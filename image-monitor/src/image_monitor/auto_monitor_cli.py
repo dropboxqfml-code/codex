@@ -8,6 +8,7 @@ from datetime import datetime
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.monitor_gap_report import RECOVERY_MESSAGES
+from image_monitor.monitor_list_review_text import describe_list_review
 from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
 
 _HEAD_JOIN_KO = {
@@ -39,6 +40,10 @@ def _describe_list_check(check):
     if not isinstance(check, dict):
         return check
     described = check.copy()
+    if "review" in described:
+        review = describe_list_review(described.pop("review"))
+        if check.get("status") == "review" and review:
+            described["review"] = review
     recovery = described.pop("recovery_status", None)
     described.pop("recovery_status_ko", None)
     if isinstance(recovery, str) and recovery in RECOVERY_MESSAGES:
@@ -63,6 +68,10 @@ def _describe_list_check(check):
 
 def _describe_result(report):
     result = report.copy()
+    if "previous_list_review" in result:
+        review = describe_list_review(result.pop("previous_list_review"))
+        if review:
+            result["previous_list_review"] = review
     if "last_list" in report:
         result["last_list"] = _describe_list_check(report["last_list"])
     for key in ("previous_list_checks", "recent_list_checks"):

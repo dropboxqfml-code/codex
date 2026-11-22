@@ -13,6 +13,7 @@ from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_collect import collect_session_turn, list_checks_during_save
 from image_monitor.monitor_gap_report import checked_gap_route, checked_window_starts
 from image_monitor.monitor_list_history import previous_list_checks
+from image_monitor.monitor_list_review import previous_list_review, public_list_review
 from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
 from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON, PARTIAL_RETRY_REASON
@@ -350,6 +351,8 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
         report["next_eligible_at"] = _stamp(due) if due is not None else None
         if phase == "scanning":
             report["last_list"] = {"status": status, "reason": reason}
+            if status == "review" and (review := public_list_review(turn.get("review"))):
+                report["last_list"]["review"] = review
         else:
             _record_collection(report, turn)
 
@@ -480,6 +483,8 @@ def run_auto_monitor(
         database = _plain_path(roots[0] / "watch.sqlite")
         with watch_run_lock(database, MONITOR_SCOPE, purpose="monitor"):
             report["previous_list_checks"] = previous_list_checks(roots[0])
+            if review := previous_list_review(roots[0]):
+                report["previous_list_review"] = review
             return _session(
                 roots,
                 report,

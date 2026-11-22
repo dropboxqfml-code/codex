@@ -9,6 +9,8 @@ import pytest
 
 from image_monitor import PUBLIC_VERSION, auto_monitor_cli
 from image_monitor.__main__ import main
+from image_monitor.monitor_list_review import _STAGES
+from image_monitor.monitor_list_review_text import _STAGE_TEXT
 from image_monitor.watch_history import HEAD_JOIN_METHODS, HISTORICAL_ROUTE_REASONS
 
 
@@ -205,3 +207,29 @@ def test_all_route_reasons_have_fixed_korean_text_and_unknown_details_stay_priva
         assert auto_monitor_cli._describe_list_check(check) == {
             "historical_status": "recent_pages_only"
         }
+
+
+def test_korean_list_review_is_reprojected_for_live_and_previous_checks():
+    assert set(_STAGE_TEXT) == _STAGES
+    review = {
+        "stage": "partial_check",
+        "stage_ko": "private stored text",
+        "evidence": "committed_scan",
+        "http_status": 200,
+        "error_type": "private stored exception",
+        "pages": [{"page": 1, "post": "private post", "status": "observed"}],
+        "url": "private site",
+    }
+    result = auto_monitor_cli._describe_result(
+        {"previous_list_review": review, "last_list": {"status": "review", "review": review}}
+    )
+    assert result["previous_list_review"] == result["last_list"]["review"]
+    assert "부분 확인" in result["previous_list_review"]["stage_ko"]
+    assert result["previous_list_review"]["http_status"] == 200
+    assert "private" not in json.dumps(result, ensure_ascii=False)
+    assert auto_monitor_cli._describe_result(
+        {
+            "previous_list_review": {"stage": "private"},
+            "last_list": {"status": "complete", "review": review},
+        }
+    ) == {"last_list": {"status": "complete"}}

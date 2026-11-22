@@ -389,7 +389,7 @@ if "%WATCH_IMAGES%"=="1" >>"%LOG_FILE%" echo Check up to three pending recent po
 if "%WATCH_IMAGES%"=="1" goto check_project
 if "%WATCH_DETAIL%"=="1" >>"%LOG_FILE%" echo Inspect at most one pending post from the last verified list scan in headless Chrome.
 if "%WATCH_DETAIL%"=="1" goto check_project
-if "%MONITOR_DIAGNOSIS%"=="1" >>"%LOG_FILE%" echo Checking the last stored list failure. The monitor site and saved images are not opened.
+if "%MONITOR_DIAGNOSIS%"=="1" >>"%LOG_FILE%" echo Reading the saved list profile and the latest monitor review from local records.
 if "%MONITOR_DIAGNOSIS%"=="1" goto check_project
 if "%MONITOR_SAVE_BATCH%"=="0" if "%MONITOR_BATCH_FINISH%"=="0" if "%MONITOR_SAVE_TEST%"=="0" if "%MONITOR_FINISH%"=="0" if "%MONITOR%"=="0" if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Single-post native image saving requires review in the dedicated Chrome app window.

@@ -604,19 +604,26 @@ def _durable_historical_source(queue, latest, planned):
     source = historical_source(latest)
     if source is None:
         return None
+    return source if historical_candidate_count(queue, latest, planned) is not None else None
+
+
+def historical_candidate_count(queue, latest, planned):
+    """Count original discoveries after validating every candidate as of the scan generation."""
     # A later real scan can refresh last_seen, but the original identity and
     # first discovery must still exist for *every* post carried across the gap.
     candidates = {row["post_id"]: row["post_url"] for row in planned["candidates"]}
     rows = queue.connection.execute(
-        "SELECT c.post_id,c.post_url FROM watch_candidates c JOIN watch_scans s ON "
+        "SELECT c.post_id,c.post_url,c.first_scan_id FROM watch_candidates c JOIN watch_scans s ON "
         "s.scan_id=c.first_scan_id AND s.observed_at=c.first_seen_at AND "
         "(s.watch_name,s.gallery_type,s.gallery_id,s.keyword,s.search_type)="
         "(c.watch_name,c.gallery_type,c.gallery_id,c.keyword,c.search_type) "
         "WHERE (c.watch_name,c.gallery_type,c.gallery_id,c.keyword,c.search_type)=(?,?,?,?,?) "
         "AND s.generation<=? AND c.post_id IN (SELECT value FROM json_each(?))",
         (*MONITOR_SCOPE.key(), latest["generation"], json.dumps(list(candidates))),
-    )
-    return source if dict(rows) == candidates else None
+    ).fetchall()
+    if {row["post_id"]: row["post_url"] for row in rows} != candidates:
+        return None
+    return sum(row["first_scan_id"] == latest["scan_id"] for row in rows)
 
 
 def run_watch_trial(
@@ -876,6 +883,8 @@ def run_watch_trial(
                     "scan_id": persisted["scan_id"],
                     "scope": list(scope.key()),
                 }
+                if follow_up_gaps:
+                    report["historical_route_schema"] = 1
     except WatchRunBusy:
         report.update(status="watch_busy", reason="another_scan_owns_this_scope")
     except KeyboardInterrupt:

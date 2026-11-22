@@ -7,6 +7,46 @@ from contextlib import nullcontext
 from datetime import datetime
 
 from image_monitor import PUBLIC_VERSION
+from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
+
+_HISTORICAL_REASON_KO = {
+    "checkpoint_in_recent_pages": "최근 두 쪽 안에서 이전 완료 기준 글을 찾았습니다.",
+    "insufficient_recent_pages": "최근 두 쪽 중 한 쪽만 확인했습니다.",
+    "recent_chain_unverified": "최근 1·2쪽의 연결과 글 순서를 확인하기 어려웠습니다.",
+    "previous_head_not_matched": "최근 1·2쪽에서 지난번 첫 쪽의 글 순서를 찾지 못했습니다.",
+    "boundary_link_missing": "현재 2쪽에서 지난번 마지막 쪽으로 가는 링크를 찾지 못했습니다.",
+    "boundary_link_ambiguous": "현재 2쪽에 지난번 마지막 쪽으로 가는 링크가 여러 개 있었습니다.",
+    "route_not_observed": "이어갈 링크를 확인했지만 그 링크로 이동한 기록이 없습니다.",
+    "boundary_extended": "지난번 마지막 쪽의 글 순서를 대조한 뒤 그다음 쪽까지 확인했습니다.",
+    "successor_link_missing": "지난번 마지막 쪽에 그다음 쪽으로 가는 링크가 없었습니다.",
+    "successor_link_ambiguous": "지난번 마지막 쪽에 그다음 쪽으로 가는 링크가 여러 개 있었습니다.",
+    "previous_boundary_not_matched": "지난번 마지막 쪽의 글 순서를 다시 확인하지 못했습니다.",
+    "route_evidence_unverified": "남은 목록 기록으로는 탐색 경로를 판단하기 어렵습니다.",
+}
+
+
+def _describe_list_check(check):
+    if not isinstance(check, dict):
+        return check
+    described = check.copy()
+    reason = described.pop("historical_reason", None)
+    described.pop("historical_reason_ko", None)
+    allowed = HISTORICAL_ROUTE_REASONS.get(check.get("historical_status"), ())
+    if isinstance(reason, str) and reason in allowed:
+        described.update(
+            historical_reason=reason, historical_reason_ko=_HISTORICAL_REASON_KO[reason]
+        )
+    return described
+
+
+def _describe_result(report):
+    result = report.copy()
+    if "last_list" in report:
+        result["last_list"] = _describe_list_check(report["last_list"])
+    for key in ("previous_list_checks", "recent_list_checks"):
+        if key in report:
+            result[key] = [_describe_list_check(check) for check in report[key]]
+    return result
 
 
 def _console_stop():
@@ -94,5 +134,5 @@ def run_auto_monitor_cli(watch_root, legacy_root, work_root, max_cycles):
             "error_type": type(error).__name__,
         }
         code = 130 if interrupted else 2
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print(json.dumps(_describe_result(report), ensure_ascii=False, indent=2))
     return code

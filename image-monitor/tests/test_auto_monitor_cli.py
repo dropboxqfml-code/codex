@@ -2,12 +2,14 @@ import io
 import json
 import sys
 from collections import deque
+from copy import deepcopy
 from types import SimpleNamespace
 
 import pytest
 
 from image_monitor import PUBLIC_VERSION, auto_monitor_cli
 from image_monitor.__main__ import main
+from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
 
 
 def test_bounded_cli_separates_progress_from_result_without_reading_keyboard(
@@ -123,3 +125,57 @@ def test_startup_error_is_reported_on_stdout_without_exception_text(tmp_path, mo
         "error_type": "RuntimeError",
     }
     assert "private local details" not in output.out + output.err
+
+
+def test_result_txt_explains_previous_and_current_historical_checks(tmp_path, monkeypatch, capsys):
+    old = {"historical_status": "recent_pages_only", "historical_reason": "boundary_link_missing"}
+    new = {"historical_status": "extended", "historical_reason": "boundary_extended"}
+    ordinary = {"status": "complete", "visited_page_numbers": [1, 2]}
+    result = {
+        "status": "auto_monitor_completed",
+        "previous_list_checks": [ordinary, old],
+        "recent_list_checks": [new],
+        "last_list": new,
+    }
+    original = deepcopy(result)
+    monkeypatch.setitem(
+        sys.modules,
+        "image_monitor.monitor_auto_session",
+        SimpleNamespace(
+            run_auto_monitor=lambda *a, **kw: result, auto_monitor_exit_code=lambda r: 0
+        ),
+    )
+    assert auto_monitor_cli.run_auto_monitor_cli(tmp_path, tmp_path, tmp_path, 2) == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["previous_list_checks"] == [
+        ordinary,
+        old
+        | {
+            "historical_reason_ko": "현재 2쪽에서 지난번 마지막 쪽으로 가는 링크를 찾지 못했습니다."
+        },
+    ]
+    assert output["recent_list_checks"] == [output["last_list"]]
+    assert output["last_list"] == new | {
+        "historical_reason_ko": "지난번 마지막 쪽의 글 순서를 대조한 뒤 그다음 쪽까지 확인했습니다."
+    }
+    assert result == original
+
+
+def test_all_route_reasons_have_fixed_korean_text_and_unknown_details_stay_private():
+    assert set(auto_monitor_cli._HISTORICAL_REASON_KO) == set().union(
+        *HISTORICAL_ROUTE_REASONS.values()
+    )
+    for status, reasons in HISTORICAL_ROUTE_REASONS.items():
+        for reason in reasons:
+            check = {"historical_status": status, "historical_reason": reason}
+            text = auto_monitor_cli._describe_list_check(check)["historical_reason_ko"]
+            assert any("가" <= ch <= "힣" for ch in text) and reason not in text
+    for reason in ("https://example.invalid/private?no=7", "boundary_extended", {"post_id": "7"}):
+        check = {
+            "historical_status": "recent_pages_only",
+            "historical_reason": reason,
+            "historical_reason_ko": "private page details",
+        }
+        assert auto_monitor_cli._describe_list_check(check) == {
+            "historical_status": "recent_pages_only"
+        }

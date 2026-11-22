@@ -6,7 +6,10 @@ import pytest
 from test_watch_runtime import link, snapshot
 
 from image_monitor.watch_history import (
+    HISTORICAL_ROUTE_REASONS,
     historical_next_url,
+    historical_route_details,
+    historical_route_reason,
     historical_source,
     plan_historical_prefix,
     plan_historical_scan,
@@ -50,6 +53,7 @@ def latest(pages, *, source=None):
         result["historical_follow_up"] = source
     return {
         "scan_id": SOURCE_ID,
+        "observed_at": NOW.isoformat(),
         "complete": False,
         "gap_reason": "anchor_not_reached",
         "result": result,
@@ -120,6 +124,13 @@ def test_ordered_boundaries_may_shift_onto_next_fresh_page_and_old_rows_are_not_
         "boundary_page": 4,
         "status": "extended",
     }
+    assert historical_route_details(
+        state, latest(pages, source=result["historical_follow_up"]), source
+    ) == {
+        "historical_boundary_page": 4,
+        "historical_status": "extended",
+        "historical_reason": "boundary_extended",
+    }
     next_source = historical_source(latest(pages, source=result["historical_follow_up"]))
     assert next_source["boundary_page"] == 5 and next_source["head_ids"] == ["146", "145", "144"]
     next_pages = [
@@ -134,17 +145,17 @@ def test_ordered_boundaries_may_shift_onto_next_fresh_page_and_old_rows_are_not_
 
 
 @pytest.mark.parametrize(
-    "fault",
+    ("fault", "reason"),
     [
-        "missing_head",
-        "head_reordered",
-        "global_anchor_in_head",
-        "duplicate_first_link",
-        "duplicate_link",
-        "no_current_link",
+        ("missing_head", "previous_head_not_matched"),
+        ("head_reordered", "recent_chain_unverified"),
+        ("global_anchor_in_head", "checkpoint_in_recent_pages"),
+        ("duplicate_first_link", "recent_chain_unverified"),
+        ("duplicate_link", "boundary_link_ambiguous"),
+        ("no_current_link", "boundary_link_missing"),
     ],
 )
-def test_changed_head_and_unproven_current_link_cannot_jump(state, source, fault):
+def test_changed_head_and_unproven_current_link_cannot_jump(state, source, fault, reason):
     pages = head()
     if fault == "missing_head":
         pages[1] = document(2, [143, 141], 3, 4)
@@ -159,6 +170,11 @@ def test_changed_head_and_unproven_current_link_cannot_jump(state, source, fault
     else:
         pages[1] = document(2, [143, 142, 141], 3)
     assert historical_next_url(MONITOR_SCOPE, state, pages, NOW, source) is None
+    assert historical_route_details(state, latest(pages), source) == {
+        "historical_boundary_page": 4,
+        "historical_status": "recent_pages_only",
+        "historical_reason": reason,
+    }
     with pytest.raises(WatchPlanError):
         plan_historical_scan(
             MONITOR_SCOPE, state, [*pages, document(4, [129, 128, 127], 5)], NOW, source
@@ -178,6 +194,10 @@ def test_changed_frontier_retains_only_current_head_candidates(state, source, do
     plan = plan_historical_scan(MONITOR_SCOPE, state, observations, NOW, source)
     assert plan["gap_reason"] == "historical_boundary_changed" and not plan["complete"]
     assert plan["scan_result"]["historical_follow_up"]["status"] == "boundary_changed"
+    assert (
+        historical_route_reason(MONITOR_SCOPE, state, observations, NOW, source, "boundary_changed")
+        == "previous_boundary_not_matched"
+    )
     assert [p["page"] for p in plan["scan_result"]["pages"]] == [p["page"] for p in observations]
     assert {item["post_id"] for item in plan["candidates"]} == {
         "146",
@@ -206,6 +226,60 @@ def test_frontier_may_not_authorize_guessed_page_or_exceed_ceiling(state, source
         source={"status": "extended", "boundary_page": 9},
     )
     assert historical_source(end) is None
+
+
+@pytest.mark.parametrize(
+    ("targets", "reason"),
+    [
+        ([], "successor_link_missing"),
+        ([5, 5], "successor_link_ambiguous"),
+        ([5], "route_not_observed"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("boundary_rows", "status"),
+    [
+        ([129, 128, 127], "extended"),
+        ([130, 129, 128], "boundary_changed"),
+    ],
+)
+def test_partial_boundary_observation_does_not_claim_an_unvisited_successor(
+    state, source, targets, reason, boundary_rows, status
+):
+    pages = [*head(), document(4, boundary_rows, *targets)]
+    plan = plan_historical_scan(MONITOR_SCOPE, state, pages, NOW, source)
+    marker = plan["scan_result"]["historical_follow_up"]
+    assert marker["status"] == status
+    assert (
+        historical_route_details(state, latest(pages, source=marker), source)["historical_reason"]
+        == reason
+    )
+    assert reason in HISTORICAL_ROUTE_REASONS[status]
+
+
+def test_limited_or_inconsistent_route_evidence_yields_only_bounded_reasons(state, source):
+    pages = head()
+    assert historical_route_details(state, latest(pages), None) == {}
+    assert (
+        historical_route_details(state, latest(pages[:1]), source)["historical_reason"]
+        == "insufficient_recent_pages"
+    )
+    assert (
+        historical_route_details(state, latest(pages), source)["historical_reason"]
+        == "route_not_observed"
+    )
+    pages[1]["counts"]["list_containers"] = 2
+    assert (
+        historical_route_details(state, latest(pages), source)["historical_reason"]
+        == "route_evidence_unverified"
+    )
+    raw = latest(pages, source={"status": "https://untrusted.example"})
+    with pytest.raises(WatchPlanError):
+        historical_route_details(state, raw, source)
+    assert (
+        historical_route_reason(MONITOR_SCOPE, state, pages, NOW, source, "extended")
+        == "route_evidence_unverified"
+    )
 
 
 @pytest.mark.parametrize("length", [3, 4])

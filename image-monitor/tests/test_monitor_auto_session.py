@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from image_monitor import monitor_auto_session
 from image_monitor.monitor_auto_session import auto_monitor_exit_code, run_auto_monitor
 from image_monitor.monitor_settings import save_monitor_settings
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
@@ -249,6 +250,7 @@ def test_report_retains_last_two_verified_page_sequences_when_next_scan_waits(tm
         "pages_checked": 4,
         "visited_page_numbers": [1, 2, 4, 5],
         "historical_status": "extended",
+        "historical_reason": "boundary_extended",
         "historical_boundary_page": 4,
     }
     latest = previous | {"visited_page_numbers": [1, 2, 5, 6], "historical_boundary_page": 5}
@@ -266,6 +268,44 @@ def test_report_retains_last_two_verified_page_sequences_when_next_scan_waits(tm
         [1, 2, 4, 5],
         [1, 2, 5, 6],
     ]
+    assert all(
+        check["historical_reason"] == "boundary_extended" for check in report["recent_list_checks"]
+    )
+
+
+def test_startup_history_survives_a_service_wait_without_incrementing_session_counts(
+    tmp_path, monkeypatch
+):
+    clock = Clock()
+    prior = {"status": "partial", "historical_reason": "boundary_link_missing"}
+    reads = []
+
+    def read_previous(root):
+        reads.append(root)
+        return [prior.copy()]
+
+    monkeypatch.setattr(monitor_auto_session, "previous_list_checks", read_previous)
+    wait = scan("waiting", due=clock.stamp(600), reason="service_wait")
+    report, events = session(tmp_path, clock, [wait], [])
+    assert reads == [tmp_path / "watch"] and events == [("scan", 0)]
+    assert report["previous_list_checks"] == [prior]
+    assert report["status"] == "auto_monitor_waiting" and report["list_checks"] == 0
+    assert report["recent_list_checks"] == [] and report["gap_followup_checks"] == 0
+
+
+def test_unrecognized_explanation_never_escapes_to_the_session_report(tmp_path):
+    turn = scan("partial") | {
+        "page_limit": 4,
+        "pages_checked": 4,
+        "visited_page_numbers": [1, 2, 4, 5],
+        "historical_status": "extended",
+        "historical_boundary_page": 4,
+        "historical_reason": "unrecognized-private-detail",
+    }
+    report, _ = session(tmp_path, Clock(), [turn], [collection()], cycles=1)
+    assert report["status"] == "auto_monitor_completed"
+    assert "historical_reason" not in report["last_list"]
+    assert report["recent_list_checks"] == [report["last_list"]]
 
 
 @pytest.mark.parametrize(

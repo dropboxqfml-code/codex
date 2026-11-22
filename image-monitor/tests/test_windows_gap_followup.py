@@ -11,6 +11,7 @@ from test_watch_trial_browser import AdvancingClock, list_html
 
 from image_monitor import watch_browser, watch_runtime
 from image_monitor.monitor_auto_discovery import run_auto_discovery
+from image_monitor.monitor_list_history import previous_list_checks
 from image_monitor.queue import QueueStore
 from image_monitor.search_list import build_list_url
 from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
@@ -254,8 +255,8 @@ def test_changed_frontier_cannot_connect_unrelated_posts_to_existing_coverage(
     assert candidates.keys() - old_posts.keys() == {"131"}
 
 
-def test_missing_boundary_link_uses_only_live_consecutive_links(
-    tmp_path, four_page_gap, routed_scan
+def test_missing_boundary_link_then_successful_extension_is_explained_on_reopen(
+    tmp_path, four_page_gap, routed_scan, monkeypatch
 ):
     before, old_posts, _ = read_watch(tmp_path)
     # The historical page 4 exists on page 1 but no such link is on page 2.
@@ -270,9 +271,54 @@ def test_missing_boundary_link_uses_only_live_consecutive_links(
     assert (result["status"], result["new_candidates"]) == ("partial", 1), result
     assert result["visited_page_numbers"] == [1, 2, 3, 4]
     assert result["historical_status"] == "recent_pages_only"
+    assert result["historical_reason"] == "boundary_link_missing"
     after, candidates, _ = read_watch(tmp_path)
     assert after["checkpoint"] == before["checkpoint"]
     assert old_posts.items() <= candidates.items()
+
+    extended = routed_scan(
+        [
+            (1, [132, 131, 130], [2]),
+            (2, [129, 128, 127], [3, 4]),
+            (4, [123, 122, 121], [5]),
+            (5, [120, 119, 118], [6]),
+        ]
+    )
+    assert extended["historical_status"] == "extended"
+    assert extended["historical_reason"] == "boundary_extended"
+    assert extended["visited_page_numbers"] == [1, 2, 4, 5]
+    assert extended["status"] == "partial" and extended["reason"] == "anchor_not_reached"
+
+    monkeypatch.setattr(
+        watch_browser.HeadlessWatchBrowser,
+        "__enter__",
+        lambda self: pytest.fail("Reading previous list checks must not launch Chrome"),
+    )
+    receipts = {path: path.read_bytes() for path in (tmp_path / "runs").glob("*/report.json")}
+    assert len(receipts) == 6
+    with QueueStore(tmp_path / "watch.sqlite", read_only=True) as queue:
+        row = queue.connection.execute(
+            "SELECT first_scan_id,latest_scan_id FROM watch_candidates WHERE post_id='131'"
+        ).fetchone()
+        assert row["first_scan_id"] == after["latest_scan"]["scan_id"]
+        assert row["latest_scan_id"] != row["first_scan_id"]
+        data_version = queue.connection.execute("PRAGMA data_version").fetchone()[0]
+        previous = previous_list_checks(tmp_path)
+        assert queue.connection.execute("PRAGMA data_version").fetchone()[0] == data_version
+    assert {
+        path: path.read_bytes() for path in (tmp_path / "runs").glob("*/report.json")
+    } == receipts
+    public_keys = {
+        "status",
+        "reason",
+        "page_limit",
+        "pages_checked",
+        "visited_page_numbers",
+        "historical_boundary_page",
+        "historical_status",
+        "historical_reason",
+    }
+    assert previous == [{key: turn[key] for key in public_keys} for turn in (result, extended)]
 
 
 @pytest.mark.parametrize(

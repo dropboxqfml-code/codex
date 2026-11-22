@@ -8,7 +8,7 @@ from image_monitor.monitor_clock import stop_requested
 from image_monitor.native_ui import NativeUIError
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_detail_source import recent_scan_candidates, scan_plan_candidates
-from image_monitor.watch_history import plan_historical_scan
+from image_monitor.watch_history import historical_route_details, plan_historical_scan
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_planner import next_poll_at, plan_scan
 from image_monitor.watch_runtime import (
@@ -236,18 +236,14 @@ def run_auto_discovery(
             kind, added = _verified_scan(
                 database, queue, before, after, raw, page_limit, historical_source
             )
-            record = after["latest_scan"]["result"]
+            latest = after["latest_scan"]
+            record = latest["result"]
             numbers = [page["page"] for page in record["private_observation"]["pages"]]
             result = _result(kind, raw.get("reason"), due=due, closed=closed, added=added)
             result.update(
                 page_limit=page_limit, pages_checked=len(numbers), visited_page_numbers=numbers
             )
-            if historical_source is not None:
-                marker = record.get("historical_follow_up")
-                result.update(
-                    historical_boundary_page=historical_source["boundary_page"],
-                    historical_status=marker["status"] if marker else "recent_pages_only",
-                )
+            result.update(historical_route_details(before, latest, historical_source))
             return result
     except WatchRunBusy:
         return _result("busy", "another_worker_active", closed=closed)

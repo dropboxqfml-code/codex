@@ -13,6 +13,7 @@ from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
 from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON, PARTIAL_RETRY_REASON
 from image_monitor.post_worker import share_setup_diagnostics
+from image_monitor.watch_history import MAX_HISTORICAL_PAGE
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
 from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE
@@ -42,6 +43,46 @@ def _count(result, key, maximum=None):
     if type(value) is not int or value < 0 or (maximum is not None and value > maximum):
         raise ValueError("Invalid monitor turn count")
     return value
+
+
+def _record_list_pages(report, turn):
+    limit = _count(turn, "page_limit", MAX_MONITOR_SCAN_PAGES)
+    count = _count(turn, "pages_checked", limit)
+    numbers = turn["visited_page_numbers"]
+    if (
+        not isinstance(numbers, list)
+        or not count
+        or len(numbers) != count
+        or any(type(n) is not int or not 1 <= n <= MAX_HISTORICAL_PAGE for n in numbers)
+        or (limit == 1) != (turn["status"] == "baseline")
+    ):
+        raise ValueError("Invalid verified list page numbers")
+    last = report["last_list"]
+    expected = list(range(1, count + 1))
+    if "historical_status" in turn or "historical_boundary_page" in turn:
+        boundary = turn["historical_boundary_page"]
+        status = turn["historical_status"]
+        if (
+            limit != MAX_MONITOR_SCAN_PAGES
+            or type(boundary) is not int
+            or not 4 <= boundary < MAX_HISTORICAL_PAGE
+            or status not in ("extended", "boundary_changed", "recent_pages_only")
+        ):
+            raise ValueError("Invalid historical list boundary")
+        if status != "recent_pages_only":
+            if count not in (3, 4):
+                raise ValueError("Missing historical list pages")
+            expected = [1, 2, boundary, boundary + 1][:count]
+    if numbers != expected:
+        raise ValueError("Unexpected verified list page sequence")
+    last.update(pages_checked=count, page_limit=limit, visited_page_numbers=numbers.copy())
+    if "historical_status" in turn:
+        last.update(historical_boundary_page=boundary, historical_status=status)
+    # Keep both cycles of the short Windows test while bounding continuous-session output.
+    report["recent_list_checks"] = [*report["recent_list_checks"][-1:], last.copy()]
+    if limit > 2:
+        report["gap_followup_checks"] += 1
+        report["gap_followups_completed"] += int(turn["status"] == "complete")
 
 
 def _record_collection(report, turn):
@@ -206,14 +247,10 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
         elif phase == "scanning" and status in {"complete", "partial", "baseline"}:
             if closed is not True:
                 return _finish(report, "review", "owned_browser_cleanup_unconfirmed")
-            limit = _count(turn, "page_limit", MAX_MONITOR_SCAN_PAGES)
-            pages = _count(turn, "pages_checked", limit)
-            if not pages or (limit == 1) != (status == "baseline"):
+            try:
+                _record_list_pages(report, turn)
+            except (ValueError, KeyError, TypeError):
                 return _finish(report, "review", "invalid_list_page_count")
-            report["last_list"].update(pages_checked=pages, page_limit=limit)
-            if limit > 2:
-                report["gap_followup_checks"] += 1
-                report["gap_followups_completed"] += int(status == "complete")
             report["list_checks"] += 1
             report["partial_list_checks"] += int(status == "partial")
             report["new_candidates"] += _count(turn, "new_candidates")
@@ -274,6 +311,7 @@ def run_auto_monitor(
         "newly_saved_files": 0,
         "last_saved_files": [],
         "last_list": None,
+        "recent_list_checks": [],
         "last_collection": None,
         "next_eligible_at": None,
         "browser_closed": None,

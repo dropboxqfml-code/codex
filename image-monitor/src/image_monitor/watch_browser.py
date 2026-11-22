@@ -16,6 +16,7 @@ from image_monitor.search_list import (
     validate_list_url,
 )
 from image_monitor.site_inspection import _error_code
+from image_monitor.watch_history import historical_next_url
 from image_monitor.watch_planner import WatchPlanError, plan_scan
 from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE, WatchScope
 
@@ -170,6 +171,32 @@ class HeadlessWatchBrowser:
             raise ValueError("should_stop must return a boolean")
         return requested
 
+    def _navigate(self, url):
+        page = self._page
+        failed_document = None
+
+        def observe_response(response):
+            nonlocal failed_document
+            if (
+                400 <= response.status < 600
+                and response.url == url
+                and response.request.is_navigation_request()
+                and response.frame == page.main_frame
+            ):
+                failed_document = response
+
+        page.on("response", observe_response)
+        try:
+            return page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+        except Exception:
+            # Chromium can return a document's headers and then reject its empty
+            # error page. Preserve its actual status and Retry-After without retrying.
+            if failed_document is not None:
+                return failed_document
+            raise
+        finally:
+            page.remove_listener("response", observe_response)
+
     def _inspect_document(self, url, scan_time, *, can_settle):
         page = self._page
         document_changed = False
@@ -216,7 +243,7 @@ class HeadlessWatchBrowser:
     def scan(
         self, scope: WatchScope, observed_at: datetime, max_pages: int = 2, *, follow_up_state=None
     ) -> dict:
-        """Read the latest page and consecutive links within the passed scan budget.
+        """Read the latest page and verified pagination links within the passed budget.
 
         Each navigation runs once. A recognized incomplete render may receive
         one more DOM observation. Earlier pages survive a later page failure.
@@ -258,7 +285,7 @@ class HeadlessWatchBrowser:
             result["navigation"].append(navigation)
             result.update(http_status=None, retry_after=None, lastRetryAfter=None)
             try:
-                response = self._page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+                response = self._navigate(url)
                 status = response.status if response is not None else None
                 navigation["http_status"] = status
                 result["http_status"] = status
@@ -289,12 +316,31 @@ class HeadlessWatchBrowser:
                     return result | {"status": "cancelled", "reason": "requested_stop"}
                 if index + 1 == max_pages:
                     break
+                if extended:
+                    if not 200 <= status < 300 or result["retry_after"] is not None:
+                        break
+                    source = follow_up_state.get("historical_source")
+                    if source is not None and (
+                        index == 1
+                        or (index == 2 and snapshot.get("page") == source["boundary_page"])
+                    ):
+                        historical = historical_next_url(
+                            scope, follow_up_state, result["pages"], scan_time, source
+                        )
+                        if historical is not None:
+                            if index == 1:
+                                result["historical_boundary_page"] = source["boundary_page"]
+                            url = historical
+                            target = validate_list_url(url)
+                            continue
+                        if snapshot["page"] != index + 1:
+                            # A re-observed boundary changed. Keep the fresh head
+                            # without moving beyond an unproven interval.
+                            break
                 adjacent = _adjacent_latest_link(target, snapshot)
                 if "url" not in adjacent:
                     break
                 if extended:
-                    if not 200 <= status < 300 or result["retry_after"] is not None:
-                        break
                     # Consult only this run's fresh observations before spending
                     # another request. A completed overlap or uncertain row stops here.
                     prefix = plan_scan(

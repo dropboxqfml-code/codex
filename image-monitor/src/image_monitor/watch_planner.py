@@ -311,6 +311,15 @@ def _next(page):
     ]
 
 
+def _page_record(page):
+    return _cursor(page) | {
+        "end_of_results": page["end_of_results"],
+        "excluded_rows": page["excluded_rows"],
+        "rows_complete": page["rows_complete"],
+        "pagination_candidates": page["links"],
+    }
+
+
 def plan_scan(
     scope: WatchScope,
     state: Mapping,
@@ -332,6 +341,30 @@ def plan_scan(
     Live evidence requires a separate opt-in for the exact reviewed scope and
     cannot establish terminal coverage. Neither mode approves a detail or image save.
     """
+    return _plan_scan(
+        scope,
+        state,
+        pages,
+        observed_at,
+        overlap_pages=overlap_pages,
+        max_pages=max_pages,
+        synthetic_fixture=synthetic_fixture,
+        allow_verified_live=allow_verified_live,
+    )
+
+
+def _plan_scan(
+    scope,
+    state,
+    pages,
+    observed_at,
+    *,
+    overlap_pages=1,
+    max_pages=5,
+    synthetic_fixture=False,
+    allow_verified_live=False,
+    verified_boundary=None,
+):
     if type(synthetic_fixture) is not bool or type(allow_verified_live) is not bool:
         raise WatchPlanError("synthetic_fixture and allow_verified_live must be booleans")
     if synthetic_fixture and allow_verified_live:
@@ -422,15 +455,7 @@ def plan_scan(
         visited.add(current["url"])
         result["last_cursor"] = _cursor(current)
         result["follow_up"] = None
-        result["pages"].append(
-            _cursor(current)
-            | {
-                "end_of_results": current["end_of_results"],
-                "excluded_rows": current["excluded_rows"],
-                "rows_complete": current["rows_complete"],
-                "pagination_candidates": current["links"],
-            }
-        )
+        result["pages"].append(_page_record(current))
         historical = [
             link for link in current["links"] if link["search_pos"] != current["search_pos"]
         ]
@@ -506,6 +531,10 @@ def plan_scan(
             complete = True
             break
         options = _next(current)
+        if verified_boundary is not None and index == 1:
+            # The historical planner proved the head and remote boundary meet the
+            # same earlier scan. Only the current page's observed link can join them.
+            options = [link for link in current["links"] if link == verified_boundary]
         result["follow_up"] = dict(options[0]) if len(options) == 1 else None
         if not options and historical:
             gap_reason = "historical_cursor_unverified"

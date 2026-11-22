@@ -18,6 +18,12 @@ from image_monitor.retry import retry_after
 from image_monitor.search_list import build_list_url
 from image_monitor.watch_browser import HeadlessWatchBrowser
 from image_monitor.watch_diagnosis import diagnose_list_page
+from image_monitor.watch_history import (
+    MAX_HISTORICAL_PAGE,
+    historical_source,
+    plan_historical_prefix,
+    plan_historical_scan,
+)
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_planner import (
     WatchPlanError,
@@ -25,10 +31,18 @@ from image_monitor.watch_planner import (
     plan_scan,
     plan_verified_page_prefix,
 )
-from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE, WatchScope, WatchStore
+from image_monitor.watch_store import (
+    MAX_MONITOR_SCAN_PAGES,
+    MONITOR_SCOPE,
+    WatchScope,
+    WatchStore,
+    _record,
+)
 
 SERVICE_SCOPE = "dcinside"
-PARTIAL_COVERAGE_GAPS = frozenset({"anchor_not_reached", "overlap_incomplete"})
+PARTIAL_COVERAGE_GAPS = frozenset(
+    {"anchor_not_reached", "overlap_incomplete", "historical_boundary_changed"}
+)
 DEFAULT_SCOPE = WatchScope("검색 감시 시험", "normal", "comic_new6", "ai", "search_subject_memo")
 
 
@@ -173,6 +187,10 @@ def _empty_plan(state, observed_at, reason, scope=DEFAULT_SCOPE):
 def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
     pages = outcome.get("pages", [])
     exclusions = [row for page in pages for row in page.get("excluded_rows", [])]
+    history = plan["scan_result"].get("historical_follow_up")
+    boundary = history["boundary_page"] if history else None
+    if boundary is None and follow_up_page_limit == MAX_MONITOR_SCAN_PAGES:
+        boundary = outcome.get("historical_boundary_page")
     summary = {
         "generation": persisted["generation"],
         "status": outcome["status"],
@@ -181,7 +199,10 @@ def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
         "page_count": len(pages),
         "page_statuses": [page.get("status") for page in pages],
         "layout_statuses": [page.get("layout_status") for page in pages],
-        "page_checks": [diagnose_list_page(page, index) for index, page in enumerate(pages, 1)],
+        "page_checks": [
+            diagnose_list_page(page, ordinal, historical_boundary_page=boundary)
+            for ordinal, page in enumerate(pages, 1)
+        ],
         "ordinary_rows": sum(len(page.get("rows", [])) for page in pages),
         "excluded_counts": dict(Counter(row.get("reason", "unknown") for row in exclusions)),
         "excluded_evidence": [
@@ -206,6 +227,9 @@ def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
     }
     if follow_up_page_limit is not None:
         summary["follow_up_page_limit"] = follow_up_page_limit
+    if history:
+        summary["visited_page_numbers"] = [page["page"] for page in pages]
+        summary["historical_boundary_page"] = boundary
     return summary
 
 
@@ -275,12 +299,18 @@ def _follow_up_transport(outcome, limit):
     return _matched_documents(pages, visits[: len(pages)], follow_up=True)
 
 
-def _plan_observation(scope, state, outcome, observed_at, follow_up_limit):
+def _plan_observation(scope, state, outcome, observed_at, follow_up_limit, source=None):
     pages = outcome.get("pages", [])
     if follow_up_limit and not _follow_up_transport(outcome, follow_up_limit):
         return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
+    historical = len(pages) >= 3 and pages[2].get("page") != 3
     try:
-        plan = plan_scan(scope, state, pages, observed_at, allow_verified_live=True)
+        if historical:
+            if not source or follow_up_limit != MAX_MONITOR_SCAN_PAGES:
+                return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
+            plan = plan_historical_scan(scope, state, pages, observed_at, source)
+        else:
+            plan = plan_scan(scope, state, pages, observed_at, allow_verified_live=True)
         if follow_up_limit and plan["complete"] and len(plan["scan_result"]["pages"]) != len(pages):
             return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
         return plan
@@ -288,13 +318,16 @@ def _plan_observation(scope, state, outcome, observed_at, follow_up_limit):
         reason = "list_profile_unverified_or_incomplete"
         prefix = None
         if error.issue == "snapshot_layout" and _observed_page_chain(outcome, follow_up_limit or 2):
-            prefix = plan_verified_page_prefix(scope, state, pages, observed_at)
+            if historical:
+                prefix = plan_historical_prefix(scope, state, pages, observed_at, source)
+            else:
+                prefix = plan_verified_page_prefix(scope, state, pages, observed_at)
         plan = prefix or _empty_plan(state, observed_at, reason, scope)
         plan["scan_result"]["planner_issue"] = error.issue
         return plan
 
 
-def verified_recent_plan(queue, scope, state):
+def verified_recent_plan(queue, scope, state, *, remaining_bridges=MAX_HISTORICAL_PAGE - 4):
     """Replay the latest verified list chain from the checkpoint that preceded it."""
     latest = state["latest_scan"]
     scope_fields = ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type")
@@ -359,7 +392,35 @@ def verified_recent_plan(queue, scope, state):
             "generation": state["generation"] - 1,
             "checkpoint": previous_checkpoint,
         }
-        planned = plan_scan(scope, previous_state, pages, scan_time, allow_verified_live=True)
+        if "historical_follow_up" in result:
+            if page_limit != MAX_MONITOR_SCAN_PAGES or remaining_bridges < 1:
+                return None
+            marker = result["historical_follow_up"]
+            if not isinstance(marker, dict):
+                return None
+            row = queue.connection.execute(
+                "SELECT * FROM watch_scans WHERE watch_name=? AND gallery_type=? "
+                "AND gallery_id=? AND keyword=? AND search_type=? AND generation=? AND scan_id=?",
+                (*scope.key(), previous_state["generation"], marker.get("source_scan_id")),
+            ).fetchone()
+            parent = _record(row)
+            if parent is None:
+                return None
+            parent_state = previous_state | {
+                "latest_scan": parent,
+                "updated_at": parent["observed_at"],
+            }
+            from image_monitor.candidate_save_selection import _database_path
+
+            parent_plan = _closed_partial_plan(
+                _database_path(queue), queue, parent_state, remaining_bridges - 1
+            )
+            source = _durable_historical_source(queue, parent, parent_plan)
+            if not source or source["boundary_page"] != marker.get("boundary_page"):
+                return None
+            planned = plan_historical_scan(scope, previous_state, pages, scan_time, source)
+        else:
+            planned = plan_scan(scope, previous_state, pages, scan_time, allow_verified_live=True)
     except WatchPlanError:
         return None
     if (
@@ -386,6 +447,11 @@ def verified_recent_plan(queue, scope, state):
 
 def matches_partial_coverage_scan(queue, scope, state, report):
     """Match a single-cycle dashboard report against the exact durable scan."""
+    planned = verified_recent_plan(queue, scope, state)
+    return _matches_partial_summary(queue, state, report, planned)
+
+
+def _matches_partial_summary(queue, state, report, planned):
     latest = state["latest_scan"]
     if not (
         latest
@@ -396,7 +462,6 @@ def matches_partial_coverage_scan(queue, scope, state, report):
         and report.get("error_type") is None
     ):
         return False
-    planned = verified_recent_plan(queue, scope, state)
     if planned is None:
         return False
     added = queue.connection.execute(
@@ -494,29 +559,64 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
         return False
 
 
-def monitor_page_budget(database, queue, state):
-    """Widen one page only after a closed, replayable partial Chrome scan."""
-    if state.get("baseline") is None:
-        return 1
+def _closed_partial_plan(database, queue, state, remaining_bridges):
+    """Bind the partial plan to its closed Chrome receipt at the given generation."""
     latest = state.get("latest_scan")
     if not latest or latest.get("gap_reason") not in PARTIAL_COVERAGE_GAPS:
-        return 2
+        return None
     try:
         run_id = latest["result"]["control"]["monitor_run_id"]
         if not _uuid(run_id):
-            return 2
+            return None
         receipt = _read_json(database.parent / "runs" / run_id / "report.json")
         if (
             confirmed_monitor_scan(database, latest, expected_report=receipt)
             and receipt.get("browser") == "chrome"
             and receipt.get("recent_pages_verified") is True
             and receipt.get("cycles_requested") == 1
-            and matches_partial_coverage_scan(queue, MONITOR_SCOPE, state, receipt)
         ):
-            return min(receipt["cycles"][0]["page_count"] + 1, MAX_MONITOR_SCAN_PAGES)
+            planned = verified_recent_plan(
+                queue, MONITOR_SCOPE, state, remaining_bridges=remaining_bridges
+            )
+            if _matches_partial_summary(queue, state, receipt, planned):
+                return planned
     except (OSError, ValueError, TypeError, KeyError, QueueError, CandidateFinishError):
         pass
-    return 2
+    return None
+
+
+def monitor_scan_policy(database, queue, state):
+    """Determine both the request limit and any verified historical boundary."""
+    if state.get("baseline") is None:
+        return 1, None
+    planned = _closed_partial_plan(database, queue, state, MAX_HISTORICAL_PAGE - 4)
+    if planned is None:
+        return 2, None
+    latest = state["latest_scan"]
+    page_count = len(latest["result"]["private_observation"]["pages"])
+    source = _durable_historical_source(queue, latest, planned)
+    return min(page_count + 1, MAX_MONITOR_SCAN_PAGES), source
+
+
+def _durable_historical_source(queue, latest, planned):
+    if not planned:
+        return None
+    source = historical_source(latest)
+    if source is None:
+        return None
+    # A later real scan can refresh last_seen, but the original identity and
+    # first discovery must still exist for *every* post carried across the gap.
+    candidates = {row["post_id"]: row["post_url"] for row in planned["candidates"]}
+    rows = queue.connection.execute(
+        "SELECT c.post_id,c.post_url FROM watch_candidates c JOIN watch_scans s ON "
+        "s.scan_id=c.first_scan_id AND s.observed_at=c.first_seen_at AND "
+        "(s.watch_name,s.gallery_type,s.gallery_id,s.keyword,s.search_type)="
+        "(c.watch_name,c.gallery_type,c.gallery_id,c.keyword,c.search_type) "
+        "WHERE (c.watch_name,c.gallery_type,c.gallery_id,c.keyword,c.search_type)=(?,?,?,?,?) "
+        "AND s.generation<=? AND c.post_id IN (SELECT value FROM json_each(?))",
+        (*MONITOR_SCOPE.key(), latest["generation"], json.dumps(list(candidates))),
+    )
+    return source if dict(rows) == candidates else None
 
 
 def run_watch_trial(
@@ -644,9 +744,11 @@ def run_watch_trial(
                         observed_at = clock.now()
                         report["last_stage"] = "list_observation"
                         page_limit = 1 if state["baseline"] is None else 2
+                        source = None
                         if follow_up_gaps:
-                            page_limit = monitor_page_budget(database, queue, state)
+                            page_limit, source = monitor_scan_policy(database, queue, state)
                         follow_up_limit = page_limit if page_limit > 2 else None
+                        follow_up_state = state | {"historical_source": source} if source else state
                         # Commit before navigation so cancellation or a process failure
                         # cannot immediately repeat the same request on the next run.
                         queue.defer_service(
@@ -658,7 +760,7 @@ def run_watch_trial(
                                 scope,
                                 observed_at,
                                 max_pages=page_limit,
-                                **({"follow_up_state": state} if follow_up_limit else {}),
+                                **({"follow_up_state": follow_up_state} if follow_up_limit else {}),
                             )
                         finally:
                             finished_at = clock.now()
@@ -667,8 +769,17 @@ def run_watch_trial(
                                 next_poll_at(finished_at, interval_seconds=interval_seconds),
                             )
                         plan = _plan_observation(
-                            scope, state, outcome, observed_at, follow_up_limit
+                            scope, state, outcome, observed_at, follow_up_limit, source
                         )
+                        if plan["scan_result"].get("historical_follow_up") is not None:
+                            current = store.get_state(scope)
+                            if (
+                                current["generation"] != state["generation"]
+                                or monitor_scan_policy(database, queue, current)[1] != source
+                            ):
+                                plan = _empty_plan(
+                                    state, observed_at, "historical_source_unverified", scope
+                                )
                         cancelled = outcome["status"] == "cancelled" or stopped()
                         failed = outcome["status"] != "observed" and not cancelled
                         if failed or cancelled:

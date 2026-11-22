@@ -40,7 +40,17 @@ def until(predicate, timeout=3):
     assert predicate(), "The monitor worker did not reach the expected state"
 
 
-def persist(root, clock, *, scope=MONITOR_SCOPE, added=(), interval=60, status=200, complete=True):
+def persist(
+    root,
+    clock,
+    *,
+    scope=MONITOR_SCOPE,
+    added=(),
+    interval=60,
+    status=200,
+    complete=True,
+    gap_reason="max_pages",
+):
     root.mkdir(parents=True, exist_ok=True)
     observed = clock.now()
     due = observed + timedelta(seconds=interval)
@@ -63,7 +73,7 @@ def persist(root, clock, *, scope=MONITOR_SCOPE, added=(), interval=60, status=2
             expected_generation=state["generation"],
             scan_result={
                 "complete": complete,
-                "gap_reason": None if complete else "max_pages",
+                "gap_reason": None if complete else gap_reason,
                 "control": {
                     "blocked": status in {401, 403, 404, 410},
                     "finished_at": observed.isoformat(),
@@ -84,7 +94,7 @@ def persist(root, clock, *, scope=MONITOR_SCOPE, added=(), interval=60, status=2
             ],
             checkpoint=checkpoint,
             complete=complete,
-            gap_reason=None if complete else "max_pages",
+            gap_reason=None if complete else gap_reason,
             baseline=baseline,
         )
         queue.defer_service("dcinside", due)
@@ -308,7 +318,8 @@ def test_access_block_stops_without_a_second_request(tmp_path, controllers, http
         value.start()
 
 
-def test_partial_coverage_preserves_baseline_and_stops_for_review(tmp_path, controllers):
+@pytest.mark.parametrize("reason", ["max_pages", "historical_source_unverified"])
+def test_partial_coverage_preserves_baseline_and_stops_for_review(tmp_path, controllers, reason):
     clock = Clock()
     persist(tmp_path, clock)
     with QueueStore(tmp_path / "watch.sqlite", read_only=True) as queue:
@@ -318,13 +329,13 @@ def test_partial_coverage_preserves_baseline_and_stops_for_review(tmp_path, cont
 
     def cycle(root, _browser, **_options):
         calls.append(True)
-        return persist(root, clock, added=("105",), complete=False)
+        return persist(root, clock, added=("105",), complete=False, gap_reason=reason)
 
     value = create(controllers, tmp_path, cycle, clock)
     value.start()
     assert value.wait_stopped(3)
     assert value.status()["phase"] == "needs_review"
-    assert value.status()["gap_reason"] == "max_pages"
+    assert value.status()["gap_reason"] == reason
     assert value.status()["candidate_count"] == 1
     assert value.status()["new_candidates"] == value.status()["current_cycle_new"] == 1
     assert calls == [True]

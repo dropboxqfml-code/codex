@@ -238,3 +238,29 @@ def test_follow_up_diagnostics_include_failure_on_last_requested_page(limit, cou
     assert diagnosis["pages"][-1]["status"] == "missing_list"
     assert diagnosis.get("follow_up_page_limit") == (count if count > 2 else None)
     assert public_list_diagnosis(diagnosis) == diagnosis
+
+
+def test_historical_diagnosis_uses_document_page_numbers_without_exposing_the_source():
+    pages = [
+        {"page": n, "status": "observed", "layout_status": "site_verified", "rows": []}
+        for n in (1, 2, 9, 10)
+    ]
+    pages[-1].update(status="missing_list", layout_status="unverified")
+    latest = scan(*pages)
+    latest["result"]["control"] = {"follow_up_page_limit": 4}
+    latest["result"]["historical_follow_up"] = {
+        "source_scan_id": "private-test-value",
+        "boundary_page": 9,
+    }
+    diagnosis = diagnose_list_scan(latest)
+    assert diagnosis["historical_boundary_page"] == 9
+    assert [p["page"] for p in diagnosis["pages"]] == [1, 2, 9, 10]
+    assert diagnosis["pages"][-1]["status"] == "missing_list"
+    assert public_list_diagnosis(diagnosis) == diagnosis and "private" not in json.dumps(diagnosis)
+    diagnosis["pages"][-1]["page"] = 8000001
+    assert public_list_diagnosis(diagnosis)["pages"][-1]["page"] is None
+    del latest["result"]["historical_follow_up"]
+    latest["result"]["private_observation"]["historical_boundary_page"] = 9
+    failed = diagnose_list_scan(latest)
+    assert [page["page"] for page in failed["pages"]] == [1, 2, 9, 10]
+    assert failed["pages"][-1]["status"] == "missing_list"

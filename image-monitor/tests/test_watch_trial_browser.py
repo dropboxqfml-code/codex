@@ -27,7 +27,7 @@ class AdvancingClock:
         self.current += timedelta(seconds=seconds)
 
 
-def list_html(ids, next_url, *, excluded_html=""):
+def list_html(ids, next_url, *, excluded_html="", extra_page_urls=()):
     rows = [excluded_html]
     for post_id in ids:
         rows.append(
@@ -39,6 +39,9 @@ def list_html(ids, next_url, *, excluded_html=""):
             '<td class="gall_writer">Invented author</td>'
             '<td class="gall_date">12:00</td></tr>'
         )
+    links = f'<a href="{escape(next_url, quote=True)}">Next</a>' + "".join(
+        f'<a href="{escape(url, quote=True)}">Page</a>' for url in extra_page_urls
+    )
     return (
         '<!doctype html><html><head><meta charset="utf-8"></head><body>'
         '<table class="gall_list"><tbody>'
@@ -47,8 +50,7 @@ def list_html(ids, next_url, *, excluded_html=""):
         '<tr><td class="gall_num">900</td><td class="gall_tit">'
         '<a href="/board/view/?id=comic_new6&amp;no=900">Invented recommendation</a>'
         '</td><td class="gall_date">12:00</td></tr></tbody></table>'
-        f'<div class="bottom_paging_box"><a href="{escape(next_url, quote=True)}">'
-        "Next</a></div></body></html>"
+        f'<div class="bottom_paging_box">{links}</div></body></html>'
     )
 
 

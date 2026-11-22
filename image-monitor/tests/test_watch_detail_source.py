@@ -173,3 +173,19 @@ def test_dense_three_page_scan_reconciles_previous_and_new_rows_after_reopen(tmp
         assert state["checkpoint"]["anchor_ids"] == ["100", "99"]
         assert len(store.list_gaps(MONITOR_SCOPE)) == 2
         assert scan_plan_candidates(queue, DEFAULT_SCOPE, state, plan) == (None, [])
+
+        # The SQL records and candidate plan agree about the two new identities.
+        # A changed historical boundary cannot authorize those third-page rows.
+        plan["scan_result"]["historical_follow_up"] = {
+            "boundary_page": 4,
+            "status": "boundary_changed",
+        }
+        assert scan_plan_candidates(queue, MONITOR_SCOPE, state, plan) == (None, [])
+        del plan["scan_result"]["historical_follow_up"]
+
+        # Keep the fresh page's size unchanged, but remove a known identity
+        # the store claims to have refreshed this turn.
+        pages = state["latest_scan"]["result"]["private_observation"]["pages"]
+        replacement = snapshot([651], clock.now())["rows"][0]
+        pages[0]["rows"][0] = replacement
+        assert scan_plan_candidates(queue, MONITOR_SCOPE, state, plan) == (None, [])

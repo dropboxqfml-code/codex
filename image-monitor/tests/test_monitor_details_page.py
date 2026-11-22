@@ -411,6 +411,26 @@ def test_list_diagnosis_never_renders_raw_strings_or_unbounded_pages(portal):
     assert all(url.startswith(BASE_URL) for url in state.requests)
 
 
+def test_list_diagnosis_labels_the_historical_document_that_failed(portal):
+    from playwright.sync_api import expect
+
+    state, page = portal
+    state.snapshot["gap_reason"] = "historical_boundary_changed"
+    state.snapshot["list_diagnosis"] = {
+        "reason": "list_profile_unverified_or_incomplete",
+        "follow_up_page_limit": 4,
+        "historical_boundary_page": 8,
+        "pages": [{"page": n, "layout_status": "site_verified"} for n in (1, 2, 8)]
+        + [{"page": 9, "status": "missing_list"}],
+    }
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    panel = page.locator("#list-diagnosis")
+    panel.locator("summary").click()
+    expect(panel).to_contain_text("9페이지 · 목록 표를 찾지 못함")
+    expect(page.locator("#coverage-gap")).to_contain_text("최근 두 페이지를 확인했고")
+    assert "4페이지" not in panel.inner_text()
+
+
 def test_list_diagnosis_explains_author_count_with_only_observed_row_categories(portal):
     from playwright.sync_api import expect
 

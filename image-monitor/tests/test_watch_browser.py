@@ -113,7 +113,9 @@ def test_owns_one_fresh_headless_system_browser_and_closes_only_it(browser_sessi
     assert report["pages"][0]["scan_observed_at"] == NOW.isoformat(timespec="microseconds")
     assert report["navigation"] == [{"url": PAGE_ONE, "http_status": 200, "retry_after": None}]
     assert [item[0] for item in page.mock_calls] == [
+        "on",
         "goto",
+        "remove_listener",
         "goto().header_value",
         "on",
         "remove_listener",
@@ -229,6 +231,29 @@ def test_http_failure_stops_without_inspection_or_retry(browser_session, status)
     response.body.assert_not_called()
     response.text.assert_not_called()
     browser.close.assert_called_once()
+
+
+@pytest.mark.parametrize("mismatch", ["url", "frame", "subresource", "success"])
+def test_failed_navigation_does_not_inherit_an_unrelated_response(browser_session, mismatch):
+    page, _, inspect = browser_session[3:6]
+    received = MagicMock(
+        status=200 if mismatch == "success" else 429,
+        url=PAGE_TWO if mismatch == "url" else PAGE_ONE,
+        frame=MagicMock() if mismatch == "frame" else page.main_frame,
+    )
+    received.request.is_navigation_request.return_value = mismatch != "subresource"
+
+    def interrupted(*args, **kwargs):
+        page.on.call_args.args[1](received)
+        raise RuntimeError("Connection lost")
+
+    page.goto.side_effect = interrupted
+    with backend.HeadlessWatchBrowser(now=lambda: NOW) as owned:
+        report = owned.scan(SCOPE, NOW)
+    assert report["status"] == "network_error" and report["http_status"] is None
+    assert report["retry_after"] is None
+    inspect.assert_not_called()
+    page.goto.assert_called_once()
 
 
 def test_retry_after_is_bounded(browser_session):

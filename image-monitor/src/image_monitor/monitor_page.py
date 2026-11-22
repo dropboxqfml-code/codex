@@ -4,6 +4,7 @@ from html import escape
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
+from image_monitor.watch_history import MAX_HISTORICAL_PAGE
 
 _PAGE = r"""<!doctype html>
 <html lang="ko">
@@ -402,6 +403,7 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     max_pages: '이전 확인 지점까지 살펴보지 못해 멈췄습니다. 이전 기록과 미확인 구간은 유지됩니다.',
     historical_cursor_unverified: '지난 검색 구간을 확인할 수 없어 멈췄습니다. ' +
       '이전 기록은 유지됩니다.',
+    historical_source_unverified: '이전 탐색 기록을 다시 검증할 수 없어 구간 확장을 멈췄습니다.',
     pagination_ambiguous: '다음 목록을 확실히 구분하지 못해 멈췄습니다. 이전 기록은 유지됩니다.',
     pagination_unverified: '다음 목록을 확인하지 못해 멈췄습니다. 이전 기록은 유지됩니다.',
     excluded_rows_unverified: '목록의 일부 행을 구분하지 못해 멈췄습니다. 이전 기록은 유지됩니다.',
@@ -482,8 +484,12 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     const pageLimit = [3, 4].includes(diagnosis.follow_up_page_limit) ?
       diagnosis.follow_up_page_limit : 2;
     const pages = Array.isArray(diagnosis.pages) ? diagnosis.pages.slice(0, pageLimit) : [];
-    for (const page of pages) {
-      if (!page || !Number.isInteger(page.page) || page.page < 1 || page.page > pageLimit) continue;
+    const boundary = diagnosis.historical_boundary_page;
+    const continued = pageLimit === 4 && Number.isInteger(boundary) &&
+      boundary >= 4 && boundary < __MAX_HISTORICAL_PAGE__;
+    for (const [index, page] of pages.entries()) {
+      const expectedPage = continued && index >= 2 ? boundary + index - 2 : index + 1;
+      if (page?.page !== expectedPage) continue;
       const issue = page.profile_issue;
       const knownIssue = typeof issue === 'string' && Object.hasOwn(profileIssues, issue);
       const statusLabel = typeof page.status === 'string' &&
@@ -851,7 +857,10 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       '이번 목록 탐색에서 이전 확인 지점을 찾지 못했습니다. ' +
       '그 사이의 글은 일부 누락됐을 수 있습니다.' :
       gap === 'overlap_incomplete' ?
-        '이전 확인 지점에 도달했습니다. 다음 페이지까지 겹쳐 확인하는 절차가 남았습니다.' : '';
+        '이전 확인 지점에 도달했습니다. 다음 페이지까지 겹쳐 확인하는 절차가 남았습니다.' :
+      gap === 'historical_boundary_changed' ?
+        '이전에 확인한 페이지의 글 구성이 달라졌습니다. 최근 두 페이지를 확인했고, ' +
+        '그보다 오래된 구간은 미확인 상태입니다.' : '';
     text('coverage-gap', coverageText);
     element('coverage-gap').hidden = !coverageText;
     renderListDiagnosis(state.list_diagnosis);
@@ -1039,5 +1048,6 @@ def render_monitor_page(*, script_nonce: str) -> str:
     return (
         _PAGE.replace("__PUBLIC_VERSION__", PUBLIC_VERSION)
         .replace("__MAX_MONITOR_SAVE_IMAGES__", str(MAX_MONITOR_SAVE_IMAGES))
+        .replace("__MAX_HISTORICAL_PAGE__", str(MAX_HISTORICAL_PAGE))
         .replace("__SCRIPT_NONCE__", escape(script_nonce, quote=True))
     )

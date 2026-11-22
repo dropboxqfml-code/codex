@@ -33,7 +33,12 @@ def test_bounded_cli_separates_progress_from_result_without_reading_keyboard(
                 "files_verified": 10,
                 "previously_verified_files": 6,
                 "newly_saved_files": 4,
-                "last_list": {"status": "partial", "page_limit": 4, "pages_checked": 3},
+                "last_list": {
+                    "status": "partial",
+                    "page_limit": 4,
+                    "pages_checked": 4,
+                    "visited_page_numbers": [1, 2, 4, 5],
+                },
                 "next_eligible_at": "2026-06-01T12:00:00+00:00",
             }
         )
@@ -67,7 +72,7 @@ def test_bounded_cli_separates_progress_from_result_without_reading_keyboard(
     assert json.loads(output.out) == result
     assert "완료 1주기" in output.err and "재개 예정" in output.err
     assert "검증 10장 (기존 6장, 새로 저장 4장)" in output.err
-    assert "목록 3쪽 확인 · 미확인 구간 남음" in output.err
+    assert "확인한 목록 1, 2, 4, 5쪽 · 미확인 구간 남음" in output.err
 
 
 def test_console_stop_polls_without_waiting_and_latches_enter(monkeypatch):

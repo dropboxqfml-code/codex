@@ -71,18 +71,17 @@ _GAP_REASONS = {
     "excluded_rows_unverified",
     "order_unverified",
     "historical_cursor_unverified",
+    "historical_source_unverified",
     "pagination_ambiguous",
     "max_pages",
     "pagination_missing",
-    "overlap_incomplete",
     "empty_baseline_requires_end",
-    "anchor_not_reached",
     "pagination_cycle",
     "pagination_unverified",
     "list_profile_unverified_or_incomplete",
     "list_transport_or_inspection_failure",
     "requested_stop",
-}
+} | PARTIAL_COVERAGE_GAPS
 _REPORT_STATUSES = {
     "watch_test_completed",
     "watch_waiting",

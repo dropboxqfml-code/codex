@@ -56,6 +56,7 @@ def test_first_then_two_complete_turns_and_adjusted_deadline(tmp_path):
         "browser_closed": True,
         "page_limit": 1,
         "pages_checked": 1,
+        "visited_page_numbers": [1],
     }
     clock.wait(60)
     delayed = preflight(tmp_path, clock, interval=180)

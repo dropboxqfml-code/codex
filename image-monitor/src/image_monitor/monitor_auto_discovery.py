@@ -8,6 +8,7 @@ from image_monitor.monitor_clock import stop_requested
 from image_monitor.native_ui import NativeUIError
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_detail_source import recent_scan_candidates, scan_plan_candidates
+from image_monitor.watch_history import plan_historical_scan
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_planner import next_poll_at, plan_scan
 from image_monitor.watch_runtime import (
@@ -20,8 +21,9 @@ from image_monitor.watch_runtime import (
     _stored_time,
     confirmed_monitor_scan,
     matches_partial_coverage_scan,
-    monitor_page_budget,
+    monitor_scan_policy,
     run_watch_trial,
+    verified_recent_plan,
 )
 from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
 
@@ -60,7 +62,7 @@ def _source(queue, now, interval):
     return state, "waiting" if due > now else "ready", due
 
 
-def _completed_scan(queue, before, after, raw, page_limit):
+def _completed_scan(queue, before, after, raw, page_limit, historical_source):
     """Replay a complete scan from the state observed before launching Chrome."""
     latest = after["latest_scan"]
     record = latest["result"]
@@ -82,9 +84,13 @@ def _completed_scan(queue, before, after, raw, page_limit):
         )
     ):
         raise QueueError("List document navigation is unconfirmed")
-    plan = plan_scan(
-        MONITOR_SCOPE, before, pages, _stored_time(latest["observed_at"]), allow_verified_live=True
-    )
+    observed_at = _stored_time(latest["observed_at"])
+    if "historical_follow_up" in record:
+        plan = plan_historical_scan(MONITOR_SCOPE, before, pages, observed_at, historical_source)
+        if plan != verified_recent_plan(queue, MONITOR_SCOPE, after):
+            raise QueueError("The completed follow-up no longer matches the stored list history")
+    else:
+        plan = plan_scan(MONITOR_SCOPE, before, pages, observed_at, allow_verified_live=True)
     matches, _ = scan_plan_candidates(queue, MONITOR_SCOPE, after, plan)
     if matches is None:
         raise QueueError("Stored candidate identities differ from the replayed list")
@@ -116,7 +122,7 @@ def _completed_scan(queue, before, after, raw, page_limit):
     return "baseline" if plan["baseline"] is not None else "complete", added
 
 
-def _verified_scan(database, queue, before, after, raw, page_limit):
+def _verified_scan(database, queue, before, after, raw, page_limit, historical_source):
     latest = after["latest_scan"]
     if (
         latest is None
@@ -140,8 +146,17 @@ def _verified_scan(database, queue, before, after, raw, page_limit):
         raise QueueError("The previous scan did not authorize a follow-up")
     if not 1 <= len(observation["pages"]) <= page_limit:
         raise QueueError("List scan exceeded its authorized page limit")
+    if "historical_follow_up" in latest["result"]:
+        marker = latest["result"]["historical_follow_up"]
+        if (
+            historical_source is None
+            or not isinstance(marker, dict)
+            or marker.get("source_scan_id") != historical_source["source_scan_id"]
+            or marker.get("boundary_page") != historical_source["boundary_page"]
+        ):
+            raise QueueError("The historical boundary differs from the preceding verified scan")
     if latest["complete"]:
-        return _completed_scan(queue, before, after, raw, page_limit)
+        return _completed_scan(queue, before, after, raw, page_limit, historical_source)
     if (
         before["baseline"] is not None
         and after["baseline"] == before["baseline"]
@@ -174,6 +189,7 @@ def run_auto_discovery(
         with watch_run_lock(database, DEFAULT_SCOPE):
             before = _EMPTY
             page_limit = 1
+            historical_source = None
             if database.exists():
                 with QueueStore(database, read_only=True) as queue:
                     before, status, due = _source(queue, clock.now(), interval_seconds)
@@ -181,7 +197,7 @@ def run_auto_discovery(
                         return _result("blocked", "access_block_requires_review")
                     if status == "waiting":
                         return _result("waiting", "persisted_cooldown", due=due)
-                    page_limit = monitor_page_budget(database, queue, before)
+                    page_limit, historical_source = monitor_scan_policy(database, queue, before)
         raw = run_cycle(
             base,
             "chrome",
@@ -217,11 +233,22 @@ def run_auto_discovery(
                 ):
                     return _result("waiting", "service_wait", due=due, closed=closed)
                 return _result("review", "list_scan_requires_review", closed=closed)
-            kind, added = _verified_scan(database, queue, before, after, raw, page_limit)
-            return _result(kind, raw.get("reason"), due=due, closed=closed, added=added) | {
-                "page_limit": page_limit,
-                "pages_checked": raw["cycles"][0]["page_count"],
-            }
+            kind, added = _verified_scan(
+                database, queue, before, after, raw, page_limit, historical_source
+            )
+            record = after["latest_scan"]["result"]
+            numbers = [page["page"] for page in record["private_observation"]["pages"]]
+            result = _result(kind, raw.get("reason"), due=due, closed=closed, added=added)
+            result.update(
+                page_limit=page_limit, pages_checked=len(numbers), visited_page_numbers=numbers
+            )
+            if historical_source is not None:
+                marker = record.get("historical_follow_up")
+                result.update(
+                    historical_boundary_page=historical_source["boundary_page"],
+                    historical_status=marker["status"] if marker else "recent_pages_only",
+                )
+            return result
     except WatchRunBusy:
         return _result("busy", "another_worker_active", closed=closed)
     except (

@@ -18,12 +18,15 @@ from image_monitor.watch_browser import HeadlessWatchBrowser
 from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
 
 
-def listing(pages, visits, *, rate_limited_page=None):
+def listing(pages, visits, *, rate_limited_page=None, page_numbers=None):
     """Substitute only the page transport and DOM for the production traversal."""
+    if page_numbers is None:
+        page_numbers = list(range(1, len(pages) + 1))
+    assert len(page_numbers) == len(pages) and page_numbers[0] == 1
 
     class LocalBrowser(HeadlessWatchBrowser):
         def __enter__(self):
-            self._page = SimpleNamespace(goto=self.goto)
+            self._page = self
             self.browser_closed = False
             self.browser_version = "fixture"
             return self
@@ -32,23 +35,27 @@ def listing(pages, visits, *, rate_limited_page=None):
             self._page = None
             self.browser_closed = True
 
-        def goto(self, url, **_):
-            page = len(visits) + 1
-            assert url == link(page)["canonical_url"], "Every invocation must restart at page one"
-            assert page <= len(pages), "A page outside the fixture budget was requested"
+        def _navigate(self, url):
+            assert len(visits) < len(pages), "A page outside the fixture budget was requested"
+            page = page_numbers[len(visits)]
+            assert url == link(page)["canonical_url"]
             visits.append(url)
             if page == rate_limited_page:
                 return SimpleNamespace(status=429, header_value=lambda _: "600")
             return SimpleNamespace(status=200, header_value=lambda _: None)
 
         def _inspect_document(self, url, scan_time, *, can_settle):
-            page = len(visits)
+            position = len(visits) - 1
+            page = page_numbers[position]
             assert visits[-1] == url and can_settle and page != rate_limited_page
+            links = [link(page + 1)]
+            if position + 1 < len(pages) and page_numbers[position + 1] > page + 1:
+                links.append(link(page_numbers[position + 1]))
             return snapshot(
-                pages[page - 1],
+                pages[position],
                 scan_time,
                 page=page,
-                links=[link(page + 1)],
+                links=links,
                 counts={"list_containers": 1},
             )
 
@@ -145,6 +152,56 @@ def test_reopened_monitor_recovers_historical_posts_and_saves_each_once(
     assert [post for event, post, _ in events if event == "save"] == ["209", "210", "208", "211"]
     assert len(list(roots[2].glob("tasks/*/session-*/images/**/001.png"))) == 4
     assert all(browser.browser_closed for browser in owned)
+
+
+def test_automatic_collection_saves_post_first_seen_on_historical_page_five(
+    monkeypatch, pilot, session_data
+):
+    roots = session_data.watch, session_data.legacy, session_data.batch
+    clock = FakeClock(datetime.now(UTC) + timedelta(seconds=62))
+    events, browsers = [], []
+    detail, save = local_workers(monkeypatch, pilot, clock, events, browsers)
+    collect = partial(collect_session_turn, detail_runner=detail, save_runner=save)
+
+    def run(numbers, contents):
+        visits = []
+        session = run_auto_monitor(
+            *roots,
+            max_cycles=1,
+            clock=clock,
+            scan_runner=listing(contents, visits, page_numbers=numbers),
+            collect_runner=collect,
+        )
+        assert session["status"] == "auto_monitor_completed", session
+        assert visits == [link(n)["canonical_url"] for n in numbers]
+        return session
+
+    run([1], [[200]])
+    for count in (2, 3, 4):
+        numbers = list(range(1, count + 1))
+        result = run(numbers, [[208 - n] for n in numbers])
+        assert result["partial_list_checks"] == result["posts_saved"] == 1
+    before, old_posts, _ = saved_state(roots[0])
+    assert {"204", "205", "206", "207"} == old_posts.keys()
+
+    extended = run([1, 2, 4, 5], [[207], [206], [204], [203, 200]])
+    assert extended["last_list"]["historical_status"] == "extended"
+    assert extended["new_candidates"] == extended["partial_list_checks"] == 1
+    halfway, all_posts, _ = saved_state(roots[0])
+    assert halfway["checkpoint"] == before["checkpoint"]
+    assert all_posts["203"]["first_scan_id"] == halfway["latest_scan"]["scan_id"]
+
+    completed = run([1, 2, 5, 6], [[207], [206], [203, 200], [199]])
+    assert completed["gap_followups_completed"] == 1
+    assert completed["last_list"]["visited_page_numbers"] == [1, 2, 5, 6]
+    assert completed["new_details_checked"] == completed["posts_saved"] == 1
+    assert completed["newly_saved_files"] == 1
+    [image] = roots[2].glob("tasks/*/session-*/images/**/203/001.png")
+    original = image.stat().st_mtime_ns, image.read_bytes()
+    ordinary = run([1, 2], [[207], [206]])
+    assert ordinary["new_candidates"] == ordinary["posts_saved"] == 0
+    assert (image.stat().st_mtime_ns, image.read_bytes()) == original
+    assert [post for event, post, _ in events if event == "save"].count("203") == 1
 
 
 def test_rate_limited_third_page_preserves_checkpoint_and_defers_reopen(tmp_path, monkeypatch):

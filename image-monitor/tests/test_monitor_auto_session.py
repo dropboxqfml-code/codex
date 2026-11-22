@@ -35,6 +35,7 @@ def scan(status="complete", *, due=None, candidates=0, reason=None, closed=True)
         "browser_closed": closed,
         "page_limit": 1 if status == "baseline" else 2,
         "pages_checked": 1 if status == "baseline" else 2,
+        "visited_page_numbers": [1] if status == "baseline" else [1, 2],
     }
 
 
@@ -239,6 +240,51 @@ def test_stop_after_verified_list_before_collection_keeps_both_counts(tmp_path):
     assert events == [("scan", 0)]
     assert report["status"] == "auto_monitor_stopped" and report["list_checks"] == 1
     assert report["cycles_completed"] == 0 and report["new_candidates"] == 2
+
+
+def test_report_retains_last_two_verified_page_sequences_when_next_scan_waits(tmp_path):
+    clock = Clock()
+    previous = scan("partial") | {
+        "page_limit": 4,
+        "pages_checked": 4,
+        "visited_page_numbers": [1, 2, 4, 5],
+        "historical_status": "extended",
+        "historical_boundary_page": 4,
+    }
+    latest = previous | {"visited_page_numbers": [1, 2, 5, 6], "historical_boundary_page": 5}
+    wait = scan("waiting", due=clock.stamp(600), reason="service_wait")
+    report, _ = session(
+        tmp_path,
+        clock,
+        [scan("baseline"), previous, latest, wait],
+        [collection(), collection()],
+        cycles=4,
+    )
+    assert report["status"] == "auto_monitor_waiting"
+    assert report["last_list"]["status"] == "waiting"
+    assert [check["visited_page_numbers"] for check in report["recent_list_checks"]] == [
+        [1, 2, 4, 5],
+        [1, 2, 5, 6],
+    ]
+
+
+@pytest.mark.parametrize(
+    ("numbers", "marker"),
+    [
+        ([1, 2, 4, 5], {}),
+        ([1, 2, 5, 6], {"historical_status": "extended", "historical_boundary_page": 4}),
+        ([1, 2, 5, 6], {"historical_status": "recent_pages_only", "historical_boundary_page": 5}),
+        ([1, 2, 3, 4], {"historical_boundary_page": 5}),
+    ],
+)
+def test_unverified_list_sequence_is_never_reported_as_checked(tmp_path, numbers, marker):
+    turn = scan("partial") | {"page_limit": 4, "pages_checked": 4, "visited_page_numbers": numbers}
+    report, events = session(tmp_path, Clock(), [turn | marker], [])
+    assert events == [("scan", 0)]
+    assert (
+        report["status"] == "auto_monitor_review" and report["reason"] == "invalid_list_page_count"
+    )
+    assert report["list_checks"] == 0 and report["recent_list_checks"] == []
 
 
 def test_stop_during_writer_records_finished_save_before_releasing_lock(tmp_path):

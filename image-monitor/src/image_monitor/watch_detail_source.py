@@ -27,7 +27,13 @@ def scan_plan_candidates(queue, scope, state, plan):
         or any(len(page["rows"]) + len(page.get("excluded_rows", [])) > MAX_ROWS for page in pages)
     ):
         return None, []
-    row_limit = sum(len(page["rows"]) for page in pages)
+    # A changed historical boundary can still prove the current recent pages.
+    # Older observations used to plan a route never refresh a candidate by themselves.
+    history = plan["scan_result"].get("historical_follow_up", {})
+    eligible_pages = pages[:2] if history.get("status") == "boundary_changed" else pages
+    observed = {
+        (row["post_id"], row["canonical_url"]) for page in eligible_pages for row in page["rows"]
+    }
     # A previously known post may have been seen again. First and latest scan
     # identities distinguish it from a newly discovered candidate.
     rows = queue.connection.execute(
@@ -36,9 +42,11 @@ def scan_plan_candidates(queue, scope, state, plan):
         "keyword,search_type,post_id) WHERE c.watch_name=? AND c.gallery_type=? "
         "AND c.gallery_id=? AND c.keyword=? AND c.search_type=? "
         "AND (c.first_scan_id=? OR c.latest_scan_id=?) LIMIT ?",
-        (*scope.key(), scan_id, scan_id, row_limit + 1),
+        (*scope.key(), scan_id, scan_id, len(observed) + 1),
     ).fetchall()
-    if len(rows) > row_limit:
+    if len(rows) > len(observed) or any(
+        (row["post_id"], row["post_url"]) not in observed for row in rows
+    ):
         return None, []
     stored = {row["post_id"]: row for row in rows}
     planned = {candidate["post_id"]: candidate["post_url"] for candidate in plan["candidates"]}
@@ -63,7 +71,7 @@ def scan_plan_candidates(queue, scope, state, plan):
         "coverage": "complete" if plan["complete"] else "partial",
         "gap_reason": plan["gap_reason"],
         "page_count": len(pages),
-        "ordinary_rows": row_limit,
+        "ordinary_rows": sum(len(page["rows"]) for page in pages),
         "new_candidates": len(candidates),
         "unattempted_candidates": sum(row["attempt_id"] is None for row in candidates),
     }

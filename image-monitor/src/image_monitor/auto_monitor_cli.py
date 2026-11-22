@@ -44,23 +44,50 @@ _HISTORICAL_REASON_KO = {
 
 
 def _describe_recovery_evidence(check):
-    if "recovery_reason" not in check and "recovery_observation" not in check:
+    if not any(
+        key in check
+        for key in (
+            "recovery_reason",
+            "recovery_observation",
+            "frontier_overlap",
+            "candidate_eligible_visits",
+        )
+    ):
         return {}
     try:
         route = checked_gap_route(check, check.get("visited_page_numbers"), check.get("page_limit"))
     except (KeyError, TypeError, ValueError):
         return {}
-    if "recovery_observation" in route:
-        observation = route["recovery_observation"]
-        return {
-            "recovery_observation": observation,
-            "recovery_observation_ko": RECOVERY_OBSERVATION_MESSAGES[observation],
-        }
-    code = route["recovery_reason"]
-    return {
-        "recovery_reason": code,
-        "recovery_reason_ko": RECOVERY_REASON_MESSAGES[route["recovery_status"]][code],
-    }
+    details = {}
+    if "recovery_reason" in route:
+        code = route["recovery_reason"]
+        details.update(
+            recovery_reason=code,
+            recovery_reason_ko=RECOVERY_REASON_MESSAGES[route["recovery_status"]][code],
+        )
+    elif "recovery_observation" in route:
+        code = route["recovery_observation"]
+        details.update(
+            recovery_observation=code, recovery_observation_ko=RECOVERY_OBSERVATION_MESSAGES[code]
+        )
+    if "frontier_overlap" in route:
+        overlap = route["frontier_overlap"]
+        previous, matched = overlap["previous_rows"], overlap["matched_rows"]
+        text = (
+            f"이전 복구 위치의 일반 글 {previous}개 중 {matched}개를 "
+            "이번에 이어서 읽은 두 쪽에서 다시 찾았습니다."
+        )
+        if overlap["shape"] == "prefix_at_end":
+            text += " 이전 목록 첫머리의 글들이 이번 두 쪽의 끝에 같은 순서로 이어졌습니다."
+        details.update(frontier_overlap=overlap, frontier_overlap_ko=text)
+    if "candidate_eligible_visits" in route:
+        visits, eligible = len(check["visited_page_numbers"]), route["candidate_eligible_visits"]
+        scope = "모두" if visits == eligible else f"중 처음 {eligible}개"
+        details.update(
+            candidate_eligible_visits=eligible,
+            candidate_eligible_visits_ko=f"방문한 목록 {visits}개 {scope}에서 후보를 확인했습니다.",
+        )
+    return details
 
 
 def _describe_list_check(check):
@@ -83,6 +110,10 @@ def _describe_list_check(check):
     described.pop("recovery_reason_ko", None)
     described.pop("recovery_observation", None)
     described.pop("recovery_observation_ko", None)
+    described.pop("frontier_overlap", None)
+    described.pop("frontier_overlap_ko", None)
+    described.pop("candidate_eligible_visits", None)
+    described.pop("candidate_eligible_visits_ko", None)
     if isinstance(recovery, str) and recovery in RECOVERY_MESSAGES:
         described.update(recovery_status=recovery, recovery_status_ko=RECOVERY_MESSAGES[recovery])
         described.update(_describe_recovery_evidence(check))
@@ -205,6 +236,8 @@ def _show_progress(report, stream):
             "recovery_observation_ko"
         ):
             message += f" | {explanation}"
+        if "frontier_overlap_ko" in recovery:
+            message += " | " + recovery["frontier_overlap_ko"]
     if phase == "waiting" and last_list and last_list.get("reason") == "inspection_retry_due":
         page = (last_list.get("review") or {}).get("failed_page")
         if type(page) is int:

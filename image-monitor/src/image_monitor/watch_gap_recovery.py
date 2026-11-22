@@ -14,6 +14,7 @@ from image_monitor.watch_store import MONITOR_SCOPE
 
 GAP_COVERAGE_REASONS = frozenset({"gap_successor_unconfirmed"})
 GAP_RECOVERY_REASONS = {
+    "frontier_relocated": frozenset({"frontier_prefix_overlap"}),
     "segment_queued": frozenset({"recent_tail_overlap", "observed_frontier_shift"}),
     "held": frozenset(
         {
@@ -31,6 +32,7 @@ GAP_STATUSES = frozenset(
         "advanced",
         "completed",
         "frontier_changed",
+        "frontier_relocated",
         "successor_unconfirmed",
         "overlap_pending",
         "segment_rejoined",
@@ -372,7 +374,7 @@ def _advance(bookmark, head, frontier):
     return next_bookmark
 
 
-def plan_gap_scan(scope, state, pages, observed_at, bookmark):
+def plan_gap_scan(scope, state, pages, observed_at, bookmark, *, allow_frontier_overlap=False):
     """Replay 1, 2, exact bookmarked frontier and, when observed, its linked successor."""
     if len(pages) not in (3, 4):
         raise WatchPlanError("Expected a revisited gap frontier")
@@ -391,7 +393,16 @@ def plan_gap_scan(scope, state, pages, observed_at, bookmark):
         or not _descending(_ids(frontier))
         or not all(page["rows_complete"] for page in checked[2:])
         or int(_ids(checked[1])[-1]) <= int(tail[0])
-        or not _surviving_window(tail, bookmark["frontier_ids"])
+    ):
+        return _held_head(scope, state, pages, checked, observed_at, bookmark, "frontier_changed")
+    previous = bookmark["frontier_ids"]
+    relocated = not _surviving_window(tail, previous)
+    if relocated and not (
+        allow_frontier_overlap is True
+        and len(pages) == 4
+        and checked[3]["search_pos"] == frontier["search_pos"]
+        and int(_ids(frontier)[-1]) > int(previous[0])
+        and _clipped_prefix_at_end(tail, _ids(frontier)[-1], previous)
     ):
         return _held_head(scope, state, pages, checked, observed_at, bookmark, "frontier_changed")
     hops = {index - 1: _cursor(checked[index]) for index in range(1, len(pages))}
@@ -409,6 +420,10 @@ def plan_gap_scan(scope, state, pages, observed_at, bookmark):
     depth = bookmark["depth"] + int(advanced)
     crossed = advanced and checked[3]["search_pos"] != frontier["search_pos"]
     if plan["complete"]:
+        if relocated:
+            return _held_head(
+                scope, state, pages, checked, observed_at, bookmark, "frontier_changed"
+            )
         _confirmed_completion(plan, bookmark)
         return _mark(plan, "completed", depth, len(pages), "bookmark", crossed=crossed)
     anchor_seen = plan["scan_result"]["first_anchor_id"] is not None
@@ -422,6 +437,8 @@ def plan_gap_scan(scope, state, pages, observed_at, bookmark):
     # A directional range change may be available where the ordinary planner
     # correctly reports that it cannot infer one from the cursor alone.
     successor = _successor(pages[-1], checked[-1], updated)
+    if relocated and successor is None:
+        return _held_head(scope, state, pages, checked, observed_at, bookmark, "frontier_changed")
     _partial_reason(
         plan,
         "overlap_incomplete"
@@ -430,6 +447,12 @@ def plan_gap_scan(scope, state, pages, observed_at, bookmark):
         if successor
         else "gap_successor_unconfirmed",
     )
+    if relocated:
+        # The fourth document ends inside the former frontier. Reopen it next
+        # turn to verify the remaining rows; every deferred segment stays open.
+        _mark(plan, "frontier_relocated", depth, 4, "bookmark", next_bookmark=updated)
+        plan["scan_result"]["gap_recovery"]["recovery_reason"] = "frontier_prefix_overlap"
+        return plan
     deferred = bookmark.get("deferred", [])
     if deferred:
         earlier = deferred[0]
@@ -467,8 +490,8 @@ def plan_gap_scan(scope, state, pages, observed_at, bookmark):
     return _mark(plan, status, depth, 4, "bookmark", next_bookmark=updated, crossed=crossed)
 
 
-def _recent_tail_overlap(rows, recent_floor, previous):
-    """Match the end of four linked pages to a clipped prefix of the old first page."""
+def _clipped_prefix_at_end(rows, earlier_floor, previous):
+    """Match a terminal run after an earlier document to a proper prefix of a prior window."""
     floor = rows[-1]
     if floor not in previous or floor == previous[-1]:
         return False
@@ -477,12 +500,11 @@ def _recent_tail_overlap(rows, recent_floor, previous):
     common = [post_id for post_id in rows if post_id in old_ids]
     if len(common) < 3 or len(prefix) - len(common) > 2:
         return False
-    # The overlap must start after both fresh head pages. Any other fresh rows
-    # must be newer than the entire old head, with no intrusions in the match.
+    # Every row before the shared run must be newer than the entire prior window.
     start = len(rows) - len(common)
     return (
         start > 0
-        and int(common[0]) < int(recent_floor)
+        and int(common[0]) < int(earlier_floor)
         and int(rows[start - 1]) > int(previous[0])
         and rows[start:] == common
     )
@@ -514,7 +536,7 @@ def _recent_rebase(scope, state, pages, observed_at, bookmark, allow_partial_ove
     queue_reason = None
     if allow_partial_overlap:
         recent_floor = _ids(checked[1])[-1]
-        if _recent_tail_overlap(rows, recent_floor, previous):
+        if _clipped_prefix_at_end(rows, recent_floor, previous):
             queue_reason = "recent_tail_overlap"
         elif _observed_frontier_shift(rows, recent_floor, checked, bookmark):
             queue_reason = "observed_frontier_shift"

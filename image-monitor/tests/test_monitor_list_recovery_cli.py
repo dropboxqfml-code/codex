@@ -69,7 +69,14 @@ def test_list_only_cli_checks_one_live_list_after_cooldown_without_collection(
 
 def recovery_turn(status, *, candidates=0):
     complete = status == "completed"
-    bookmark = status in {"completed", "advanced", "segment_rejoined", "overlap_pending"}
+    bookmark = status in {
+        "completed",
+        "advanced",
+        "frontier_changed",
+        "frontier_relocated",
+        "segment_rejoined",
+        "overlap_pending",
+    }
     return scan("complete" if complete else "partial", candidates=candidates) | {
         "page_limit": 4,
         "pages_checked": 4,
@@ -78,6 +85,9 @@ def recovery_turn(status, *, candidates=0):
         "recovery_depth": 5 if bookmark else 4,
         "recovery_route": "bookmark" if bookmark else "recent",
         "recovery_crossed_search_range": False,
+        **(
+            {"recovery_reason": "frontier_prefix_overlap"} if status == "frontier_relocated" else {}
+        ),
     }
 
 
@@ -88,6 +98,7 @@ def recovery_turn(status, *, candidates=0):
         (["held"], "recovery_followup_deferred", [1], [0]),
         (["frontier_changed"], "recovery_followup_deferred", [1], [0]),
         (["segment_queued", "advanced"], "cycle_limit_reached", [1, 2], [0, 60]),
+        (["frontier_relocated", "advanced"], "cycle_limit_reached", [1, 2], [0, 60]),
         (["segment_rejoined", "completed"], "list_coverage_confirmed", [1, 2], [0, 60]),
         (["cooldown", "head_rejoined", "advanced"], "cycle_limit_reached", [2, 3], [0, 10, 70]),
         (["inspection_retry_due", "advanced"], "cycle_limit_reached", [2], [0, 60]),

@@ -120,15 +120,50 @@ def test_same_four_pages_replay_with_the_rule_of_the_recorded_generation(
     scan = deepcopy(after["latest_scan"])
     with QueueStore(tmp_path / "watch.sqlite", read_only=True) as queue:
         assert verified_recent_plan(queue, MONITOR_SCOPE, after)
+        scan_time = datetime.fromisoformat(scan["observed_at"])
+        scan["result"]["control"]["historical_route_schema"] = 4
+        partial_overlap = replay_gap_scan(queue, MONITOR_SCOPE, scan, before, scan_time)
+        assert partial_overlap["scan_result"]["gap_recovery"]["status"] == "segment_queued"
         # Only the schema changes. Generations written by alpha.15 used the
         # same predecessor and candidate rows but retained the old frontier.
         scan["result"]["control"]["historical_route_schema"] = 3
-        legacy = replay_gap_scan(
-            queue, MONITOR_SCOPE, scan, before, datetime.fromisoformat(scan["observed_at"])
-        )
+        legacy = replay_gap_scan(queue, MONITOR_SCOPE, scan, before, scan_time)
     marker = legacy["scan_result"]["gap_recovery"]
     assert marker["status"] == "held" and marker["bookmark"] is None
     assert "recovery_reason" not in marker and legacy["complete"] is False
+
+
+def test_replay_preserves_older_frontier_rejections_after_an_arrival_burst(
+    tmp_path, starting_watch, monkeypatch
+):
+    feed, clock, _ = starting_watch
+    monkeypatch.setattr(long_gap, "PAGE_SIZE", 20)
+    head = OLD_HEAD + 200
+    feed.ids[:0] = range(head, OLD_HEAD, -1)
+    for length in (2, 3, 4):
+        assert feed.run(tmp_path, clock)["pages_checked"] == length
+    assert feed.run(tmp_path, clock)["recovery_depth"] == 5
+    before, old_bookmark = persisted(tmp_path)
+    feed.ids[:0] = range(head + 26, head, -1)
+    current = feed.run(tmp_path, clock)
+    assert current["visited_page_numbers"] == [1, 2, 5, 6]
+    assert current["recovery_depth"] == 6 and current["new_candidates"] == 26
+    after, bookmark = persisted(tmp_path)
+    assert after["checkpoint"] == before["checkpoint"]
+    assert bookmark["target_ids"] == old_bookmark["target_ids"]
+    scan = deepcopy(after["latest_scan"])
+    assert scan["result"]["control"]["historical_route_schema"] == 5
+    with QueueStore(tmp_path / "watch.sqlite", read_only=True) as queue:
+        assert verified_recent_plan(queue, MONITOR_SCOPE, after)
+        for schema in (3, 4):
+            scan["result"]["control"]["historical_route_schema"] = schema
+            legacy = replay_gap_scan(
+                queue, MONITOR_SCOPE, scan, before, datetime.fromisoformat(scan["observed_at"])
+            )
+            marker = legacy["scan_result"]["gap_recovery"]
+            assert marker["status"] == "frontier_changed" and marker["depth"] == 5
+            assert marker["eligible_pages"] == 2 and marker["bookmark"] is None
+            assert not legacy["complete"] and "recovery_reason" not in marker
 
 
 def test_failure_cannot_substitute_a_genuine_but_superseded_frontier(tmp_path, advancing):

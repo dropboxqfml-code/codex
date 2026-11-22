@@ -1,12 +1,16 @@
 """The persisted four-page source must still support a jump when its result is committed."""
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
+from test_monitor_gap_store import advancing as advancing
+from test_monitor_long_gap import starting_watch as starting_watch
 from test_watch_runtime import BrowserFactory, FakeClock, baseline_outcome, link, observed, snapshot
 
 from image_monitor import watch_runtime
+from image_monitor.monitor_gap_store import bookmark_seal
 from image_monitor.queue import QueueStore
 from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
 
@@ -225,9 +229,16 @@ def test_unverified_historical_layout_keeps_only_the_verified_recent_rows(
         ("0.5.0-alpha.16", 4, 3, None),
         ("0.5.0-alpha.16", 4, 4.0, None),
         ("0.5.0-alpha.16", 5, 5, None),
+        ("0.5.0-alpha.17", 5, 5, None),
+        ("0.5.0-alpha.18", 4, 4, 4),
+        ("0.5.0-alpha.18", 5, 5, 5),
+        ("0.5.0-alpha.18", 4, 5, None),
+        ("0.5.0-alpha.18", 5, 4, None),
+        ("0.5.0-alpha.18", 5, 5.0, None),
         ("0.6.0", 3, 3, 3),
         ("0.6.0", 4, 4, 4),
-        ("0.6.0", 5, 5, None),
+        ("0.6.0", 5, 5, 5),
+        ("0.6.0", 6, 6, None),
     ],
 )
 def test_bookmarked_route_version_requires_compatible_matching_capability(
@@ -242,11 +253,11 @@ def test_bookmarked_route_version_requires_compatible_matching_capability(
     )
 
 
-@pytest.mark.parametrize("fault", ["missing_bookmark", "new_reason_on_old_schema"])
+@pytest.mark.parametrize(
+    "fault", ["missing_bookmark", "missing_v5_bookmark", "new_reason_on_old_schema"]
+)
 def test_partial_overlap_claim_requires_its_bookmark_and_schema(tmp_path, monkeypatch, fault):
     from test_watch_runtime import BrowserFactory, FakeClock, baseline_outcome
-
-    from image_monitor.monitor_gap_store import bookmark_seal
 
     monkeypatch.setattr(watch_runtime, "require_windows", lambda: None)
     report = watch_runtime.run_watch_trial(
@@ -267,6 +278,8 @@ def test_partial_overlap_claim_requires_its_bookmark_and_schema(tmp_path, monkey
     public = json.loads(receipt.read_bytes())
     if fault == "missing_bookmark":
         public.update(program_version="0.5.0-alpha.16", historical_route_schema=4)
+    elif fault == "missing_v5_bookmark":
+        public.update(program_version="0.5.0-alpha.18", historical_route_schema=5)
     else:
         public.update(program_version="0.5.0-alpha.15", historical_route_schema=3)
         scan["result"]["gap_recovery"] = {"recovery_reason": "recent_page_limit"}
@@ -275,3 +288,46 @@ def test_partial_overlap_claim_requires_its_bookmark_and_schema(tmp_path, monkey
         public["gap_bookmark_digest"] = bookmark_seal(scan)
     receipt.write_text(json.dumps(public), encoding="utf-8")
     assert not watch_runtime.confirmed_monitor_scan(database, scan)
+
+
+def test_relocation_receipt_requires_compatible_rule_and_all_four_bookmark_visits(
+    tmp_path, advancing
+):
+    _, _, original, _ = advancing
+    database = tmp_path / "watch.sqlite"
+    run = original["result"]["control"]["monitor_run_id"]
+    receipt = tmp_path / "runs" / run / "report.json"
+    public = json.loads(receipt.read_bytes())
+    assert original["result"]["gap_recovery"]["status"] == "advanced"
+    assert public["historical_route_schema"] == 5
+    assert watch_runtime.confirmed_monitor_scan(database, original)
+
+    # Even when the altered SQLite evidence and receipt have matching digests,
+    # older rules and incomplete visits cannot certify a relocation.
+    for fault in ("schema4", "status", "reason", "route", "crossed", "no_jump", "short_visit"):
+        changed = deepcopy(original)
+        record = changed["result"]
+        marker = record["gap_recovery"]
+        marker.update(status="frontier_relocated", recovery_reason="frontier_prefix_overlap")
+        observed = record["private_observation"]
+        schema = 4 if fault == "schema4" else 5
+        record["control"]["historical_route_schema"] = schema
+        if fault == "status":
+            marker["status"] = "advanced"
+        elif fault == "reason":
+            del marker["recovery_reason"]
+        elif fault == "route":
+            marker["route"] = "recent"
+        elif fault == "crossed":
+            marker["crossed_search_range"] = True
+        elif fault == "no_jump":
+            del observed["gap_frontier_requested"]
+        elif fault == "short_visit":
+            observed["pages"].pop()
+            observed["navigation"].pop()
+        forged = public | {
+            "historical_route_schema": schema,
+            "gap_bookmark_digest": bookmark_seal(changed),
+        }
+        receipt.write_text(json.dumps(forged), encoding="utf-8")
+        assert not watch_runtime.confirmed_monitor_scan(database, changed), fault

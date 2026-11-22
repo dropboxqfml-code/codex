@@ -20,8 +20,9 @@ from image_monitor.watch_planner import next_poll_at, plan_scan
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
     DURABLE_GAP_SCHEMAS,
+    FRONTIER_OVERLAP_SCHEMA,
     HEAD_OVERLAP_SCHEMA,
-    PARTIAL_OVERLAP_SCHEMA,
+    PARTIAL_OVERLAP_SCHEMAS,
     _control,
     _cycle_summary,
     _eligibility,
@@ -107,6 +108,7 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
     ):
         raise _ScanReview("transport_check")
     observed_at = _stored_time(latest["observed_at"])
+    schema = control.get("historical_route_schema")
     if "gap_recovery" in record or observed.get("gap_seed_route") is True:
         if "gap_recovery" in record and not (historical_source and "frontier" in historical_source):
             raise _ScanReview("route_check")
@@ -118,7 +120,8 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
             page_limit if page_limit > 2 else None,
             historical_source,
             allow_seed_crossing=True,
-            allow_partial_overlap=control.get("historical_route_schema") == PARTIAL_OVERLAP_SCHEMA,
+            allow_partial_overlap=schema in PARTIAL_OVERLAP_SCHEMAS,
+            allow_frontier_overlap=schema == FRONTIER_OVERLAP_SCHEMA,
         )
         if plan != verified_recent_plan(queue, MONITOR_SCOPE, after):
             raise _ScanReview("planner_check")
@@ -129,7 +132,7 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
             pages,
             observed_at,
             historical_source,
-            allow_head_overlap=control.get("historical_route_schema") == HEAD_OVERLAP_SCHEMA,
+            allow_head_overlap=schema == HEAD_OVERLAP_SCHEMA,
         )
         if plan != verified_recent_plan(queue, MONITOR_SCOPE, after):
             raise _ScanReview("planner_check")
@@ -250,7 +253,7 @@ def _can_retry_inspection(queue, before, after, evidence, bookmark, raw):
     if type(schema) is not int or schema not in DURABLE_GAP_SCHEMAS:
         return False
     # Older failed schema-3 attempts did not carry this report field.
-    if schema == PARTIAL_OVERLAP_SCHEMA or "historical_route_schema" in raw:
+    if schema in PARTIAL_OVERLAP_SCHEMAS or "historical_route_schema" in raw:
         if historical_route_policy(raw, control) != schema:
             return False
     observed = latest["result"]["private_observation"]
@@ -402,7 +405,7 @@ def run_auto_discovery(
             if starts:
                 result["search_window_start_visits"] = starts
             if "gap_recovery" in record:
-                result.update(gap_route_details(record))
+                result.update(gap_route_details(record, prior_bookmark=historical_source))
                 return result
             result.update(
                 historical_route_details(

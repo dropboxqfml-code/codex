@@ -214,3 +214,28 @@ def test_stop_during_catch_up_wait_preserves_one_verified_turn(tmp_path, startin
         "requested_stop",
     )
     assert report["cycles_completed"] == 1 and len(report["recent_list_checks"]) == 1
+
+
+def test_catch_up_follows_verified_relocated_frontier_once_the_saved_interval_elapses(
+    tmp_path, starting_watch
+):
+    _, clock, _ = starting_watch
+    # The moved frontier is an intermediate position even when no new candidates were needed.
+    shifted = recovery("frontier_relocated", 6, pages=[1, 2, 5, 6]) | {
+        "recovery_reason": "frontier_prefix_overlap",
+        "candidate_eligible_visits": 4,
+    }
+    report, times = run_catch_up(
+        tmp_path,
+        clock,
+        [
+            shifted,
+            recovery("advanced", 7, pages=[1, 2, 6, 7]),
+            recovery("completed", 8, pages=[1, 2, 7, 8]),
+        ],
+    )
+    assert times == [0, 60, 120] and report["reason"] == "list_coverage_confirmed"
+    assert report["recent_list_checks"][0]["status"] == "partial"
+    assert report["recent_list_checks"][0]["candidate_eligible_visits"] == 4
+    assert report["new_candidates"] == report["files_verified"] == 0
+    assert report["gap_followups_completed"] == 1

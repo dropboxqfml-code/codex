@@ -325,6 +325,7 @@ def _catch_up_pause(checks):
         return None
     if current.get("recovery_route") != "bookmark" or status not in {
         "advanced",
+        "frontier_relocated",
         "overlap_pending",
         "segment_rejoined",
     }:
@@ -505,6 +506,7 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
                 return _finish(report, "completed", "cycle_limit_reached")
             if not catch_up and report["last_list"].get("recovery_status") not in {
                 "head_rejoined",
+                "frontier_relocated",
                 "segment_rejoined",
                 "segment_queued",
                 "advanced",

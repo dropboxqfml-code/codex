@@ -139,7 +139,7 @@ def _historical_check(database, queue, before, after):
             return None
         details = checked_window_starts({"search_window_start_visits": starts}, pages, limit)
     elif policy in DURABLE_GAP_SCHEMAS:
-        details = gap_route_details(record)
+        details = gap_route_details(record, prior_bookmark=source)
     else:
         details = historical_route_details(
             before, latest, source, allow_head_overlap=policy == HEAD_OVERLAP_SCHEMA

@@ -334,3 +334,53 @@ def test_catch_up_and_single_follow_up_are_mutually_exclusive(tmp_path, monkeypa
         main()
     assert stopped.value.code == 2
     assert "--catch-up" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("status", "numbers", "eligible"),
+    [
+        ("frontier_changed", [1, 2, 5, 6], 2),
+        ("frontier_changed", [1, 2, 5], 2),
+        ("frontier_relocated", [1, 2, 5, 6], 4),
+    ],
+)
+def test_changed_frontier_separates_visited_pages_from_candidate_pages(status, numbers, eligible):
+    from image_monitor.monitor_gap_report import checked_gap_route, gap_route_details
+
+    marker = {
+        "status": status,
+        "route": "bookmark",
+        "crossed_search_range": False,
+        "depth": 6 if status == "frontier_relocated" else 5,
+        "eligible_pages": eligible,
+    }
+    if status == "frontier_relocated":
+        marker["recovery_reason"] = "frontier_prefix_overlap"
+    record = {
+        "complete": False,
+        "control": {
+            "follow_up_page_limit": 4,
+            "historical_route_schema": 5 if status == "frontier_relocated" else 4,
+        },
+        "private_observation": {"pages": [{"page": n, "search_pos": None} for n in numbers]},
+        "gap_recovery": marker,
+    }
+    check = gap_route_details(record) | {
+        "status": "partial",
+        "visited_page_numbers": numbers,
+        "page_limit": 4,
+    }
+    assert check["candidate_eligible_visits"] == eligible
+    shown = auto_monitor_cli._describe_list_check(check)
+    assert shown["candidate_eligible_visits"] == eligible and shown["candidate_eligible_visits_ko"]
+    for wrong in (True, 0, 3, 7, "private"):
+        tampered = check | {
+            "candidate_eligible_visits": wrong,
+            "candidate_eligible_visits_ko": "private",
+        }
+        with pytest.raises(ValueError):
+            checked_gap_route(tampered, numbers, 4)
+        shown = auto_monitor_cli._describe_list_check(tampered)
+        assert (
+            "candidate_eligible_visits" not in shown and "candidate_eligible_visits_ko" not in shown
+        )

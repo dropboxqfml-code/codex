@@ -154,9 +154,21 @@ def recent_record(status, numbers, **marker_fields):
         for reason in reasons
     ],
 )
-def test_recent_recovery_reason_is_bound_to_its_route_and_survives_report_boundaries(status, code):
+def test_recovery_reason_is_bound_to_its_route_and_survives_report_boundaries(status, code):
     numbers = [1, 2, 3] if code == "recent_page_limit" else [1, 2, 3, 4]
-    record = recent_record(status, numbers, recovery_reason=code, raw_message="PRIVATE")
+    if status == "frontier_relocated":
+        numbers = [1, 2, 5, 6]
+    route = "bookmark" if status == "frontier_relocated" else "recent"
+    record = recent_record(
+        status,
+        numbers,
+        route=route,
+        recovery_reason=code,
+        eligible_pages=len(numbers),
+        raw_message="PRIVATE",
+    )
+    if status == "frontier_relocated":
+        record["control"]["historical_route_schema"] = 5
     turn = {
         "status": "partial",
         "page_limit": 4,
@@ -336,3 +348,123 @@ def test_unverified_or_conflicting_observation_is_not_displayed(changes):
         "segment_queued", [1, 2, 3, 4], recovery_observation="disjoint_recent_rows"
     )
     assert "recovery_observation" not in gap_route_details(marker)
+
+
+def saved_frontier_sample():
+    numbers = [1, 2, 5, 6]
+    record = recent_record("frontier_changed", numbers, route="bookmark", eligible_pages=2)
+    ref = {"scan_id": "a" * 32, "generation": 5}
+    record["control"].update(historical_route_schema=4, gap_bookmark_before=ref)
+    record["pages"] = []
+    pages = record["private_observation"]["pages"]
+    for page, ids in zip(pages, ([120, 119], [118, 117], [112, 111], [110, 109, 108]), strict=True):
+        url = f"PRIVATE-URL-{page['page']}"
+        page.update(url=url, rows=[{"post_id": str(i)} for i in ids])
+        record["pages"].append(
+            {"canonical_url": url, "page": page["page"], "search_pos": None, "rows_complete": True}
+        )
+    prior = {
+        "source_scan_id": ref["scan_id"],
+        "source_generation": ref["generation"],
+        "frontier": {"canonical_url": pages[2]["url"], "page": 5, "search_pos": None},
+        "frontier_ids": ["109", "108", "107", "106"],
+    }
+    return record, prior, numbers
+
+
+@pytest.mark.parametrize(
+    ("ids", "matched", "shape"),
+    [
+        (["109", "108", "107", "106"], 2, "prefix_at_end"),
+        (["114", "111", "108", "101"], 2, "other"),
+        (["98", "97", "96"], 0, "none"),
+    ],
+)
+def test_recorded_hold_can_report_physical_overlap_without_altering_its_status(ids, matched, shape):
+    record, prior, numbers = saved_frontier_sample()
+    prior["frontier_ids"] = ids
+    original = deepcopy(record)
+    details = gap_route_details(record, prior_bookmark=prior)
+    expected = {"previous_rows": len(ids), "matched_rows": matched, "shape": shape}
+    assert details["frontier_overlap"] == expected and record == original
+    assert details["recovery_status"] == "frontier_changed"
+    assert "recovery_reason" not in details and "frontier_overlap" not in gap_route_details(record)
+    check = _describe_list_check(
+        {"status": "partial", "visited_page_numbers": numbers, "page_limit": 4, **details}
+    )
+    assert check["frontier_overlap"] == expected
+    assert f"{len(ids)}개 중 {matched}개" in check["frontier_overlap_ko"]
+    assert ("첫머리" in check["frontier_overlap_ko"]) == (shape == "prefix_at_end")
+    assert "PRIVATE" not in repr(check) and prior["source_scan_id"] not in repr(check)
+
+
+@pytest.mark.parametrize(
+    "damaged",
+    [
+        "other_generation",
+        "another_source",
+        "unproven_page",
+        "another_cursor",
+        "contradictory_check",
+        "broken_order",
+        "not_four_visits",
+    ],
+)
+def test_missing_or_inconsistent_frontier_evidence_keeps_original_hold_generic(damaged):
+    record, prior, _ = saved_frontier_sample()
+    if damaged == "other_generation":
+        prior["source_generation"] -= 1
+    elif damaged == "another_source":
+        prior["source_scan_id"] = "b" * 32
+    elif damaged == "unproven_page":
+        record["pages"][-1]["rows_complete"] = False
+    elif damaged == "another_cursor":
+        prior["frontier"]["search_pos"] = "PRIVATE"
+    elif damaged == "contradictory_check":
+        record["pages"][2]["canonical_url"] = "PRIVATE"
+    elif damaged == "broken_order":
+        record["private_observation"]["pages"][3]["rows"].reverse()
+    else:
+        record["private_observation"]["pages"].pop()
+        record["pages"].pop()
+    details = gap_route_details(record, prior_bookmark=prior)
+    assert details["recovery_status"] == "frontier_changed" and "frontier_overlap" not in details
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"matched_rows": True},
+        {"matched_rows": 5},
+        {"previous_rows": 201},
+        {"shape": "PRIVATE"},
+        {"shape": "none"},
+        {"matched_rows": 4},
+        {"shape": []},
+    ],
+)
+def test_contradictory_frontier_counts_and_untrusted_text_never_render(changes):
+    record, prior, numbers = saved_frontier_sample()
+    details = gap_route_details(record, prior_bookmark=prior)
+    details["frontier_overlap"].update(changes)
+    check = _describe_list_check(
+        {
+            "status": "partial",
+            "visited_page_numbers": numbers,
+            "page_limit": 4,
+            **details,
+            "frontier_overlap_ko": "PRIVATE",
+        }
+    )
+    assert "frontier_overlap" not in check and "PRIVATE" not in repr(check)
+
+
+@pytest.mark.parametrize("schema", [None, True, 4, 5.0, "5"])
+def test_unconfirmed_schema_cannot_label_an_old_frontier_as_relocated(schema):
+    record, prior, _ = saved_frontier_sample()
+    record["control"]["historical_route_schema"] = schema
+    record["gap_recovery"].update(
+        status="frontier_relocated", recovery_reason="frontier_prefix_overlap", eligible_pages=4
+    )
+    with pytest.raises(ValueError):
+        gap_route_details(record, prior_bookmark=prior)

@@ -8,7 +8,8 @@ _MAX_PAGE = 999_999_999
 RECOVERY_MESSAGES = {
     "advanced": "지난번에 확인한 위치에서 다음 쪽까지 이어서 확인했습니다.",
     "completed": "이전 완료 지점과 그다음 쪽을 확인해 밀린 구간을 모두 연결했습니다.",
-    "frontier_changed": "지난 위치의 글 순서가 달라져 연결을 확인하지 못했습니다.",
+    "frontier_relocated": "목록의 연결을 확인해 복구 위치를 한 쪽 옮겼습니다.",
+    "frontier_changed": "목록의 연결을 확인하지 못해 이전 복구 위치를 유지했습니다.",
     "successor_unconfirmed": "다음 쪽으로 이어지는 경로를 확인하지 못했습니다.",
     "overlap_pending": "연결 여부를 확정하려면 뒤쪽 목록을 더 확인해야 합니다.",
     "segment_rejoined": "중간에 새로 쌓인 구간이 이전 목록과 이어져 밀린 글을 계속 확인합니다.",
@@ -19,6 +20,12 @@ RECOVERY_MESSAGES = {
 
 
 RECOVERY_REASON_MESSAGES = {
+    "frontier_relocated": {
+        "frontier_prefix_overlap": (
+            "저장한 목록 앞부분의 글 순서를 바로 다음 쪽 끝에서 확인했습니다. "
+            "이전 완료 지점까지 이어지는지는 다음 목록에서 계속 확인합니다."
+        )
+    },
     "segment_queued": {
         "recent_tail_overlap": (
             "최근 네 쪽의 끝에서 지난 첫 쪽의 일반 글 세 건 이상을 같은 순서로 확인했습니다. "
@@ -108,6 +115,25 @@ def checked_window_starts(turn, numbers, limit, *, bookmark=False):
     return {"search_window_start_visits": starts.copy()} if starts else {}
 
 
+def _checked_frontier_overlap(value):
+    from image_monitor.search_list import MAX_ROWS
+
+    if not isinstance(value, dict):
+        raise ValueError("Invalid frontier row counts")
+    old, matched, shape = (value.get(key) for key in ("previous_rows", "matched_rows", "shape"))
+    if (
+        type(old) is not int
+        or type(matched) is not int
+        or not 0 <= matched <= old <= MAX_ROWS
+        or not old
+        or shape not in ("none", "prefix_at_end", "other")
+        or (shape == "none") != (matched == 0)
+        or (shape == "prefix_at_end" and matched == old)
+    ):
+        raise ValueError("Invalid frontier row counts or alignment")
+    return {"previous_rows": old, "matched_rows": matched, "shape": shape}
+
+
 def checked_gap_route(turn, numbers, limit):
     """Keep public fields only and reject inconsistent route/status combinations."""
     route = turn.get("recovery_route")
@@ -129,11 +155,20 @@ def checked_gap_route(turn, numbers, limit):
         or turn["status"] not in ("complete", "partial")
     ):
         raise ValueError("Invalid recovery page sequence or progress")
+    relocated = status == "frontier_relocated"
+    if relocated and (
+        route != "bookmark"
+        or len(numbers) != MAX_MONITOR_SCAN_PAGES
+        or crossed
+        or numbers[3] != numbers[2] + 1
+        or turn.get("recovery_reason") != "frontier_prefix_overlap"
+    ):
+        raise ValueError("Invalid relocated frontier route")
     reason_fields = {}
     if "recovery_reason" in turn:
         reason = turn["recovery_reason"]
         if (
-            route != "recent"
+            (route != "recent" and not relocated)
             or not isinstance(reason, str)
             or reason not in RECOVERY_REASON_MESSAGES.get(status, {})
             or (reason == "recent_page_limit" and len(numbers) >= MAX_MONITOR_SCAN_PAGES)
@@ -155,6 +190,23 @@ def checked_gap_route(turn, numbers, limit):
         ):
             raise ValueError("Invalid recovery observation for the observed route")
         reason_fields["recovery_observation"] = "disjoint_recent_rows"
+    if "frontier_overlap" in turn:
+        if (
+            status not in ("frontier_changed", "frontier_relocated")
+            or route != "bookmark"
+            or len(numbers) != 4
+        ):
+            raise ValueError("Invalid frontier observation for the reported route")
+        overlap = _checked_frontier_overlap(turn["frontier_overlap"])
+        if relocated and not 3 <= overlap["matched_rows"] < overlap["previous_rows"]:
+            raise ValueError("Inconsistent overlap for a relocated frontier")
+        reason_fields["frontier_overlap"] = overlap
+    if "candidate_eligible_visits" in turn:
+        eligible = turn["candidate_eligible_visits"]
+        expected = {"frontier_changed": 2, "frontier_relocated": MAX_MONITOR_SCAN_PAGES}
+        if type(eligible) is not int or route != "bookmark" or eligible != expected.get(status):
+            raise ValueError("Invalid candidate page count for the verified frontier")
+        reason_fields["candidate_eligible_visits"] = eligible
     return {
         **reason_fields,
         **checked_window_starts(turn, numbers, limit, bookmark=route == "bookmark"),
@@ -208,12 +260,71 @@ def _disjoint_recent_rows(record):
         return False
 
 
-def gap_route_details(record):
+def _frontier_overlap(record, prior):
+    """Compare the two checked frontier documents to this scan's certified starting bookmark."""
+    from image_monitor.monitor_gap_store import _reference, _valid_ref
+    from image_monitor.watch_history import _descending, _ids, _joined_rows
+    from image_monitor.watch_planner import _cursor
+
+    marker = record["gap_recovery"]
+    pages = record["private_observation"]["pages"]
+    ref = record["control"].get("gap_bookmark_before")
+    if (
+        record["complete"] is not False
+        or marker.get("status") not in ("frontier_changed", "frontier_relocated")
+        or marker.get("route") != "bookmark"
+        or len(pages) != 4
+        or not isinstance(prior, dict)
+        or not _valid_ref(ref)
+    ):
+        return None
+    try:
+        old = prior["frontier_ids"]
+        checks = record["pages"]
+        if (
+            type(prior.get("source_generation")) is not int
+            or _reference(prior) != ref
+            or not _descending(old)
+            or _cursor(pages[2]) != prior["frontier"]
+            or len(checks) != len(pages)
+            or not all(
+                check["rows_complete"] is True
+                and all(check[key] == value for key, value in _cursor(page).items())
+                for check, page in zip(checks, pages, strict=True)
+            )
+        ):
+            return None
+        joined = _joined_rows(_ids(pages[2]), _ids(pages[3]))
+        if not joined:
+            return None
+        matched = len(set(old).intersection(joined))
+        shape = "none" if not matched else "other"
+        if 0 < matched < len(old) and joined[-matched:] == old[:matched]:
+            shape = "prefix_at_end"
+        return {"previous_rows": len(old), "matched_rows": matched, "shape": shape}
+    except (AttributeError, IndexError, KeyError, TypeError):
+        return None
+
+
+def gap_route_details(record, *, prior_bookmark=None):
     """Project only public progress from a successful replay of the private marker."""
     marker = record["gap_recovery"]
     numbers = [page["page"] for page in record["private_observation"]["pages"]]
+    if marker["status"] == "frontier_relocated":
+        from image_monitor.watch_runtime import FRONTIER_OVERLAP_SCHEMA
+
+        schema = record["control"].get("historical_route_schema")
+        if type(schema) is not int or schema != FRONTIER_OVERLAP_SCHEMA:
+            raise ValueError("Unverified relocation policy")
+    overlap = _frontier_overlap(record, prior_bookmark)
     return checked_gap_route(
         {
+            **({"frontier_overlap": overlap} if overlap is not None else {}),
+            **(
+                {"candidate_eligible_visits": marker["eligible_pages"]}
+                if marker["status"] in {"frontier_changed", "frontier_relocated"}
+                else {}
+            ),
             "status": "complete" if record["complete"] else "partial",
             "search_window_start_visits": search_window_start_visits(record),
             "recovery_status": marker["status"],

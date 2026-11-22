@@ -224,7 +224,8 @@ def replay_gap_scan(queue, scope, latest, previous_state, scan_time):
     """Recompute the plan with the same closed source consumed at the scan commit."""
     from image_monitor.watch_runtime import (
         DURABLE_GAP_SCHEMAS,
-        PARTIAL_OVERLAP_SCHEMA,
+        FRONTIER_OVERLAP_SCHEMA,
+        PARTIAL_OVERLAP_SCHEMAS,
         _plan_observation,
         gap_seed,
     )
@@ -254,7 +255,8 @@ def replay_gap_scan(queue, scope, latest, previous_state, scan_time):
         bookmark,
         allow_head_overlap=True,
         allow_seed_crossing=True,
-        allow_partial_overlap=schema == PARTIAL_OVERLAP_SCHEMA,
+        allow_partial_overlap=schema in PARTIAL_OVERLAP_SCHEMAS,
+        allow_frontier_overlap=schema == FRONTIER_OVERLAP_SCHEMA,
     )
 
 

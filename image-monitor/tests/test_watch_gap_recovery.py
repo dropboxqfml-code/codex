@@ -370,6 +370,160 @@ def test_replaced_frontier_never_registers_its_unproven_older_candidates(state):
     assert not valid_gap_bookmark(SCOPE, state, corrupt)
 
 
+@pytest.fixture
+def fifth_page_frontier(state, shifting_head):
+    old, active = shifting_head
+    docs = ordinary(old, 5, size=20)
+    result = plan_gap_scan(SCOPE, state, [*docs[:2], *docs[3:]], NOW, active)
+    bookmark = result["scan_result"]["gap_recovery"]["bookmark"]
+    assert bookmark["depth"] == 5 and bookmark["deferred"] == active["deferred"]
+    return old, bookmark
+
+
+@pytest.mark.parametrize("removed_offsets", [(), (0, 7)])
+def test_clipped_fifth_frontier_after_26_new_posts_resumes_without_skipping_its_remainder(
+    state, fifth_page_frontier, removed_offsets
+):
+    old, bookmark = fifth_page_frontier
+    removed = {old[80 + offset] for offset in removed_offsets}
+    fresh = [*range(800, 774, -1), *(i for i in old if i not in removed)]
+    docs = ordinary(fresh, 7, size=20)
+    route = [*docs[:2], *docs[4:6]]
+    legacy = plan_gap_scan(SCOPE, state, route, NOW, bookmark)["scan_result"]["gap_recovery"]
+    assert (legacy["status"], legacy["eligible_pages"]) == ("frontier_changed", 2)
+    before = deepcopy(bookmark)
+    plan = plan_gap_scan(SCOPE, state, route, NOW, bookmark, allow_frontier_overlap=True)
+    marker = plan["scan_result"]["gap_recovery"]
+    assert not plan["complete"] and plan["gap_reason"] == "anchor_not_reached"
+    assert (marker["status"], marker["recovery_reason"]) == (
+        "frontier_relocated",
+        "frontier_prefix_overlap",
+    )
+    assert (marker["depth"], marker["eligible_pages"], marker["crossed_search_range"]) == (
+        6,
+        4,
+        False,
+    )
+    moved = marker["bookmark"]
+    assert moved["frontier"] == cursor(6) and moved["frontier_ids"] == list(
+        map(str, fresh[100:120])
+    )
+    assert moved["target_ids"] == before["target_ids"] and moved["deferred"] == before["deferred"]
+    assert bookmark == before and valid_gap_bookmark(SCOPE, state, moved)
+    next_route = [*docs[:2], *docs[5:7]]
+    assert gap_next_url(SCOPE, state, next_route[:3], NOW, moved) == docs[6]["url"]
+    next_plan = plan_gap_scan(SCOPE, state, next_route, NOW, moved, allow_frontier_overlap=True)
+    assert next_plan["scan_result"]["gap_recovery"]["depth"] == 7
+    observed = {r["post_id"] for p in [plan, next_plan] for r in p["scan_result"]["observations"]}
+    assert set(bookmark["frontier_ids"]) - set(map(str, removed)) <= observed
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "absent",
+        "two_matches",
+        "three_missing",
+        "intrusion",
+        "reordered",
+        "unknown_before",
+        "unknown_floor",
+        "no_onward",
+        "duplicate_onward",
+        "other_range",
+    ],
+)
+def test_ambiguous_or_unlinked_fourth_page_cannot_relocate_an_old_frontier(
+    state, fifth_page_frontier, fault
+):
+    old, bookmark = fifth_page_frontier
+    fresh = [*range(800, 774, -1), *old]
+    if fault == "three_missing":
+        for offset in (0, 3, 8):
+            fresh.remove(old[80 + offset])
+    ids = fresh[100:120]
+    if fault == "absent":
+        ids = ids[:6]
+    elif fault == "two_matches":
+        ids = ids[:8]
+    elif fault == "intrusion":
+        ids[9] += 1
+    elif fault == "reordered":
+        ids[9], ids[10] = ids[10], ids[9]
+    elif fault == "unknown_before":
+        ids[6] -= 1
+    elif fault == "unknown_floor":
+        ids[-1] += 1
+    recent = ordinary(fresh, 5, size=20)
+    route = [*recent[:2], recent[4], page(6, ids, links=[cursor(7)])]
+    if fault == "no_onward":
+        route[-1]["pagination_candidates"] = []
+    elif fault == "duplicate_onward":
+        route[-1]["pagination_candidates"] *= 2
+    elif fault == "other_range":
+        other = "-923"
+        route[2]["pagination_candidates"] = [cursor(1, other) | {"label_kind": "next_search"}]
+        route[3] = page(1, ids, window=other, links=[cursor(2, other)])
+    current = plan_gap_scan(SCOPE, state, route, NOW, bookmark, allow_frontier_overlap=True)
+    marker = current["scan_result"]["gap_recovery"]
+    assert not current["complete"] and current["gap_reason"] == "historical_boundary_changed"
+    assert (marker["status"], marker["depth"], marker["eligible_pages"]) == (
+        "frontier_changed",
+        5,
+        2,
+    )
+    assert marker["bookmark"] is None and "recovery_reason" not in marker
+    assert {r["post_id"] for r in current["candidates"]} == set(map(str, fresh[:40]))
+
+
+def test_partial_frontier_proof_cannot_complete_or_use_a_foreign_scope(state, fifth_page_frontier):
+    old, bookmark = fifth_page_frontier
+    fresh = [*range(800, 774, -1), *old]
+    docs = ordinary(fresh, 6, size=20)
+    route = [*docs[:2], *docs[4:]]
+    # A checkpoint on the first history page plus its adjacent visit would
+    # formally complete the inner plan. A partial frontier proof cannot do so.
+    target = [str(fresh[81])]
+    current_state = state | {"checkpoint": state["checkpoint"] | {"anchor_ids": target}}
+    active = bookmark | {"target_ids": target}
+    plan = plan_gap_scan(SCOPE, current_state, route, NOW, active, allow_frontier_overlap=True)
+    assert not plan["complete"] and plan["scan_result"]["gap_recovery"]["bookmark"] is None
+    route[-1]["scope"] = route[-1]["scope"] | {"keyword": "different"}
+    with pytest.raises(WatchPlanError):
+        plan_gap_scan(SCOPE, state, route, NOW, bookmark, allow_frontier_overlap=True)
+
+
+def test_checkpoint_seen_at_relocated_frontier_requires_a_later_physical_overlap(
+    state, shifting_head
+):
+    old, _ = shifting_head
+    target = [str(old[80])]
+    state = state | {"checkpoint": state["checkpoint"] | {"anchor_ids": target}}
+    docs = ordinary(old, 5, size=20)
+    initial = new_gap_bookmark(SCOPE, state, docs[:4], NOW)
+    first = plan_gap_scan(SCOPE, state, [*docs[:2], *docs[3:5]], NOW, initial)
+    previous = first["scan_result"]["gap_recovery"]
+    assert previous["status"] == "overlap_pending"
+    # A retained segment's head happens to coincide with the relocated page 5.
+    # It must remain open through the provisional move.
+    deferred = new_gap_bookmark(SCOPE, state, ordinary(old[54:], size=20), NOW)
+    deferred.pop("target_ids")
+    bookmark = previous["bookmark"] | {"deferred": [deferred]}
+    fresh = ordinary([*range(800, 774, -1), *old], 7, size=20)
+    route = [*fresh[:2], *fresh[4:6]]
+    current = plan_gap_scan(SCOPE, state, route, NOW, bookmark, allow_frontier_overlap=True)
+    marker = current["scan_result"]["gap_recovery"]
+    assert marker["status"] == "frontier_relocated" and marker["bookmark"]["deferred"] == [deferred]
+    assert current["gap_reason"] == "overlap_incomplete" and not current["complete"]
+    route = [*fresh[:2], *fresh[5:7]]
+    legacy = plan_gap_scan(SCOPE, state, route, NOW, marker["bookmark"])
+    confirmed = plan_gap_scan(
+        SCOPE, state, route, NOW, marker["bookmark"], allow_frontier_overlap=True
+    )
+    assert legacy == confirmed
+    assert confirmed["complete"] and confirmed["scan_result"]["first_anchor_id"] == target[0]
+
+
 @pytest.mark.parametrize("first_window", [1, 2, 3])
 def test_earlier_short_search_window_can_seed_and_resume_from_the_fourth_document(
     state, first_window

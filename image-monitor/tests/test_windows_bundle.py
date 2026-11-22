@@ -37,6 +37,7 @@ def bundle_project(tmp_path, monkeypatch):
         "RUN_AUTO_MONITOR.cmd",
         "TEST_AUTO_MONITOR.cmd",
         "CHECK_LAST_LIST.cmd",
+        "TEST_LIST_RECOVERY.cmd",
         "RUN_MONITOR_SAVE.cmd",
         "RUN_MONITOR_FINISH.cmd",
         "RUN_MONITOR_BATCH.cmd",

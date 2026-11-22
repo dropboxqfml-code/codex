@@ -6,11 +6,13 @@ from pathlib import Path
 from image_monitor.artifact_files import _plain_path
 from image_monitor.monitor_clock import stop_requested
 from image_monitor.monitor_gap_report import gap_route_details, search_window_start_visits
+from image_monitor.monitor_gap_store import load_bookmark
 from image_monitor.monitor_list_attempt import uncommitted_list_review
 from image_monitor.monitor_list_review import current_list_review
 from image_monitor.native_ui import NativeUIError
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_detail_source import recent_scan_candidates, scan_plan_candidates
+from image_monitor.watch_gap_recovery import gap_next_url
 from image_monitor.watch_history import historical_route_details, plan_historical_scan
 from image_monitor.watch_lock import WatchRunBusy, watch_list_lock
 from image_monitor.watch_planner import next_poll_at, plan_scan
@@ -20,6 +22,7 @@ from image_monitor.watch_runtime import (
     _control,
     _cycle_summary,
     _eligibility,
+    _matched_documents,
     _observed_page_chain,
     _plan_observation,
     _stamp,
@@ -212,6 +215,54 @@ def _verified_scan(database, queue, before, after, raw, page_limit, historical_s
     raise _ScanReview("partial_check")
 
 
+def _can_retry_inspection(queue, before, after, evidence, bookmark):
+    """Only a timed-out read of the proven bookmark's successor gets one later list check."""
+    if not evidence or not isinstance(bookmark, dict) or "frontier" not in bookmark:
+        return False
+    failure = evidence.get("inspection_failure", {})
+    if not (
+        evidence.get("evidence") == "committed_scan"
+        and evidence.get("error_type") == "DCSnapshotError"
+        and evidence.get("failed_visit") == 4
+        and evidence.get("failed_page") == failure.get("page")
+        and failure.get("stage") == "dom_read"
+        and failure.get("reason") == "dom_budget_exceeded"
+        and failure.get("visit") == 4
+    ):
+        return False
+    # The preceding committed observation survives a process restart. An explicit
+    # restart can check the site, but another consecutive timeout earns no extra turn.
+    prior = before["latest_scan"]["result"]["private_observation"]
+    prior_failure = prior.get("inspection_failure") or {}
+    if (
+        prior.get("status") == "inspection_error"
+        and prior_failure.get("reason") == "dom_budget_exceeded"
+    ):
+        return False
+    latest = after["latest_scan"]
+    observed = latest["result"]["private_observation"]
+    pages, visits = observed["pages"], observed["navigation"]
+    if not (
+        observed.get("gap_frontier_requested") is True
+        and len(pages) == 3
+        and len(visits) == 4
+        and all(p.get("layout_status") == "site_verified" for p in pages)
+        and _matched_documents(pages, visits[:3], follow_up=True)
+        and 200 <= visits[3]["http_status"] < 300
+        and all(visit.get("retry_after") is None for visit in visits)
+        and observed.get("retry_after") is None
+        and before["checkpoint"] == after["checkpoint"]
+    ):
+        return False
+    at = _stored_time(latest["observed_at"])
+    if any(
+        gap_next_url(MONITOR_SCOPE, before, pages[:n], at, bookmark) != visits[n]["url"]
+        for n in (2, 3)
+    ):
+        return False
+    return load_bookmark(queue, after) == bookmark
+
+
 def run_auto_discovery(
     watch_root,
     *,
@@ -299,6 +350,12 @@ def run_auto_discovery(
                     )
                 else:
                     evidence = current_list_review(database, queue, before, after, raw, stage=stage)
+                    if eligibility == "waiting" and _can_retry_inspection(
+                        queue, before, after, evidence, historical_source
+                    ):
+                        return _result("waiting", "inspection_retry_due", due=due, closed=True) | {
+                            "review": evidence
+                        }
                 return _review(stage, closed, evidence)
             stage = "scan_record"
             try:

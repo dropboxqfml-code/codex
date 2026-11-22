@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_finish import CandidateFinishError, _read_json, _same_json, _uuid
+from image_monitor.list_inspection_failure import bound_inspection_failure
 from image_monitor.monitor_gap_report import public_recovery_pages
 from image_monitor.monitor_gap_store import bookmark_seal, load_bookmark
 from image_monitor.native_probe import write_report
@@ -257,6 +258,9 @@ def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
             summary["head_join"] = history["head_join"]
     if recovery_pages is not None:
         summary["recovery_page_numbers"] = recovery_pages
+    failure = bound_inspection_failure(outcome)
+    if failure is not None:
+        summary["inspection_failure"] = failure
     return summary
 
 

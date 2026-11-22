@@ -63,6 +63,11 @@ def main() -> int:
         "monitor-resume-once", help="Resume one outstanding monitor detail check and exit"
     )
     resume_once.add_argument("--work-root", type=Path, required=True)
+    list_recovery = commands.add_parser(
+        "test-list-recovery",
+        help="Check the next eligible monitor list without starting an image collection",
+    )
+    list_recovery.add_argument("--watch-root", type=Path, required=True)
     diagnosis = commands.add_parser(
         "monitor-diagnosis",
         help="Read the stored list-profile diagnosis and latest monitor review from local records",
@@ -146,6 +151,10 @@ def main() -> int:
         "--post-url", help="Public DCInside post URL; defaults to the reviewed design example"
     )
     args = parser.parse_args()
+    if args.command == "test-list-recovery":
+        from image_monitor.auto_monitor_cli import run_auto_monitor_cli
+
+        return run_auto_monitor_cli(args.watch_root, None, None, 1, list_only=True)
     if args.command == "auto-monitor":
         if args.max_cycles is not None and args.max_cycles < 1:
             parser.error("--max-cycles must be at least 1")

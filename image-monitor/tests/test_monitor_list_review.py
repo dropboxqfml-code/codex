@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 
 import pytest
+from test_watch_historical_receipt import history as history  # noqa: PLC0414
+from test_watch_historical_receipt import listing
 from test_watch_runtime import (
     BrowserFactory,
     FakeClock,
@@ -14,11 +16,13 @@ from test_watch_runtime import (
 )
 
 from image_monitor import watch_runtime
+from image_monitor.list_inspection_failure import _REASONS
 from image_monitor.monitor_list_review import (
     current_list_review,
     previous_list_review,
     public_list_review,
 )
+from image_monitor.monitor_list_review_text import describe_list_review
 from image_monitor.queue import QueueStore
 from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
 
@@ -188,6 +192,91 @@ def test_previous_missing_watch_root_never_creates_state(tmp_path):
     root = tmp_path / "absent"
     assert previous_list_review(root) is None
     assert not root.exists()
+
+
+@pytest.mark.parametrize("coded", [False, True])
+def test_incomplete_final_page_after_http_200_is_distinct_from_three_snapshots(
+    history, tmp_path, coded
+):
+    run_trial, _ = history
+    marker = {
+        "stage": "dom_read",
+        "reason": "dom_budget_exceeded",
+        "sample": "initial",
+        "visit": 4,
+        "page": 5,
+    }
+
+    def interrupted(stamp):
+        outcome = listing([1, 2, 4], [130, 120, 110])(stamp)
+        outcome.update(
+            status="inspection_error",
+            error_type="DCSnapshotError",
+            recovery_page_numbers=[1, 2, 4, 5],
+        )
+        outcome["navigation"].append({"url": link(5)["canonical_url"], "http_status": 200})
+        if coded:
+            outcome["inspection_failure"] = marker
+        return outcome
+
+    with QueueStore(tmp_path / "watch.sqlite", read_only=True) as q:
+        before = WatchStore(q).get_state(MONITOR_SCOPE)
+    raw = run_trial(interrupted)
+    assert raw["status"] == "watch_test_failed"
+    review = describe_list_review(previous_list_review(tmp_path))
+    assert review == describe_list_review(current(tmp_path, before, raw))
+    assert (review["failed_page"], review["failed_visit"]) == (5, 4)
+    assert review["visited_page_numbers"] == [1, 2, 4, 5]
+    assert review["snapshot_page_numbers"] == [1, 2, 4]
+    assert "5쪽은 HTTP 200" in review["observation_ko"] and "1·2·4쪽" in review["observation_ko"]
+    if coded:
+        assert raw["cycles"][0]["inspection_failure"] == review["inspection_failure"] == marker
+        assert "제한 시간" in review["inspection_reason_ko"]
+        # The explicit reason must still match the independently closed run report.
+        receipt = Path(raw["report_path"])
+        record = json.loads(receipt.read_bytes())
+        record["cycles"][0]["inspection_failure"]["reason"] = "dom_evaluation_failed"
+        receipt.write_text(json.dumps(record))
+        assert previous_list_review(tmp_path) is None
+    else:
+        assert "inspection_failure" not in raw["cycles"][0]
+        assert "inspection_reason_ko" not in review and "inspection_failure" not in review
+    for key, value in [
+        ("failed_page", 4),
+        ("failed_visit", True),
+        ("snapshot_page_numbers", [1, 2]),
+        ("visited_page_numbers", [1, 2, 7, 8]),
+        ("http_status", 503),
+        ("error_type", "UNKNOWN_RAW_ERROR"),
+        ("transport", "http_error"),
+    ]:
+        altered = describe_list_review(review | {key: value})
+        assert "failed_page" not in altered and "inspection_failure" not in altered
+    private = "private-text-or-URL"
+    altered = describe_list_review(review | {"inspection_failure": marker | {"reason": private}})
+    assert "inspection_failure" not in altered and private not in json.dumps(altered)
+
+
+def test_first_observation_can_fail_before_any_snapshot_for_each_coded_reason():
+    base = {
+        "stage": "watch_result",
+        "evidence": "committed_scan",
+        "watch_status": "watch_test_failed",
+        "transport": "inspection_error",
+        "error_type": "DCSnapshotError",
+        "http_status": 200,
+        "visited_page_numbers": [1],
+        "snapshot_page_numbers": [],
+        "failed_visit": 1,
+        "failed_page": 1,
+        "pages": [],
+    }
+    for stage, reasons in _REASONS.items():
+        for reason in reasons:
+            failure = {"stage": stage, "reason": reason, "sample": "initial", "visit": 1, "page": 1}
+            review = describe_list_review(base | {"inspection_failure": failure})
+            assert review["inspection_failure"] == failure
+            assert review["inspection_reason_ko"] and "1쪽은 HTTP 200" in review["observation_ko"]
 
 
 @pytest.mark.parametrize("stage", ["watch_result", "planner_check"])

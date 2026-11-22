@@ -23,6 +23,7 @@ set "RESUME_PREINPUT=0"
 set "POST_SAVE_RESUME_ARGUMENT="
 set "CHECK_LABEL=Windows native-save test"
 set "MONITOR_DIAGNOSIS=0"
+set "TEST_LIST_RECOVERY=0"
 set "WATCH_DETAIL=0"
 set "WATCH_IMAGES=0"
 set "WATCH_IMAGES_CHECK=0"
@@ -38,6 +39,7 @@ if /i "%~1"=="--watch-images-check" goto watch_images_check_arguments
 if /i "%~1"=="--watch-images" goto watch_images_arguments
 if /i "%~1"=="--watch-detail" goto watch_detail_arguments
 if /i "%~1"=="--monitor-diagnosis" goto diagnosis_arguments
+if /i "%~1"=="--test-list-recovery" goto list_recovery_arguments
 
 :parse_arguments
 if "%~1"=="" goto arguments_ready
@@ -107,6 +109,14 @@ if not "%~2"=="" exit /b 2
 set "CHECK_LABEL=watch candidate detail"
 set "WATCH_DETAIL=1"
 set "WATCH_RESULT=WATCH_DETAIL"
+set "WATCH_EXIT_CODE="
+goto new_log
+
+:list_recovery_arguments
+if not "%~2"=="" exit /b 2
+set "CHECK_LABEL=list recovery test"
+set "TEST_LIST_RECOVERY=1"
+set "WATCH_RESULT=TEST_LIST_RECOVERY"
 set "WATCH_EXIT_CODE="
 goto new_log
 
@@ -391,6 +401,7 @@ if "%WATCH_DETAIL%"=="1" >>"%LOG_FILE%" echo Inspect at most one pending post fr
 if "%WATCH_DETAIL%"=="1" goto check_project
 if "%MONITOR_DIAGNOSIS%"=="1" >>"%LOG_FILE%" echo Reading the saved list profile and the latest monitor review from local records.
 if "%MONITOR_DIAGNOSIS%"=="1" goto check_project
+if "%TEST_LIST_RECOVERY%"=="1" goto check_project
 if "%MONITOR_SAVE_BATCH%"=="0" if "%MONITOR_BATCH_FINISH%"=="0" if "%MONITOR_SAVE_TEST%"=="0" if "%MONITOR_FINISH%"=="0" if "%MONITOR%"=="0" if "%CANDIDATE_FINISH%"=="0" if "%CANDIDATE_SAVE_TEST%"=="0" if "%CANDIDATE_TEST%"=="0" if "%WATCH_TEST%"=="0" if "%READ_ONLY_LIST_INSPECTION%"=="0" if "%READ_ONLY_INSPECTION%"=="0" if "%SAVE_POST%"=="0" >>"%LOG_FILE%" echo This file contains setup output and the synthetic-image test result.
 if "%SAVE_POST%"=="1" >>"%LOG_FILE%" echo Single-post native image saving requires review in the dedicated Chrome app window.
 if "%RESUME_PREINPUT%"=="1" >>"%LOG_FILE%" echo Verified pre-input resume was explicitly requested. Generic native recovery will not run.
@@ -469,6 +480,7 @@ if "%MONITOR_RESUME_ONCE%"=="1" goto start_monitor_resume
 if "%WATCH_IMAGES_CHECK%"=="1" goto check_watch_images
 if "%WATCH_IMAGES%"=="1" goto start_watch_images
 if "%WATCH_DETAIL%"=="1" goto start_watch_detail
+if "%TEST_LIST_RECOVERY%"=="1" goto test_list_recovery
 if "%MONITOR_DIAGNOSIS%"=="1" goto read_monitor_diagnosis
 if "%MONITOR_SAVE_BATCH%"=="1" goto start_monitor_save_batch
 if "%MONITOR_BATCH_FINISH%"=="1" goto start_monitor_batch_finish
@@ -666,6 +678,14 @@ if not defined WATCH_EXIT_CODE set "WATCH_EXIT_CODE=1"
 start "" notepad.exe "%LOG_FILE%"
 exit /b %WATCH_EXIT_CODE%
 
+:test_list_recovery
+echo Checking the monitored list in background Chrome. The result TXT will open automatically.
+>>"%LOG_FILE%" echo STAGE: test_list_recovery
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor test-list-recovery --watch-root "%LOCALAPPDATA%\ImageMonitorWatch" >>"%LOG_FILE%" 2>&1
+set "WATCH_EXIT_CODE=%ERRORLEVEL%"
+>>"%LOG_FILE%" echo Test list recovery exit code: %WATCH_EXIT_CODE%
+goto finish_watch_result
+
 :read_monitor_diagnosis
 >>"%LOG_FILE%" echo STAGE: stored_list_diagnosis
 call :get_stored_list_diagnosis
@@ -775,6 +795,7 @@ if "%WATCH_IMAGES_CHECK%"=="1" goto watch_result_failed
 if "%WATCH_IMAGES%"=="1" goto watch_result_failed
 if "%WATCH_DETAIL%"=="1" goto watch_result_failed
 if "%MONITOR_DIAGNOSIS%"=="1" goto diagnosis_failed
+if "%TEST_LIST_RECOVERY%"=="1" goto watch_result_failed
 if "%MONITOR_SAVE_BATCH%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - MONITOR_BATCH_NATIVE_SAVE. No automatic retry or recovery was performed.
 if "%MONITOR_SAVE_BATCH%"=="1" >>"%LOG_FILE%" echo Send this TXT for diagnosis. Preserve the pending browser, attempt ledger, and all existing files.
 if "%MONITOR_BATCH_FINISH%"=="1" >>"%LOG_FILE%" echo RESULT: STOPPED - MONITOR_BATCH_VERIFICATION. Existing files and unresolved attempt records are preserved.

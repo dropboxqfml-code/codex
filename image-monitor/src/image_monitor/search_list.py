@@ -11,6 +11,7 @@ from datetime import datetime
 from urllib.parse import urljoin
 
 from image_monitor.dcinside import DCSnapshotError, validate_post_url
+from image_monitor.list_inspection_failure import list_snapshot_error
 from image_monitor.list_links import (
     LIST_PATHS as LIST_PATHS,
 )
@@ -88,7 +89,9 @@ def _public_text(value, limit):
         or len(value) > limit
         or any(_control(char) and char not in "\n\r\t" for char in value)
     ):
-        raise DCSnapshotError("Invalid bounded public text")
+        raise list_snapshot_error(
+            "snapshot_parse", "bounded_text_invalid", "Invalid bounded public text"
+        )
     return value or None
 
 
@@ -100,7 +103,9 @@ def _scope(target):
 def _count(raw, key, *, maximum=1_000_000):
     value = raw.get(key)
     if type(value) is not int or not 0 <= value <= maximum:
-        raise DCSnapshotError("Invalid list observation count")
+        raise list_snapshot_error(
+            "snapshot_parse", "count_invalid", "Invalid list observation count"
+        )
     return value
 
 
@@ -223,7 +228,10 @@ def _absolute_link(value, base):
         or re.search(r"%(?![0-9a-fA-F]{2})", value)
     ):
         raise DCSnapshotError("Invalid observed link")
-    return urljoin(base, value)
+    try:
+        return urljoin(base, value)
+    except ValueError as error:
+        raise DCSnapshotError("Invalid observed link") from error
 
 
 def _link_scheme(value):
@@ -261,10 +269,14 @@ def _row_evidence(raw, row_order, reason):
         }
     links = raw.get("links")
     if not isinstance(links, list) or len(links) > MAX_LINKS_PER_ROW:
-        raise DCSnapshotError("Observed row links exceed inspection limit")
+        raise list_snapshot_error(
+            "snapshot_parse", "row_link_limit", "Observed row links exceed inspection limit"
+        )
     total = _count(raw, "link_total")
     if total != len(links):
-        raise DCSnapshotError("Observed row links exceed inspection limit")
+        raise list_snapshot_error(
+            "snapshot_parse", "row_link_limit", "Observed row links exceed inspection limit"
+        )
     counts["title_links"] = total
     # Extra owned anchors, including reply links, are relevant to whether an
     # excluded row could still identify an actual post.
@@ -275,11 +287,15 @@ def _row_evidence(raw, row_order, reason):
             or len(links) > MAX_LINKS_PER_ROW
             or _count(raw, "all_link_total") != len(links)
         ):
-            raise DCSnapshotError("Observed row links exceed inspection limit")
+            raise list_snapshot_error(
+                "snapshot_parse", "row_link_limit", "Observed row links exceed inspection limit"
+            )
     schemes = {}
     for link in links:
         if not isinstance(link, dict):
-            raise DCSnapshotError("Invalid observed row link")
+            raise list_snapshot_error(
+                "snapshot_parse", "row_evidence_invalid", "Invalid observed row link"
+            )
         scheme = _link_scheme(link.get("href"))
         schemes[scheme] = schemes.get(scheme, 0) + 1
     return {
@@ -294,10 +310,12 @@ def _row_evidence(raw, row_order, reason):
 
 def _ordinary_row(raw, target, row_order):
     if not isinstance(raw, dict):
-        raise DCSnapshotError("Invalid observed row")
+        raise list_snapshot_error("snapshot_parse", "row_evidence_invalid", "Invalid observed row")
     for key in ("is_ad", "is_pinned"):
         if type(raw.get(key)) is not bool:
-            raise DCSnapshotError("Invalid row classification evidence")
+            raise list_snapshot_error(
+                "snapshot_parse", "row_evidence_invalid", "Invalid row classification evidence"
+            )
     if raw["is_ad"]:
         return None, "ad"
     if raw["is_pinned"]:
@@ -340,15 +358,21 @@ def _ordinary_row(raw, target, row_order):
         return None, "ambiguous_row_fields"
     links = raw.get("links")
     if not isinstance(links, list) or len(links) > MAX_LINKS_PER_ROW:
-        raise DCSnapshotError("Observed row links exceed inspection limit")
+        raise list_snapshot_error(
+            "snapshot_parse", "row_link_limit", "Observed row links exceed inspection limit"
+        )
     if _count(raw, "link_total") != len(links):
-        raise DCSnapshotError("Observed row links exceed inspection limit")
+        raise list_snapshot_error(
+            "snapshot_parse", "row_link_limit", "Observed row links exceed inspection limit"
+        )
     candidates = []
     invalid = False
     wrong_gallery = False
     for link in links:
         if not isinstance(link, dict):
-            raise DCSnapshotError("Invalid observed row link")
+            raise list_snapshot_error(
+                "snapshot_parse", "row_evidence_invalid", "Invalid observed row link"
+            )
         try:
             post = validate_post_url(_absolute_link(link.get("href"), target["canonical_url"]))
         except DCSnapshotError:
@@ -525,17 +549,37 @@ def parse_list_snapshot(
     target = validate_list_url(expected_url)
     aware(observed_at)
     if layout_status not in {"unverified", "fixture_validated"} or not isinstance(raw, dict):
-        raise DCSnapshotError("Invalid list observation options")
+        raise list_snapshot_error(
+            "snapshot_parse", "snapshot_shape_invalid", "Invalid list observation options"
+        )
     diagnostics = _safe_diagnostics(raw.get("diagnostics"))
-    current = validate_list_url(raw.get("document_url"))
+    try:
+        current = validate_list_url(raw.get("document_url"))
+    except DCSnapshotError as error:
+        raise list_snapshot_error(
+            "snapshot_parse",
+            "snapshot_url_invalid",
+            "Invalid observed list URL",
+            diagnostics=diagnostics,
+        ) from error
     if current["canonical_url"] != target["canonical_url"]:
-        raise DCSnapshotError("Search identity changed during observation", diagnostics=diagnostics)
+        raise list_snapshot_error(
+            "snapshot_parse",
+            "snapshot_url_mismatch",
+            "Search identity changed during observation",
+            diagnostics=diagnostics,
+        )
     list_count = _count(raw, "list_count")
     container_count = (
         _count(raw, "list_container_count") if "list_container_count" in raw else list_count
     )
     if list_count > container_count:
-        raise DCSnapshotError("Invalid selected list count", diagnostics=diagnostics)
+        raise list_snapshot_error(
+            "snapshot_parse",
+            "selected_count_invalid",
+            "Invalid selected list count",
+            diagnostics=diagnostics,
+        )
     row_total = _count(raw, "row_total")
     pagination_total = _count(raw, "pagination_total")
     empty_count = _count(raw, "empty_marker_count")
@@ -548,7 +592,19 @@ def parse_list_snapshot(
         or pagination_total != len(pagination_raw)
         or pagination_total > MAX_PAGINATION
     ):
-        raise DCSnapshotError("List observation exceeds inspection limit", diagnostics=diagnostics)
+        reason = (
+            "row_limit"
+            if row_total > MAX_ROWS
+            else "pagination_limit"
+            if pagination_total > MAX_PAGINATION
+            else "inventory_mismatch"
+        )
+        raise list_snapshot_error(
+            "snapshot_parse",
+            reason,
+            "List observation exceeds inspection limit",
+            diagnostics=diagnostics,
+        )
     if list_count != 1 and (row_total or empty_count):
         # Counts can still explain an unknown/ambiguous page, but never expose its rows.
         rows_raw = []
@@ -570,7 +626,9 @@ def parse_list_snapshot(
     for link_order, entry in enumerate(pagination_raw, 1):
         reason = None
         if not isinstance(entry, dict):
-            raise DCSnapshotError("Invalid pagination observation")
+            raise list_snapshot_error(
+                "snapshot_parse", "pagination_invalid", "Invalid pagination observation"
+            )
         try:
             link_url = _absolute_link(entry.get("href"), target["canonical_url"])
             candidate = validate_list_url(link_url)
@@ -724,7 +782,9 @@ def parse_list_snapshot(
 LIST_DOM_JS = r"""(options) => {
  const selectors=options.selectors;
  const deadline=performance.now()+options.timeoutMs;
- const budget=()=>{if(performance.now()>deadline)throw new Error('List DOM budget exhausted');};
+ const expired=Symbol();
+ const budget=()=>{if(performance.now()>deadline)throw expired;};
+ try {
  const visible=node=>{
   if(!node||!node.isConnected||![...node.getClientRects()].some(r=>r.width>0&&r.height>0))
    return false;
@@ -745,7 +805,10 @@ LIST_DOM_JS = r"""(options) => {
    if(visible(child.parentElement)&&[...range.getClientRects()].some(r=>r.width>0&&r.height>0))
     parts.push(child.textContent);
   }
-  return parts.join('').trim().slice(0,limit)||null;
+  const value=parts.join('').trim();
+  // Keep both UTF-16 units of a supplementary character together at the cap.
+  const end=value.codePointAt(limit-1)>0xffff?limit-1:limit;
+  return value.slice(0,end)||null;
  };
  const shape=value=>{try{const u=new URL(value,document.baseURI);return {
   scheme:u.protocol.replace(':',''),host:u.hostname,
@@ -847,6 +910,10 @@ LIST_DOM_JS = r"""(options) => {
   }),
   pagination:pageLinks.slice(0,options.maxPagination).map(link=>({
    href:link.getAttribute('href'),label_kind:navigationKind(link)}))};
+ } catch(error) {
+   if(error===expired)return {list_dom_budget_exceeded:true};
+   throw error;
+ }
 }"""
 
 
@@ -860,12 +927,21 @@ def inspect_list(
         raise DCSnapshotError("Invalid list inspection timeout")
     deadline = time.monotonic() + timeout_ms / 1000
 
-    def identity():
-        current = validate_list_url(page.url)
+    def identity(phase):
+        try:
+            current = validate_list_url(page.url)
+        except DCSnapshotError as error:
+            raise list_snapshot_error(
+                "document_identity", phase + "_url_invalid", "Invalid observed list URL"
+            ) from error
         if current["canonical_url"] != target["canonical_url"]:
-            raise DCSnapshotError("Search identity changed during observation")
+            raise list_snapshot_error(
+                "document_identity",
+                phase + "_url_mismatch",
+                "Search identity changed during observation",
+            )
 
-    identity()
+    identity("before_dom")
     try:
         # This single DOM evaluation neither waits for nor accesses resources.
         raw = page.evaluate(
@@ -879,11 +955,24 @@ def inspect_list(
                 "timeoutMs": timeout_ms,
             },
         )
-        identity()
-        if time.monotonic() > deadline:
-            raise DCSnapshotError("List DOM observation exceeded inspection budget")
+    except Exception as error:
+        raise list_snapshot_error(
+            "dom_read", "dom_evaluation_failed", "Read-only list DOM observation failed"
+        ) from error
+    identity("after_dom")
+    if time.monotonic() > deadline or (
+        isinstance(raw, dict)
+        and set(raw) == {"list_dom_budget_exceeded"}
+        and raw["list_dom_budget_exceeded"] is True
+    ):
+        raise list_snapshot_error(
+            "dom_read", "dom_budget_exceeded", "List DOM observation exceeded inspection budget"
+        )
+    try:
         return parse_list_snapshot(raw, expected_url=expected_url, observed_at=observed_at)
     except DCSnapshotError:
         raise
     except Exception as error:
-        raise DCSnapshotError("Read-only list DOM observation failed") from error
+        raise list_snapshot_error(
+            "snapshot_parse", "parse_failed", "Read-only list DOM observation failed"
+        ) from error

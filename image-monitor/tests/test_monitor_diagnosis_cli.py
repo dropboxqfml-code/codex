@@ -304,6 +304,11 @@ def test_watch_detail_opens_one_result_and_preserves_the_cli_exit_code(tmp_path,
             'if "%AUTO_MONITOR%"=="1" goto start_auto_monitor',
             "auto_monitor",
         ),
+        (
+            "TEST_LIST_RECOVERY.cmd",
+            'if "%TEST_LIST_RECOVERY%"=="1" goto test_list_recovery',
+            "test_list_recovery",
+        ),
     ],
 )
 @pytest.mark.parametrize("code", [0, 2])
@@ -341,6 +346,8 @@ def test_watch_command_uses_exact_roots_and_opens_one_result(
     content = log.read_text("utf-8")
     if stage == "monitor_resume_once":
         expected_args = ["--work-root", str(appdata / "ImageMonitorWatch")]
+    elif stage == "test_list_recovery":
+        expected_args = ["--watch-root", str(appdata / "ImageMonitorWatch")]
     elif stage in {"auto_collect_once", "auto_monitor"}:
         expected_args = [
             "--watch-root",
@@ -384,6 +391,7 @@ def test_watch_command_uses_exact_roots_and_opens_one_result(
         ("RUN_AUTO_COLLECT.cmd", "AUTO_COLLECT_ONCE"),
         ("RUN_AUTO_MONITOR.cmd", "AUTO_MONITOR"),
         ("TEST_AUTO_MONITOR.cmd", "AUTO_MONITOR"),
+        ("TEST_LIST_RECOVERY.cmd", "TEST_LIST_RECOVERY"),
     ],
 )
 def test_incomplete_watch_bundle_opens_one_setup_error_result(tmp_path, wrapper_name, stage):

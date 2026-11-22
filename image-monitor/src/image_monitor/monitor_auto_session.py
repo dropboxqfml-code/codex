@@ -14,18 +14,19 @@ from image_monitor.monitor_collect import collect_session_turn, list_checks_duri
 from image_monitor.monitor_gap_report import checked_gap_route, checked_window_starts
 from image_monitor.monitor_list_history import previous_list_checks
 from image_monitor.monitor_list_review import previous_list_review, public_list_review
-from image_monitor.monitor_save_ledger import _roots
+from image_monitor.monitor_save_ledger import _root, _roots
 from image_monitor.monitor_settings import load_monitor_settings
 from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON, PARTIAL_RETRY_REASON
 from image_monitor.post_worker import share_setup_diagnostics
+from image_monitor.queue import QueueStore
 from image_monitor.watch_history import (
     HEAD_JOIN_METHODS,
     HISTORICAL_ROUTE_REASONS,
     MAX_HISTORICAL_PAGE,
 )
-from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
-from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
-from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE
+from image_monitor.watch_lock import WatchRunBusy, watch_list_lock, watch_run_lock
+from image_monitor.watch_runtime import DEFAULT_SCOPE, _Clock, _stamp, _stored_time
+from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE, WatchStore
 
 _FINISHED_COLLECTIONS = {
     "monitor_collect_no_candidates",
@@ -207,6 +208,14 @@ def _verified_list(report, turn, finished, interval):
     return due
 
 
+def _record_inspection_retry(report, turn):
+    if turn.get("reason") == "inspection_retry_due" and (
+        review := public_list_review(turn.get("review"))
+    ):
+        report["inspection_retries_scheduled"] += 1
+        report["last_inspection_retry"] = review
+
+
 class _NativeSaveLists:
     """During a local save, keep at most one pending collection from the newest list."""
 
@@ -233,6 +242,9 @@ class _NativeSaveLists:
                             end.wait(min(remaining, 0.5))
                             continue
                         started = self.clock.now()
+                        if self.terminal:
+                            _record_inspection_retry(self.report, self.terminal[0])
+                            self.terminal = None
                         turn = self.scan_runner(
                             self.root,
                             clock=self.clock,
@@ -300,6 +312,7 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
     due = None
     phase = "scanning"
     retried_wait = False
+    inspection_retry_pending = False
     pending_scan = None
     while True:
         if pending_scan is None and stop_requested(should_stop):
@@ -351,7 +364,9 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
         report["next_eligible_at"] = _stamp(due) if due is not None else None
         if phase == "scanning":
             report["last_list"] = {"status": status, "reason": reason}
-            if status == "review" and (review := public_list_review(turn.get("review"))):
+            if status in {"review", "waiting"} and (
+                review := public_list_review(turn.get("review"))
+            ):
                 report["last_list"]["review"] = review
         else:
             _record_collection(report, turn)
@@ -377,18 +392,28 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
             # while this call finishes can be retried without a stale-deadline spin.
             if due is None or due <= turn_started_at:
                 return _finish(report, "review", "invalid_wait_deadline")
+            if phase == "scanning" and reason == "inspection_retry_due":
+                if inspection_retry_pending:
+                    report["last_list"].update(status="review", reason="list_scan_requires_review")
+                    report["next_eligible_at"] = None
+                    return _finish(report, "review", "list_scan_requires_review")
+                inspection_retry_pending = True
+                _record_inspection_retry(report, turn)
             if phase == "scanning" or (
                 turn["new_details_checked"] == 0 and turn["native_save_tasks_started"] == 0
             ):
                 # One bounded trial can wait through an ordinary cooldown. A
                 # continuing rate limit or moving deadline gets a result now.
-                if report["max_cycles"] is not None and (retried_wait or reason == "service_wait"):
+                if report["max_cycles"] is not None and (
+                    reason == "service_wait" or (retried_wait and reason != "inspection_retry_due")
+                ):
                     return _finish(report, "waiting", reason)
                 retried_wait = True
                 continue
             # A detail/navigation attempt already spent this list's budget.
             # Its candidate is durable and can be considered after the next scan.
         elif phase == "scanning" and status in {"complete", "partial", "baseline"}:
+            inspection_retry_pending = False
             if closed is not True:
                 return _finish(report, "review", "owned_browser_cleanup_unconfirmed")
             try:
@@ -396,7 +421,7 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
             except (ValueError, KeyError, TypeError):
                 return _finish(report, "review", "invalid_list_page_count")
             report["next_eligible_at"] = _stamp(list_due)
-            if status != "baseline":
+            if status != "baseline" and report["mode"] == "automatic_monitor_session":
                 phase = "collecting"
                 retried_wait = False
                 due = None  # The collector checks its own shared service deadline.
@@ -440,12 +465,13 @@ def run_auto_monitor(
     on_progress=None,
     scan_runner=run_auto_discovery,
     collect_runner=collect_session_turn,
+    list_only=False,
 ):
     """Alternate list checks and bounded collection turns until stopped or the limit is reached."""
     report = {
         "schema_version": 1,
         "program_version": PUBLIC_VERSION,
-        "mode": "automatic_monitor_session",
+        "mode": "list_recovery_test" if list_only else "automatic_monitor_session",
         "status": "auto_monitor_running",
         "phase": "starting",
         "reason": None,
@@ -454,6 +480,7 @@ def run_auto_monitor(
         "cycles_completed": 0,
         "list_checks": 0,
         "list_checks_during_save": 0,
+        "inspection_retries_scheduled": 0,
         "partial_list_checks": 0,
         "gap_followup_checks": 0,
         "gap_followups_completed": 0,
@@ -478,10 +505,24 @@ def run_auto_monitor(
         _progress(report, "starting", on_progress)
         if stop_requested(should_stop):
             return _finish(report, "stopped", "requested_stop")
-        roots = _roots(watch_root, legacy_root, work_root)
-        roots[0].mkdir(parents=True, exist_ok=True)
+        if list_only:
+            if max_cycles != 1:
+                return _finish(report, "review", "invalid_cycle_limit")
+            roots = (_root(watch_root),)
+        else:
+            roots = _roots(watch_root, legacy_root, work_root)
+            roots[0].mkdir(parents=True, exist_ok=True)
         database = _plain_path(roots[0] / "watch.sqlite")
+        if list_only and not database.is_file():
+            return _finish(report, "review", "watch_database_missing")
         with watch_run_lock(database, MONITOR_SCOPE, purpose="monitor"):
+            if list_only:
+                with (
+                    watch_list_lock(database, DEFAULT_SCOPE),
+                    QueueStore(database, read_only=True) as queue,
+                ):
+                    if WatchStore(queue).get_state(MONITOR_SCOPE)["baseline"] is None:
+                        return _finish(report, "review", "no_saved_baseline")
             report["previous_list_checks"] = previous_list_checks(roots[0])
             if review := previous_list_review(roots[0]):
                 report["previous_list_review"] = review

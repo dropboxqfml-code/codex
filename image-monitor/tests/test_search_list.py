@@ -628,6 +628,21 @@ def test_pagination_candidates_require_same_exact_scope_and_validated_absolute_u
     assert not parse(raw, layout_status="fixture_validated")["end_of_results"]
 
 
+def test_malformed_observed_host_is_rejected_without_discarding_other_list_rows():
+    invalid = "https://[broken-host/"
+    raw = raw_snapshot(
+        [profile_row(102), row("101", links=[{"href": invalid, "text_raw": "unused"}])],
+        pagination_total=2,
+        pagination=[{"href": invalid}, {"href": URL.replace("page=1", "page=2")}],
+    )
+    snapshot = parse(raw)
+    assert [item["post_id"] for item in snapshot["rows"]] == ["102"]
+    assert exclusion_pairs(snapshot) == [{"row_order": 2, "reason": "invalid_post_link"}]
+    assert snapshot["rows_complete"] is False
+    assert [link["page"] for link in snapshot["pagination_candidates"]] == [2]
+    assert snapshot["counts"]["pagination_excluded"] == {"invalid_url": 1}
+
+
 def test_rejected_pagination_links_prevent_fixture_completeness():
     raw = raw_snapshot(
         fixture_end_of_results=True,
@@ -936,6 +951,15 @@ def fixture_table(*, ordinary=True, count=1, start=100, table_id="", style=""):
     if style:
         attributes += f' style="{style}"'
     return f'<table class="gall_list"{attributes}><tbody>' + "".join(rows) + "</tbody></table>"
+
+
+@pytest.mark.parametrize("prefix_length", [998, 999])
+def test_browser_keeps_complete_unicode_characters_at_the_title_limit(local_page, prefix_length):
+    load, _requests = local_page
+    prefix = "가" * prefix_length
+    page = load(fixture_table().replace("fixture title", prefix + "😀끝"))
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert snapshot["rows"][0]["title"] == (prefix + "😀" if prefix_length == 998 else prefix)
 
 
 @pytest.mark.parametrize("main_first", [True, False])

@@ -6,6 +6,7 @@ from pathlib import Path
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_finish import CandidateFinishError, _read_json, _same_json, _uuid
 from image_monitor.candidate_save_selection import _database_path
+from image_monitor.list_inspection_failure import inspection_page_numbers, public_inspection_failure
 from image_monitor.monitor_diagnosis import MAX_DIAGNOSIS_BYTES
 from image_monitor.monitor_gap_report import public_recovery_pages
 from image_monitor.queue import QueueStore
@@ -154,6 +155,34 @@ def public_list_review(value):
                     if fields[key] is not None
                 }
             )
+    snapshots = value.get("snapshot_page_numbers")
+    if (
+        numbers
+        and isinstance(pages, list)
+        and len(pages) + 1 == len(numbers)
+        and result.get("watch_status") == "watch_test_failed"
+        and result.get("transport") == "inspection_error"
+        and result.get("error_type") == "DCSnapshotError"
+        and 200 <= result.get("http_status", 0) < 300
+        and isinstance(snapshots, list)
+        and len(snapshots) == len(pages)
+        and all(type(number) is int for number in snapshots)
+        and snapshots == numbers[:-1]
+        and type(value.get("failed_page")) is int
+        and value["failed_page"] == numbers[-1]
+        and type(value.get("failed_visit")) is int
+        and value["failed_visit"] == len(numbers)
+        and all(
+            isinstance(page, dict) and type(page.get("page")) is int and page["page"] == number
+            for page, number in zip(pages, numbers, strict=False)
+        )
+    ):
+        result.update(
+            failed_page=numbers[-1], failed_visit=len(numbers), snapshot_page_numbers=numbers[:-1]
+        )
+        failure = public_inspection_failure(value.get("inspection_failure"))
+        if failure and failure["visit"] == len(numbers) and failure["page"] == numbers[-1]:
+            result["inspection_failure"] = failure
     return result
 
 
@@ -288,6 +317,17 @@ def _bound_review(database, queue, scan, raw, stage):
         report.get("new_candidates"), added
     ):
         return None
+    numbers = inspection_page_numbers(outcome)
+    position = {}
+    if numbers is None:
+        numbers = _route_numbers(outcome)
+    elif summary.get("recovery_page_numbers", numbers) == numbers:
+        # All visits returned headers, but the final visit has no DOM snapshot.
+        position.update(
+            failed_visit=len(numbers), failed_page=numbers[-1], snapshot_page_numbers=numbers[:-1]
+        )
+        if "inspection_failure" in summary:
+            position["inspection_failure"] = summary["inspection_failure"]
     return public_list_review(
         {
             "stage": stage,
@@ -300,8 +340,9 @@ def _bound_review(database, queue, scan, raw, stage):
             "http_status": outcome.get("http_status"),
             "gap_reason": scan["gap_reason"],
             "planner_issue": result.get("planner_issue"),
-            "visited_page_numbers": _route_numbers(outcome),
+            "visited_page_numbers": numbers,
             "pages": summary["page_checks"],
+            **position,
         }
     )
 

@@ -547,3 +547,53 @@ def test_nonboolean_stop_callback_result_is_rejected_before_navigation(browser_s
         with pytest.raises(ValueError, match="boolean"):
             owned.scan(SCOPE, NOW)
     browser_session[3].goto.assert_not_called()
+
+
+@pytest.mark.parametrize("sample_name", ["initial", "settled"])
+def test_inspection_failure_keeps_exact_sample_and_visit_without_navigation_retry(
+    browser_session, sample_name
+):
+    from image_monitor.list_inspection_failure import list_snapshot_error
+
+    page, _, inspect = browser_session[3:6]
+    error = list_snapshot_error("dom_read", "dom_budget_exceeded", "private detail")
+    prefix = [snapshot(links=[PAGE_TWO])]
+    if sample_name == "settled":
+        prefix.append(incomplete_page() | {"url": PAGE_TWO, "page": 2})
+    inspect.side_effect = [*prefix, error]
+    with backend.HeadlessWatchBrowser(now=lambda: NOW) as owned:
+        result = owned.scan(SCOPE, NOW)
+    assert result["inspection_failure"] == {
+        "stage": "dom_read",
+        "reason": "dom_budget_exceeded",
+        "sample": sample_name,
+        "visit": 2,
+        "page": 2,
+    }
+    assert page.goto.call_count == 2
+    assert inspect.call_count == (2 if sample_name == "initial" else 3)
+    assert "private detail" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("same_url", [True, False])
+def test_replaced_document_cannot_certify_budget_expiry(browser_session, same_url):
+    from image_monitor.list_inspection_failure import list_snapshot_error
+
+    page, _, inspect = browser_session[3:6]
+    page.url = PAGE_ONE if same_url else PAGE_TWO
+
+    def replaced(*_, **__):
+        page.on.call_args.args[1](page.main_frame)
+        raise list_snapshot_error("dom_read", "dom_budget_exceeded", "private timeout")
+
+    inspect.side_effect = replaced
+    with backend.HeadlessWatchBrowser(now=lambda: NOW) as owned:
+        result = owned.scan(SCOPE, NOW)
+    assert result["inspection_failure"] == {
+        "stage": "document_settle",
+        "reason": "same_url_document_replaced" if same_url else "document_replaced",
+        "sample": "initial",
+        "visit": 1,
+        "page": 1,
+    }
+    assert page.goto.call_count == inspect.call_count == 1

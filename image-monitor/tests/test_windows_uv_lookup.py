@@ -167,6 +167,7 @@ def test_unknown_arguments_stop_before_setup_or_lookup(tmp_path, arguments):
         ("RUN_AUTO_COLLECT.cmd", "--auto-collect-once"),
         ("RUN_AUTO_MONITOR.cmd", "--auto-monitor"),
         ("TEST_AUTO_MONITOR.cmd", "--test-auto-monitor"),
+        ("TEST_LIST_RECOVERY.cmd", "--test-list-recovery"),
         ("RUN_POST_SAVE_TEST.cmd", "--save-post --chrome"),
         ("RETRY_POST_SAVE_TEST.cmd", "--save-post --chrome --resume-preinput"),
     ],

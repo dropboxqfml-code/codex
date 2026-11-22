@@ -42,7 +42,7 @@ def _describe_list_check(check):
     described = check.copy()
     if "review" in described:
         review = describe_list_review(described.pop("review"))
-        if check.get("status") == "review" and review:
+        if check.get("status") in {"waiting", "review"} and review:
             described["review"] = review
     recovery = described.pop("recovery_status", None)
     described.pop("recovery_status_ko", None)
@@ -68,10 +68,11 @@ def _describe_list_check(check):
 
 def _describe_result(report):
     result = report.copy()
-    if "previous_list_review" in result:
-        review = describe_list_review(result.pop("previous_list_review"))
-        if review:
-            result["previous_list_review"] = review
+    for key in ("previous_list_review", "last_inspection_retry"):
+        if key in result:
+            review = describe_list_review(result.pop(key))
+            if review:
+                result[key] = review
     if "last_list" in report:
         result["last_list"] = _describe_list_check(report["last_list"])
     for key in ("previous_list_checks", "recent_list_checks"):
@@ -121,6 +122,8 @@ def _show_progress(report, stream):
         f"{messages[phase]} | 완료 {report['cycles_completed']}주기 · "
         f"게시글 {report['posts_saved']}건 · 검증 {report['files_verified']}장"
     )
+    if report.get("mode") == "list_recovery_test":
+        message = "목록 복구 확인 시작" if phase == "starting" else messages[phase]
     if report.get("previously_verified_files"):
         previous = report["previously_verified_files"]
         new = report["newly_saved_files"]
@@ -138,6 +141,10 @@ def _show_progress(report, stream):
             "recovery_crossed_search_range"
         ):
             message += " · 다음 검색 구간 진입"
+    if phase == "waiting" and last_list and last_list.get("reason") == "inspection_retry_due":
+        page = (last_list.get("review") or {}).get("failed_page")
+        if type(page) is int:
+            message += f" | {page}쪽 읽기 시간 초과 · 목록 한 번 재확인 예정"
     due = report.get("next_eligible_at")
     if phase == "waiting" and due:
         local_time = datetime.fromisoformat(due).astimezone()
@@ -145,7 +152,7 @@ def _show_progress(report, stream):
     print(message, file=stream, flush=True)
 
 
-def run_auto_monitor_cli(watch_root, legacy_root, work_root, max_cycles):
+def run_auto_monitor_cli(watch_root, legacy_root, work_root, max_cycles, *, list_only=False):
     try:
         from image_monitor.monitor_auto_session import auto_monitor_exit_code, run_auto_monitor
 
@@ -164,6 +171,7 @@ def run_auto_monitor_cli(watch_root, legacy_root, work_root, max_cycles):
                 max_cycles=max_cycles,
                 should_stop=should_stop,
                 on_progress=lambda snapshot: _show_progress(snapshot, progress),
+                **({"list_only": True} if list_only else {}),
             )
             code = auto_monitor_exit_code(report)
     except (KeyboardInterrupt, Exception) as error:

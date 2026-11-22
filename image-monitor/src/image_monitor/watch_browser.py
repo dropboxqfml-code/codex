@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from image_monitor.dcinside import DCSnapshotError
 from image_monitor.list_inspection import _adjacent_latest_link
+from image_monitor.list_inspection_failure import bound_inspection_failure, list_snapshot_error
 from image_monitor.native_probe import browser_executable
 from image_monitor.native_ui import require_windows
 from image_monitor.paths import aware
@@ -154,14 +155,28 @@ class HeadlessWatchBrowser:
     def _observation_time(self, scan_time: datetime) -> datetime:
         observed = aware(self._now()).astimezone(UTC)
         if not scan_time <= observed <= scan_time + timedelta(seconds=120):
-            raise DCSnapshotError("Page observation is outside the bounded scan window")
+            raise list_snapshot_error(
+                "observation_clock",
+                "outside_scan_window",
+                "Page observation is outside the bounded scan window",
+            )
         return observed
 
     @staticmethod
-    def _failure(result: dict, error: Exception, status: str) -> dict:
+    def _failure(result: dict, error: Exception, status: str, *, page_number=None) -> dict:
         result.update(status=status, error_type=type(error).__name__, error_code=_error_code(error))
         if isinstance(error, DCSnapshotError):
             result["diagnostics"] = _safe_diagnostics(error.diagnostics)
+            failure = {
+                "stage": getattr(error, "inspection_stage", None),
+                "reason": getattr(error, "inspection_reason", None),
+                "sample": getattr(error, "inspection_sample", None),
+                "visit": len(result["navigation"]),
+                "page": page_number,
+            }
+            checked = bound_inspection_failure(result | {"inspection_failure": failure})
+            if checked is not None:
+                result["inspection_failure"] = checked
         return result
 
     def _stop_requested(self):
@@ -201,6 +216,7 @@ class HeadlessWatchBrowser:
     def _inspect_document(self, url, scan_time, *, can_settle):
         page = self._page
         document_changed = False
+        sample_name = "initial"
 
         def navigated(frame):
             nonlocal document_changed
@@ -231,6 +247,7 @@ class HeadlessWatchBrowser:
             ):
                 page.wait_for_timeout(1000)
                 if not document_changed and not self._stop_requested():
+                    sample_name = "settled"
                     snapshot = sample(750)
                     snapshot["selector_evidence"] = dict(
                         snapshot["selector_evidence"], settle_initial_issue=issue
@@ -238,6 +255,17 @@ class HeadlessWatchBrowser:
             if document_changed:
                 raise DCSnapshotError("Search document changed during observation")
             return snapshot
+        except DCSnapshotError as error:
+            if document_changed:
+                # Even a timeout on the same URL cannot identify the replaced document.
+                reason = "same_url_document_replaced" if page.url == url else "document_replaced"
+                replaced = list_snapshot_error(
+                    "document_settle", reason, "Search document changed during observation"
+                )
+                replaced.inspection_sample = sample_name
+                raise replaced from error
+            error.inspection_sample = sample_name
+            raise
         finally:
             page.remove_listener("framenavigated", navigated)
 
@@ -403,6 +431,6 @@ class HeadlessWatchBrowser:
                 # Let the runtime persist the actual unverified observation and its gap.
                 break
             except Exception as error:
-                return self._failure(result, error, "inspection_error")
+                return self._failure(result, error, "inspection_error", page_number=target["page"])
             break
         return result

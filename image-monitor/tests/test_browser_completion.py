@@ -235,9 +235,9 @@ def automatic_reader(owned):
     )
 
 
-def focus_controls(owned):
+def focus_controls(owned, attempts=1):
     frame_node, hint = MagicMock(), MagicMock()
-    owned.source.evaluate_handle.side_effect = [frame_node, hint]
+    owned.source.evaluate_handle.side_effect = [*([frame_node] * attempts), hint]
     frame = frame_node.as_element.return_value.content_frame.return_value
     frame.url = "about:srcdoc"
     frame_node.evaluate.return_value = True
@@ -265,7 +265,7 @@ def test_settles_visible_source_focus_before_creating_any_reader(owned_browser):
 
 def test_focus_hint_is_removed_and_model_still_gets_its_bounded_initialization(owned_browser):
     owned = owned_browser
-    frame_node, button, hint = focus_controls(owned)
+    frame_node, button, hint = focus_controls(owned, attempts=2)
     button.click.side_effect = TimeoutError("Frame is covered")
     owned.source.evaluate.side_effect = lambda script: (
         script != "document.hasFocus()" or owned.clock.now >= 5
@@ -275,9 +275,9 @@ def test_focus_hint_is_removed_and_model_still_gets_its_bounded_initialization(o
         automatic_reader(owned).__enter__()
     assert completion_setup_reason(str(exc.value)) == "downloads_target_missing"
     assert 13 <= owned.clock.now < 13.3
-    assert button.click.call_args_list == [call(trial=True, timeout=400)]
+    assert button.click.call_args_list == [call(trial=True, timeout=1_500)] * 2
     frame_node.evaluate.assert_called_with("node => node.remove()")
-    frame_node.dispose.assert_called_once()
+    assert frame_node.dispose.call_count == 2
     hint.evaluate.assert_called_once_with("node => node.remove()")
     hint.dispose.assert_called_once()
     owned.source.bring_to_front.assert_not_called()
@@ -296,7 +296,7 @@ def test_foreign_window_during_initial_focus_wait_cannot_open_reader(owned_brows
 
 def test_blurred_visible_document_cannot_open_reader_after_prompt_timeout(owned_browser):
     owned = owned_browser
-    frame_node, button, hint = focus_controls(owned)
+    frame_node, button, hint = focus_controls(owned, attempts=2)
     frame_node.evaluate.return_value = False  # No longer the original sandboxed frame.
     owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()"
     with pytest.raises(BrowserCompletionError, match="did not have focus") as exc:
@@ -307,7 +307,7 @@ def test_blurred_visible_document_cannot_open_reader_after_prompt_timeout(owned_
     assert exc.value.setup_focus_recovery == "waiting_for_user"
     assert exc.value.setup_focus_loss == "first"
     button.click.assert_not_called()
-    frame_node.dispose.assert_called_once()
+    assert frame_node.dispose.call_count == 2
     hint.evaluate.assert_called_once_with("node => node.remove()")
     hint.dispose.assert_called_once()
     owned.source.bring_to_front.assert_not_called()
@@ -361,7 +361,7 @@ def test_each_setup_phase_can_restore_focus_after_an_earlier_restoration(
         assert exc.value.setup_focus_loss == "repeated"
         hint.dispose.assert_called_once()
     for button, node in zip(buttons, nodes, strict=True):
-        assert button.click.call_args_list == [call(trial=True, timeout=400), call(timeout=400)]
+        assert button.click.call_args_list == [call(trial=True, timeout=1_500), call(timeout=1_500)]
         node.evaluate.assert_called_with("node => node.remove()")
         node.dispose.assert_called_once()
     owned.source.bring_to_front.assert_not_called()
@@ -379,9 +379,61 @@ def test_ownership_changed_during_actionability_prevents_dispatch(owned_browser)
     button.click.side_effect = change_foreground
     with pytest.raises(BrowserCompletionError, match="lost foreground"):
         automatic_reader(owned).__enter__()
-    assert button.click.call_args_list == [call(trial=True, timeout=400)]
+    assert button.click.call_args_list == [call(trial=True, timeout=1_500)]
     node.dispose.assert_called_once()
     hint.evaluate.assert_not_called()
+    owned.session.send.assert_not_called()
+
+
+@pytest.mark.parametrize("ambiguous_dispatch", [True, False], ids=["dispatch_timeout", "restored"])
+def test_transient_focus_failures_allow_only_pre_dispatch_retries(
+    owned_browser, ambiguous_dispatch
+):
+    owned = owned_browser
+    reader = automatic_reader(owned)
+    expected_trials = 1 if ambiguous_dispatch else 2
+    node, button, hint = focus_controls(owned, attempts=expected_trials)
+    focused = False
+    trials = 0
+    dispatches = 0
+
+    def transient(trial=False, **kwargs):
+        nonlocal focused, trials, dispatches
+        if trial:
+            trials += 1
+            if trials == 1 and not ambiguous_dispatch:
+                raise TimeoutError("The iframe is still becoming actionable")
+        else:
+            dispatches += 1
+            if ambiguous_dispatch:
+                raise TimeoutError("Click may already have been issued")
+            focused = True
+
+    button.click.side_effect = transient
+    owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()" or focused
+    if ambiguous_dispatch:
+        with pytest.raises(BrowserCompletionError, match="did not have focus"):
+            reader.__enter__()
+        hint.dispose.assert_called_once()
+        owned.session.send.assert_not_called()
+    else:
+        with reader:
+            assert focused
+        hint.dispose.assert_not_called()
+    assert trials == expected_trials and dispatches == 1
+    assert node.dispose.call_count == expected_trials
+    owned.source.bring_to_front.assert_not_called()
+
+
+def test_focus_preflight_that_outlasts_the_deadline_never_dispatches(owned_browser):
+    owned = owned_browser
+    node, button, _ = focus_controls(owned)
+    button.click.side_effect = lambda **kwargs: setattr(owned.clock, "now", 20)
+    owned.source.evaluate.side_effect = lambda script: script != "document.hasFocus()"
+    with pytest.raises(BrowserCompletionError, match="did not have focus"):
+        automatic_reader(owned).__enter__()
+    assert button.click.call_args_list == [call(trial=True, timeout=1_500)]
+    node.dispose.assert_called_once()
     owned.session.send.assert_not_called()
 
 

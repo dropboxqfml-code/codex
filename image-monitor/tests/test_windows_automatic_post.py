@@ -98,6 +98,7 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
         native_calls = []
         navigation = []
         focus_losses = []
+        focus_attempts = []
         observer = SimpleNamespace(
             before=lambda: navigation.append("start"),
             after=lambda response, error: navigation.append((response.status, error)),
@@ -125,6 +126,19 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
                 focus_owned_omnibox(self.source_page, self.ui)
                 focus_losses.append("initial")
                 return super().__enter__()
+
+            def _click_focus_control(self):
+                clicked = super()._click_focus_control()
+                phase = "after_target_creation" if self._target_id else "before_target_creation"
+                focus_attempts.append(
+                    (
+                        phase,
+                        phase in self._focus_click_phases,
+                        clicked,
+                        self.source_page.evaluate("document.hasFocus()"),
+                    )
+                )
+                return clicked
 
             def _read_model(self):
                 model = super()._read_model()
@@ -225,7 +239,8 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
                 )
             diagnostic = (
                 f"stage={result['last_stage']} native={result.get('native_stage')} "
-                f"focus={result.get('focus_at_failure')} milestones={focus_losses}\n"
+                f"focus={result.get('focus_at_failure')} milestones={focus_losses} "
+                f"focus attempts (phase, dispatched, returned, focused)={focus_attempts}\n"
                 + "".join(errors)
             )
             assert result["browser_closed"] and not result["shared_pending_retained"], diagnostic

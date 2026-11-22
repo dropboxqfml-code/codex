@@ -18,6 +18,8 @@ _SETUP_TIMEOUT = 8
 _FOCUS_SETTLE_DELAY = 0.4
 _FOCUS_HINT_DELAY = 0.8
 _FOCUS_TIMEOUT = 20
+_FOCUS_PREFLIGHT_LIMIT = 2
+_FOCUS_ACTION_TIMEOUT_MS = 1_500
 # A trusted pointer event inside this sandbox cannot bubble to an article
 # handler. The frame has no scripts, navigation, forms, or network resources.
 _FOCUS_FRAME_HTML = '<!doctype html><button type="button">저장 창 활성화</button>'
@@ -144,6 +146,7 @@ class BrowserCompletion:
         self.ui = ui
         self._allow_focus_prompt = allow_focus_prompt is True
         self._focus_deadlines = {}
+        self._focus_preflights = {}
         self._focus_click_phases = set()
         self._focus_losses = 0
         self._session = None
@@ -233,6 +236,15 @@ class BrowserCompletion:
 
     def _click_focus_control(self):
         """Send one ordinary Playwright click to an exact, isolated button."""
+        phase = "after_target_creation" if self._target_id is not None else "before_target_creation"
+        deadline = self._focus_deadlines[phase]
+
+        def remaining_ms():
+            budget = int((deadline - time.monotonic()) * 1_000)
+            if budget < 1:
+                raise TimeoutError("Focus setup deadline expired")
+            return min(budget, _FOCUS_ACTION_TIMEOUT_MS)
+
         if self._source_focused():
             return False
         node = None
@@ -243,7 +255,9 @@ class BrowserCompletion:
                 frame = node.as_element().content_frame()
                 if frame is None:
                     return False
-                button = frame.wait_for_selector("button:only-child", state="visible", timeout=650)
+                button = frame.wait_for_selector(
+                    "button:only-child", state="visible", timeout=remaining_ms()
+                )
                 if (
                     button is None
                     or frame.url != "about:srcdoc"
@@ -251,7 +265,7 @@ class BrowserCompletion:
                 ):
                     return False
                 # Actionability includes hit testing in both the parent and the frame.
-                button.click(trial=True, timeout=400)
+                button.click(trial=True, timeout=remaining_ms())
             except Exception:
                 # A CSP may reject srcdoc, or an overlay may intercept the
                 # actionability check. The separate human prompt is still available.
@@ -261,7 +275,10 @@ class BrowserCompletion:
             try:
                 if node.evaluate(_OWNED_FRAME, _FOCUS_FRAME_HTML) is not True:
                     return False
-                button.click(timeout=400)
+                timeout = remaining_ms()
+                # A Playwright timeout may happen after dispatch. Never repeat that input.
+                self._focus_click_phases.add(phase)
+                button.click(timeout=timeout)
                 return True
             except Exception:
                 return False
@@ -299,13 +316,21 @@ class BrowserCompletion:
                     if (
                         now - started >= _FOCUS_SETTLE_DELAY
                         and phase not in self._focus_click_phases
+                        and self._focus_preflights.get(phase, 0) < _FOCUS_PREFLIGHT_LIMIT
                     ):
-                        self._focus_click_phases.add(phase)
+                        self._focus_preflights[phase] = self._focus_preflights.get(phase, 0) + 1
                         if self._click_focus_control():
                             recovery = "control_clicked"
                         if self._source_focused():
                             break
-                    if now - started >= _FOCUS_HINT_DELAY and hint is None:
+                    if (
+                        now - started >= _FOCUS_HINT_DELAY
+                        and hint is None
+                        and (
+                            phase in self._focus_click_phases
+                            or self._focus_preflights.get(phase, 0) == _FOCUS_PREFLIGHT_LIMIT
+                        )
+                    ):
                         hint = self.source_page.evaluate_handle(_FOCUS_HINT)
                         recovery = "waiting_for_user"
                     self.source_page.wait_for_timeout(min(100, (deadline - now) * 1_000))

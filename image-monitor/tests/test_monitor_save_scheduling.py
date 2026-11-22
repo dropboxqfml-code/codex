@@ -50,13 +50,15 @@ def routed_list_chrome(post_ids):
 
 
 @pytest.mark.parametrize(
-    ("http_status", "stop_with_chrome"),
-    [(200, False), (429, False), (403, False), (200, True)],
+    ("http_status", "session_data"),
+    [(200, None), (429, None), (403, None), (200, "chromium_loopback")],
+    indirect=["session_data"],
     ids=["two_due_lists", "rate_limited", "access_blocked", "stop_after_chrome_list"],
 )
 def test_durable_list_work_while_writer_still_owns_its_post(
-    monkeypatch, pilot, session_data, http_status, stop_with_chrome
+    monkeypatch, pilot, session_data, http_status
 ):
+    stop_with_chrome = session_data.allow_loopback
     roots = session_data.watch, session_data.legacy, session_data.batch
     database = session_data.watch / "watch.sqlite"
     clock = FakeClock(datetime.now(UTC) + timedelta(seconds=62))
@@ -110,7 +112,7 @@ def test_durable_list_work_while_writer_still_owns_its_post(
             listing(203, 202, 201),
         ]
     )
-    threads = []
+    threads, scans = [], []
 
     def backend(*_args, **_kwargs):
         threads.append(get_ident())
@@ -130,6 +132,7 @@ def test_durable_list_work_while_writer_still_owns_its_post(
             **kwargs,
             run_cycle=partial(watch_runtime.run_watch_trial, backend_factory=backend),
         )
+        scans.append((result["status"], result["reason"], result["browser_closed"]))
         if stop_with_chrome and result["status"] == "waiting":
             rate_limited.set()
         if get_ident() != owner and http_status != 200:
@@ -159,7 +162,13 @@ def test_durable_list_work_while_writer_still_owns_its_post(
             monitor_collect.collect_session_turn, detail_runner=detail, save_runner=save
         ),
     )
-    assert [step for step, *_ in events].count("save") == len(starts), report
+    assert [step for step, *_ in events].count("save") == len(starts), (
+        scans,
+        len(threads),
+        rate_limited.is_set(),
+        stop.is_set(),
+        report["last_collection"],
+    )
     assert all(thread != owner for thread in threads[1:]) and threads[0] == owner
     assert all(browser.browser_closed for browser in owned)
     if stop_with_chrome:

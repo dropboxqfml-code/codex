@@ -51,20 +51,39 @@ def listing(*post_ids):
 
 
 @pytest.fixture
-def session_data(monkeypatch, pilot):
+def session_data(monkeypatch, pilot, request):
     # A short path also exercises the production filename budget on Windows CI.
     with tempfile.TemporaryDirectory(prefix="as-", dir=os.environ.get("RUNNER_TEMP")) as folder:
         root = Path(folder).resolve()
         marker = root / "pending.json"
-        isolate_desktop(monkeypatch, marker)
-        yield SimpleNamespace(watch=root / "w", legacy=root / "l", batch=root / "b", marker=marker)
+        allow_loopback = getattr(request, "param", None) == "chromium_loopback"
+        isolate_desktop(monkeypatch, marker, allow_loopback=allow_loopback)
+        yield SimpleNamespace(
+            watch=root / "w",
+            legacy=root / "l",
+            batch=root / "b",
+            marker=marker,
+            allow_loopback=allow_loopback,
+        )
 
 
-def isolate_desktop(monkeypatch, marker):
+def isolate_desktop(monkeypatch, marker, *, allow_loopback=False):
     def no_network(*_args, **_kwargs):
         pytest.fail("An integration fixture tried to open a network connection")
 
-    monkeypatch.setattr(socket.socket, "connect", no_network)
+    original_connect = socket.socket.connect
+
+    def fixture_connect(sock, address):
+        # Windows asyncio creates its self-pipe by connecting a local TCP socketpair.
+        if (
+            allow_loopback
+            and sock.family in (socket.AF_INET, socket.AF_INET6)
+            and address[0] in ("127.0.0.1", "::1")
+        ):
+            return original_connect(sock, address)
+        no_network()
+
+    monkeypatch.setattr(socket.socket, "connect", fixture_connect)
     monkeypatch.setattr(socket, "getaddrinfo", no_network)
     for module in (candidate_runtime, watch_runtime, monitor_batch_runtime):
         monkeypatch.setattr(module, "require_windows", lambda: None)

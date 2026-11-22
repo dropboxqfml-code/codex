@@ -323,10 +323,11 @@ def _catch_up_pause(checks):
         if previous and previous.get("recovery_route") == "recent":
             return "recovery_progress_stalled"
         return None
-    if (
-        current.get("recovery_route") != "bookmark"
-        or status not in {"advanced", "overlap_pending", "segment_rejoined"}
-    ):
+    if current.get("recovery_route") != "bookmark" or status not in {
+        "advanced",
+        "overlap_pending",
+        "segment_rejoined",
+    }:
         return "recovery_followup_deferred"
     if (
         status != "segment_rejoined"

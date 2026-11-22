@@ -9,6 +9,15 @@ from datetime import datetime
 from image_monitor import PUBLIC_VERSION
 from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
 
+_HEAD_JOIN_KO = {
+    "clipped_prefix": (
+        "지난 첫 쪽의 첫 글부터 세 건 이상이 현재 1·2쪽의 끝부분에 같은 순서로 이어졌습니다."
+    ),
+    "corroborated_suffix": (
+        "지난 첫 쪽 끝의 글 세 개 이상과 그 뒤에 오던 2쪽 글이 현재 목록에서도 연달아 확인됐습니다."
+    ),
+}
+
 _HISTORICAL_REASON_KO = {
     "checkpoint_in_recent_pages": "최근 두 쪽 안에서 이전 완료 기준 글을 찾았습니다.",
     "insufficient_recent_pages": "최근 두 쪽 중 한 쪽만 확인했습니다.",
@@ -31,11 +40,19 @@ def _describe_list_check(check):
     described = check.copy()
     reason = described.pop("historical_reason", None)
     described.pop("historical_reason_ko", None)
+    join = described.pop("head_join", None)
+    described.pop("head_join_ko", None)
     allowed = HISTORICAL_ROUTE_REASONS.get(check.get("historical_status"), ())
     if isinstance(reason, str) and reason in allowed:
         described.update(
             historical_reason=reason, historical_reason_ko=_HISTORICAL_REASON_KO[reason]
         )
+        if (
+            check.get("historical_status") in ("extended", "boundary_changed")
+            and isinstance(join, str)
+            and join in _HEAD_JOIN_KO
+        ):
+            described.update(head_join=join, head_join_ko=_HEAD_JOIN_KO[join])
     return described
 
 

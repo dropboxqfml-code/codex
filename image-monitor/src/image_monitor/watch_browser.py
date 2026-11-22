@@ -325,7 +325,12 @@ class HeadlessWatchBrowser:
                         or (index == 2 and snapshot.get("page") == source["boundary_page"])
                     ):
                         historical = historical_next_url(
-                            scope, follow_up_state, result["pages"], scan_time, source
+                            scope,
+                            follow_up_state,
+                            result["pages"],
+                            scan_time,
+                            source,
+                            allow_head_overlap=follow_up_state.get("allow_head_overlap") is True,
                         )
                         if historical is not None:
                             if index == 1:

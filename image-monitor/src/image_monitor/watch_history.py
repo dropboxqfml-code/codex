@@ -16,6 +16,8 @@ from image_monitor.watch_planner import (
 from image_monitor.watch_store import MONITOR_SCOPE
 
 MAX_HISTORICAL_PAGE = 10
+HEAD_JOIN_METHODS = frozenset({"clipped_prefix", "corroborated_suffix"})
+_MIN_HEAD_OVERLAP = 3
 _GAPS = {"anchor_not_reached", "overlap_incomplete"}
 _UNKNOWN_ROUTE = "route_evidence_unverified"
 _SUCCESSOR_REASONS = frozenset(
@@ -53,7 +55,7 @@ def _descending(ids):
 
 
 def _source_ok(source):
-    if not isinstance(source, dict) or set(source) != {
+    if not isinstance(source, dict) or source.keys() - {"after_head_id"} != {
         "source_scan_id",
         "boundary_page",
         "head_ids",
@@ -61,6 +63,7 @@ def _source_ok(source):
     }:
         return False
     boundary = source["boundary_page"]
+    after = source.get("after_head_id")
     return (
         isinstance(source["source_scan_id"], str)
         and re.fullmatch(r"[0-9a-f]{32}", source["source_scan_id"]) is not None
@@ -69,6 +72,10 @@ def _source_ok(source):
         and _descending(source["head_ids"])
         and _descending(source["boundary_ids"])
         and int(source["head_ids"][-1]) > int(source["boundary_ids"][0])
+        and (
+            "after_head_id" not in source
+            or _descending([source["head_ids"][-1], after, source["boundary_ids"][0]])
+        )
     )
 
 
@@ -105,6 +112,14 @@ def historical_source(latest):
         "boundary_page": positions[-1],
         "boundary_ids": _ids(pages[-1]),
     }
+    # This row is part of the same replayed source. It corroborates the end
+    # of the earlier first page even if page two repeated its last few rows.
+    head = source["head_ids"]
+    joined = _joined_rows(head, _ids(pages[1]))
+    if joined and source["boundary_ids"]:
+        after = joined[len(head)]
+        if _descending([head[-1], after, source["boundary_ids"][0]]):
+            source["after_head_id"] = after
     return source if _source_ok(source) else None
 
 
@@ -128,6 +143,32 @@ def _contains(rows, previous, *, allow_prefix=False):
     return tail == previous or (allow_prefix and tail == previous[: len(tail)])
 
 
+def _head_join(rows, source, allow_head_overlap):
+    previous = source["head_ids"]
+    if _contains(rows, previous):
+        return "full"
+    if allow_head_overlap is not True or len(previous) <= _MIN_HEAD_OVERLAP:
+        return None
+    previous_ids = set(previous)
+    common = [item for item in rows if item in previous_ids]
+    count = len(common)
+    if not _MIN_HEAD_OVERLAP <= count < len(previous):
+        return None
+    # A clipped prefix must reach the very last row we actually observed.
+    if common == previous[:count] and rows[-count:] == common:
+        return "clipped_prefix"
+    # A suffix must continue through the old page break. Any preceding
+    # current rows must be newer than the entire earlier first page.
+    start = rows.index(common[0])
+    if (
+        common == previous[-count:]
+        and (start == 0 or int(rows[start - 1]) > int(previous[0]))
+        and rows[start : start + count + 1] == [*common, source.get("after_head_id")]
+    ):
+        return "corroborated_suffix"
+    return None
+
+
 def _link(page, raw, number, role):
     counts = raw.get("counts")
     if not isinstance(counts, dict) or type(counts.get("list_containers")) is not int:
@@ -149,34 +190,35 @@ def _link(page, raw, number, role):
     return None, _UNKNOWN_ROUTE
 
 
-def _head(scope, state, pages, observed_at, source):
+def _head(scope, state, pages, observed_at, source, allow_head_overlap):
     if scope != MONITOR_SCOPE or not _source_ok(source):
         raise WatchPlanError("Unconfirmed historical source")
     head = plan_scan(scope, state, pages[:2], observed_at, allow_verified_live=True)
     if head["scan_result"]["first_anchor_id"] is not None:
-        return head, None, "checkpoint_in_recent_pages"
+        return head, None, "checkpoint_in_recent_pages", None
     if len(pages) < 2:
-        return head, None, "insufficient_recent_pages"
+        return head, None, "insufficient_recent_pages", None
     if (
         head["gap_reason"]
         not in {"anchor_not_reached", "pagination_missing", "historical_cursor_unverified"}
         or len(head["scan_result"]["pages"]) != 2
     ):
-        return head, None, "recent_chain_unverified"
+        return head, None, "recent_chain_unverified", None
     # Page one and its adjacent page must connect to the prior scan's actual head.
     ids = _joined_rows(_ids(pages[0]), _ids(pages[1]))
     if not ids:
-        return head, None, "recent_chain_unverified"
-    if not _contains(ids, source["head_ids"]):
-        return head, None, "previous_head_not_matched"
+        return head, None, "recent_chain_unverified", None
+    join = _head_join(ids, source, allow_head_overlap)
+    if join is None:
+        return head, None, "previous_head_not_matched", None
     expected = _scope(scope)
     first = _page(pages[0], expected, observed_at, "site_verified")
     second = _page(pages[1], expected, observed_at, "site_verified")
     next_page, _ = _link(first, pages[0], 2, "recent")
     if next_page != _cursor(second):
-        return head, None, "recent_chain_unverified"
+        return head, None, "recent_chain_unverified", None
     target, reason = _link(second, pages[1], source["boundary_page"], "boundary")
-    return head, target, reason
+    return head, target, reason, join if target is not None else None
 
 
 def _boundary(scope, raw, observed_at, cursor):
@@ -199,12 +241,12 @@ def _successor(head_end, boundary, raw, source):
     return False, None, "previous_boundary_not_matched"
 
 
-def historical_next_url(scope, state, pages, observed_at, source):
+def historical_next_url(scope, state, pages, observed_at, source, *, allow_head_overlap=False):
     """Return a fresh DOM link to the older boundary or its verified adjacent successor."""
     if len(pages) not in (2, 3):
         return None
     try:
-        _, target, _ = _head(scope, state, pages, observed_at, source)
+        _, target, _, _ = _head(scope, state, pages, observed_at, source, allow_head_overlap)
         if target is None:
             return None
         if len(pages) == 2:
@@ -238,15 +280,17 @@ def _tail(scope, pages, observed_at, source, target):
     return tail_pages, matched, reason or "route_not_observed"
 
 
-def plan_historical_scan(scope, state, pages, observed_at, source):
+def plan_historical_scan(scope, state, pages, observed_at, source, *, allow_head_overlap=False):
     """Replay physical visits 1, 2, B[, B+1], retaining the head if the older rows moved."""
     if len(pages) not in (3, 4):
         raise WatchPlanError("A historical scan needs three or four visited documents")
-    head, target, _ = _head(scope, state, pages, observed_at, source)
+    head, target, _, join = _head(scope, state, pages, observed_at, source, allow_head_overlap)
     if target is None:
         raise WatchPlanError("The fresh head does not join the earlier scan")
     tail_pages, matched, _ = _tail(scope, pages, observed_at, source, target)
     mark = {"source_scan_id": source["source_scan_id"], "boundary_page": target["page"]}
+    if join in HEAD_JOIN_METHODS:
+        mark["head_join"] = join
     if matched:
         plan = _plan_scan(
             scope, state, pages, observed_at, allow_verified_live=True, verified_boundary=target
@@ -265,26 +309,38 @@ def plan_historical_scan(scope, state, pages, observed_at, source):
     return head
 
 
-def historical_route_reason(scope, state, pages, observed_at, source, status):
-    """Explain a verified scan using the same observations and checks that chose its route."""
+def _route_assessment(scope, state, pages, observed_at, source, status, allow_head_overlap):
     try:
         if status not in HISTORICAL_ROUTE_REASONS or not 1 <= len(pages) <= 4:
-            return _UNKNOWN_ROUTE
-        _, target, reason = _head(scope, state, pages, observed_at, source)
+            return _UNKNOWN_ROUTE, None
+        _, target, reason, join = _head(
+            scope, state, pages, observed_at, source, allow_head_overlap
+        )
         if status == "recent_pages_only":
             if [page["page"] for page in pages] != list(range(1, len(pages) + 1)):
-                return _UNKNOWN_ROUTE
-            return reason or "route_not_observed"
+                return _UNKNOWN_ROUTE, None
+            return reason or "route_not_observed", None
         if target is None or len(pages) < 3:
-            return _UNKNOWN_ROUTE
+            return _UNKNOWN_ROUTE, None
         _, matched, reason = _tail(scope, pages, observed_at, source, target)
-        return reason if matched == (status == "extended") else _UNKNOWN_ROUTE
+        if matched == (status == "extended"):
+            return reason, join if join in HEAD_JOIN_METHODS else None
     except (WatchPlanError, AttributeError, IndexError, KeyError, TypeError):
-        return _UNKNOWN_ROUTE
+        pass
+    return _UNKNOWN_ROUTE, None
 
 
-def historical_route_details(before, latest, source):
-    """Project a verified stored monitor scan into the three public routing fields."""
+def historical_route_reason(
+    scope, state, pages, observed_at, source, status, *, allow_head_overlap=False
+):
+    """Explain a verified scan using the same observations and checks that chose its route."""
+    return _route_assessment(scope, state, pages, observed_at, source, status, allow_head_overlap)[
+        0
+    ]
+
+
+def historical_route_details(before, latest, source, *, allow_head_overlap=False):
+    """Project the verified route and any partial head match without exposing post identities."""
     if source is None:
         return {}
     if not _source_ok(source):
@@ -301,26 +357,35 @@ def historical_route_details(before, latest, source):
         ):
             raise WatchPlanError("Historical routing marker differs from its verified source")
         status = marker["status"]
-    reason = historical_route_reason(
+    reason, join = _route_assessment(
         MONITOR_SCOPE,
         before,
         result["private_observation"]["pages"],
         _stored_time(latest["observed_at"], "scan observed_at"),
         source,
         status,
+        allow_head_overlap,
     )
-    return {
+    details = {
         "historical_boundary_page": source["boundary_page"],
         "historical_status": status,
         "historical_reason": reason,
     }
+    if marker is not None:
+        if ("head_join" in marker) != (join is not None) or marker.get("head_join") != join:
+            raise WatchPlanError("Historical head match differs from the verified observations")
+        if join is not None:
+            details["head_join"] = join
+    return details
 
 
-def plan_historical_prefix(scope, state, pages, observed_at, source):
+def plan_historical_prefix(scope, state, pages, observed_at, source, *, allow_head_overlap=False):
     """Retain only the verified head when its historical route ends at an unverified layout."""
     if len(pages) not in (3, 4) or pages[-1].get("layout_status") != "unverified":
         return None
-    target = historical_next_url(scope, state, pages[:-1], observed_at, source)
+    target = historical_next_url(
+        scope, state, pages[:-1], observed_at, source, allow_head_overlap=allow_head_overlap
+    )
     if target is None:
         return None
     try:

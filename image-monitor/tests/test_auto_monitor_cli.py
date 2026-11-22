@@ -9,7 +9,7 @@ import pytest
 
 from image_monitor import PUBLIC_VERSION, auto_monitor_cli
 from image_monitor.__main__ import main
-from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
+from image_monitor.watch_history import HEAD_JOIN_METHODS, HISTORICAL_ROUTE_REASONS
 
 
 def test_bounded_cli_separates_progress_from_result_without_reading_keyboard(
@@ -129,7 +129,11 @@ def test_startup_error_is_reported_on_stdout_without_exception_text(tmp_path, mo
 
 def test_result_txt_explains_previous_and_current_historical_checks(tmp_path, monkeypatch, capsys):
     old = {"historical_status": "recent_pages_only", "historical_reason": "boundary_link_missing"}
-    new = {"historical_status": "extended", "historical_reason": "boundary_extended"}
+    new = {
+        "historical_status": "extended",
+        "historical_reason": "boundary_extended",
+        "head_join": "clipped_prefix",
+    }
     ordinary = {"status": "complete", "visited_page_numbers": [1, 2]}
     result = {
         "status": "auto_monitor_completed",
@@ -156,9 +160,31 @@ def test_result_txt_explains_previous_and_current_historical_checks(tmp_path, mo
     ]
     assert output["recent_list_checks"] == [output["last_list"]]
     assert output["last_list"] == new | {
-        "historical_reason_ko": "지난번 마지막 쪽의 글 순서를 대조한 뒤 그다음 쪽까지 확인했습니다."
+        "historical_reason_ko": auto_monitor_cli._HISTORICAL_REASON_KO["boundary_extended"],
+        "head_join_ko": auto_monitor_cli._HEAD_JOIN_KO["clipped_prefix"],
     }
     assert result == original
+
+
+def test_only_verified_head_join_methods_receive_korean_explanations():
+    assert set(auto_monitor_cli._HEAD_JOIN_KO) == HEAD_JOIN_METHODS
+    recent = {
+        "historical_status": "recent_pages_only",
+        "historical_reason": "previous_head_not_matched",
+    }
+    historical = {
+        "historical_status": "boundary_changed",
+        "historical_reason": "previous_boundary_not_matched",
+    }
+    for check, join in ((recent, "corroborated_suffix"), (historical, "private-row-content")):
+        public = auto_monitor_cli._describe_list_check(
+            check | {"head_join": join, "head_join_ko": "private"}
+        )
+        assert "head_join" not in public and "head_join_ko" not in public
+    public = auto_monitor_cli._describe_list_check(
+        historical | {"head_join": "corroborated_suffix"}
+    )
+    assert "2쪽" in public["head_join_ko"] and "세 개 이상" in public["head_join_ko"]
 
 
 def test_all_route_reasons_have_fixed_korean_text_and_unknown_details_stay_private():

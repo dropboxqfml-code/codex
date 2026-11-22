@@ -1,6 +1,7 @@
 """Bounded live list-discovery trial; never starts native saving or image work."""
 
 import json
+import re
 import time
 import uuid
 from collections import Counter
@@ -10,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
-from image_monitor.candidate_finish import CandidateFinishError, _read_json, _uuid
+from image_monitor.candidate_finish import CandidateFinishError, _read_json, _same_json, _uuid
 from image_monitor.native_probe import write_report
 from image_monitor.native_ui import NativeUIError, require_windows
 from image_monitor.queue import QueueError, QueueStore
@@ -19,6 +20,7 @@ from image_monitor.search_list import build_list_url
 from image_monitor.watch_browser import HeadlessWatchBrowser
 from image_monitor.watch_diagnosis import diagnose_list_page
 from image_monitor.watch_history import (
+    HEAD_JOIN_METHODS,
     MAX_HISTORICAL_PAGE,
     historical_source,
     plan_historical_prefix,
@@ -40,6 +42,7 @@ from image_monitor.watch_store import (
 )
 
 SERVICE_SCOPE = "dcinside"
+HEAD_OVERLAP_SCHEMA = 2
 PARTIAL_COVERAGE_GAPS = frozenset(
     {"anchor_not_reached", "overlap_incomplete", "historical_boundary_changed"}
 )
@@ -230,6 +233,8 @@ def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
     if history:
         summary["visited_page_numbers"] = [page["page"] for page in pages]
         summary["historical_boundary_page"] = boundary
+        if "head_join" in history:
+            summary["head_join"] = history["head_join"]
     return summary
 
 
@@ -299,7 +304,9 @@ def _follow_up_transport(outcome, limit):
     return _matched_documents(pages, visits[: len(pages)], follow_up=True)
 
 
-def _plan_observation(scope, state, outcome, observed_at, follow_up_limit, source=None):
+def _plan_observation(
+    scope, state, outcome, observed_at, follow_up_limit, source=None, *, allow_head_overlap=False
+):
     pages = outcome.get("pages", [])
     if follow_up_limit and not _follow_up_transport(outcome, follow_up_limit):
         return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
@@ -308,7 +315,9 @@ def _plan_observation(scope, state, outcome, observed_at, follow_up_limit, sourc
         if historical:
             if not source or follow_up_limit != MAX_MONITOR_SCAN_PAGES:
                 return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
-            plan = plan_historical_scan(scope, state, pages, observed_at, source)
+            plan = plan_historical_scan(
+                scope, state, pages, observed_at, source, allow_head_overlap=allow_head_overlap
+            )
         else:
             plan = plan_scan(scope, state, pages, observed_at, allow_verified_live=True)
         if follow_up_limit and plan["complete"] and len(plan["scan_result"]["pages"]) != len(pages):
@@ -319,7 +328,9 @@ def _plan_observation(scope, state, outcome, observed_at, follow_up_limit, sourc
         prefix = None
         if error.issue == "snapshot_layout" and _observed_page_chain(outcome, follow_up_limit or 2):
             if historical:
-                prefix = plan_historical_prefix(scope, state, pages, observed_at, source)
+                prefix = plan_historical_prefix(
+                    scope, state, pages, observed_at, source, allow_head_overlap=allow_head_overlap
+                )
             else:
                 prefix = plan_verified_page_prefix(scope, state, pages, observed_at)
         plan = prefix or _empty_plan(state, observed_at, reason, scope)
@@ -329,6 +340,18 @@ def _plan_observation(scope, state, outcome, observed_at, follow_up_limit, sourc
 
 def verified_recent_plan(queue, scope, state, *, remaining_bridges=MAX_HISTORICAL_PAGE - 4):
     """Replay the latest verified list chain from the checkpoint that preceded it."""
+    latest = state["latest_scan"]
+    if latest and scope == MONITOR_SCOPE:
+        control = _control(state)
+        if "follow_up_page_limit" in control or "historical_route_schema" in control:
+            from image_monitor.candidate_save_selection import _database_path
+
+            if not confirmed_monitor_scan(_database_path(queue), latest):
+                return None
+    return _replay_recent_plan(queue, scope, state, remaining_bridges)
+
+
+def _replay_recent_plan(queue, scope, state, remaining_bridges):
     latest = state["latest_scan"]
     scope_fields = ("watch_name", "gallery_type", "gallery_id", "keyword", "search_type")
     if not (
@@ -418,7 +441,14 @@ def verified_recent_plan(queue, scope, state, *, remaining_bridges=MAX_HISTORICA
             source = _durable_historical_source(queue, parent, parent_plan)
             if not source or source["boundary_page"] != marker.get("boundary_page"):
                 return None
-            planned = plan_historical_scan(scope, previous_state, pages, scan_time, source)
+            planned = plan_historical_scan(
+                scope,
+                previous_state,
+                pages,
+                scan_time,
+                source,
+                allow_head_overlap=control.get("historical_route_schema") == HEAD_OVERLAP_SCHEMA,
+            )
         else:
             planned = plan_scan(scope, previous_state, pages, scan_time, allow_verified_live=True)
     except WatchPlanError:
@@ -510,6 +540,40 @@ def share_watch_report(report):
     return {key: report[key] for key in keys if key in report}
 
 
+def historical_route_policy(receipt, control):
+    """Read the generation's historical rule from matching DB and final Chrome evidence."""
+    schema = receipt.get("historical_route_schema")
+    version = receipt.get("program_version")
+    if "historical_route_schema" not in receipt:
+        # alpha.9 knew historical routing before the capability field existed.
+        if version == "0.5.0-alpha.9" and "historical_route_schema" not in control:
+            return 1
+        return None
+    if type(schema) is not int or not isinstance(version, str) or len(version) > 64:
+        return None
+    if schema == 1 and "historical_route_schema" not in control:
+        earliest_alpha = 10
+    elif (
+        schema == HEAD_OVERLAP_SCHEMA
+        and type(control.get("historical_route_schema")) is int
+        and control["historical_route_schema"] == schema
+    ):
+        earliest_alpha = 11
+    else:
+        return None
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.([1-9]\d*))?", version, re.ASCII)
+    if not match:
+        return None
+    release = tuple(int(part) for part in match.group(1, 2, 3))
+    if release < (0, 5, 0):
+        return None
+    if release == (0, 5, 0) and match[4] == "alpha":
+        alpha = int(match[5])
+        if alpha < earliest_alpha or (alpha == 11 and schema == 1):
+            return None
+    return schema
+
+
 def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None) -> bool:
     """Verify browser cleanup for this exact monitor scan using its final local report."""
     if not isinstance(latest, dict) or not isinstance(latest.get("result"), dict):
@@ -523,7 +587,7 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
         return False
     try:
         report = _read_json(database.parent / "runs" / run_id / "report.json")
-        if expected_report is not None and report != expected_report:
+        if expected_report is not None and not _same_json(report, expected_report):
             return False
         if not isinstance(report, dict) or report.get("closed_monitor_scan") != {
             "run_id": run_id,
@@ -533,6 +597,30 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
             return False
         cycles = report.get("cycles")
         complete, gap = latest["complete"], latest["gap_reason"]
+        if (
+            "historical_route_schema" in control
+            or "historical_route_schema" in report
+            or (
+                "follow_up_page_limit" in control
+                and report.get("program_version") != "0.5.0-alpha.8"
+            )
+        ):
+            if (
+                historical_route_policy(report, control) is None
+                or report.get("browser") != "chrome"
+                or type(report.get("cycles_requested")) is not int
+                or report["cycles_requested"] != 1
+            ):
+                return False
+        history = latest["result"].get("historical_follow_up", {})
+        if not isinstance(history, dict):
+            return False
+        if "head_join" in history and (
+            control.get("historical_route_schema") != HEAD_OVERLAP_SCHEMA
+            or not isinstance(history["head_join"], str)
+            or history["head_join"] not in HEAD_JOIN_METHODS
+        ):
+            return False
         return (
             report.get("mode") == "bounded_live_list_discovery"
             and report.get("discovery_only") is True
@@ -552,6 +640,8 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
             and report.get("cycles_completed") == len(cycles)
             and isinstance(cycles[-1], dict)
             and cycles[-1].get("generation") == latest["generation"]
+            and ("head_join" in cycles[-1]) == ("head_join" in history)
+            and cycles[-1].get("head_join") == history.get("head_join")
             and _stored_time(report.get("next_eligible_at_local"))
             == _stored_time(control.get("next_eligible_at"))
         )
@@ -575,9 +665,7 @@ def _closed_partial_plan(database, queue, state, remaining_bridges):
             and receipt.get("recent_pages_verified") is True
             and receipt.get("cycles_requested") == 1
         ):
-            planned = verified_recent_plan(
-                queue, MONITOR_SCOPE, state, remaining_bridges=remaining_bridges
-            )
+            planned = _replay_recent_plan(queue, MONITOR_SCOPE, state, remaining_bridges)
             if _matches_partial_summary(queue, state, receipt, planned):
                 return planned
     except (OSError, ValueError, TypeError, KeyError, QueueError, CandidateFinishError):
@@ -755,7 +843,11 @@ def run_watch_trial(
                         if follow_up_gaps:
                             page_limit, source = monitor_scan_policy(database, queue, state)
                         follow_up_limit = page_limit if page_limit > 2 else None
-                        follow_up_state = state | {"historical_source": source} if source else state
+                        follow_up_state = (
+                            state | {"historical_source": source, "allow_head_overlap": True}
+                            if source
+                            else state
+                        )
                         # Commit before navigation so cancellation or a process failure
                         # cannot immediately repeat the same request on the next run.
                         queue.defer_service(
@@ -776,7 +868,13 @@ def run_watch_trial(
                                 next_poll_at(finished_at, interval_seconds=interval_seconds),
                             )
                         plan = _plan_observation(
-                            scope, state, outcome, observed_at, follow_up_limit, source
+                            scope,
+                            state,
+                            outcome,
+                            observed_at,
+                            follow_up_limit,
+                            source,
+                            allow_head_overlap=follow_up_gaps,
                         )
                         if plan["scan_result"].get("historical_follow_up") is not None:
                             current = store.get_state(scope)
@@ -820,6 +918,10 @@ def run_watch_trial(
                             plan["scan_result"]["control"]["monitor_run_id"] = run_directory.name
                         if follow_up_limit is not None:
                             plan["scan_result"]["control"]["follow_up_page_limit"] = follow_up_limit
+                        if follow_up_gaps:
+                            plan["scan_result"]["control"]["historical_route_schema"] = (
+                                HEAD_OVERLAP_SCHEMA
+                            )
                         plan["scan_result"]["private_observation"] = outcome
                         report["last_stage"] = "persist_scan"
                         persisted = store.persist_scan(scope, **plan)
@@ -865,7 +967,9 @@ def run_watch_trial(
                 report["status"] == "watch_test_partial"
                 and report["browser_closed"] is True
                 and state["generation"] == report["cycles"][-1]["generation"]
-                and verified_recent_plan(queue, scope, state) is not None
+                # This scan is still being closed. Its ancestors must already
+                # have independently verified closure receipts.
+                and _replay_recent_plan(queue, scope, state, MAX_HISTORICAL_PAGE - 4) is not None
             ):
                 report["recent_pages_verified"] = True
             if (
@@ -884,7 +988,7 @@ def run_watch_trial(
                     "scope": list(scope.key()),
                 }
                 if follow_up_gaps:
-                    report["historical_route_schema"] = 1
+                    report["historical_route_schema"] = HEAD_OVERLAP_SCHEMA
     except WatchRunBusy:
         report.update(status="watch_busy", reason="another_scan_owns_this_scope")
     except KeyboardInterrupt:

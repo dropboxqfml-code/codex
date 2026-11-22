@@ -17,7 +17,7 @@ def listing(page_numbers, ids):
         if number == 2:
             links.extend([link(4), link(5), link(6), link(7), link(8), link(9)])
         return snapshot(
-            [post_id],
+            post_id if isinstance(post_id, list) else [post_id],
             stamp,
             page=number,
             links=links,
@@ -114,6 +114,77 @@ def test_finishing_page_ten_keeps_partial_coverage_without_authorizing_page_elev
         state = WatchStore(queue).get_state(MONITOR_SCOPE)
         assert state["checkpoint"]["anchor_ids"] == ["100", "99"]
         assert watch_runtime.monitor_scan_policy(database, queue, state) == (4, None)
+
+
+@pytest.fixture
+def clipped_run(tmp_path, history):
+    run, _ = history
+    run(listing([1, 2, 3, 4], [[150, 149, 148, 147, 146], [145, 144, 143], 129, 110]))
+    database = tmp_path / "watch.sqlite"
+    with QueueStore(database) as queue:
+        # The alpha.10 receipt had the strict policy in the final report only.
+        # Rebuild those original shapes so the new rule starts on the next run.
+        for previous in WatchStore(queue).list_scans(MONITOR_SCOPE):
+            record = previous["result"]
+            control = record["control"]
+            del control["historical_route_schema"]
+            receipt_path = tmp_path / "runs" / control["monitor_run_id"] / "report.json"
+            receipt = json.loads(receipt_path.read_bytes())
+            receipt.update(program_version="0.5.0-alpha.10", historical_route_schema=1)
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            queue.connection.execute(
+                "UPDATE watch_scans SET result_json=? WHERE scan_id=?",
+                (json.dumps(record), previous["scan_id"]),
+            )
+    result = run(listing([1, 2, 4, 5], [[170, 168, 166], [150, 149, 148], 110, 108]))
+    assert result["recent_pages_verified"] is True
+    assert result["cycles"][0]["head_join"] == "clipped_prefix"
+    assert result["historical_route_schema"] == watch_runtime.HEAD_OVERLAP_SCHEMA
+    return run, Path(result["report_path"])
+
+
+@pytest.mark.parametrize(
+    "fault",
+    ["report_schema", "db_schema", "downgrade", "report_join", "db_join", "proof"],
+)
+def test_current_and_child_scan_reject_changed_overlap_proof(tmp_path, clipped_run, fault):
+    run, receipt_path = clipped_run
+    database = tmp_path / "watch.sqlite"
+    with QueueStore(database) as queue:
+        parent = WatchStore(queue).get_state(MONITOR_SCOPE)
+        assert watch_runtime.verified_recent_plan(queue, MONITOR_SCOPE, parent) is not None
+    child_report = run(listing([1, 2, 5, 6], [[170, 168, 166], [150, 149, 148], 108, 106]))
+    assert child_report["recent_pages_verified"] is True
+    latest = parent["latest_scan"]
+    record = latest["result"]
+    receipt = json.loads(receipt_path.read_bytes())
+    if fault == "report_schema":
+        del receipt["historical_route_schema"]
+    elif fault == "db_schema":
+        record["control"]["historical_route_schema"] = True
+    elif fault == "downgrade":
+        del record["control"]["historical_route_schema"]
+        receipt.update(program_version="0.5.0-alpha.10", historical_route_schema=1)
+        del record["historical_follow_up"]["head_join"]
+        del receipt["cycles"][0]["head_join"]
+    elif fault == "report_join":
+        del receipt["cycles"][0]["head_join"]
+    elif fault == "db_join":
+        record["historical_follow_up"]["head_join"] = "corroborated_suffix"
+    else:
+        rows = record["private_observation"]["pages"][1]["rows"]
+        rows[-1]["post_id"] = "147"
+        rows[-1]["canonical_url"] = rows[-1]["canonical_url"].replace("no=148", "no=147")
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    with QueueStore(database) as queue:
+        queue.connection.execute(
+            "UPDATE watch_scans SET result_json=? WHERE scan_id=?",
+            (json.dumps(record), latest["scan_id"]),
+        )
+        child = WatchStore(queue).get_state(MONITOR_SCOPE)
+        assert watch_runtime.verified_recent_plan(queue, MONITOR_SCOPE, parent) is None
+        assert watch_runtime.verified_recent_plan(queue, MONITOR_SCOPE, child) is None
+        assert watch_runtime.monitor_scan_policy(database, queue, child) == (2, None)
 
 
 @pytest.mark.parametrize("last_page", [4, 5])

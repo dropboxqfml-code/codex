@@ -13,6 +13,7 @@ from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_planner import next_poll_at, plan_scan
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
+    HEAD_OVERLAP_SCHEMA,
     _control,
     _cycle_summary,
     _eligibility,
@@ -86,7 +87,14 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
         raise QueueError("List document navigation is unconfirmed")
     observed_at = _stored_time(latest["observed_at"])
     if "historical_follow_up" in record:
-        plan = plan_historical_scan(MONITOR_SCOPE, before, pages, observed_at, historical_source)
+        plan = plan_historical_scan(
+            MONITOR_SCOPE,
+            before,
+            pages,
+            observed_at,
+            historical_source,
+            allow_head_overlap=control.get("historical_route_schema") == HEAD_OVERLAP_SCHEMA,
+        )
         if plan != verified_recent_plan(queue, MONITOR_SCOPE, after):
             raise QueueError("The completed follow-up no longer matches the stored list history")
     else:
@@ -243,7 +251,15 @@ def run_auto_discovery(
             result.update(
                 page_limit=page_limit, pages_checked=len(numbers), visited_page_numbers=numbers
             )
-            result.update(historical_route_details(before, latest, historical_source))
+            result.update(
+                historical_route_details(
+                    before,
+                    latest,
+                    historical_source,
+                    allow_head_overlap=record["control"].get("historical_route_schema")
+                    == HEAD_OVERLAP_SCHEMA,
+                )
+            )
             return result
     except WatchRunBusy:
         return _result("busy", "another_worker_active", closed=closed)

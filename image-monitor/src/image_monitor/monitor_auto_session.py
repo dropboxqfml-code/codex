@@ -14,7 +14,11 @@ from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
 from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON, PARTIAL_RETRY_REASON
 from image_monitor.post_worker import share_setup_diagnostics
-from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS, MAX_HISTORICAL_PAGE
+from image_monitor.watch_history import (
+    HEAD_JOIN_METHODS,
+    HISTORICAL_ROUTE_REASONS,
+    MAX_HISTORICAL_PAGE,
+)
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
 from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE
@@ -82,6 +86,13 @@ def _record_list_pages(report, turn):
         reason = turn.get("historical_reason")
         if isinstance(reason, str) and reason in HISTORICAL_ROUTE_REASONS[status]:
             last["historical_reason"] = reason
+            join = turn.get("head_join")
+            if (
+                status != "recent_pages_only"
+                and isinstance(join, str)
+                and join in HEAD_JOIN_METHODS
+            ):
+                last["head_join"] = join
     # Keep both cycles of the short Windows test while bounding continuous-session output.
     report["recent_list_checks"] = [*report["recent_list_checks"][-1:], last.copy()]
     if limit > 2:

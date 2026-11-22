@@ -179,6 +179,112 @@ def read_watch(root):
         return watch.get_state(MONITOR_SCOPE), candidates, watch.list_gaps(MONITOR_SCOPE)
 
 
+@pytest.fixture
+def five_page_gap(four_page_gap, routed_scan):
+    result = routed_scan(
+        [
+            (1, [140, 139, 138, 137, 136, 135], [2]),
+            (2, [134, 133, 132, 131, 130, 129, 128], [3, 4]),
+            (4, [123, 122, 121, 120], [5]),
+            (5, [119, 118, 117, 116, 115, 114], [6]),
+        ]
+    )
+    assert result["visited_page_numbers"] == [1, 2, 4, 5]
+    assert result["reason"] == "anchor_not_reached"
+
+
+@pytest.mark.parametrize(
+    ("second_page", "head_join"),
+    [
+        ([144, 143, 142, 140, 139, 138], "clipped_prefix"),
+        ([144, 143, 142, 137, 136, 135, 134], "corroborated_suffix"),
+    ],
+)
+def test_connected_partial_head_preserves_a_page_five_boundary_across_restarts(
+    tmp_path, five_page_gap, routed_scan, second_page, head_join
+):
+    before, known, gaps = read_watch(tmp_path)
+    first_page = [150, 149, 148, 147, 146, 145]
+    joined = routed_scan(
+        [
+            (1, first_page, [2]),
+            (2, second_page, [3, 5]),
+            (5, [119, 118, 117, 116, 115, 114], [6]),
+            (6, [113, 112, 100, 99], [7]),
+        ]
+    )
+    assert joined["visited_page_numbers"] == [1, 2, 5, 6]
+    assert joined["head_join"] == head_join and joined["historical_boundary_page"] == 5
+    assert (joined["status"], joined["reason"]) == ("partial", "overlap_incomplete")
+    partial, discovered, open_gaps = read_watch(tmp_path)
+    expected_new = {str(n) for n in first_page + second_page + [113, 112]} - known.keys()
+    assert joined["new_candidates"] == len(expected_new)
+    assert discovered.keys() - known.keys() == expected_new
+    assert known.items() <= discovered.items() and open_gaps[1:] == gaps
+    assert partial["checkpoint"] == before["checkpoint"]
+    assert previous_list_checks(tmp_path)[-1] == {
+        "status": "partial",
+        "reason": "overlap_incomplete",
+        "pages_checked": 4,
+        "page_limit": 4,
+        "visited_page_numbers": [1, 2, 5, 6],
+        "historical_boundary_page": 5,
+        "historical_status": "extended",
+        "historical_reason": "boundary_extended",
+        "head_join": head_join,
+    }
+
+    # Only a fresh visit one page past the global checkpoint closes coverage.
+    finished = routed_scan(
+        [
+            (1, first_page, [2]),
+            (2, second_page, [3, 6]),
+            (6, [113, 112, 100, 99], [7]),
+            (7, [98, 97], [8]),
+        ]
+    )
+    assert finished["visited_page_numbers"] == [1, 2, 6, 7]
+    assert (finished["status"], finished["new_candidates"]) == ("complete", 0)
+    assert "head_join" not in finished
+    after, final_posts, final_gaps = read_watch(tmp_path)
+    assert after["baseline"] == before["baseline"]
+    assert after["checkpoint"]["anchor_ids"] == [str(n) for n in first_page]
+    assert final_posts == discovered and final_gaps == open_gaps
+
+
+@pytest.mark.parametrize(
+    ("recent_rows", "links", "destination", "reason"),
+    [
+        ([144, 143, 142, 140], [3, 5], 3, "previous_head_not_matched"),
+        ([144, 143, 142, 140, 139, 138], [3], 3, "boundary_link_missing"),
+        ([144, 143, 142, 140, 139, 138], [3, 5], 5, "previous_boundary_not_matched"),
+    ],
+)
+def test_partial_head_still_requires_a_supported_link_and_a_matching_frontier(
+    tmp_path, five_page_gap, routed_scan, recent_rows, links, destination, reason
+):
+    before, known, _ = read_watch(tmp_path)
+    documents = [(1, [150, 149, 148, 147, 146, 145], [2]), (2, recent_rows, links)]
+    if destination == 3:
+        documents.extend([(3, [133, 132, 131], [4]), (4, [130, 129, 128], [5])])
+    else:
+        # These two previously unseen posts cannot become candidates via a changed frontier.
+        documents.append((5, [109, 108], [6]))
+    result = routed_scan(documents)
+    assert result["status"] == "partial" and result["historical_reason"] == reason
+    assert result["visited_page_numbers"] == [number for number, _, _ in documents]
+    if destination == 5:
+        assert result["historical_status"] == "boundary_changed"
+        assert result["head_join"] == "clipped_prefix"
+    else:
+        assert result["historical_status"] == "recent_pages_only" and "head_join" not in result
+    after, posts, _ = read_watch(tmp_path)
+    assert after["checkpoint"] == before["checkpoint"] and known.items() <= posts.items()
+    assert not {"109", "108"} & posts.keys()
+    previous = previous_list_checks(tmp_path)
+    assert previous[-1]["historical_reason"] == reason
+
+
 def test_shifted_list_continues_in_four_requests_and_waits_for_overlap(
     tmp_path, four_page_gap, routed_scan, scan
 ):

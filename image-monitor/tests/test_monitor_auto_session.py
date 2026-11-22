@@ -253,7 +253,11 @@ def test_report_retains_last_two_verified_page_sequences_when_next_scan_waits(tm
         "historical_reason": "boundary_extended",
         "historical_boundary_page": 4,
     }
-    latest = previous | {"visited_page_numbers": [1, 2, 5, 6], "historical_boundary_page": 5}
+    latest = previous | {
+        "visited_page_numbers": [1, 2, 5, 6],
+        "historical_boundary_page": 5,
+        "head_join": "clipped_prefix",
+    }
     wait = scan("waiting", due=clock.stamp(600), reason="service_wait")
     report, _ = session(
         tmp_path,
@@ -271,6 +275,8 @@ def test_report_retains_last_two_verified_page_sequences_when_next_scan_waits(tm
     assert all(
         check["historical_reason"] == "boundary_extended" for check in report["recent_list_checks"]
     )
+    assert "head_join" not in report["recent_list_checks"][0]
+    assert report["recent_list_checks"][1]["head_join"] == "clipped_prefix"
 
 
 def test_startup_history_survives_a_service_wait_without_incrementing_session_counts(

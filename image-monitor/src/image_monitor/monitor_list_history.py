@@ -1,7 +1,6 @@
 """Read the previous two monitor list checks from their original local evidence."""
 
 import json
-import re
 import sqlite3
 from pathlib import Path
 
@@ -13,10 +12,12 @@ from image_monitor.watch_images_check import _read_mode, _UnstableDatabase
 from image_monitor.watch_lock import watch_run_lock
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
+    HEAD_OVERLAP_SCHEMA,
     _cycle_summary,
     _stored_time,
     confirmed_monitor_scan,
     historical_candidate_count,
+    historical_route_policy,
     monitor_scan_policy,
     verified_recent_plan,
 )
@@ -40,24 +41,6 @@ _UNAVAILABLE = (
     CandidateFinishError,
     _UnstableDatabase,
 )
-
-
-def _route_receipt(receipt):
-    # alpha.9 predates the capability field. Earlier releases may supply a
-    # genuine four-page parent but never chose a historical route themselves.
-    if "historical_route_schema" not in receipt:
-        return receipt.get("program_version") == "0.5.0-alpha.9"
-    schema = receipt["historical_route_schema"]
-    version = receipt.get("program_version")
-    if type(schema) is not int or schema != 1 or not isinstance(version, str) or len(version) > 64:
-        return False
-    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.([1-9]\d*))?", version, re.ASCII)
-    if not match:
-        return False
-    release = tuple(int(part) for part in match.group(1, 2, 3))
-    if release != (0, 5, 0):
-        return release > (0, 5, 0)
-    return match[4] != "alpha" or int(match[5]) >= 10
 
 
 def _state_at(queue, current, scan):
@@ -89,8 +72,9 @@ def _historical_check(database, queue, before, after):
     ):
         return None
     receipt = _read_json(database.parent / "runs" / control["monitor_run_id"] / "report.json")
+    policy = historical_route_policy(receipt, control)
     if (
-        not _route_receipt(receipt)
+        policy is None
         or type(receipt.get("schema_version")) is not int
         or receipt["schema_version"] != 1
         or receipt.get("browser") != "chrome"
@@ -127,7 +111,9 @@ def _historical_check(database, queue, before, after):
     )
     if not _same_json(receipt.get("cycles"), [expected]):
         return None
-    details = historical_route_details(before, latest, source)
+    details = historical_route_details(
+        before, latest, source, allow_head_overlap=policy == HEAD_OVERLAP_SCHEMA
+    )
     if details["historical_reason"] == "route_evidence_unverified":
         return None
     pages = [page["page"] for page in observed["pages"]]

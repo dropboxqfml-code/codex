@@ -295,3 +295,164 @@ def test_unverified_document_keeps_only_the_fresh_verified_head(state, source, l
 
     pages[-1]["url"] = link(9)["canonical_url"]
     assert plan_historical_prefix(MONITOR_SCOPE, state, pages, NOW, source) is None
+
+
+@pytest.fixture
+def rolling_source():
+    return historical_source(
+        latest(
+            [
+                document(1, [160, 158, 156, 154, 152], 2),
+                document(2, [154, 152, 150, 148], 3),
+                document(3, [145, 143], 4),
+                document(4, [139, 137, 135], 5),
+            ]
+        )
+    )
+
+
+def overlap_pages(first, second, targets=(3, 4)):
+    return [
+        document(1, first, 2),
+        document(2, second, *targets),
+        document(4, [139, 137, 135], 5),
+        document(5, [133, 132, 131], 6),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "join"),
+    [
+        ([169, 166, 164], [160, 158, 156], "clipped_prefix"),
+        ([169, 168, 160], [160, 158, 156, 154], "clipped_prefix"),
+        ([169, 168, 156], [154, 152, 150], "corroborated_suffix"),
+        ([158, 156, 154], [154, 152, 150, 148], "corroborated_suffix"),
+    ],
+)
+def test_confirmed_partial_head_guides_only_an_opted_in_historical_route(
+    state, rolling_source, first, second, join
+):
+    assert rolling_source["after_head_id"] == "150"
+    pages = overlap_pages(first, second)
+    allow = {"allow_head_overlap": True}
+    assert historical_next_url(MONITOR_SCOPE, state, pages[:2], NOW, rolling_source) is None
+    with pytest.raises(WatchPlanError):
+        plan_historical_scan(MONITOR_SCOPE, state, pages, NOW, rolling_source)
+    for length, target in [(2, 4), (3, 5)]:
+        assert (
+            historical_next_url(MONITOR_SCOPE, state, pages[:length], NOW, rolling_source, **allow)
+            == link(target)["canonical_url"]
+        )
+    plan = plan_historical_scan(MONITOR_SCOPE, state, pages, NOW, rolling_source, **allow)
+    assert not plan["complete"] and plan["gap_reason"] == "anchor_not_reached"
+    marker = plan["scan_result"]["historical_follow_up"]
+    assert marker["status"] == "extended" and marker["head_join"] == join
+    assert historical_route_details(
+        state, latest(pages, source=marker), rolling_source, **allow
+    ) == {
+        "historical_status": "extended",
+        "historical_boundary_page": 4,
+        "historical_reason": "boundary_extended",
+        "head_join": join,
+    }
+    with pytest.raises(WatchPlanError):
+        historical_route_details(state, latest(pages, source=marker), rolling_source)
+    for replacement in [
+        None,
+        "corroborated_suffix" if join == "clipped_prefix" else "clipped_prefix",
+    ]:
+        wrong_marker = marker.copy()
+        if replacement is None:
+            del wrong_marker["head_join"]
+        else:
+            wrong_marker["head_join"] = replacement
+        with pytest.raises(WatchPlanError):
+            historical_route_details(
+                state, latest(pages, source=wrong_marker), rolling_source, **allow
+            )
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ([190, 188], [160, 158]),  # two observed rows
+        ([190, 160, 158], [156, 155]),  # previous prefix ends before fresh page two ends
+        ([190, 160, 158], [157, 156]),  # new row inside common block
+        ([190, 160, 158], [154, 152]),  # old row missing from inside common block
+        ([190, 158], [156, 154]),  # middle of old first page only
+        ([190, 156], [154, 152]),  # old second-page witness outside observed head
+        ([190, 156], [154, 152, 148]),  # wrong old second-page witness
+        ([190, 156], [154, 152, 151, 150]),  # later witness, with new intervening row
+        ([190, 157, 156], [154, 152, 150]),  # different post inside old numeric range above suffix
+        ([190, 152], [150, 148]),  # corroborating row does not count towards the three posts
+        ([190, 158, 156], [158, 154, 152, 150]),  # non-edge duplicate across recent pages
+    ],
+)
+def test_unconfirmed_partial_heads_cannot_navigate_or_contribute_older_rows(
+    state, rolling_source, first, second
+):
+    pages = overlap_pages(first, second)
+    assert (
+        historical_next_url(
+            MONITOR_SCOPE, state, pages[:2], NOW, rolling_source, allow_head_overlap=True
+        )
+        is None
+    )
+    with pytest.raises(WatchPlanError):
+        plan_historical_scan(
+            MONITOR_SCOPE, state, pages, NOW, rolling_source, allow_head_overlap=True
+        )
+
+
+def test_optional_corroboration_and_actual_boundary_navigation_are_independent(
+    state, rolling_source
+):
+    allow = {"allow_head_overlap": True}
+    source = rolling_source.copy()
+    del source["after_head_id"]
+    prefix = overlap_pages([190, 189, 188], [160, 158, 156])
+    suffix = overlap_pages([190, 189, 156], [154, 152, 150])
+    assert historical_next_url(MONITOR_SCOPE, state, prefix[:2], NOW, source, **allow)
+    assert historical_next_url(MONITOR_SCOPE, state, suffix[:2], NOW, source, **allow) is None
+    for targets, reason in [
+        ((3,), "boundary_link_missing"),
+        ((3, 4, 4), "boundary_link_ambiguous"),
+    ]:
+        pages = overlap_pages([190, 189, 188], [160, 158, 156], targets=targets)[:2]
+        assert historical_next_url(MONITOR_SCOPE, state, pages, NOW, source, **allow) is None
+        details = historical_route_details(state, latest(pages), source, **allow)
+        assert details["historical_reason"] == reason and "head_join" not in details
+    # No partial-head path can override a changed frontier.
+    prefix[2] = document(4, [136, 134, 131], 5)
+    assert historical_next_url(MONITOR_SCOPE, state, prefix[:3], NOW, source, **allow) is None
+    changed = plan_historical_scan(MONITOR_SCOPE, state, prefix[:3], NOW, source, **allow)
+    marker = changed["scan_result"]["historical_follow_up"]
+    assert marker["status"] == "boundary_changed" and marker["head_join"] == "clipped_prefix"
+    assert {row["page"] for row in changed["scan_result"]["observations"]} == {1, 2}
+    assert changed["gap_reason"] == "historical_boundary_changed" and not changed["complete"]
+
+
+def test_overlap_keeps_exact_matches_preferred_and_requires_an_adjacent_page_after_global_anchor(
+    state, rolling_source
+):
+    full = overlap_pages([190, 160, 158], [156, 154, 152, 150])
+    legacy = plan_historical_scan(MONITOR_SCOPE, state, full, NOW, rolling_source)
+    assert (
+        plan_historical_scan(
+            MONITOR_SCOPE, state, full, NOW, rolling_source, allow_head_overlap=True
+        )
+        == legacy
+    )
+    assert "head_join" not in legacy["scan_result"]["historical_follow_up"]
+    pages = overlap_pages([190, 160, 158], [156, 154])
+    pages[3] = document(5, [133, 100, 99], 6)
+    scan = plan_historical_scan(
+        MONITOR_SCOPE, state, pages, NOW, rolling_source, allow_head_overlap=True
+    )
+    assert not scan["complete"] and scan["gap_reason"] == "overlap_incomplete"
+    pages[3]["layout_status"] = "unverified"
+    prefix = plan_historical_prefix(
+        MONITOR_SCOPE, state, pages, NOW, rolling_source, allow_head_overlap=True
+    )
+    assert prefix["scan_result"]["verified_prefix_pages"] == 2 and not prefix["complete"]
+    assert plan_historical_prefix(MONITOR_SCOPE, state, pages, NOW, rolling_source) is None

@@ -1,4 +1,4 @@
-﻿목록 복구 확인 (0.5.0-alpha.14)
+﻿목록 복구 확인 (0.5.0-alpha.15)
 
 1. 지난 감시를 실행한 Windows PC에서 새 ZIP을 새 폴더에 풀어 주세요.
 2. image-monitor 폴더의 TEST_LIST_RECOVERY.cmd를 더블클릭하세요.

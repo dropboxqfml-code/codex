@@ -7,8 +7,9 @@ from contextlib import nullcontext
 from datetime import datetime
 
 from image_monitor import PUBLIC_VERSION
+from image_monitor.monitor_date_report import public_date_cell_checks
 from image_monitor.monitor_gap_report import RECOVERY_MESSAGES
-from image_monitor.monitor_list_review_text import describe_list_review
+from image_monitor.monitor_list_review_text import describe_date_cells, describe_list_review
 from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
 
 _HEAD_JOIN_KO = {
@@ -40,6 +41,12 @@ def _describe_list_check(check):
     if not isinstance(check, dict):
         return check
     described = check.copy()
+    if "date_cell_checks" in described:
+        checks = public_date_cell_checks(
+            described.pop("date_cell_checks"), described.get("visited_page_numbers")
+        )
+        if checks and described.get("status") in ("baseline", "partial", "complete"):
+            described["date_cell_checks"] = [describe_date_cells(page) for page in checks]
     if "review" in described:
         review = describe_list_review(described.pop("review"))
         if check.get("status") in {"waiting", "review"} and review:

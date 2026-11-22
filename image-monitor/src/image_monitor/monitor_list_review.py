@@ -16,6 +16,7 @@ from image_monitor.watch_diagnosis import (
     DIAGNOSIS_REASONS,
     PLANNER_ISSUES,
     _public_page,
+    date_cell_diagnosis,
 )
 from image_monitor.watch_images_check import _read_mode, _UnstableDatabase
 from image_monitor.watch_lock import watch_list_lock
@@ -151,8 +152,10 @@ def public_list_review(value):
                         "ordinary_rows",
                         "excluded_rows",
                         "unsafe_exclusions",
+                        "date_cells",
+                        "date_cell_mismatches",
                     )
-                    if fields[key] is not None
+                    if fields.get(key) is not None
                 }
             )
     snapshots = value.get("snapshot_page_numbers")
@@ -341,7 +344,10 @@ def _bound_review(database, queue, scan, raw, stage):
             "gap_reason": scan["gap_reason"],
             "planner_issue": result.get("planner_issue"),
             "visited_page_numbers": numbers,
-            "pages": summary["page_checks"],
+            "pages": [
+                checked | date_cell_diagnosis(page, checked["profile_issue"])
+                for page, checked in zip(pages, summary["page_checks"], strict=True)
+            ],
             **position,
         }
     )

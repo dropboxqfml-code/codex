@@ -2,7 +2,7 @@ import json
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import ANY, MagicMock, call
 
 import pytest
 
@@ -106,7 +106,9 @@ def test_owns_one_fresh_headless_system_browser_and_closes_only_it(browser_sessi
     browser.new_context.assert_called_once_with(accept_downloads=False)
     page.goto.assert_called_once_with(PAGE_ONE, wait_until="domcontentloaded", timeout=30_000)
     response.header_value.assert_called_once_with("retry-after")
-    inspect.assert_called_once_with(page, expected_url=PAGE_ONE, observed_at=NOW, timeout_ms=15_000)
+    inspect.assert_called_once_with(
+        page, expected_url=PAGE_ONE, observed_at=NOW, timeout_ms=15_000, _capture_date_rows=ANY
+    )
     assert report["status"] == "observed"
     assert report["pages"][0]["layout_status"] == "unverified"
     assert "scan_observed_at" not in inspect.return_value
@@ -597,3 +599,95 @@ def test_replaced_document_cannot_certify_budget_expiry(browser_session, same_ur
         "page": 1,
     }
     assert page.goto.call_count == inspect.call_count == 1
+
+
+def date_cell_snapshot(*, missing=False, defect=None, capture=None):
+    from test_search_list import parse, profile_row, reviewed_raw
+
+    rows = [profile_row(number) for number in (103, 102, 101)]
+    if missing:
+        rows[1].update(field_counts={"number": 1, "author": 1, "date": 0}, published_at_raw=None)
+    if defect == "two_missing":
+        rows[0].update(field_counts={"number": 1, "author": 1, "date": 0}, published_at_raw=None)
+    elif defect == "multiple_dates":
+        rows[1]["field_counts"]["date"] = 2
+    elif defect == "mismatched_post":
+        rows[1]["number_raw"] = "8080"
+    elif defect == "duplicate_id":
+        rows[1].update(number_raw=rows[0]["number_raw"], links=rows[0]["links"])
+    elif defect == "absent_author":
+        rows[1]["author_raw"] = None
+    elif defect == "malformed_author":
+        rows[1]["author_raw"] = "x" * 501
+    elif defect == "second_unsafe":
+        rows[0]["field_counts"]["author"] = 2
+    elif defect == "changed_identity":
+        rows[1] = profile_row(44)
+    elif defect == "moved_identity":
+        rows[1], rows[2] = rows[2], rows[1]
+    raw = reviewed_raw(rows)
+    main, secondary = raw["diagnostics"]["list_candidates"]
+    main["date_field_count"] = sum(row["field_counts"]["date"] for row in rows)
+    if defect == "extra_date_outside_rows":
+        main["date_field_count"] += 1
+    if defect == "wrong_secondary":
+        secondary["table_row_count"] += 1
+    return parse(raw, _capture_date_rows=capture)
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "two_missing",
+        "multiple_dates",
+        "mismatched_post",
+        "duplicate_id",
+        "absent_author",
+        "malformed_author",
+        "second_unsafe",
+        "extra_date_outside_rows",
+        "wrong_secondary",
+    ],
+)
+def test_missing_ordinary_date_reread_requires_one_otherwise_verified_identity(
+    browser_session, defect
+):
+    page, _, inspect = browser_session[3:6]
+
+    def read(*_, _capture_date_rows, **__):
+        return date_cell_snapshot(missing=True, defect=defect, capture=_capture_date_rows)
+
+    inspect.side_effect = read
+    with backend.HeadlessWatchBrowser(now=lambda: NOW) as owned:
+        result = owned.scan(SCOPE, NOW, max_pages=1)
+    assert result["pages"][0]["layout_status"] == "unverified"
+    assert inspect.call_count == page.goto.call_count == 1
+
+
+@pytest.mark.parametrize("second", ["repaired", "unchanged", "changed_identity", "moved_identity"])
+def test_only_same_ordinary_rows_with_a_restored_date_can_use_the_reread(browser_session, second):
+    page, _, inspect = browser_session[3:6]
+    first = date_cell_snapshot(missing=True)
+    assert first["layout_status"] == "unverified" and first["rows_complete"] is False
+    assert [row["post_id"] for row in first["rows"]] == ["103", "101"]
+    assert first["selector_evidence"]["profile_issue"] == "row_date_count"
+    reread = date_cell_snapshot(missing=second == "unchanged", defect=second)
+
+    def read(*_, _capture_date_rows, **__):
+        if _capture_date_rows is not None:
+            # The standalone result is identical, including for a potential reread.
+            observed = date_cell_snapshot(missing=True, capture=_capture_date_rows)
+            assert observed == first
+            return observed
+        return reread
+
+    inspect.side_effect = read
+    with backend.HeadlessWatchBrowser(now=lambda: NOW) as owned:
+        result = owned.scan(SCOPE, NOW, max_pages=1)
+    actual = result["pages"][0]
+    assert actual["selector_evidence"]["settle_initial_issue"] == "row_date_count"
+    assert actual["layout_status"] == ("site_verified" if second == "repaired" else "unverified")
+    assert actual["rows_complete"] is (second == "repaired")
+    assert page.goto.call_count == 1
+    assert [call.kwargs["timeout_ms"] for call in inspect.call_args_list] == [15000, 750]
+    page.wait_for_timeout.assert_called_once_with(1000)

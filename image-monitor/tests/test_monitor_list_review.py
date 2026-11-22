@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+from test_search_list import profile_row, reviewed_raw, row
 from test_watch_historical_receipt import history as history  # noqa: PLC0414
 from test_watch_historical_receipt import listing
 from test_watch_runtime import (
@@ -12,6 +13,7 @@ from test_watch_runtime import (
     baseline_outcome,
     link,
     new_posts_outcome,
+    observed,
     unverified_second_page,
 )
 
@@ -24,6 +26,7 @@ from image_monitor.monitor_list_review import (
 )
 from image_monitor.monitor_list_review_text import describe_list_review
 from image_monitor.queue import QueueStore
+from image_monitor.search_list import parse_list_snapshot
 from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
 
 
@@ -307,3 +310,35 @@ def test_uncommitted_worker_report_can_only_explain_the_worker_failure(stage):
         assert public_list_review(review) == review
     else:
         assert review == {"stage": stage}
+
+
+def test_date_review_is_derived_after_binding_the_closed_cycle_with_legacy_page_checks(run):
+    root, clock, before = run
+
+    def first_page(stamp):
+        missing = row("공지", is_pinned=True, field_counts={"number": 1, "author": 1, "date": 0})
+        raw = reviewed_raw([missing, profile_row(101)])
+        # alpha.14 rejected the row before checking the selected table's total.
+        page = parse_list_snapshot(raw, expected_url=link(1)["canonical_url"], observed_at=stamp)
+        page["selector_evidence"].update(
+            profile_issue="row_date_count",
+            status="unverified",
+            live_layout_verified=False,
+            source=None,
+            verification_scope=None,
+        )
+        return page | {"layout_status": "unverified", "scan_observed_at": stamp.isoformat()}
+
+    receipt = scan(root, clock, observed(first_page))
+    assert receipt["status"] == "watch_test_partial"
+    assert "date_cells" not in receipt["cycles"][0]["page_checks"][0]
+    report = current(root, before, receipt)
+    assert previous_list_review(root) == report | {"stage": "stored_scan"}
+    details = report["pages"][0]
+    assert details["date_cell_mismatches"] == {"pinned": {"missing": 1}}
+    assert details["date_cells"]["table_check"] == "differs_from_rows"
+    assert public_list_review(report) == report
+
+    receipt["cycles"][0]["page_checks"][0]["date_cells"] = {"table_check": "matches_rows"}
+    Path(receipt["report_path"]).write_text(json.dumps(receipt))
+    assert previous_list_review(root) is None

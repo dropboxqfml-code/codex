@@ -233,3 +233,45 @@ def test_korean_list_review_is_reprojected_for_live_and_previous_checks():
             "last_list": {"status": "complete", "review": review},
         }
     ) == {"last_list": {"status": "complete"}}
+
+
+def test_date_checks_keep_only_anonymous_counts_at_the_verified_visit():
+    checked = {
+        "visit": 2,
+        "page": 1,
+        "layout_status": "site_verified",
+        "ordinary_rows": 20,
+        "excluded_rows": 3,
+        "date_cell_mismatches": {"ad": {"missing": 2, "raw": "private link"}},
+        "date_cells": {
+            "ordinary_rows_with_one": 20,
+            "excluded_rows_counted": 3,
+            "table_cell_total": 21,
+            "row_cell_total": 21,
+            "raw": "private date",
+        },
+        "raw": "private URL",
+        "date_observation_ko": "private title",
+    }
+    result = {
+        "status": "partial",
+        "visited_page_numbers": [1, 1, 4, 5],
+        "date_cell_checks": [checked],
+    }
+    [shown] = auto_monitor_cli._describe_list_check(result)["date_cell_checks"]
+    assert shown["visit"] == 2 and shown["page"] == 1
+    assert shown["date_cells"]["table_check"] == "matches_rows"
+    assert shown["date_observation_ko"] == "광고 행 2개에 날짜 칸이 없습니다."
+    assert "private" not in json.dumps(shown)
+    for wrong in (
+        {"visit": 3},
+        {"page": True},
+        {"visit": True},
+        {"date_cells": checked["date_cells"] | {"row_cell_total": 22}},
+        {"date_cell_mismatches": {"other_excluded": {"missing": 1}}},
+    ):
+        report = result | {"date_cell_checks": [checked | wrong]}
+        assert "date_cell_checks" not in auto_monitor_cli._describe_list_check(report)
+    assert "date_cell_checks" not in auto_monitor_cli._describe_list_check(
+        result | {"status": "review"}
+    )

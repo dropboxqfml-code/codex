@@ -264,3 +264,126 @@ def test_historical_diagnosis_uses_document_page_numbers_without_exposing_the_so
     failed = diagnose_list_scan(latest)
     assert [page["page"] for page in failed["pages"]] == [1, 2, 9, 10]
     assert failed["pages"][-1]["status"] == "missing_list"
+
+
+def date_example():
+    pin = row("공지", is_pinned=True, field_counts={"number": 1, "author": 1, "date": 0})
+    ad = row("광고", is_ad=True, field_counts={"number": 1, "author": 1, "date": 2})
+    return parse(reviewed_raw([profile_row(101), pin, ad]))
+
+
+def test_dates_separate_accepted_rows_and_excluded_owned_cells_in_old_and_new_profiles():
+    page = date_example()
+    expected = {
+        "ordinary_rows_with_one": 1,
+        "excluded_rows_counted": 2,
+        "row_cell_total": 3,
+        "table_cell_total": 3,
+        "table_check": "matches_rows",
+    }
+    for older in (False, True):
+        if older:
+            page["layout_status"] = "unverified"
+            page["selector_evidence"].update(source=None, profile_issue="row_date_count")
+        details = diagnose_list_page(page, 1)
+        assert details["date_cells"] == expected
+        assert details["date_cell_mismatches"] == {"ad": {"multiple": 1}, "pinned": {"missing": 1}}
+        assert not (
+            {"date_cells", "date_cell_mismatches"}
+            & diagnose_list_page(page, 1, include_date_cells=False).keys()
+        )
+        assert public_list_diagnosis(diagnose_list_scan(scan(page)))["pages"] == [details]
+
+
+def test_ambiguous_numeric_row_cannot_be_counted_as_an_accepted_ordinary_row():
+    raw = reviewed_raw([profile_row(909090), profile_row(101)])
+    raw["rows"][0]["field_counts"]["date"] = 0
+    page = parse(raw)
+    details = diagnose_list_page(page, 1)
+    assert details["profile_issue"] == "row_date_count"
+    assert details["date_cell_mismatches"] == {"ambiguous_row_fields": {"missing": 1}}
+    assert details["date_cells"] == {
+        "ordinary_rows_with_one": 1,
+        "excluded_rows_counted": 1,
+        "row_cell_total": 1,
+        "table_cell_total": 2,
+        "table_check": "differs_from_rows",
+    }
+    assert "909090" not in json.dumps(details)
+
+
+def test_unowned_table_cells_are_diagnosed_without_attributing_them_to_an_exclusion():
+    raw = reviewed_raw([profile_row(101), row("공지", is_pinned=True)])
+    raw["diagnostics"]["list_candidates"][0]["date_field_count"] = 3
+    details = diagnose_list_page(parse(raw), 1)
+    assert details["profile_issue"] == "main_date_field_count"
+    assert details["date_cells"]["row_cell_total"] == 2
+    assert details["date_cells"]["table_cell_total"] == 3
+    assert details["date_cells"]["table_check"] == "differs_from_rows"
+    assert "date_cell_mismatches" not in details
+
+
+@pytest.mark.parametrize(
+    "damaged",
+    [
+        "unknown_row_count",
+        "duplicate_position",
+        "missing_table",
+        "ambiguous_table",
+        "bad_count",
+    ],
+)
+def test_dates_need_valid_observed_rows_and_unique_selected_table(damaged):
+    page = date_example()
+    if damaged == "bad_count":
+        page["excluded_rows"][0]["field_counts"]["date"] = False
+    elif damaged == "duplicate_position":
+        page["excluded_rows"][0]["row_order"] = page["rows"][0]["row_order"]
+    elif damaged == "missing_table":
+        del page["diagnostics"]["list_candidates"][0]["date_field_count"]
+    elif damaged == "ambiguous_table":
+        page["diagnostics"]["list_candidates"][1]["selected"] = True
+    else:
+        page["counts"]["observed_rows"] = False
+    details = diagnose_list_page(page, 1)
+    assert details["date_cells"]["table_check"] == "unavailable"
+    if damaged == "bad_count":
+        assert details["date_cell_mismatches"] == {"ad": {"multiple": 1}}
+        assert "row_cell_total" not in details["date_cells"]
+    if damaged in {"duplicate_position", "unknown_row_count"}:
+        assert details["date_cells"] == {"table_check": "unavailable"}
+        assert "date_cell_mismatches" not in details
+
+
+def test_public_date_evidence_has_fixed_fields_bounded_by_observed_owners():
+    diagnosis = diagnose_list_scan(scan(date_example()))
+    page = diagnosis["pages"][0]
+    page["date_cell_mismatches"] = {"ad": {"missing": 2, "multiple": 1}, "PRIVATE": {"PRIVATE": 4}}
+    page["date_cells"].update(
+        table_cell_total=10**12,
+        table_check="PRIVATE",
+        row_cell_total=-1,
+        PRIVATE="PRIVATE",
+    )
+    safe = public_list_diagnosis(diagnosis)
+    assert "PRIVATE" not in json.dumps(safe)
+    details = safe["pages"][0]
+    assert "date_cell_mismatches" not in details
+    assert details["date_cells"] == {
+        "ordinary_rows_with_one": 1,
+        "excluded_rows_counted": 2,
+        "table_check": "unavailable",
+    }
+
+
+def test_date_mismatch_on_an_uncorroborated_notice_preserves_only_its_excluded_count():
+    page = date_example()
+    page["layout_status"] = "unverified"
+    page["selector_evidence"]["profile_issue"] = "row_date_count"
+    page["excluded_rows"][0]["role_flags"]["is_pinned"] = False
+    details = diagnose_list_page(page, 1)
+    assert details["unsafe_exclusions"] == 1
+    assert details["date_cell_mismatches"] == {
+        "other_excluded": {"missing": 1},
+        "ad": {"multiple": 1},
+    }

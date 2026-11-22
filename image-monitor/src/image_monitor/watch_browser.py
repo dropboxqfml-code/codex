@@ -13,6 +13,7 @@ from image_monitor.search_list import (
     SEARCH_TYPE,
     _safe_diagnostics,
     build_list_url,
+    date_settle_identities,
     inspect_list,
     validate_list_url,
 )
@@ -217,6 +218,7 @@ class HeadlessWatchBrowser:
         page = self._page
         document_changed = False
         sample_name = "initial"
+        pending_date_rows = []
 
         def navigated(frame):
             nonlocal document_changed
@@ -230,6 +232,9 @@ class HeadlessWatchBrowser:
                     expected_url=url,
                     observed_at=self._observation_time(scan_time),
                     timeout_ms=timeout_ms,
+                    _capture_date_rows=pending_date_rows.extend
+                    if can_settle and sample_name == "initial"
+                    else None,
                 )
             )
 
@@ -238,17 +243,28 @@ class HeadlessWatchBrowser:
         try:
             snapshot = sample(15_000)
             issue = snapshot.get("selector_evidence", {}).get("profile_issue")
+            missing_date = issue == "row_date_count" and bool(pending_date_rows)
             if (
                 can_settle
                 and snapshot.get("layout_status") == "unverified"
-                and snapshot.get("rows_complete") is True
-                and issue in _SETTLE_ISSUES
+                and not document_changed
+                and (
+                    missing_date
+                    or (snapshot.get("rows_complete") is True and issue in _SETTLE_ISSUES)
+                )
                 and not self._stop_requested()
             ):
                 page.wait_for_timeout(1000)
                 if not document_changed and not self._stop_requested():
                     sample_name = "settled"
-                    snapshot = sample(750)
+                    settled = sample(750)
+                    if not missing_date or (
+                        settled.get("layout_status") == "site_verified"
+                        and settled.get("rows_complete") is True
+                        and date_settle_identities(settled["rows"], settled["excluded_rows"])
+                        == pending_date_rows
+                    ):
+                        snapshot = settled
                     snapshot["selector_evidence"] = dict(
                         snapshot["selector_evidence"], settle_initial_issue=issue
                     )

@@ -224,6 +224,8 @@ def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
                 ordinal,
                 historical_boundary_page=boundary,
                 recovery_page_numbers=recovery_pages,
+                # Keep the persisted cycle receipt reproducible across diagnostic versions.
+                include_date_cells=False,
             )
             for ordinal, page in enumerate(pages, 1)
         ],

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from image_monitor.artifact_files import _plain_path
 from image_monitor.monitor_clock import stop_requested
+from image_monitor.monitor_date_report import verified_date_cell_checks
 from image_monitor.monitor_gap_report import gap_route_details, search_window_start_visits
 from image_monitor.monitor_gap_store import load_bookmark
 from image_monitor.monitor_list_attempt import uncommitted_list_review
@@ -383,6 +384,8 @@ def run_auto_discovery(
             result.update(
                 page_limit=page_limit, pages_checked=len(numbers), visited_page_numbers=numbers
             )
+            if checks := verified_date_cell_checks(record["private_observation"]["pages"]):
+                result["date_cell_checks"] = checks
             starts = search_window_start_visits(record)
             if starts:
                 result["search_window_start_visits"] = starts

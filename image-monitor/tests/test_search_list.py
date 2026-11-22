@@ -164,31 +164,40 @@ def test_reviewed_structure_requires_exact_main_root_and_owned_fields(changes):
     assert parse(raw)["layout_status"] == "unverified"
 
 
-@pytest.mark.parametrize("writer_count", [0, 2])
+@pytest.mark.parametrize(
+    ("field", "column", "source"),
+    [
+        ("author", "writer_field_count", "user_list_diagnosis_alpha3"),
+        ("date", "date_field_count", "reviewed_special_row_dates_alpha15"),
+    ],
+)
+@pytest.mark.parametrize("count", [0, 2])
 @pytest.mark.parametrize("reason", ["ad", "pinned", "survey"])
-def test_only_proven_special_rows_can_have_nonstandard_writer_counts(reason, writer_count):
+def test_only_proven_special_rows_can_have_nonstandard_metadata_counts(
+    reason, count, field, column, source
+):
     if reason == "survey":
         special = row("설문", links=[{"href": "javascript:privateAction()"}])
     else:
         special = row("AD" if reason == "ad" else "공지", **{"is_" + reason: True})
-    special["field_counts"]["author"] = writer_count
-    special["author_raw"] = "PRIVATE_WRITER"
+    special["field_counts"][field] = count
+    special["author_raw"] = special["published_at_raw"] = "PRIVATE_METADATA"
     raw = reviewed_raw([profile_row(102), special, profile_row(101)])
     main = raw["diagnostics"]["list_candidates"][0]
-    main["writer_field_count"] = 2 + writer_count
+    main[column] = 2 + count
     snapshot = parse(raw)
     assert snapshot["layout_status"] == "site_verified"
     assert snapshot["rows_complete"] and not snapshot["queue_eligible"]
-    assert snapshot["selector_evidence"]["source"] == "user_list_diagnosis_alpha3"
+    assert snapshot["selector_evidence"]["source"] == source
     assert [item["post_id"] for item in snapshot["rows"]] == ["102", "101"]
     assert snapshot["excluded_rows"][0]["reason"] == reason
-    assert snapshot["excluded_rows"][0]["field_counts"]["author"] == writer_count
-    assert "PRIVATE_WRITER" not in json.dumps(snapshot)
+    assert snapshot["excluded_rows"][0]["field_counts"][field] == count
+    assert "PRIVATE_METADATA" not in json.dumps(snapshot)
     # A matching count outside the owned rows still represents an unknown table shape.
-    main["writer_field_count"] += 1
+    main[column] += 1
     snapshot = parse(raw)
     assert snapshot["layout_status"] == "unverified"
-    assert snapshot["selector_evidence"]["profile_issue"] == "main_writer_field_count"
+    assert snapshot["selector_evidence"]["profile_issue"] == "main_" + column
 
 
 @pytest.mark.parametrize(
@@ -200,21 +209,22 @@ def test_only_proven_special_rows_can_have_nonstandard_writer_counts(reason, wri
         row("private notice"),
     ],
 )
-@pytest.mark.parametrize("writer_count", [0, 2])
-def test_malformed_ordinary_or_unproven_row_stays_unverified(unrecognized, writer_count):
-    entry = unrecognized | {"field_counts": {"number": 1, "date": 1, "author": writer_count}}
+@pytest.mark.parametrize("field", ["author", "date"])
+@pytest.mark.parametrize("count", [0, 2])
+def test_malformed_ordinary_or_unproven_row_stays_unverified(unrecognized, field, count):
+    entry = unrecognized | {"field_counts": unrecognized["field_counts"] | {field: count}}
     # Offsetting defects sum to the reviewed total but cannot cancel one another.
     special = row("공지", is_pinned=True)
-    special["field_counts"]["author"] = 2 - writer_count
+    special["field_counts"][field] = 2 - count
     raw = reviewed_raw([profile_row(102), special, entry])
     snapshot = parse(raw)
     assert snapshot["layout_status"] == "unverified"
-    assert snapshot["selector_evidence"]["profile_issue"] == "row_author_count"
+    assert snapshot["selector_evidence"]["profile_issue"] == "row_" + field + "_count"
     assert not snapshot["rows_complete"]
     assert not snapshot["queue_eligible"]
 
 
-@pytest.mark.parametrize("field", ["number", "date", "title_links"])
+@pytest.mark.parametrize("field", ["number", "title_links"])
 def test_other_shape_checks_still_apply_to_proven_special_rows(field):
     special = row("공지", is_pinned=True)
     special["field_counts"]["author"] = 0
@@ -228,9 +238,17 @@ def test_other_shape_checks_still_apply_to_proven_special_rows(field):
     assert snapshot["layout_status"] == "unverified"
     assert snapshot["selector_evidence"]["profile_issue"] in {
         "row_number_count",
-        "row_date_count",
         "row_title_link_count",
     }
+
+
+@pytest.mark.parametrize("bad_count", [None, False, -1, 1_000_001])
+def test_special_date_exception_requires_observed_bounded_cell_counts(bad_count):
+    special = row("공지", is_pinned=True)
+    special["field_counts"]["date"] = bad_count
+    snapshot = parse(reviewed_raw([profile_row(101), special]))
+    assert snapshot["layout_status"] == "unverified"
+    assert snapshot["selector_evidence"]["profile_issue"] == "row_date_count"
 
 
 @pytest.mark.parametrize("missing", ["title", "author", "date"])

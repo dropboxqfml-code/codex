@@ -11,6 +11,7 @@ from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
 from image_monitor.monitor_auto_discovery import run_auto_discovery
 from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_collect import collect_session_turn, list_checks_during_save
+from image_monitor.monitor_date_report import public_date_cell_checks
 from image_monitor.monitor_gap_report import checked_gap_route, checked_window_starts
 from image_monitor.monitor_list_history import previous_list_checks
 from image_monitor.monitor_list_review import previous_list_review, public_list_review
@@ -95,6 +96,8 @@ def _record_list_pages(report, turn):
     if numbers != expected:
         raise ValueError("Unexpected verified list page sequence")
     last.update(pages_checked=count, page_limit=limit, visited_page_numbers=numbers.copy())
+    if checks := public_date_cell_checks(turn.get("date_cell_checks"), numbers):
+        last["date_cell_checks"] = checks
     if "historical_status" in turn:
         last.update(historical_boundary_page=boundary, historical_status=status)
         reason = turn.get("historical_reason")

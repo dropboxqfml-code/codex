@@ -1,7 +1,14 @@
 """Explain an incomplete list scan using bounded structural evidence only."""
 
 from image_monitor.monitor_gap_report import public_recovery_pages
-from image_monitor.search_list import MAX_ROWS, PROFILE_ISSUES, reviewed_structure_issue
+from image_monitor.search_list import (
+    MAX_LIST_CANDIDATES,
+    MAX_ROWS,
+    PROFILE_ISSUES,
+    SAFE_EXCLUSIONS,
+    SPECIAL_DATE_PROFILE_SOURCE,
+    reviewed_structure_issue,
+)
 from image_monitor.watch_history import MAX_HISTORICAL_PAGE
 from image_monitor.watch_planner import WatchPlanError, _exclusion_evidence, _safe_exclusion
 from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES
@@ -71,9 +78,10 @@ _SETTLE_ISSUES = {
     "ordinary_title_missing",
     "ordinary_author_missing",
     "ordinary_date_missing",
+    "row_date_count",
     "secondary_table_empty",
 }
-_AUTHOR_ROW_GROUPS = ("ad", "pinned", "survey", "ambiguous_row_fields", "other_excluded")
+_EXCLUDED_ROW_GROUPS = ("ad", "pinned", "survey", "ambiguous_row_fields", "other_excluded")
 
 
 def _category(value, allowed):
@@ -88,30 +96,39 @@ def _mapping(value):
     return value if isinstance(value, dict) else {}
 
 
-def _excluded_author_cell_mismatches(excluded):
+def _known_safe_exclusion(row, reason):
+    try:
+        return _safe_exclusion({"reason": reason} | _exclusion_evidence(row), "site_verified")
+    except WatchPlanError:
+        return False
+
+
+def _excluded_cell_mismatches(excluded, field):
     """Count stored exceptions by row role without exposing any row or author identity."""
     result = {}
     if not isinstance(excluded, list) or len(excluded) > MAX_ROWS:
         return result
     for entry in excluded:
         row = _mapping(entry)
-        author_cells = _count(_mapping(row.get("field_counts")).get("author"), 1_000_000)
-        if author_cells is None or author_cells == 1:
+        cells = _count(_mapping(row.get("field_counts")).get(field), 1_000_000)
+        if cells is None or cells == 1:
             continue
-        group = _category(row.get("reason"), _AUTHOR_ROW_GROUPS) or "other_excluded"
+        group = _category(row.get("reason"), _EXCLUDED_ROW_GROUPS) or "other_excluded"
+        if field == "date" and group in SAFE_EXCLUSIONS and not _known_safe_exclusion(row, group):
+            group = "other_excluded"
         counts = result.setdefault(group, {})
-        kind = "missing" if author_cells == 0 else "multiple"
+        kind = "missing" if cells == 0 else "multiple"
         counts[kind] = counts.get(kind, 0) + 1
     return result
 
 
-def _public_author_cell_mismatches(value, excluded_count):
+def _public_cell_mismatches(value, excluded_count):
     """Re-project a histogram at a public boundary, bounded by observed excluded rows."""
     result = {}
     if _count(excluded_count, MAX_ROWS) is None:
         return result
     source_groups = _mapping(value)
-    for group in _AUTHOR_ROW_GROUPS:
+    for group in _EXCLUDED_ROW_GROUPS:
         source = _mapping(source_groups.get(group))
         counts = {
             kind: source[kind]
@@ -123,6 +140,33 @@ def _public_author_cell_mismatches(value, excluded_count):
     if sum(sum(counts.values()) for counts in result.values()) > excluded_count:
         return {}
     return result
+
+
+def _public_date_cells(page, result):
+    source = page["date_cells"]
+    ordinary, excluded = result["ordinary_rows"], result["excluded_rows"]
+    detail = {}
+    if ordinary is not None and _count(source.get("ordinary_rows_with_one"), ordinary) == ordinary:
+        detail["ordinary_rows_with_one"] = ordinary
+    known = _count(source.get("excluded_rows_counted"), excluded) if excluded is not None else None
+    if known is not None:
+        detail["excluded_rows_counted"] = known
+    rows_total = None
+    if "ordinary_rows_with_one" in detail and known is not None and known == excluded:
+        rows_total = _count(source.get("row_cell_total"), ordinary + known * 1_000_000, ordinary)
+    if rows_total is not None:
+        detail["row_cell_total"] = rows_total
+    table = _count(source.get("table_cell_total"), 1_000_000)
+    if table is not None:
+        detail["table_cell_total"] = table
+    detail["table_check"] = "unavailable"
+    if rows_total is not None and table is not None:
+        detail["table_check"] = "matches_rows" if table == rows_total else "differs_from_rows"
+    date_fields = {"date_cells": detail}
+    mismatches = _public_cell_mismatches(page.get("date_cell_mismatches"), known)
+    if mismatches:
+        date_fields["date_cell_mismatches"] = mismatches
+    return date_fields
 
 
 def _public_page(page, number):
@@ -146,11 +190,16 @@ def _public_page(page, number):
         },
     }
     if result["profile_issue"] == "row_author_count" or result["layout_status"] == "site_verified":
-        mismatches = _public_author_cell_mismatches(
+        mismatches = _public_cell_mismatches(
             page.get("author_cell_mismatches"), result["excluded_rows"]
         )
         if mismatches:
             result["author_cell_mismatches"] = mismatches
+    if (
+        result["profile_issue"] in ("row_date_count", "main_date_field_count")
+        or result["layout_status"] == "site_verified"
+    ) and isinstance(page.get("date_cells"), dict):
+        result.update(_public_date_cells(page, result))
     return result
 
 
@@ -201,6 +250,74 @@ def _stored_row_issue(excluded):
     return None
 
 
+def _selected_date_total(page, containers, row_total):
+    diagnostics = _mapping(page.get("diagnostics"))
+    tables = diagnostics.get("list_candidates")
+    if (
+        _count(diagnostics.get("list_candidate_total"), 1) == 1
+        and diagnostics.get("list_candidates_truncated") is False
+        and isinstance(tables, list)
+        and len(tables) == _count(containers, MAX_LIST_CANDIDATES, 1)
+        and all(isinstance(table, dict) and type(table.get("selected")) is bool for table in tables)
+    ):
+        selected = [table for table in tables if table["selected"]]
+        if len(selected) == 1:
+            table = selected[0]
+            if (
+                table.get("tag") == "TABLE"
+                and table.get("qualifies") is True
+                and table.get("root_ownership") == "direct_tbody_rows"
+                and _count(table.get("ordinary_row_count"), MAX_ROWS) == row_total
+            ):
+                return _count(table.get("date_field_count"), 1_000_000)
+    return None
+
+
+def date_cell_diagnosis(page, issue):
+    """Summarize the selected table and its observed row counts, without their content."""
+    evidence = _mapping(page.get("selector_evidence"))
+    verified_exceptions = (
+        page.get("layout_status") == "site_verified"
+        and evidence.get("source") == SPECIAL_DATE_PROFILE_SOURCE
+    )
+    if not verified_exceptions and issue not in ("row_date_count", "main_date_field_count"):
+        return {}
+    result = {"date_cells": {}}
+    detail = result["date_cells"]
+    counts = _mapping(page.get("counts"))
+    rows, excluded = page.get("rows"), page.get("excluded_rows")
+    n = _count(counts.get("observed_rows"), MAX_ROWS)
+    if (
+        page.get("status") != "observed"
+        or _count(counts.get("list_containers"), 1) != 1
+        or n is None
+        or not isinstance(rows, list)
+        or not isinstance(excluded, list)
+        or len(rows) + len(excluded) != n
+        or _count(counts.get("ordinary_rows"), n) != len(rows)
+        or _count(counts.get("excluded_rows"), n) != len(excluded)
+    ):
+        return result
+    positions = {_count(_mapping(row).get("row_order"), n, 1) for row in [*rows, *excluded]}
+    if positions != set(range(1, n + 1)):
+        return result
+    # The parser admits a row to rows[] only after its date selector matched exactly once.
+    detail["ordinary_rows_with_one"] = len(rows)
+    excluded_dates = [
+        _count(_mapping(_mapping(row).get("field_counts")).get("date"), 1_000_000)
+        for row in excluded
+    ]
+    known = [count for count in excluded_dates if count is not None]
+    detail["excluded_rows_counted"] = len(known)
+    if len(known) == len(excluded):
+        detail["row_cell_total"] = len(rows) + sum(known)
+    result["date_cell_mismatches"] = _excluded_cell_mismatches(excluded, "date")
+    detail["table_cell_total"] = _selected_date_total(
+        page, counts.get("matched_list_containers"), n
+    )
+    return result
+
+
 def _stored_page(page):
     counts = _mapping(page.get("counts"))
     evidence = _mapping(page.get("selector_evidence"))
@@ -237,13 +354,7 @@ def _stored_page(page):
         for raw in excluded:
             row = _mapping(raw)
             reason = _category(row.get("reason"), _EXCLUSION_REASONS) or "unclassified"
-            try:
-                known_safe = _safe_exclusion(
-                    {"reason": reason} | _exclusion_evidence(row), "site_verified"
-                )
-            except WatchPlanError:
-                known_safe = False
-            if not known_safe:
+            if not _known_safe_exclusion(row, reason):
                 unsafe += 1
                 reasons[reason] = reasons.get(reason, 0) + 1
     return {
@@ -257,11 +368,12 @@ def _stored_page(page):
         "matched_list_containers": counts.get("matched_list_containers"),
         "unsafe_exclusions": unsafe,
         "exclusion_reasons": reasons,
-        "author_cell_mismatches": _excluded_author_cell_mismatches(excluded)
+        "author_cell_mismatches": _excluded_cell_mismatches(excluded, "author")
         if issue == "row_author_count"
         or (
             page.get("layout_status") == "site_verified"
-            and evidence.get("source") == "user_list_diagnosis_alpha3"
+            and evidence.get("source")
+            in ("user_list_diagnosis_alpha3", SPECIAL_DATE_PROFILE_SOURCE)
         )
         else {},
     }
@@ -289,11 +401,22 @@ def _page_number(page, ordinal, boundary, recovery=None):
     return _count(_mapping(page).get("page"), expected, expected)
 
 
-def diagnose_list_page(page, ordinal, *, historical_boundary_page=None, recovery_page_numbers=None):
+def diagnose_list_page(
+    page,
+    ordinal,
+    *,
+    historical_boundary_page=None,
+    recovery_page_numbers=None,
+    include_date_cells=True,
+):
     """Project a private page's observed validation, counts and proven exceptions."""
     recovery = public_recovery_pages(recovery_page_numbers)
     number = _page_number(page, ordinal, historical_boundary_page, recovery)
-    return _public_page(_stored_page(_mapping(page)), number)
+    page = _mapping(page)
+    stored = _stored_page(page)
+    if include_date_cells:
+        stored.update(date_cell_diagnosis(page, stored["profile_issue"]))
+    return _public_page(stored, number)
 
 
 def diagnose_list_scan(latest_scan):

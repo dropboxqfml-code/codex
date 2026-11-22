@@ -47,11 +47,50 @@ _INSPECTION_REASON_TEXT = {
 }
 
 
+_DATE_ROWS = {
+    "pinned": "공지 행",
+    "ad": "광고 행",
+    "survey": "설문 행",
+    "ambiguous_row_fields": "필드가 불명확한 행",
+    "other_excluded": "기타 제외 행",
+}
+
+
+def describe_date_cells(page):
+    """Describe counts from a publicly projected page."""
+    cells = page.get("date_cells")
+    if not cells:
+        return page
+    counts = page.get("date_cell_mismatches", {})
+    notes = []
+    for kind, text in (
+        ("missing", "날짜 칸이 없습니다."),
+        ("multiple", "날짜 칸이 둘 이상 있습니다."),
+    ):
+        groups = [
+            f"{label} {counts[role][kind]}개"
+            for role, label in _DATE_ROWS.items()
+            if kind in counts.get(role, {})
+        ]
+        if groups:
+            notes.append(f"{', '.join(groups)}에 {text}")
+    if cells.get("table_check") == "differs_from_rows":
+        notes.append(
+            f"목록 표에서 센 날짜 칸은 {cells['table_cell_total']}개이고 "
+            f"각 행에서 센 합계는 {cells['row_cell_total']}개입니다."
+        )
+    if not notes:
+        return page
+    return page | {"date_observation_ko": " ".join(notes)}
+
+
 def describe_list_review(value):
     review = public_list_review(value)
     if not review:
         return None
     review["stage_ko"] = _STAGE_TEXT[review["stage"]]
+    if "pages" in review:
+        review["pages"] = [describe_date_cells(page) for page in review["pages"]]
     numbers = [
         page["page"]
         for page in review.get("pages", [])

@@ -54,6 +54,7 @@ NAVIGATION_KINDS = {
 }
 LINK_SCHEMES = {"https", "http", "javascript", "relative", "other", "missing"}
 SAFE_EXCLUSIONS = {"ad", "pinned", "survey"}
+SPECIAL_DATE_PROFILE_SOURCE = "reviewed_special_row_dates_alpha15"
 
 
 def recognized_special_row(value, *, require_role_flags=True):
@@ -308,7 +309,7 @@ def _row_evidence(raw, row_order, reason):
     }
 
 
-def _ordinary_row(raw, target, row_order):
+def _ordinary_row(raw, target, row_order, *, expected_date_cells=1):
     if not isinstance(raw, dict):
         raise list_snapshot_error("snapshot_parse", "row_evidence_invalid", "Invalid observed row")
     for key in ("is_ad", "is_pinned"):
@@ -354,7 +355,10 @@ def _ordinary_row(raw, target, row_order):
         return None, "non_numeric"
     if len(number) > 20 or int(number) < 1:
         return None, "invalid_post_number"
-    if any(type(fields.get(key)) is not int or fields[key] != 1 for key in ("author", "date")):
+    if any(
+        type(fields.get(key)) is not int or fields[key] != expected
+        for key, expected in (("author", 1), ("date", expected_date_cells))
+    ):
         return None, "ambiguous_row_fields"
     links = raw.get("links")
     if not isinstance(links, list) or len(links) > MAX_LINKS_PER_ROW:
@@ -443,12 +447,12 @@ PROFILE_ISSUES = frozenset(
 )
 
 
-def _raw_row_issue(rows_raw, excluded_writer_counts):
+def _raw_row_issue(rows_raw, special_counts):
     for ordinal, row in enumerate(rows_raw, 1):
         fields = row.get("field_counts")
         for key in _ROW_FIELDS:
             value = fields.get(key) if isinstance(fields, dict) else None
-            expected = excluded_writer_counts.get(ordinal, 1) if key == "author" else 1
+            expected = special_counts.get(key, {}).get(ordinal, 1)
             if type(value) is not int or value != expected:
                 return "row_" + key + "_count"
         if type(row.get("link_total")) is not int or row["link_total"] != 1:
@@ -466,6 +470,7 @@ def reviewed_structure_issue(
     status,
     *,
     writer_field_total=None,
+    date_field_total=None,
 ):
     """Return the first reviewed profile check that failed, or None on an exact match."""
     if (
@@ -506,11 +511,13 @@ def reviewed_structure_issue(
         or main.get("visible_empty_marker_count") != 0
     ):
         return "main_table_shape"
-    if writer_field_total is None:
-        writer_field_total = row_total
+    metadata_totals = {
+        "writer_field_count": writer_field_total,
+        "date_field_count": date_field_total,
+    }
     for key in _MAIN_COLUMNS:
-        expected = writer_field_total if key == "writer_field_count" else row_total
-        if main.get(key) != expected:
+        expected = metadata_totals.get(key)
+        if main.get(key) != (row_total if expected is None else expected):
             return "main_" + key
     secondary = next(candidate for candidate in candidates if candidate is not main)
     if (
@@ -542,8 +549,41 @@ def reviewed_structure_issue(
     return "secondary_table_empty" if count == 0 else None
 
 
+def date_settle_identities(rows, excluded):
+    """Match the same ordinary identities and excluded roles in their original row positions."""
+    identities = [(row["row_order"], row["post_id"]) for row in rows]
+    identities.extend((row["row_order"], row["reason"]) for row in excluded)
+    return sorted(identities)
+
+
+def _missing_date_row(rows_raw, target, rows, excluded):
+    unsafe = [row for row in excluded if not recognized_special_row(row)]
+    if len(unsafe) != 1 or unsafe[0]["reason"] != "ambiguous_row_fields":
+        return None
+    pos = unsafe[0]["row_order"]
+    # This row is read for identity only. It remains excluded from the initial snapshot.
+    try:
+        row, _ = _ordinary_row(rows_raw[pos - 1], target, pos, expected_date_cells=0)
+    except DCSnapshotError:
+        # A previously excluded field may itself be malformed. Keep the original failure.
+        return None
+    if (
+        not row
+        or not row["author_raw"]
+        or row["published_at_raw"]
+        or any(other["post_id"] == row["post_id"] for other in rows)
+    ):
+        return None
+    return row
+
+
 def parse_list_snapshot(
-    raw: dict, *, expected_url: str, observed_at: datetime, layout_status: str = "unverified"
+    raw: dict,
+    *,
+    expected_url: str,
+    observed_at: datetime,
+    layout_status: str = "unverified",
+    _capture_date_rows=None,
 ) -> dict:
     """Map bounded public DOM metadata; structural review never enables a queue."""
     target = validate_list_url(expected_url)
@@ -696,31 +736,59 @@ def parse_list_snapshot(
         status = "empty"
     else:
         status = "unrecognized_empty"
-    # A proven special row is never a post candidate. Account for its actual
-    # owned writer cells while checking that every table writer belongs to a row.
-    excluded_writer_counts = {}
+    # Only proven special rows may have a different writer or date cell count.
+    # Each table inventory must independently match the sum of its owned row fields.
+    special_counts = {"author": {}, "date": {}}
     for exclusion in excluded:
-        count = exclusion["field_counts"].get("author")
-        if count is not None and count != 1 and recognized_special_row(exclusion):
-            excluded_writer_counts[exclusion["row_order"]] = count
-    writer_field_total = (
-        row_total - len(excluded_writer_counts) + sum(excluded_writer_counts.values())
-    )
-    profile_issue = reviewed_structure_issue(
-        target,
-        diagnostics,
-        rows,
-        _raw_row_issue(rows_raw, excluded_writer_counts),
-        row_total,
-        container_count,
-        status,
-        writer_field_total=writer_field_total,
-    )
+        if recognized_special_row(exclusion):
+            for field, per_row in special_counts.items():
+                count = exclusion["field_counts"].get(field)
+                if count is not None and count != 1:
+                    per_row[exclusion["row_order"]] = count
+    totals = {
+        field: row_total + sum(count - 1 for count in per_row.values())
+        for field, per_row in special_counts.items()
+    }
+
+    def profile_issue_for(per_row, date_total):
+        return reviewed_structure_issue(
+            target,
+            diagnostics,
+            rows,
+            _raw_row_issue(rows_raw, per_row),
+            row_total,
+            container_count,
+            status,
+            writer_field_total=totals["author"],
+            date_field_total=date_total,
+        )
+
+    profile_issue = profile_issue_for(special_counts, totals["date"])
+    if (
+        _capture_date_rows is not None
+        and profile_issue == "row_date_count"
+        and layout_status == "unverified"
+    ):
+        missing = _missing_date_row(rows_raw, target, rows, excluded)
+        if missing is not None:
+            pos = missing["row_order"]
+            expected = special_counts | {"date": special_counts["date"] | {pos: 0}}
+            if profile_issue_for(expected, totals["date"] - 1) is None:
+                _capture_date_rows(
+                    date_settle_identities(
+                        [*rows, missing], [row for row in excluded if row["row_order"] != pos]
+                    )
+                )
     site_verified = layout_status == "unverified" and profile_issue is None
     source = None
     if site_verified:
         layout_status = "site_verified"
-        source = "user_list_diagnosis_alpha3" if excluded_writer_counts else "user_list_probe_v12"
+        if special_counts["date"]:
+            source = SPECIAL_DATE_PROFILE_SOURCE
+        elif special_counts["author"]:
+            source = "user_list_diagnosis_alpha3"
+        else:
+            source = "user_list_probe_v12"
     rows_complete = (
         list_count == 1
         and status in {"observed", "empty"}
@@ -918,7 +986,12 @@ LIST_DOM_JS = r"""(options) => {
 
 
 def inspect_list(
-    page, *, expected_url: str, observed_at: datetime, timeout_ms: int = 15_000
+    page,
+    *,
+    expected_url: str,
+    observed_at: datetime,
+    timeout_ms: int = 15_000,
+    _capture_date_rows=None,
 ) -> dict:
     """Observe the already-open DOM once; never navigate, click, or read response bytes."""
     target = validate_list_url(expected_url)
@@ -969,7 +1042,12 @@ def inspect_list(
             "dom_read", "dom_budget_exceeded", "List DOM observation exceeded inspection budget"
         )
     try:
-        return parse_list_snapshot(raw, expected_url=expected_url, observed_at=observed_at)
+        return parse_list_snapshot(
+            raw,
+            expected_url=expected_url,
+            observed_at=observed_at,
+            _capture_date_rows=_capture_date_rows,
+        )
     except DCSnapshotError:
         raise
     except Exception as error:

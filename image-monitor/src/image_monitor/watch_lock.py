@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import stat
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -20,6 +21,44 @@ from image_monitor.watch_store import WatchScope
 
 class WatchRunBusy(QueueError):
     """Another local process or thread owns this watch's scan lease."""
+
+
+_list_borrow = threading.local()
+
+
+class _WatchLease:
+    """Keep the physical lease until a delegated list operation has finished."""
+
+    def __init__(self, path, purpose):
+        self.path = path
+        self._may_lend = purpose is None
+        self._process = os.getpid()
+        self._open = True
+        self._borrower = threading.Lock()
+
+    @contextmanager
+    def borrow_for_list(self):
+        if not self._may_lend or self._process != os.getpid():
+            raise QueueError("Only a local scan lease can be borrowed")
+        if getattr(_list_borrow, "lease", None) is not None or not self._borrower.acquire(False):
+            raise WatchRunBusy("Another list operation owns the borrowed lease")
+        try:
+            if not self._open:
+                raise QueueError("The scan lease is no longer held")
+            _list_borrow.lease = self
+            try:
+                yield
+            finally:
+                del _list_borrow.lease
+        finally:
+            self._borrower.release()
+
+    def finish(self):
+        self._open = False
+        # An owner exiting on cancellation must still exclude other processes
+        # until its active helper has finished using the shared database.
+        with self._borrower:
+            pass
 
 
 def _lock_path(database: Path, scope: WatchScope, *, purpose=None) -> Path:
@@ -80,7 +119,7 @@ def _release(descriptor: int) -> None:
 @contextmanager
 def watch_run_lock(
     database: Path, scope: WatchScope, *, purpose=None, existing_only=False
-) -> Iterator[None]:
+) -> Iterator[_WatchLease]:
     """Own this canonical database/scope until exit; raise if already owned.
 
     The database's parent directory must exist. Existing sidecar contents are
@@ -102,9 +141,30 @@ def watch_run_lock(
         if not stat.S_ISREG(opened.st_mode) or not os.path.samestat(opened, named):
             raise QueueError("Watch lease sidecar changed while opening it")
         _acquire(descriptor)
+        lease = _WatchLease(path, purpose)
         try:
-            yield
+            yield lease
         finally:
+            lease.finish()
             _release(descriptor)
     finally:
         os.close(descriptor)
+
+
+@contextmanager
+def watch_list_lock(database: Path, scope: WatchScope, *, existing_only=False) -> Iterator[None]:
+    """Acquire the scan lock or use the native writer's explicit, thread-local loan."""
+    lease = getattr(_list_borrow, "lease", None)
+    if lease is None:
+        with watch_run_lock(database, scope, existing_only=existing_only):
+            yield
+        return
+    if lease._process != os.getpid() or lease.path != _lock_path(database, scope):
+        raise QueueError("The borrowed list lease belongs to another scan")
+    if getattr(_list_borrow, "scanning", False):
+        raise WatchRunBusy("Another list operation is in progress")
+    _list_borrow.scanning = True
+    try:
+        yield
+    finally:
+        del _list_borrow.scanning

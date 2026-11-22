@@ -41,7 +41,16 @@ SELECTORS = {
 }
 MAX_LIST_CANDIDATES = 12
 MAX_PAGINATION_SAMPLES = 12
-NAVIGATION_KINDS = {"number", "next", "previous", "first", "last", "other", "unavailable"}
+NAVIGATION_KINDS = {
+    "number",
+    "next",
+    "next_search",
+    "previous",
+    "first",
+    "last",
+    "other",
+    "unavailable",
+}
 LINK_SCHEMES = {"https", "http", "javascript", "relative", "other", "missing"}
 SAFE_EXCLUSIONS = {"ad", "pinned", "survey"}
 
@@ -555,6 +564,8 @@ def parse_list_snapshot(
                 seen.add(row["post_id"])
                 rows.append(row)
     pagination, pagination_excluded, seen_urls = [], {}, set()
+    next_search_links = []
+    repeated_urls = set()
     rejection_counts, pagination_samples, sample_kinds = {}, [], {}
     for link_order, entry in enumerate(pagination_raw, 1):
         reason = None
@@ -569,6 +580,7 @@ def parse_list_snapshot(
                 reason = "current_document"
             elif candidate["canonical_url"] in seen_urls:
                 reason = "duplicate"
+                repeated_urls.add(candidate["canonical_url"])
             elif list_count != 1:
                 reason = "unrecognized_list"
             else:
@@ -590,6 +602,8 @@ def parse_list_snapshot(
         label_kind = entry.get("label_kind")
         if not isinstance(label_kind, str) or label_kind not in NAVIGATION_KINDS:
             label_kind = "unavailable"
+        if label_kind == "next_search":
+            next_search_links.append(pagination[-1] if reason is None else None)
         sample_kind = (
             evidence["validation_status"],
             tuple(evidence["reason_codes"]),
@@ -606,6 +620,10 @@ def parse_list_snapshot(
             )
         if reason:
             pagination_excluded[reason] = pagination_excluded.get(reason, 0) + 1
+    if len(next_search_links) == 1:
+        forward = next_search_links[0]
+        if forward and forward["canonical_url"] not in repeated_urls:
+            forward["label_kind"] = "next_search"
     if list_count == 0 and container_count:
         status = "unrecognized_empty"
     elif list_count == 0:
@@ -795,6 +813,7 @@ LIST_DOM_JS = r"""(options) => {
   const label=(text(link,40)||'').toLowerCase();
   if(!label)return 'unavailable';
   if(/^[0-9]+$/.test(label))return 'number';
+  if(/^(다음\s*검색|next search)$/.test(label)&&visible(link))return 'next_search';
   if(/^(다음|다음페이지|다음 페이지|next|next page|›|»|>)$/.test(label))return 'next';
   if(/^(이전|이전페이지|이전 페이지|prev|previous|previous page|‹|«|<)$/.test(label))
    return 'previous';

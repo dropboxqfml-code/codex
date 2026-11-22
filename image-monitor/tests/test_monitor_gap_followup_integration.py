@@ -185,7 +185,7 @@ def test_automatic_collection_saves_post_first_seen_on_historical_page_five(
     assert {"204", "205", "206", "207"} == old_posts.keys()
 
     extended = run([1, 2, 4, 5], [[207], [206], [204], [203, 200]])
-    assert extended["last_list"]["historical_status"] == "extended"
+    assert extended["last_list"]["recovery_status"] == "overlap_pending"
     assert extended["new_candidates"] == extended["partial_list_checks"] == 1
     halfway, all_posts, _ = saved_state(roots[0])
     assert halfway["checkpoint"] == before["checkpoint"]
@@ -242,15 +242,58 @@ def test_anchor_on_fourth_page_remains_a_gap_until_a_full_overlap_page_is_seen(
         ([[210], [209]], "partial"),
         ([[211], [210], [209]], "partial"),
         ([[212], [211], [210], [209, 200]], "partial"),
-        ([[213], [212], [211, 210], [209, 200]], "partial"),
+        ([[213], [212], [210, 209], [200, 199]], "partial"),
     ]
-    for pages, status in attempts:
+    for index, (pages, status) in enumerate(attempts):
         visits = []
-        result = listing(pages, visits)(tmp_path, interval_seconds=60, clock=clock)
+        # The old fourth page has shifted. Rediscover its anchor on page five.
+        numbers = [1, 2, 4, 5] if index == 4 else list(range(1, len(pages) + 1))
+        result = listing(pages, visits, page_numbers=numbers)(
+            tmp_path, interval_seconds=60, clock=clock
+        )
         assert result["status"] == status, result
-        assert visits == [link(n)["canonical_url"] for n in range(1, len(pages) + 1)]
+        assert visits == [link(n)["canonical_url"] for n in numbers]
         state, _, _ = saved_state(tmp_path)
         assert state["checkpoint"]["anchor_ids"] == ["200"]
         if len(pages) == 4:
             assert state["latest_scan"]["gap_reason"] == "overlap_incomplete"
         clock.wait(60)
+
+
+def test_upgrade_preserves_a_closed_alpha11_frontier_beyond_the_first_four_pages(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(watch_runtime, "require_windows", lambda: None)
+    clock = FakeClock()
+
+    def run(numbers, rows, *, legacy):
+        visits = []
+        scan = listing(rows, visits, page_numbers=numbers)
+        outcome = scan(tmp_path, interval_seconds=60, clock=clock, recover_long_gaps=not legacy)
+        assert visits == [link(number)["canonical_url"] for number in numbers]
+        clock.wait(60)
+        return outcome
+
+    with monkeypatch.context() as old:
+        old.setattr(watch_runtime, "PUBLIC_VERSION", "0.5.0-alpha.11")
+        assert run([1], [[100]], legacy=True)["status"] == "baseline"
+        for length in (2, 3, 4):
+            numbers = list(range(1, length + 1))
+            assert run(numbers, [[151 - n] for n in numbers], legacy=True)["status"] == "partial"
+        for n in (4, 5):
+            numbers = [1, 2, n, n + 1]
+            assert (
+                run(numbers, [[151 - i] for i in numbers], legacy=True)["historical_status"]
+                == "extended"
+            )
+    state, candidates, _ = saved_state(tmp_path)
+    old_checkpoint = state["checkpoint"]
+    upgraded = run([1, 2, 6, 7], [[150], [149], [145], [144, 100]], legacy=False)
+    assert upgraded["status"] == "partial" and upgraded["recovery_depth"] == 7
+    state, current, _ = saved_state(tmp_path)
+    assert state["checkpoint"] == old_checkpoint
+    assert {p: c["first_scan_id"] for p, c in candidates.items()}.items() <= {
+        p: c["first_scan_id"] for p, c in current.items()
+    }.items()
+    result = run([1, 2, 7, 8], [[150], [149], [144, 100], [99]], legacy=False)
+    assert result["status"] == "complete" and result["recovery_depth"] == 8

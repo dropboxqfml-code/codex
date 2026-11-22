@@ -1,6 +1,7 @@
 """Inspect queued monitor posts and automatically save one verified body."""
 
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
+from contextvars import ContextVar
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
@@ -16,6 +17,18 @@ from image_monitor.watch_image_search import MAX_NEW_DETAILS
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import _Clock, _stamp, _stored_time
 from image_monitor.watch_store import MONITOR_SCOPE
+
+_LIST_WINDOW = ContextVar("monitor_native_save_list_window", default=None)
+
+
+@contextmanager
+def list_checks_during_save(window):
+    """Enable headless checks for this session's native worker on its owning thread."""
+    token = _LIST_WINDOW.set(window)
+    try:
+        yield
+    finally:
+        _LIST_WINDOW.reset(token)
 
 
 def _save_status(save, expected_images, expected_previous=None):
@@ -61,7 +74,17 @@ def _save_status(save, expected_images, expected_previous=None):
     }.get(status, "monitor_collect_review")
 
 
-def _collect(report, roots, clock, detail_runner, save_runner, *, session_turn, should_stop):
+def _collect(
+    report,
+    roots,
+    clock,
+    detail_runner,
+    save_runner,
+    *,
+    session_turn,
+    should_stop,
+    during_native_save,
+):
     max_wait = load_monitor_settings(roots[0])["interval_seconds"] if session_turn else 60
     report["browser_closed"] = None
     search, target = search_monitor_candidates(
@@ -111,6 +134,9 @@ def _collect(report, roots, clock, detail_runner, save_runner, *, session_turn, 
             clock=clock,
             save_runner=save_runner,
             should_stop=should_stop,
+            **(
+                {"during_native_save": during_native_save} if during_native_save is not None else {}
+            ),
         )
         report.update(
             native_save_tasks_started=save["tasks_started"],
@@ -165,6 +191,7 @@ def _run_monitor_collect(
     save_runner,
     session_turn,
     should_stop,
+    during_native_save=None,
 ):
     report = {
         "schema_version": 1,
@@ -208,6 +235,7 @@ def _run_monitor_collect(
                     save_runner,
                     session_turn=session_turn,
                     should_stop=should_stop,
+                    during_native_save=during_native_save,
                 )
     except WatchRunBusy:
         report.update(status="monitor_collect_busy", reason="another_monitor_is_open")
@@ -260,6 +288,7 @@ def collect_session_turn(
         save_runner=save_runner,
         session_turn=True,
         should_stop=should_stop,
+        during_native_save=_LIST_WINDOW.get(),
     )
 
 

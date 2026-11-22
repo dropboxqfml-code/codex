@@ -5,11 +5,12 @@ from pathlib import Path
 
 from image_monitor.artifact_files import _plain_path
 from image_monitor.monitor_clock import stop_requested
+from image_monitor.monitor_gap_report import gap_route_details, search_window_start_visits
 from image_monitor.native_ui import NativeUIError
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_detail_source import recent_scan_candidates, scan_plan_candidates
 from image_monitor.watch_history import historical_route_details, plan_historical_scan
-from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
+from image_monitor.watch_lock import WatchRunBusy, watch_list_lock
 from image_monitor.watch_planner import next_poll_at, plan_scan
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
@@ -18,6 +19,7 @@ from image_monitor.watch_runtime import (
     _cycle_summary,
     _eligibility,
     _observed_page_chain,
+    _plan_observation,
     _stamp,
     _stored_time,
     confirmed_monitor_scan,
@@ -86,7 +88,21 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
     ):
         raise QueueError("List document navigation is unconfirmed")
     observed_at = _stored_time(latest["observed_at"])
-    if "historical_follow_up" in record:
+    if "gap_recovery" in record or observed.get("gap_seed_route") is True:
+        if "gap_recovery" in record and not (historical_source and "frontier" in historical_source):
+            raise QueueError("The stored recovery position is unconfirmed")
+        plan = _plan_observation(
+            MONITOR_SCOPE,
+            before,
+            observed,
+            observed_at,
+            page_limit if page_limit > 2 else None,
+            historical_source,
+            allow_seed_crossing=True,
+        )
+        if plan != verified_recent_plan(queue, MONITOR_SCOPE, after):
+            raise QueueError("The recovery scan differs from the verified stored plan")
+    elif "historical_follow_up" in record:
         plan = plan_historical_scan(
             MONITOR_SCOPE,
             before,
@@ -143,7 +159,12 @@ def _verified_scan(database, queue, before, after, raw, page_limit, historical_s
     ):
         raise QueueError("The current Chrome list scan has no matching final receipt")
     control = _control(after)
-    observation = latest["result"]["private_observation"]
+    record = latest["result"]
+    if (isinstance(historical_source, dict) and "frontier" in historical_source) != (
+        "gap_recovery" in record
+    ):
+        raise QueueError("List scan did not confirm the authorized recovery route")
+    observation = record["private_observation"]
     if page_limit > 2:
         recorded = control.get("follow_up_page_limit")
         if type(recorded) is not int or recorded != page_limit:
@@ -179,7 +200,13 @@ def _verified_scan(database, queue, before, after, raw, page_limit, historical_s
 
 
 def run_auto_discovery(
-    watch_root, *, interval_seconds, clock, should_stop=None, run_cycle=run_watch_trial
+    watch_root,
+    *,
+    interval_seconds,
+    clock,
+    should_stop=None,
+    run_cycle=run_watch_trial,
+    recover_long_gaps=True,
 ):
     """Check durable eligibility, run one scan, and verify the exact saved result."""
     closed = None
@@ -194,7 +221,7 @@ def run_auto_discovery(
             raise ValueError("The monitor requires a local state directory")
         base.mkdir(parents=True, exist_ok=True)
         database = _plain_path(base / "watch.sqlite")
-        with watch_run_lock(database, DEFAULT_SCOPE):
+        with watch_list_lock(database, DEFAULT_SCOPE):
             before = _EMPTY
             page_limit = 1
             historical_source = None
@@ -205,7 +232,9 @@ def run_auto_discovery(
                         return _result("blocked", "access_block_requires_review")
                     if status == "waiting":
                         return _result("waiting", "persisted_cooldown", due=due)
-                    page_limit, historical_source = monitor_scan_policy(database, queue, before)
+                    page_limit, historical_source = monitor_scan_policy(
+                        database, queue, before, recover_long_gaps=recover_long_gaps
+                    )
         raw = run_cycle(
             base,
             "chrome",
@@ -215,6 +244,7 @@ def run_auto_discovery(
             scope=MONITOR_SCOPE,
             should_stop=should_stop,
             follow_up_gaps=True,
+            recover_long_gaps=recover_long_gaps,
         )
         closed = raw.get("browser_closed") if type(raw.get("browser_closed")) is bool else None
         if closed is not True:
@@ -224,7 +254,10 @@ def run_auto_discovery(
             return _result("busy", "another_worker_active", closed=closed)
         if status == "watch_test_cancelled":
             return _result("cancelled", "requested_stop", closed=closed)
-        with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database, read_only=True) as queue:
+        with (
+            watch_list_lock(database, DEFAULT_SCOPE),
+            QueueStore(database, read_only=True) as queue,
+        ):
             after, eligibility, due = _source(queue, clock.now(), interval_seconds)
             if eligibility == "blocked":
                 return _result("blocked", "access_block_requires_review", closed=closed)
@@ -251,6 +284,12 @@ def run_auto_discovery(
             result.update(
                 page_limit=page_limit, pages_checked=len(numbers), visited_page_numbers=numbers
             )
+            starts = search_window_start_visits(record)
+            if starts:
+                result["search_window_start_visits"] = starts
+            if "gap_recovery" in record:
+                result.update(gap_route_details(record))
+                return result
             result.update(
                 historical_route_details(
                     before,

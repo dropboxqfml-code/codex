@@ -8,6 +8,7 @@ retry target. Previously completed work is verified locally before it is skipped
 import re
 import time
 import uuid
+from contextlib import ExitStack
 from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -153,8 +154,12 @@ class _NavigationObserver:
         self.interval_seconds = interval_seconds
         self.http_status = self.next_at = self.browser_identity = None
         self.blocked = False
+        self.list_window = None
+        self.native_document_ready = False
 
     def before(self):
+        if self.native_document_ready:
+            raise NativeUIError("Another document navigation requires a new monitor turn")
         state = WatchStore(self.queue).get_state(self.scope)
         if _eligibility(self.queue, state, self.clock.now())[0] != "ready":
             raise NativeUIError("Batch navigation requires service eligibility")
@@ -180,6 +185,9 @@ class _NavigationObserver:
         if self.browser_identity is not None:
             control["browser_identity"] = self.browser_identity
         self.ledger.update_control(self.task["task_id"], control)
+
+    def allow_lists_after_document(self, expected_url, enter_context):
+        self.list_window = (expected_url, enter_context)
 
     def after(self, response, error):
         finished = self.clock.now()
@@ -214,6 +222,18 @@ class _NavigationObserver:
         if self.browser_identity is not None:
             control["browser_identity"] = self.browser_identity
         self.ledger.update_control(self.task["task_id"], control)
+        if self.list_window is not None and not self.native_document_ready:
+            expected_url, enter = self.list_window
+            if (
+                error is None
+                and type(self.http_status) is int
+                and 200 <= self.http_status < 300
+                and getattr(response, "url", None) == expected_url
+            ):
+                # Navigation and its persisted cooldown have finished. The worker
+                # retains the visible browser, exact candidate, and native save lock.
+                self.native_document_ready = True
+                enter(self.next_at)
 
 
 def _root(value):
@@ -620,11 +640,14 @@ def run_monitor_batch(
     should_stop=None,
     recent_handoff=None,
     monitor_handoff=None,
+    during_native_save=None,
 ):
     require_windows()
     scope = DEFAULT_SCOPE if recent_handoff is not None else MONITOR_SCOPE
     ledger_name = RECENT_LEDGER_NAME if recent_handoff is not None else LEDGER_NAME
     automatic = monitor_handoff is not None
+    if during_native_save is not None and (not automatic or not callable(during_native_save)):
+        raise NativeUIError("Concurrent list checks require an automatic monitor handoff")
     handoff_fields = {"post_id", "attempt_id", "fingerprint"}
     retry_fields = handoff_fields | {"retry_task_id", "prior_run"}
     retrying = isinstance(monitor_handoff, dict) and set(monitor_handoff) in (
@@ -698,7 +721,10 @@ def run_monitor_batch(
         if not database.is_file():
             report.update(status="monitor_batch_no_candidates", reason="existing_watch_required")
         else:
-            with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
+            with (
+                watch_run_lock(database, DEFAULT_SCOPE) as watch_lease,
+                QueueStore(database) as queue,
+            ):
                 if queue.summary()["posts"] or queue.summary()["jobs"]:
                     raise QueueError("The batch requires the separate discovery database")
                 state = WatchStore(queue).get_state(scope)
@@ -926,14 +952,22 @@ def run_monitor_batch(
                                     interval_seconds=interval,
                                 )
                                 try:
-                                    worker = save_runner(
-                                        task_work_root(active, batch_root, legacy_root),
-                                        "chrome",
-                                        permit.post_url,
-                                        candidate_permit=permit,
-                                        navigation_observer=observer,
-                                        **({"automatic_start": True} if automatic else {}),
-                                    )
+                                    with ExitStack() as window:
+                                        if during_native_save is not None:
+                                            observer.allow_lists_after_document(
+                                                permit.post_url,
+                                                lambda due: window.enter_context(
+                                                    during_native_save(watch_lease, due)
+                                                ),
+                                            )
+                                        worker = save_runner(
+                                            task_work_root(active, batch_root, legacy_root),
+                                            "chrome",
+                                            permit.post_url,
+                                            candidate_permit=permit,
+                                            navigation_observer=observer,
+                                            **({"automatic_start": True} if automatic else {}),
+                                        )
                                     if not isinstance(worker, dict):
                                         raise QueueError(
                                             "The native worker did not return a report"

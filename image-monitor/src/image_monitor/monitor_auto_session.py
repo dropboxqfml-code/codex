@@ -1,14 +1,17 @@
-"""Serial Chrome discovery and native image collection under the dashboard lease."""
+"""Schedule headless list discovery and a single native writer under the monitor lease."""
 
+from contextlib import contextmanager
 from copy import deepcopy
 from datetime import timedelta
+from threading import Event, Thread
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_save_policy import MAX_MONITOR_SAVE_IMAGES
 from image_monitor.monitor_auto_discovery import run_auto_discovery
 from image_monitor.monitor_clock import stop_requested, wait_until
-from image_monitor.monitor_collect import collect_session_turn
+from image_monitor.monitor_collect import collect_session_turn, list_checks_during_save
+from image_monitor.monitor_gap_report import checked_gap_route, checked_window_starts
 from image_monitor.monitor_list_history import previous_list_checks
 from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
@@ -58,13 +61,22 @@ def _record_list_pages(report, turn):
         not isinstance(numbers, list)
         or not count
         or len(numbers) != count
-        or any(type(n) is not int or not 1 <= n <= MAX_HISTORICAL_PAGE for n in numbers)
+        or any(type(n) is not int or n < 1 for n in numbers)
         or (limit == 1) != (turn["status"] == "baseline")
     ):
         raise ValueError("Invalid verified list page numbers")
     last = report["last_list"]
     expected = list(range(1, count + 1))
-    if "historical_status" in turn or "historical_boundary_page" in turn:
+    historical = "historical_status" in turn or "historical_boundary_page" in turn
+    if historical and ("recovery_status" in turn or "search_window_start_visits" in turn):
+        raise ValueError("Conflicting list routing evidence")
+    if "recovery_status" in turn:
+        last.update(checked_gap_route(turn, numbers, limit))
+        expected = numbers
+    elif "search_window_start_visits" in turn:
+        last.update(checked_window_starts(turn, numbers, limit))
+        expected = numbers
+    elif historical:
         boundary = turn["historical_boundary_page"]
         status = turn["historical_status"]
         if (
@@ -182,6 +194,103 @@ def _record_collection(report, turn):
         raise ValueError("Unconfirmed collection returned verified files")
 
 
+def _verified_list(report, turn, finished, interval):
+    report["last_list"] = {"status": turn["status"], "reason": turn["reason"]}
+    _record_list_pages(report, turn)
+    report["list_checks"] += 1
+    report["partial_list_checks"] += int(turn["status"] == "partial")
+    report["new_candidates"] += _count(turn, "new_candidates")
+    due = finished + interval
+    if turn["next_eligible_at"]:
+        due = max(due, _stored_time(turn["next_eligible_at"]))
+    return due
+
+
+class _NativeSaveLists:
+    """During a local save, keep at most one pending collection from the newest list."""
+
+    def __init__(self, root, report, clock, should_stop, scan_runner, interval, due, on_progress):
+        self.root, self.report, self.clock = root, report, clock
+        self.should_stop, self.scan_runner = should_stop, scan_runner
+        self.interval, self.due = interval, due
+        self.checked = 0
+        self.terminal = None
+        self.on_progress = on_progress
+
+    @contextmanager
+    def window(self, lease, native_due):
+        end = Event()
+
+        def watch():
+            try:
+                self.due = max(native_due, self.due)
+                with lease.borrow_for_list():
+                    while not end.is_set() and not stop_requested(self.should_stop):
+                        remaining = (self.due - self.clock.now()).total_seconds()
+                        if remaining > 0:
+                            # A short save wakes this thread as soon as its browser closes.
+                            end.wait(min(remaining, 0.5))
+                            continue
+                        started = self.clock.now()
+                        turn = self.scan_runner(
+                            self.root,
+                            clock=self.clock,
+                            interval_seconds=self.report["interval_seconds"],
+                            should_stop=self.should_stop,
+                        )
+                        if (
+                            turn["status"] not in {"complete", "partial"}
+                            or turn["browser_closed"] is not True
+                        ):
+                            self.terminal = turn, started
+                            if (
+                                turn["status"] == "waiting"
+                                and turn["browser_closed"] is not False
+                                and self.report["max_cycles"] is None
+                                and turn["next_eligible_at"]
+                            ):
+                                due = _stored_time(turn["next_eligible_at"])
+                                if due > started:
+                                    # If the save ends first, hand the wait back to the
+                                    # owner. A longer save can resume here once eligible.
+                                    self.due = due
+                                    continue
+                            break
+                        self.terminal = None
+                        self.due = _verified_list(
+                            self.report, turn, self.clock.now(), self.interval
+                        )
+                        if self.checked:
+                            # Its candidates are durable. The newest scan gets the next writer turn.
+                            self.report["cycles_completed"] += 1
+                        self.checked += 1
+                        self.report["list_checks_during_save"] += 1
+                        if self.on_progress is not None:
+                            self.on_progress(
+                                deepcopy(self.report) | {"phase": "scanned_during_save"}
+                            )
+                        if self.report["list_checks"] == self.report["max_cycles"]:
+                            break
+            except Exception:
+                self.terminal = (
+                    {
+                        "status": "review",
+                        "reason": "concurrent_list_check_unconfirmed",
+                        "browser_closed": None,
+                        "next_eligible_at": None,
+                    },
+                    self.clock.now(),
+                )
+
+        thread = Thread(target=watch, name="image-monitor-headless-list")
+        thread.start()
+        try:
+            yield
+        finally:
+            end.set()
+            thread.join()
+
+
 def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, collect_runner):
     interval = load_monitor_settings(roots[0])["interval_seconds"]
     report["interval_seconds"] = interval
@@ -190,8 +299,9 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
     due = None
     phase = "scanning"
     retried_wait = False
+    pending_scan = None
     while True:
-        if stop_requested(should_stop):
+        if pending_scan is None and stop_requested(should_stop):
             return _finish(report, "stopped", "requested_stop")
         if due is not None:
             report["next_eligible_at"] = _stamp(due)
@@ -206,16 +316,32 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
             due = None
 
         _progress(report, phase, on_progress)
-        if stop_requested(should_stop):
+        if pending_scan is None and stop_requested(should_stop):
             return _finish(report, "stopped", "requested_stop")
         report.update(next_eligible_at=None, browser_closed=None)
         turn_started_at = clock.now()
-        if phase == "scanning":
+        overlap = None
+        if pending_scan is not None:
+            turn, turn_started_at = pending_scan
+            pending_scan = None
+        elif phase == "scanning":
             turn = scan_runner(
                 roots[0], clock=clock, interval_seconds=interval, should_stop=should_stop
             )
         else:
-            turn = collect_runner(*roots, clock=clock, should_stop=should_stop)
+            if report["list_checks"] != report["max_cycles"]:
+                overlap = _NativeSaveLists(
+                    roots[0],
+                    report,
+                    clock,
+                    should_stop,
+                    scan_runner,
+                    list_interval,
+                    list_due,
+                    on_progress,
+                )
+            with list_checks_during_save(overlap.window if overlap else None):
+                turn = collect_runner(*roots, clock=clock, should_stop=should_stop)
         status = turn["status"]
         reason = turn["reason"]
         closed = turn["browser_closed"]
@@ -263,13 +389,9 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
             if closed is not True:
                 return _finish(report, "review", "owned_browser_cleanup_unconfirmed")
             try:
-                _record_list_pages(report, turn)
+                list_due = _verified_list(report, turn, clock.now(), list_interval)
             except (ValueError, KeyError, TypeError):
                 return _finish(report, "review", "invalid_list_page_count")
-            report["list_checks"] += 1
-            report["partial_list_checks"] += int(status == "partial")
-            report["new_candidates"] += _count(turn, "new_candidates")
-            list_due = max(clock.now() + list_interval, due or clock.now())
             report["next_eligible_at"] = _stamp(list_due)
             if status != "baseline":
                 phase = "collecting"
@@ -282,6 +404,20 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
         report["cycles_completed"] += 1
         phase = "scanning"
         retried_wait = False
+        if overlap is not None:
+            if overlap.checked:
+                list_due = overlap.due
+                # Only the latest completed list can start a collection now.
+                phase = "collecting"
+                due = None
+            if overlap.terminal is not None:
+                report["cycles_completed"] += int(bool(overlap.checked))
+                phase = "scanning"
+                pending_scan = overlap.terminal
+                due = None
+                continue
+            if overlap.checked:
+                continue
         due = max(list_due, due) if due is not None else list_due
         report["next_eligible_at"] = _stamp(due)
         if stop_requested(should_stop):
@@ -314,6 +450,7 @@ def run_auto_monitor(
         "interval_seconds": None,
         "cycles_completed": 0,
         "list_checks": 0,
+        "list_checks_during_save": 0,
         "partial_list_checks": 0,
         "gap_followup_checks": 0,
         "gap_followups_completed": 0,

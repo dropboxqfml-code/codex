@@ -56,7 +56,12 @@ def use_windows_browser(monkeypatch, cleanup, origin, post_url, visits):
         def goto(self, url, **options):
             assert url == post_url
             visits.append(url)
-            return self._page.goto(origin + "/post-" + url.split("no=")[-1], **options)
+            fixture_url = origin + "/post-" + url.split("no=")[-1]
+            response = self._page.goto(fixture_url, **options)
+            assert response.url == fixture_url
+            return SimpleNamespace(
+                status=response.status, url=post_url, header_value=response.header_value
+            )
 
     class Runtime(post_worker.NativeRuntime):
         def launch(self, profile, kind):

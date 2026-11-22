@@ -639,6 +639,21 @@ def test_rejected_pagination_links_prevent_fixture_completeness():
     assert not snapshot["pagination_complete"]
 
 
+@pytest.mark.parametrize("extra", ["duplicate", "different", "foreign", None])
+def test_search_range_forward_evidence_requires_one_unambiguous_link(extra):
+    next_range = URL + "&search_pos=-20"
+    links = [{"href": next_range, "label_kind": "next_search"}]
+    if extra == "duplicate":
+        links.append({"href": next_range, "label_kind": "page_number"})
+    elif extra == "different":
+        links.append({"href": URL + "&search_pos=-40", "label_kind": "next_search"})
+    elif extra == "foreign":
+        links.append({"href": "https://example.invalid/", "label_kind": "next_search"})
+    raw = raw_snapshot(pagination_total=len(links), pagination=links)
+    marked = [item for item in parse(raw)["pagination_candidates"] if "label_kind" in item]
+    assert [item["canonical_url"] for item in marked] == ([next_range] if extra is None else [])
+
+
 @pytest.mark.parametrize(
     "changes",
     [
@@ -1110,3 +1125,29 @@ def test_browser_fixture_pagination_diagnostics_classify_visible_next_label(loca
     sample = snapshot["diagnostics"]["pagination_samples"][0]
     assert sample["label_kind"] == "next"
     assert sample["query_value_categories"]["search_pos"] == "empty"
+
+
+@pytest.mark.parametrize(
+    ("label", "hidden", "expected"),
+    [
+        ("다음검색", False, True),
+        ("다음 검색", False, True),
+        ("다음 검색", True, False),
+        ("이전검색", False, False),
+    ],
+)
+def test_browser_fixture_classifies_only_visible_forward_search_label(
+    local_page, label, hidden, expected
+):
+    load, _requests = local_page
+    style = ' style="display:none"' if hidden else ""
+    page = load(
+        fixture_table() + f'<div class="bottom_paging_box"><a{style} '
+        'href="?id=comic_new6&amp;s_type=search_subject_memo&amp;s_keyword=ai&amp;page=1'
+        f'&amp;search_pos=-250">{label}</a></div>'
+    )
+    snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
+    assert (
+        any(link.get("label_kind") == "next_search" for link in snapshot["pagination_candidates"])
+        is expected
+    )

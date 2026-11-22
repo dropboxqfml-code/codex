@@ -31,6 +31,12 @@ def scan_plan_candidates(queue, scope, state, plan):
     # Older observations used to plan a route never refresh a candidate by themselves.
     history = plan["scan_result"].get("historical_follow_up", {})
     eligible_pages = pages[:2] if history.get("status") == "boundary_changed" else pages
+    recovery = plan["scan_result"].get("gap_recovery")
+    if recovery is not None:
+        count = recovery["eligible_pages"]
+        if type(count) is not int or not 1 <= count <= len(pages):
+            return None, []
+        eligible_pages = pages[:count]
     observed = {
         (row["post_id"], row["canonical_url"]) for page in eligible_pages for row in page["rows"]
     }

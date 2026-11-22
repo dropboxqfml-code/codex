@@ -1,5 +1,6 @@
 """Explain an incomplete list scan using bounded structural evidence only."""
 
+from image_monitor.monitor_gap_report import public_recovery_pages
 from image_monitor.search_list import MAX_ROWS, PROFILE_ISSUES, reviewed_structure_issue
 from image_monitor.watch_history import MAX_HISTORICAL_PAGE
 from image_monitor.watch_planner import WatchPlanError, _exclusion_evidence, _safe_exclusion
@@ -164,6 +165,9 @@ def public_list_diagnosis(value):
     extended = _count(value.get("follow_up_page_limit"), MAX_MONITOR_SCAN_PAGES, 3)
     page_limit = extended or 2
     boundary = _historical_boundary(value.get("historical_boundary_page"), extended)
+    recovery = public_recovery_pages(value.get("recovery_page_numbers"), page_limit)
+    if recovery is not None and (len(recovery) != len(pages) or boundary is not None):
+        recovery = None
     return {
         "reason": reason,
         "transport": _category(value.get("transport"), _TRANSPORT),
@@ -172,8 +176,9 @@ def public_list_diagnosis(value):
         "planner_issue": _category(value.get("planner_issue"), PLANNER_ISSUES),
         **({"follow_up_page_limit": extended} if extended else {}),
         **({"historical_boundary_page": boundary} if boundary else {}),
+        **({"recovery_page_numbers": recovery} if recovery else {}),
         "pages": [
-            _public_page(_mapping(page), _page_number(page, index, boundary))
+            _public_page(_mapping(page), _page_number(page, index, boundary, recovery))
             for index, page in enumerate(pages[:page_limit], 1)
         ],
     }
@@ -268,7 +273,12 @@ def _historical_boundary(value, limit):
     return None
 
 
-def _page_number(page, ordinal, boundary):
+def _page_number(page, ordinal, boundary, recovery=None):
+    if recovery is not None:
+        if not 1 <= ordinal <= len(recovery):
+            return None
+        expected = recovery[ordinal - 1]
+        return _count(_mapping(page).get("page"), expected, expected)
     if boundary is None:
         return ordinal
     if not 1 <= ordinal <= MAX_MONITOR_SCAN_PAGES:
@@ -279,9 +289,10 @@ def _page_number(page, ordinal, boundary):
     return _count(_mapping(page).get("page"), expected, expected)
 
 
-def diagnose_list_page(page, ordinal, *, historical_boundary_page=None):
+def diagnose_list_page(page, ordinal, *, historical_boundary_page=None, recovery_page_numbers=None):
     """Project a private page's observed validation, counts and proven exceptions."""
-    number = _page_number(page, ordinal, historical_boundary_page)
+    recovery = public_recovery_pages(recovery_page_numbers)
+    number = _page_number(page, ordinal, historical_boundary_page, recovery)
     return _public_page(_stored_page(_mapping(page)), number)
 
 
@@ -298,6 +309,7 @@ def diagnose_list_scan(latest_scan):
     extended = _count(
         _mapping(result.get("control")).get("follow_up_page_limit"), MAX_MONITOR_SCAN_PAGES, 3
     )
+    recovery = public_recovery_pages(outcome.get("recovery_page_numbers"), extended or 2)
     historical = _mapping(result.get("historical_follow_up"))
     # The URL selected by the browser still identifies a historical visit when
     # its layout fails validation before the planner can issue a coverage receipt.
@@ -313,8 +325,11 @@ def diagnose_list_scan(latest_scan):
             "planner_issue": result.get("planner_issue"),
             "follow_up_page_limit": extended,
             "historical_boundary_page": boundary,
+            "recovery_page_numbers": recovery,
             "pages": [
-                diagnose_list_page(page, i, historical_boundary_page=boundary)
+                diagnose_list_page(
+                    page, i, historical_boundary_page=boundary, recovery_page_numbers=recovery
+                )
                 for i, page in enumerate(pages[: extended or 2], 1)
             ]
             if isinstance(pages, list)

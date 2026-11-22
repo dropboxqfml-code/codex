@@ -120,11 +120,11 @@ def pilot(monkeypatch):
             return 1.0
 
         def attach(self, _profile, _process):
-            def navigate(*_args, **_kwargs):
+            def navigate(url, **_kwargs):
                 values.navigation.append("goto")
                 if values.navigation_failure is not None:
                     raise values.navigation_failure
-                return SimpleNamespace(status=200)
+                return SimpleNamespace(status=200, url=url)
 
             return SimpleNamespace(
                 goto=navigate,

@@ -487,8 +487,14 @@ input:disabled{background:#f4f6f4;color:#7d8985}
     const boundary = diagnosis.historical_boundary_page;
     const continued = pageLimit === 4 && Number.isInteger(boundary) &&
       boundary >= 4 && boundary < __MAX_HISTORICAL_PAGE__;
+    const recovery = diagnosis.recovery_page_numbers;
+    const recovering = !continued && Array.isArray(recovery) &&
+      recovery.length === pages.length && recovery.length <= pageLimit &&
+      recovery.every((n, i) => Number.isSafeInteger(n) && n >= 1 && n <= 999999999 &&
+        (i > 1 || n === i + 1 || n === 1) && (i !== 3 || n === 1 || n === recovery[2] + 1));
     for (const [index, page] of pages.entries()) {
-      const expectedPage = continued && index >= 2 ? boundary + index - 2 : index + 1;
+      const expectedPage = recovering ? recovery[index] :
+        continued && index >= 2 ? boundary + index - 2 : index + 1;
       if (page?.page !== expectedPage) continue;
       const issue = page.profile_issue;
       const knownIssue = typeof issue === 'string' && Object.hasOwn(profileIssues, issue);
@@ -858,6 +864,8 @@ input:disabled{background:#f4f6f4;color:#7d8985}
       '그 사이의 글은 일부 누락됐을 수 있습니다.' :
       gap === 'overlap_incomplete' ?
         '이전 확인 지점에 도달했습니다. 다음 페이지까지 겹쳐 확인하는 절차가 남았습니다.' :
+      gap === 'gap_successor_unconfirmed' ?
+        '이어지는 페이지나 다음 검색 링크를 확인하지 못했습니다. 이전 복구 위치를 보관합니다.' :
       gap === 'historical_boundary_changed' ?
         '이전에 확인한 페이지의 글 구성이 달라졌습니다. 최근 두 페이지를 확인했고, ' +
         '그보다 오래된 구간은 미확인 상태입니다.' : '';

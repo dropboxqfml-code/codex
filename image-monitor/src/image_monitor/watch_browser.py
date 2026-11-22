@@ -16,6 +16,7 @@ from image_monitor.search_list import (
     validate_list_url,
 )
 from image_monitor.site_inspection import _error_code
+from image_monitor.watch_gap_recovery import gap_next_url, seed_next_url
 from image_monitor.watch_history import historical_next_url
 from image_monitor.watch_planner import WatchPlanError, plan_scan
 from image_monitor.watch_store import MAX_MONITOR_SCAN_PAGES, MONITOR_SCOPE, WatchScope
@@ -258,11 +259,16 @@ class HeadlessWatchBrowser:
         if not isinstance(observed_at, datetime):
             raise ValueError("observed_at must be a timezone-aware datetime")
         scan_time = aware(observed_at).astimezone(UTC)
+        seed_crossing = (
+            isinstance(follow_up_state, dict) and follow_up_state.get("allow_seed_crossing") is True
+        )
         extended = follow_up_state is not None
         if extended and (scope != MONITOR_SCOPE or self.browser != "chrome"):
             raise ValueError("A list gap follow-up requires the reviewed Chrome monitor")
         if type(max_pages) is not int or not (
-            3 <= max_pages <= MAX_MONITOR_SCAN_PAGES if extended else 1 <= max_pages <= 2
+            (2 if seed_crossing else 3) <= max_pages <= MAX_MONITOR_SCAN_PAGES
+            if extended
+            else 1 <= max_pages <= 2
         ):
             raise ValueError("max_pages is outside the requested scan budget")
         # Construct this independently on every cycle; never reuse a prior URL.
@@ -320,6 +326,25 @@ class HeadlessWatchBrowser:
                     if not 200 <= status < 300 or result["retry_after"] is not None:
                         break
                     source = follow_up_state.get("historical_source")
+                    bookmark = follow_up_state.get("gap_bookmark")
+                    if bookmark is not None and (
+                        index == 1 or (index == 2 and result.get("gap_frontier_requested") is True)
+                    ):
+                        next_url = gap_next_url(
+                            scope, follow_up_state, result["pages"], scan_time, bookmark
+                        )
+                        if next_url is not None:
+                            target = validate_list_url(next_url)
+                            url = target["canonical_url"]
+                            if index == 1:
+                                result["gap_frontier_requested"] = True
+                                result["recovery_page_numbers"] = [
+                                    p["page"] for p in result["pages"]
+                                ]
+                            result["recovery_page_numbers"].append(target["page"])
+                            continue
+                        if index == 2:
+                            break  # A moved frontier never authorizes a guessed successor.
                     if source is not None and (
                         index == 1
                         or (index == 2 and snapshot.get("page") == source["boundary_page"])
@@ -342,10 +367,25 @@ class HeadlessWatchBrowser:
                             # A re-observed boundary changed. Keep the fresh head
                             # without moving beyond an unproven interval.
                             break
+                    if seed_crossing:
+                        next_url = seed_next_url(scope, follow_up_state, result["pages"], scan_time)
+                        if next_url is not None:
+                            following = validate_list_url(next_url)
+                            if following["search_pos"] != target["search_pos"]:
+                                result["gap_seed_route"] = True
+                            if result.get("gap_seed_route") is True:
+                                result["recovery_page_numbers"] = [
+                                    *(p["page"] for p in result["pages"]),
+                                    following["page"],
+                                ]
+                                target, url = following, following["canonical_url"]
+                                continue
+                        if result.get("gap_seed_route") is True:
+                            break
                 adjacent = _adjacent_latest_link(target, snapshot)
                 if "url" not in adjacent:
                     break
-                if extended:
+                if extended and max_pages > 2:
                     # Consult only this run's fresh observations before spending
                     # another request. A completed overlap or uncertain row stops here.
                     prefix = plan_scan(

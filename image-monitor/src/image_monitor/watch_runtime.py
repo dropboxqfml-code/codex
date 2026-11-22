@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 from image_monitor import PUBLIC_VERSION
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_finish import CandidateFinishError, _read_json, _same_json, _uuid
+from image_monitor.monitor_gap_report import public_recovery_pages
+from image_monitor.monitor_gap_store import bookmark_seal, load_bookmark
 from image_monitor.native_probe import write_report
 from image_monitor.native_ui import NativeUIError, require_windows
 from image_monitor.queue import QueueError, QueueStore
@@ -19,6 +21,14 @@ from image_monitor.retry import retry_after
 from image_monitor.search_list import build_list_url
 from image_monitor.watch_browser import HeadlessWatchBrowser
 from image_monitor.watch_diagnosis import diagnose_list_page
+from image_monitor.watch_gap_recovery import (
+    GAP_COVERAGE_REASONS,
+    new_gap_bookmark,
+    plan_gap_fallback,
+    plan_gap_scan,
+    plan_gap_seed,
+    plan_gap_seed_route,
+)
 from image_monitor.watch_history import (
     HEAD_JOIN_METHODS,
     MAX_HISTORICAL_PAGE,
@@ -26,7 +36,7 @@ from image_monitor.watch_history import (
     plan_historical_prefix,
     plan_historical_scan,
 )
-from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
+from image_monitor.watch_lock import WatchRunBusy, watch_list_lock
 from image_monitor.watch_planner import (
     WatchPlanError,
     next_poll_at,
@@ -43,8 +53,10 @@ from image_monitor.watch_store import (
 
 SERVICE_SCOPE = "dcinside"
 HEAD_OVERLAP_SCHEMA = 2
-PARTIAL_COVERAGE_GAPS = frozenset(
-    {"anchor_not_reached", "overlap_incomplete", "historical_boundary_changed"}
+LONG_GAP_SCHEMA = 3
+PARTIAL_COVERAGE_GAPS = (
+    frozenset({"anchor_not_reached", "overlap_incomplete", "historical_boundary_changed"})
+    | GAP_COVERAGE_REASONS
 )
 DEFAULT_SCOPE = WatchScope("검색 감시 시험", "normal", "comic_new6", "ai", "search_subject_memo")
 
@@ -194,6 +206,9 @@ def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
     boundary = history["boundary_page"] if history else None
     if boundary is None and follow_up_page_limit == MAX_MONITOR_SCAN_PAGES:
         boundary = outcome.get("historical_boundary_page")
+    recovery_pages = public_recovery_pages(
+        outcome.get("recovery_page_numbers"), follow_up_page_limit or 2
+    )
     summary = {
         "generation": persisted["generation"],
         "status": outcome["status"],
@@ -203,7 +218,12 @@ def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
         "page_statuses": [page.get("status") for page in pages],
         "layout_statuses": [page.get("layout_status") for page in pages],
         "page_checks": [
-            diagnose_list_page(page, ordinal, historical_boundary_page=boundary)
+            diagnose_list_page(
+                page,
+                ordinal,
+                historical_boundary_page=boundary,
+                recovery_page_numbers=recovery_pages,
+            )
             for ordinal, page in enumerate(pages, 1)
         ],
         "ordinary_rows": sum(len(page.get("rows", [])) for page in pages),
@@ -235,6 +255,8 @@ def _cycle_summary(outcome, plan, persisted, *, follow_up_page_limit=None):
         summary["historical_boundary_page"] = boundary
         if "head_join" in history:
             summary["head_join"] = history["head_join"]
+    if recovery_pages is not None:
+        summary["recovery_page_numbers"] = recovery_pages
     return summary
 
 
@@ -305,14 +327,44 @@ def _follow_up_transport(outcome, limit):
 
 
 def _plan_observation(
-    scope, state, outcome, observed_at, follow_up_limit, source=None, *, allow_head_overlap=False
+    scope,
+    state,
+    outcome,
+    observed_at,
+    follow_up_limit,
+    source=None,
+    *,
+    allow_head_overlap=False,
+    allow_seed_crossing=False,
 ):
     pages = outcome.get("pages", [])
-    if follow_up_limit and not _follow_up_transport(outcome, follow_up_limit):
+    crossed = outcome.get("gap_seed_route") is True
+    if (crossed or follow_up_limit) and not _follow_up_transport(outcome, follow_up_limit or 2):
         return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
     historical = len(pages) >= 3 and pages[2].get("page") != 3
+    gap = isinstance(source, dict) and "frontier" in source
+    jumped = outcome.get("gap_frontier_requested") is True
+    if crossed and (not allow_seed_crossing or scope != MONITOR_SCOPE or (source and not gap)):
+        return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
     try:
-        if historical:
+        if gap:
+            if follow_up_limit != MAX_MONITOR_SCAN_PAGES or scope != MONITOR_SCOPE:
+                return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
+            if jumped and len(pages) >= 3:
+                if pages[2].get("url") != source["frontier"]["canonical_url"]:
+                    return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
+                plan = plan_gap_scan(scope, state, pages, observed_at, source)
+            else:
+                plan = (
+                    plan_gap_seed_route(scope, state, pages, observed_at)
+                    if crossed
+                    else plan_scan(scope, state, pages, observed_at, allow_verified_live=True)
+                )
+                if outcome["status"] == "observed" and not jumped:
+                    plan = plan_gap_fallback(scope, state, pages, observed_at, source, plan)
+        elif crossed:
+            plan = plan_gap_seed_route(scope, state, pages, observed_at)
+        elif historical:
             if not source or follow_up_limit != MAX_MONITOR_SCAN_PAGES:
                 return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
             plan = plan_historical_scan(
@@ -320,14 +372,31 @@ def _plan_observation(
             )
         else:
             plan = plan_scan(scope, state, pages, observed_at, allow_verified_live=True)
-        if follow_up_limit and plan["complete"] and len(plan["scan_result"]["pages"]) != len(pages):
+        if (
+            (crossed or follow_up_limit)
+            and plan["complete"]
+            and len(plan["scan_result"]["pages"]) != len(pages)
+        ):
             return _empty_plan(state, observed_at, "list_navigation_unverified", scope)
         return plan
     except WatchPlanError as error:
         reason = "list_profile_unverified_or_incomplete"
         prefix = None
         if error.issue == "snapshot_layout" and _observed_page_chain(outcome, follow_up_limit or 2):
-            if historical:
+            if gap and jumped:
+                try:
+                    head = plan_scan(scope, state, pages[:2], observed_at, allow_verified_live=True)
+                except WatchPlanError:
+                    head = None
+                if head and len(head["scan_result"]["pages"]) == 2 and not head["complete"]:
+                    prefix = head
+                    prefix["gap_reason"] = reason
+                    prefix["scan_result"].update(
+                        layout_status="unverified",
+                        gap_reason=reason,
+                        verified_prefix_pages=2,
+                    )
+            elif historical:
                 prefix = plan_historical_prefix(
                     scope, state, pages, observed_at, source, allow_head_overlap=allow_head_overlap
                 )
@@ -369,6 +438,10 @@ def _replay_recent_plan(queue, scope, state, remaining_bridges):
     result = latest["result"]
     observed = result.get("private_observation", {})
     control = _control(state)
+    if latest["gap_reason"] in GAP_COVERAGE_REASONS and (
+        control.get("historical_route_schema") != LONG_GAP_SCHEMA or "gap_recovery" not in result
+    ):
+        return None
     page_limit = 2
     if "follow_up_page_limit" in control:
         page_limit = control["follow_up_page_limit"]
@@ -415,7 +488,21 @@ def _replay_recent_plan(queue, scope, state, remaining_bridges):
             "generation": state["generation"] - 1,
             "checkpoint": previous_checkpoint,
         }
-        if "historical_follow_up" in result:
+        if "gap_recovery" in result:
+            from image_monitor.monitor_gap_store import replay_gap_scan
+
+            planned = replay_gap_scan(queue, scope, latest, previous_state, scan_time)
+            if planned is None:
+                return None
+        elif control.get("historical_route_schema") == LONG_GAP_SCHEMA:
+            from image_monitor.monitor_gap_store import replay_gap_seed
+
+            planned = replay_gap_seed(
+                queue, scope, latest, previous_state, scan_time, page_limit, remaining_bridges
+            )
+            if planned is None:
+                return None
+        elif "historical_follow_up" in result:
             if page_limit != MAX_MONITOR_SCAN_PAGES or remaining_bridges < 1:
                 return None
             marker = result["historical_follow_up"]
@@ -554,11 +641,11 @@ def historical_route_policy(receipt, control):
     if schema == 1 and "historical_route_schema" not in control:
         earliest_alpha = 10
     elif (
-        schema == HEAD_OVERLAP_SCHEMA
+        schema in (HEAD_OVERLAP_SCHEMA, LONG_GAP_SCHEMA)
         and type(control.get("historical_route_schema")) is int
         and control["historical_route_schema"] == schema
     ):
-        earliest_alpha = 11
+        earliest_alpha = 12 if schema == LONG_GAP_SCHEMA else 11
     else:
         return None
     match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.([1-9]\d*))?", version, re.ASCII)
@@ -597,6 +684,8 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
             return False
         cycles = report.get("cycles")
         complete, gap = latest["complete"], latest["gap_reason"]
+        if gap in GAP_COVERAGE_REASONS and "gap_recovery" not in latest["result"]:
+            return False
         if (
             "historical_route_schema" in control
             or "historical_route_schema" in report
@@ -613,6 +702,13 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
             ):
                 return False
         history = latest["result"].get("historical_follow_up", {})
+        if "gap_recovery" in latest["result"] or "gap_bookmark_digest" in report:
+            if (
+                control.get("historical_route_schema") != LONG_GAP_SCHEMA
+                or not isinstance(report.get("gap_bookmark_digest"), str)
+                or report["gap_bookmark_digest"] != bookmark_seal(latest)
+            ):
+                return False
         if not isinstance(history, dict):
             return False
         if "head_join" in history and (
@@ -673,15 +769,49 @@ def _closed_partial_plan(database, queue, state, remaining_bridges):
     return None
 
 
-def monitor_scan_policy(database, queue, state):
+def gap_seed(queue, state, *, planned=None):
+    """Bootstrap a durable frontier from a closed, verified four-document observation."""
+    latest = state.get("latest_scan")
+    if not latest or latest["complete"] or "gap_recovery" in latest["result"]:
+        return None
+    record = latest["result"]
+    pages = record.get("private_observation", {}).get("pages")
+    if record.get("control", {}).get("follow_up_page_limit") != MAX_MONITOR_SCAN_PAGES or not (
+        isinstance(pages, list) and len(pages) == MAX_MONITOR_SCAN_PAGES
+    ):
+        return None
+    if planned is None:
+        from image_monitor.candidate_save_selection import _database_path
+
+        planned = _closed_partial_plan(_database_path(queue), queue, state, MAX_HISTORICAL_PAGE - 4)
+    if planned is None or historical_candidate_count(queue, latest, planned) is None:
+        return None
+    bookmark = new_gap_bookmark(MONITOR_SCOPE, state, pages, _stored_time(latest["observed_at"]))
+    if bookmark is None:
+        return None
+    return bookmark | {
+        "source_scan_id": latest["scan_id"],
+        "source_generation": latest["generation"],
+    }
+
+
+def monitor_scan_policy(database, queue, state, *, recover_long_gaps=False):
     """Determine both the request limit and any verified historical boundary."""
     if state.get("baseline") is None:
         return 1, None
+    if recover_long_gaps:
+        bookmark = load_bookmark(queue, state)
+        if bookmark is not None:
+            return MAX_MONITOR_SCAN_PAGES, bookmark
     planned = _closed_partial_plan(database, queue, state, MAX_HISTORICAL_PAGE - 4)
     if planned is None:
         return 2, None
     latest = state["latest_scan"]
     page_count = len(latest["result"]["private_observation"]["pages"])
+    if recover_long_gaps:
+        bookmark = gap_seed(queue, state, planned=planned)
+        if bookmark is not None:
+            return MAX_MONITOR_SCAN_PAGES, bookmark
     source = _durable_historical_source(queue, latest, planned)
     return min(page_count + 1, MAX_MONITOR_SCAN_PAGES), source
 
@@ -725,6 +855,7 @@ def run_watch_trial(
     scope=DEFAULT_SCOPE,
     should_stop=None,
     follow_up_gaps=False,
+    recover_long_gaps=False,
 ):
     require_windows()
     if browser not in {"chrome", "edge"} or type(cycles) is not int or not 1 <= cycles <= 2:
@@ -743,6 +874,8 @@ def run_watch_trial(
         follow_up_gaps and (scope != MONITOR_SCOPE or browser != "chrome" or cycles != 1)
     ):
         raise NativeUIError("List gap follow-up requires one automatic Chrome monitor cycle")
+    if type(recover_long_gaps) is not bool or (recover_long_gaps and not follow_up_gaps):
+        raise NativeUIError("Long gap recovery requires an automatic follow-up scan")
     if should_stop is not None and not callable(should_stop):
         raise NativeUIError("The watch stop condition must be callable")
     clock = clock or _Clock()
@@ -785,7 +918,7 @@ def run_watch_trial(
                 raise QueueError("The watch stop condition must return a boolean")
             return value
 
-        with watch_run_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
+        with watch_list_lock(database, DEFAULT_SCOPE), QueueStore(database) as queue:
             store = WatchStore(queue)
             if queue.summary()["jobs"]:
                 raise QueueError("The watch trial requires its separate discovery database")
@@ -841,13 +974,27 @@ def run_watch_trial(
                         page_limit = 1 if state["baseline"] is None else 2
                         source = None
                         if follow_up_gaps:
-                            page_limit, source = monitor_scan_policy(database, queue, state)
+                            page_limit, source = monitor_scan_policy(
+                                database, queue, state, recover_long_gaps=recover_long_gaps
+                            )
                         follow_up_limit = page_limit if page_limit > 2 else None
-                        follow_up_state = (
-                            state | {"historical_source": source, "allow_head_overlap": True}
-                            if source
-                            else state
+                        bookmark = source if source and "frontier" in source else None
+                        route_schema = LONG_GAP_SCHEMA if bookmark else HEAD_OVERLAP_SCHEMA
+                        follow_up_state = state
+                        if bookmark:
+                            follow_up_state = state | {"gap_bookmark": bookmark}
+                        elif source:
+                            follow_up_state = state | {
+                                "historical_source": source,
+                                "allow_head_overlap": True,
+                            }
+                        allow_seed_crossing = (
+                            recover_long_gaps
+                            and page_limit >= 2
+                            and (source is None or bookmark is not None)
                         )
+                        if allow_seed_crossing:
+                            follow_up_state = follow_up_state | {"allow_seed_crossing": True}
                         # Commit before navigation so cancellation or a process failure
                         # cannot immediately repeat the same request on the next run.
                         queue.defer_service(
@@ -859,7 +1006,11 @@ def run_watch_trial(
                                 scope,
                                 observed_at,
                                 max_pages=page_limit,
-                                **({"follow_up_state": follow_up_state} if follow_up_limit else {}),
+                                **(
+                                    {"follow_up_state": follow_up_state}
+                                    if follow_up_limit or allow_seed_crossing
+                                    else {}
+                                ),
                             )
                         finally:
                             finished_at = clock.now()
@@ -875,16 +1026,33 @@ def run_watch_trial(
                             follow_up_limit,
                             source,
                             allow_head_overlap=follow_up_gaps,
+                            allow_seed_crossing=allow_seed_crossing,
                         )
-                        if plan["scan_result"].get("historical_follow_up") is not None:
+                        if allow_seed_crossing and outcome.get("gap_seed_route") is True:
+                            route_schema = LONG_GAP_SCHEMA
+                        if (
+                            allow_seed_crossing
+                            and source is None
+                            and outcome.get("gap_seed_route") is not True
+                            and outcome["status"] == "observed"
+                        ):
+                            previous_reason = plan["gap_reason"]
+                            plan = plan_gap_seed(scope, state, outcome["pages"], observed_at, plan)
+                            if plan["gap_reason"] != previous_reason:
+                                route_schema = LONG_GAP_SCHEMA
+                        if bookmark or "historical_follow_up" in plan["scan_result"]:
                             current = store.get_state(scope)
                             if (
                                 current["generation"] != state["generation"]
-                                or monitor_scan_policy(database, queue, current)[1] != source
+                                or monitor_scan_policy(
+                                    database, queue, current, recover_long_gaps=recover_long_gaps
+                                )[1]
+                                != source
                             ):
                                 plan = _empty_plan(
                                     state, observed_at, "historical_source_unverified", scope
                                 )
+                                bookmark = None
                         cancelled = outcome["status"] == "cancelled" or stopped()
                         failed = outcome["status"] != "observed" and not cancelled
                         if failed or cancelled:
@@ -895,6 +1063,7 @@ def run_watch_trial(
                             )
                             plan.update(complete=False, gap_reason=reason, baseline=None)
                             plan["scan_result"].update(complete=False, gap_reason=reason)
+                            plan["scan_result"].pop("gap_recovery", None)
                         next_at = next_poll_at(finished_at, interval_seconds=interval_seconds)
                         status = outcome.get("http_status")
                         blocked = status in {401, 403, 404, 410}
@@ -919,12 +1088,10 @@ def run_watch_trial(
                         if follow_up_limit is not None:
                             plan["scan_result"]["control"]["follow_up_page_limit"] = follow_up_limit
                         if follow_up_gaps:
-                            plan["scan_result"]["control"]["historical_route_schema"] = (
-                                HEAD_OVERLAP_SCHEMA
-                            )
+                            plan["scan_result"]["control"]["historical_route_schema"] = route_schema
                         plan["scan_result"]["private_observation"] = outcome
                         report["last_stage"] = "persist_scan"
-                        persisted = store.persist_scan(scope, **plan)
+                        persisted = store.persist_scan(scope, **plan, active_bookmark=bookmark)
                         summary = _cycle_summary(
                             outcome, plan, persisted, follow_up_page_limit=follow_up_limit
                         )
@@ -988,7 +1155,10 @@ def run_watch_trial(
                     "scope": list(scope.key()),
                 }
                 if follow_up_gaps:
-                    report["historical_route_schema"] = HEAD_OVERLAP_SCHEMA
+                    report["historical_route_schema"] = route_schema
+                    seal = bookmark_seal(state["latest_scan"])
+                    if seal is not None:
+                        report["gap_bookmark_digest"] = seal
     except WatchRunBusy:
         report.update(status="watch_busy", reason="another_scan_owns_this_scope")
     except KeyboardInterrupt:

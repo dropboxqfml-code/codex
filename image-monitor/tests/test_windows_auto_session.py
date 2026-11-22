@@ -9,11 +9,13 @@ from datetime import UTC, datetime, timedelta
 from functools import partial
 from io import BytesIO
 from pathlib import Path
+from threading import Event, get_ident
 from zoneinfo import ZoneInfo
 
 import pytest
 from PIL import Image
 from test_monitor_auto_session_integration import listing
+from test_monitor_save_scheduling import routed_list_chrome
 from test_monitor_setup_retry_integration import use_windows_browser
 from test_watch_runtime import BrowserFactory, FakeClock, link, observed, snapshot
 from test_windows_candidate_save import CandidatePageView
@@ -72,13 +74,27 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
     scan_browser = BrowserFactory(
         observed(lambda stamp: snapshot([anchor], stamp, links=[link()])),
         listing(first, anchor),
-        *([listing(first, anchor)] if lose_focus else []),
-        listing(second, first, anchor),
+        *([listing(first, anchor), listing(second, first, anchor)] if lose_focus else []),
         listing(second, first, anchor),
     )
-    discover = partial(
+    ordinary_discovery = partial(
         run_auto_discovery, run_cycle=partial(run_watch_trial, backend_factory=scan_browser)
     )
+    foreground_thread = get_ident()
+    overlapping_list = Event()
+
+    concurrent_chrome = routed_list_chrome([second, first, anchor])
+
+    def discover(watch, **options):
+        if get_ident() == foreground_thread:
+            return ordinary_discovery(watch, **options)
+        result = run_auto_discovery(
+            watch, **options, run_cycle=partial(run_watch_trial, backend_factory=concurrent_chrome)
+        )
+        if result["status"] == "complete" and result["new_candidates"] == 1:
+            overlapping_list.set()
+        return result
+
     with (
         tempfile.TemporaryDirectory(prefix="as-", dir=os.environ["RUNNER_TEMP"]) as directory,
         serve_fixtures(assets) as (origin, requests),
@@ -176,6 +192,15 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
 
                 def record_native_save(page, ui, **kwargs):
                     ui.assert_target_ready()
+                    if not native_inputs and not lose_focus:
+                        # Advance the shared service deadline while the native worker
+                        # owns Chrome, then prove the separate headless list finishes
+                        # before its first context-menu input, without taking focus.
+                        clock.wait(61)
+                        assert overlapping_list.wait(35), (
+                            "Headless list did not finish during the save"
+                        )
+                        ui.assert_target_ready()
                     native_inputs.append((page.url, kwargs["image"]["display_url"]))
                     return save_image(page, ui, **kwargs)
 
@@ -250,6 +275,7 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
             cycles = 2
         result = session(max_cycles=cycles)
         assert result["status"] == "auto_monitor_completed", failure(result)
+        assert result["list_checks_during_save"] == (0 if lose_focus else 1)
         for count in (
             "cycles_completed",
             "list_checks",

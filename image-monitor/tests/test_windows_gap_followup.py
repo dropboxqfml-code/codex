@@ -83,6 +83,8 @@ def routed_scan(tmp_path, monkeypatch, list_clock):
             interval_seconds=60,
             clock=list_clock,
             run_cycle=partial(watch_runtime.run_watch_trial, backend_factory=RoutedChrome),
+            # Preserve replay coverage for the earlier bounded route and its Chrome receipts.
+            recover_long_gaps=False,
         )
         assert not unexpected, unexpected
         assert visits == [page_url(n) for n, _, _ in documents], outcome

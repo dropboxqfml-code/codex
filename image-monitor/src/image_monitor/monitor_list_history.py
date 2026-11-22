@@ -6,6 +6,11 @@ from pathlib import Path
 
 from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_finish import CandidateFinishError, _read_json, _same_json, _uuid
+from image_monitor.monitor_gap_report import (
+    checked_window_starts,
+    gap_route_details,
+    search_window_start_visits,
+)
 from image_monitor.queue import QueueStore
 from image_monitor.watch_history import historical_route_details
 from image_monitor.watch_images_check import _read_mode, _UnstableDatabase
@@ -13,6 +18,7 @@ from image_monitor.watch_lock import watch_run_lock
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
     HEAD_OVERLAP_SCHEMA,
+    LONG_GAP_SCHEMA,
     _cycle_summary,
     _stored_time,
     confirmed_monitor_scan,
@@ -61,11 +67,12 @@ def _state_at(queue, current, scan):
 
 def _historical_check(database, queue, before, after):
     latest, parent = after["latest_scan"], before["latest_scan"]
-    control = latest["result"]["control"]
+    record = latest["result"]
+    control = record["control"]
+    observed = record["private_observation"]
+    crossed_seed = "gap_recovery" not in record and observed.get("gap_seed_route") is True
     if (
         latest["generation"] != parent["generation"] + 1
-        or type(control.get("follow_up_page_limit")) is not int
-        or control["follow_up_page_limit"] != MAX_MONITOR_SCAN_PAGES
         or _stored_time(latest["observed_at"])
         < _stored_time(parent["result"]["control"]["next_eligible_at"])
         or not _uuid(control.get("monitor_run_id"))
@@ -86,8 +93,22 @@ def _historical_check(database, queue, before, after):
         or not confirmed_monitor_scan(database, latest, expected_report=receipt)
     ):
         return None
-    limit, source = monitor_scan_policy(database, queue, before)
-    if source is None or limit != MAX_MONITOR_SCAN_PAGES:
+    limit, source = monitor_scan_policy(
+        database, queue, before, recover_long_gaps=policy == LONG_GAP_SCHEMA
+    )
+    if crossed_seed:
+        if (
+            policy != LONG_GAP_SCHEMA
+            or source is not None
+            or not 2 <= limit <= MAX_MONITOR_SCAN_PAGES
+        ):
+            return None
+    elif source is None or limit != MAX_MONITOR_SCAN_PAGES:
+        return None
+    follow_up_limit = limit if limit > 2 else None
+    if not _same_json(control.get("follow_up_page_limit"), follow_up_limit) or (
+        follow_up_limit is None and "follow_up_page_limit" in control
+    ):
         return None
     plan = verified_recent_plan(queue, MONITOR_SCOPE, after)
     if plan is None:
@@ -102,21 +123,28 @@ def _historical_check(database, queue, before, after):
         or not _same_json(added, receipt.get("new_candidates"))
     ):
         return None
-    observed = latest["result"]["private_observation"]
     expected = _cycle_summary(
         observed,
         plan,
         {"generation": latest["generation"], "candidates_added": added},
-        follow_up_page_limit=limit,
+        follow_up_page_limit=follow_up_limit,
     )
     if not _same_json(receipt.get("cycles"), [expected]):
         return None
-    details = historical_route_details(
-        before, latest, source, allow_head_overlap=policy == HEAD_OVERLAP_SCHEMA
-    )
-    if details["historical_reason"] == "route_evidence_unverified":
-        return None
     pages = [page["page"] for page in observed["pages"]]
+    if crossed_seed:
+        starts = search_window_start_visits(record)
+        if not starts:
+            return None
+        details = checked_window_starts({"search_window_start_visits": starts}, pages, limit)
+    elif policy == LONG_GAP_SCHEMA:
+        details = gap_route_details(record)
+    else:
+        details = historical_route_details(
+            before, latest, source, allow_head_overlap=policy == HEAD_OVERLAP_SCHEMA
+        )
+        if details["historical_reason"] == "route_evidence_unverified":
+            return None
     return {
         "status": "complete" if latest["complete"] else "partial",
         "reason": latest["gap_reason"],

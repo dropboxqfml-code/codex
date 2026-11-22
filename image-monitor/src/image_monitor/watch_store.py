@@ -193,6 +193,7 @@ class WatchStore:
         complete: bool,
         gap_reason: str | None = None,
         baseline: dict | None = None,
+        active_bookmark: dict | None = None,
     ) -> dict:
         """Commit one validated plan; a partial scan never advances coverage.
 
@@ -230,6 +231,11 @@ class WatchStore:
                 raise QueueError("A stale scan generation cannot replace watch state")
             if state.get("updated_at", observed) > observed:
                 raise QueueError("A stale scan observation cannot move watch state backwards")
+            from image_monitor.monitor_gap_store import bind_bookmark
+
+            bound_result = bind_bookmark(self.store, scope, state, scan_result, active_bookmark)
+            if bound_result is not scan_result:
+                result_json = _json_data(bound_result, "Scan result")
             previous_baseline = state["baseline"]
             if previous_baseline is not None:
                 if baseline is not None and previous_baseline != baseline:

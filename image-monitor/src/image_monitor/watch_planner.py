@@ -364,6 +364,7 @@ def _plan_scan(
     synthetic_fixture=False,
     allow_verified_live=False,
     verified_boundary=None,
+    verified_hops=None,
 ):
     if type(synthetic_fixture) is not bool or type(allow_verified_live) is not bool:
         raise WatchPlanError("synthetic_fixture and allow_verified_live must be booleans")
@@ -531,10 +532,15 @@ def _plan_scan(
             complete = True
             break
         options = _next(current)
+        verified_hop = (verified_hops or {}).get(index)
         if verified_boundary is not None and index == 1:
             # The historical planner proved the head and remote boundary meet the
             # same earlier scan. Only the current page's observed link can join them.
             options = [link for link in current["links"] if link == verified_boundary]
+        if verified_hop is not None:
+            # The durable-gap planner validated this exact bookmarked document
+            # or the currently observed, directional search-window transition.
+            options = [verified_hop]
         result["follow_up"] = dict(options[0]) if len(options) == 1 else None
         if not options and historical:
             gap_reason = "historical_cursor_unverified"
@@ -561,7 +567,7 @@ def _plan_scan(
         if following["url"] in visited:
             gap_reason = "pagination_cycle"
             break
-        if following["search_pos"] != current["search_pos"]:
+        if following["search_pos"] != current["search_pos"] and verified_hop is None:
             gap_reason = "historical_cursor_unverified"
             break
         if not options or _cursor(following) not in options:

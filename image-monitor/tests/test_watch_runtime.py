@@ -52,7 +52,10 @@ class ScriptedBrowser:
         self.browser_closed = True
 
     def scan(self, scope, observed_at, *, max_pages, follow_up_state=None):
-        assert (follow_up_state is not None) == (max_pages > 2)
+        if max_pages <= 2 and follow_up_state is not None:
+            assert max_pages == 2 and follow_up_state.get("allow_seed_crossing") is True
+        elif max_pages > 2:
+            assert follow_up_state is not None
         self.calls.append((scope, observed_at, max_pages))
         assert self.outcomes, "The runner made an unexpected extra website request"
         return self.outcomes.pop(0)(observed_at)

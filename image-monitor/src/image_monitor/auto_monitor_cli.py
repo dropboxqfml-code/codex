@@ -7,6 +7,7 @@ from contextlib import nullcontext
 from datetime import datetime
 
 from image_monitor import PUBLIC_VERSION
+from image_monitor.monitor_gap_report import RECOVERY_MESSAGES
 from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
 
 _HEAD_JOIN_KO = {
@@ -38,6 +39,10 @@ def _describe_list_check(check):
     if not isinstance(check, dict):
         return check
     described = check.copy()
+    recovery = described.pop("recovery_status", None)
+    described.pop("recovery_status_ko", None)
+    if isinstance(recovery, str) and recovery in RECOVERY_MESSAGES:
+        described.update(recovery_status=recovery, recovery_status_ko=RECOVERY_MESSAGES[recovery])
     reason = described.pop("historical_reason", None)
     described.pop("historical_reason_ko", None)
     join = described.pop("head_join", None)
@@ -98,6 +103,7 @@ def _show_progress(report, stream):
         "starting": "자동 감시 시작",
         "scanning": "목록 확인 중",
         "collecting": "게시글 이미지 확인 및 저장 중",
+        "scanned_during_save": "이미지 저장 중 목록 확인 완료",
         "waiting": "다음 확인 대기 중",
     }
     if phase not in messages:
@@ -111,10 +117,18 @@ def _show_progress(report, stream):
         new = report["newly_saved_files"]
         message += f" (기존 {previous}장, 새로 저장 {new}장)"
     last_list = report.get("last_list")
-    if last_list and last_list.get("page_limit", 0) > 2:
+    if last_list and (
+        last_list.get("page_limit", 0) > 2 or last_list.get("search_window_start_visits")
+    ):
         outcome = "확인 완료" if last_list["status"] == "complete" else "미확인 구간 남음"
         numbers = ", ".join(str(page) for page in last_list["visited_page_numbers"])
         message += f" | 확인한 목록 {numbers}쪽 · {outcome}"
+        if "recovery_depth" in last_list:
+            message += f" · 복구 위치 {last_list['recovery_depth']}쪽"
+        if last_list.get("search_window_start_visits") or last_list.get(
+            "recovery_crossed_search_range"
+        ):
+            message += " · 다음 검색 구간 진입"
     due = report.get("next_eligible_at")
     if phase == "waiting" and due:
         local_time = datetime.fromisoformat(due).astimezone()

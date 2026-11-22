@@ -14,7 +14,7 @@ from image_monitor.artifact_files import _plain_path
 from image_monitor.candidate_finish import CandidateFinishError, _read_json, _same_json, _uuid
 from image_monitor.list_inspection_failure import bound_inspection_failure
 from image_monitor.monitor_gap_report import public_recovery_pages
-from image_monitor.monitor_gap_store import bookmark_seal, load_bookmark
+from image_monitor.monitor_gap_store import _valid_ref, bookmark_seal, load_bookmark
 from image_monitor.native_probe import write_report
 from image_monitor.native_ui import NativeUIError, require_windows
 from image_monitor.queue import QueueError, QueueStore
@@ -55,6 +55,9 @@ from image_monitor.watch_store import (
 SERVICE_SCOPE = "dcinside"
 HEAD_OVERLAP_SCHEMA = 2
 LONG_GAP_SCHEMA = 3
+PARTIAL_OVERLAP_SCHEMA = 4
+DURABLE_GAP_SCHEMAS = frozenset({LONG_GAP_SCHEMA, PARTIAL_OVERLAP_SCHEMA})
+_MIN_ROUTE_ALPHA = {HEAD_OVERLAP_SCHEMA: 11, LONG_GAP_SCHEMA: 12, PARTIAL_OVERLAP_SCHEMA: 16}
 PARTIAL_COVERAGE_GAPS = (
     frozenset({"anchor_not_reached", "overlap_incomplete", "historical_boundary_changed"})
     | GAP_COVERAGE_REASONS
@@ -342,6 +345,7 @@ def _plan_observation(
     *,
     allow_head_overlap=False,
     allow_seed_crossing=False,
+    allow_partial_overlap=False,
 ):
     pages = outcome.get("pages", [])
     crossed = outcome.get("gap_seed_route") is True
@@ -367,7 +371,15 @@ def _plan_observation(
                     else plan_scan(scope, state, pages, observed_at, allow_verified_live=True)
                 )
                 if outcome["status"] == "observed" and not jumped:
-                    plan = plan_gap_fallback(scope, state, pages, observed_at, source, plan)
+                    plan = plan_gap_fallback(
+                        scope,
+                        state,
+                        pages,
+                        observed_at,
+                        source,
+                        plan,
+                        allow_partial_overlap=allow_partial_overlap,
+                    )
         elif crossed:
             plan = plan_gap_seed_route(scope, state, pages, observed_at)
         elif historical:
@@ -444,8 +456,11 @@ def _replay_recent_plan(queue, scope, state, remaining_bridges):
     result = latest["result"]
     observed = result.get("private_observation", {})
     control = _control(state)
+    schema = control.get("historical_route_schema")
+    if schema == PARTIAL_OVERLAP_SCHEMA and "gap_recovery" not in result:
+        return None
     if latest["gap_reason"] in GAP_COVERAGE_REASONS and (
-        control.get("historical_route_schema") != LONG_GAP_SCHEMA or "gap_recovery" not in result
+        type(schema) is not int or schema not in DURABLE_GAP_SCHEMAS or "gap_recovery" not in result
     ):
         return None
     page_limit = 2
@@ -647,11 +662,11 @@ def historical_route_policy(receipt, control):
     if schema == 1 and "historical_route_schema" not in control:
         earliest_alpha = 10
     elif (
-        schema in (HEAD_OVERLAP_SCHEMA, LONG_GAP_SCHEMA)
+        schema in _MIN_ROUTE_ALPHA
         and type(control.get("historical_route_schema")) is int
         and control["historical_route_schema"] == schema
     ):
-        earliest_alpha = 12 if schema == LONG_GAP_SCHEMA else 11
+        earliest_alpha = _MIN_ROUTE_ALPHA[schema]
     else:
         return None
     match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.([1-9]\d*))?", version, re.ASCII)
@@ -708,9 +723,26 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
             ):
                 return False
         history = latest["result"].get("historical_follow_up", {})
+        recovery = latest["result"].get("gap_recovery")
+        if (
+            isinstance(recovery, dict)
+            and "recovery_reason" in recovery
+            and control.get("historical_route_schema") != PARTIAL_OVERLAP_SCHEMA
+        ):
+            return False
+        if control.get("historical_route_schema") == PARTIAL_OVERLAP_SCHEMA:
+            source = control.get("gap_bookmark_before")
+            if (
+                not isinstance(recovery, dict)
+                or "historical_follow_up" in latest["result"]
+                or not _valid_ref(source)
+                or type(latest.get("generation")) is not int
+                or source["generation"] >= latest["generation"]
+            ):
+                return False
         if "gap_recovery" in latest["result"] or "gap_bookmark_digest" in report:
             if (
-                control.get("historical_route_schema") != LONG_GAP_SCHEMA
+                control.get("historical_route_schema") not in DURABLE_GAP_SCHEMAS
                 or not isinstance(report.get("gap_bookmark_digest"), str)
                 or report["gap_bookmark_digest"] != bookmark_seal(latest)
             ):
@@ -985,7 +1017,7 @@ def run_watch_trial(
                             )
                         follow_up_limit = page_limit if page_limit > 2 else None
                         bookmark = source if source and "frontier" in source else None
-                        route_schema = LONG_GAP_SCHEMA if bookmark else HEAD_OVERLAP_SCHEMA
+                        route_schema = PARTIAL_OVERLAP_SCHEMA if bookmark else HEAD_OVERLAP_SCHEMA
                         follow_up_state = state
                         if bookmark:
                             follow_up_state = state | {"gap_bookmark": bookmark}
@@ -1033,8 +1065,13 @@ def run_watch_trial(
                             source,
                             allow_head_overlap=follow_up_gaps,
                             allow_seed_crossing=allow_seed_crossing,
+                            allow_partial_overlap=bookmark is not None,
                         )
-                        if allow_seed_crossing and outcome.get("gap_seed_route") is True:
+                        if (
+                            allow_seed_crossing
+                            and bookmark is None
+                            and outcome.get("gap_seed_route") is True
+                        ):
                             route_schema = LONG_GAP_SCHEMA
                         if (
                             allow_seed_crossing
@@ -1098,6 +1135,10 @@ def run_watch_trial(
                         plan["scan_result"]["private_observation"] = outcome
                         report["last_stage"] = "persist_scan"
                         persisted = store.persist_scan(scope, **plan, active_bookmark=bookmark)
+                        if route_schema == PARTIAL_OVERLAP_SCHEMA and bookmark is not None:
+                            # A failed observation can earn a later bounded inspection retry.
+                            # Bind that attempt's rule independently of any coverage receipt.
+                            report["historical_route_schema"] = route_schema
                         summary = _cycle_summary(
                             outcome, plan, persisted, follow_up_page_limit=follow_up_limit
                         )

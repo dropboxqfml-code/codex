@@ -96,6 +96,8 @@ def _record_list_pages(report, turn):
     if numbers != expected:
         raise ValueError("Unexpected verified list page sequence")
     last.update(pages_checked=count, page_limit=limit, visited_page_numbers=numbers.copy())
+    if report.get("mode") == "list_recovery_test" and report.get("max_cycles") == 2:
+        last["new_candidates"] = _count(turn, "new_candidates")
     if checks := public_date_cell_checks(turn.get("date_cell_checks"), numbers):
         last["date_cell_checks"] = checks
     if "historical_status" in turn:
@@ -311,6 +313,8 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
     interval = load_monitor_settings(roots[0])["interval_seconds"]
     report["interval_seconds"] = interval
     list_interval = timedelta(seconds=interval)
+    follow_gap = report["mode"] == "list_recovery_test" and report["max_cycles"] == 2
+    list_attempts = 0
     list_due = None
     due = None
     phase = "scanning"
@@ -366,6 +370,10 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
         due = _stored_time(turn["next_eligible_at"]) if turn["next_eligible_at"] else None
         report["next_eligible_at"] = _stamp(due) if due is not None else None
         if phase == "scanning":
+            if follow_gap and (
+                status in {"complete", "partial", "baseline"} or reason == "inspection_retry_due"
+            ):
+                list_attempts += 1
             report["last_list"] = {"status": status, "reason": reason}
             if status in {"review", "waiting"} and (
                 review := public_list_review(turn.get("review"))
@@ -396,6 +404,8 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
             if due is None or due <= turn_started_at:
                 return _finish(report, "review", "invalid_wait_deadline")
             if phase == "scanning" and reason == "inspection_retry_due":
+                if follow_gap and list_attempts >= 2:
+                    return _finish(report, "waiting", reason)
                 if inspection_retry_pending:
                     report["last_list"].update(status="review", reason="list_scan_requires_review")
                     report["next_eligible_at"] = None
@@ -453,6 +463,19 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
         report["next_eligible_at"] = _stamp(due)
         if stop_requested(should_stop):
             return _finish(report, "stopped", "requested_stop")
+        if follow_gap:
+            if status == "complete":
+                return _finish(report, "completed", "list_coverage_confirmed")
+            if list_attempts >= 2:
+                return _finish(report, "completed", "cycle_limit_reached")
+            if report["last_list"].get("recovery_status") not in {
+                "head_rejoined",
+                "segment_rejoined",
+                "segment_queued",
+                "advanced",
+                "overlap_pending",
+            }:
+                return _finish(report, "completed", "recovery_followup_deferred")
         if report["cycles_completed"] == report["max_cycles"]:
             return _finish(report, "completed", "cycle_limit_reached")
 
@@ -509,7 +532,7 @@ def run_auto_monitor(
         if stop_requested(should_stop):
             return _finish(report, "stopped", "requested_stop")
         if list_only:
-            if max_cycles != 1:
+            if max_cycles not in (1, 2):
                 return _finish(report, "review", "invalid_cycle_limit")
             roots = (_root(watch_root),)
         else:

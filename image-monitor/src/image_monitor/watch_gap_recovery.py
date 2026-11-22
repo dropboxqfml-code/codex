@@ -13,6 +13,19 @@ from image_monitor.watch_planner import (
 from image_monitor.watch_store import MONITOR_SCOPE
 
 GAP_COVERAGE_REASONS = frozenset({"gap_successor_unconfirmed"})
+GAP_RECOVERY_REASONS = {
+    "segment_queued": frozenset({"recent_tail_overlap", "observed_frontier_shift"}),
+    "held": frozenset(
+        {
+            "recent_page_limit",
+            "recent_chain_unverified",
+            "recent_overlap_unconfirmed",
+            "deferred_limit",
+            "frontier_rebase_unverified",
+            "recent_plan_unconfirmed",
+        }
+    ),
+}
 GAP_STATUSES = frozenset(
     {
         "advanced",
@@ -454,28 +467,81 @@ def plan_gap_scan(scope, state, pages, observed_at, bookmark):
     return _mark(plan, status, depth, 4, "bookmark", next_bookmark=updated, crossed=crossed)
 
 
-def rebase_gap_bookmark(scope, state, pages, observed_at, bookmark):
-    """Reconnect a fresh contiguous prefix, or queue a genuinely disjoint newer segment."""
+def _recent_tail_overlap(rows, recent_floor, previous):
+    """Match the end of four linked pages to a clipped prefix of the old first page."""
+    floor = rows[-1]
+    if floor not in previous or floor == previous[-1]:
+        return False
+    prefix = previous[: previous.index(floor) + 1]
+    old_ids = set(prefix)
+    common = [post_id for post_id in rows if post_id in old_ids]
+    if len(common) < 3 or len(prefix) - len(common) > 2:
+        return False
+    # The overlap must start after both fresh head pages. Any other fresh rows
+    # must be newer than the entire old head, with no intrusions in the match.
+    start = len(rows) - len(common)
+    return (
+        start > 0
+        and int(common[0]) < int(recent_floor)
+        and int(rows[start - 1]) > int(previous[0])
+        and rows[start:] == common
+    )
+
+
+def _observed_frontier_shift(rows, recent_floor, checked, bookmark):
+    """Require a full displaced head and different, strictly newer rows at the exact old URL."""
+    head = bookmark["head_ids"]
+    if int(head[0]) >= int(recent_floor) or head[0] not in rows:
+        return False
+    start = rows.index(head[0])
+    if rows[start : start + len(head)] != head:
+        return False
+    return any(
+        _cursor(page) == bookmark["frontier"]
+        and int(_ids(page)[-1]) > int(bookmark["frontier_ids"][0])
+        for page in checked
+    )
+
+
+def _recent_rebase(scope, state, pages, observed_at, bookmark, allow_partial_overlap):
     if len(pages) != 4:
-        return None
+        return None, "recent_page_limit"
     checked = _checked(scope, state, pages, observed_at, bookmark)
     rows = _latest_rows(pages, checked)
     if not rows:
-        return None
-    if _head_join(rows, bookmark, True) or _surviving_window(rows, bookmark["head_ids"]):
-        updated = _updated_head(bookmark, checked)
-        updated.pop("source_scan_id", None)
-        updated.pop("source_generation", None)
-        return updated if valid_gap_bookmark(scope, state, updated) else None
-    if (
-        int(rows[-1]) <= int(bookmark["head_ids"][0])
-        or len(bookmark.get("deferred", [])) >= _MAX_DEFERRED
-    ):
-        return None
+        return None, "recent_chain_unverified"
+    previous = bookmark["head_ids"]
+    queue_reason = None
+    if allow_partial_overlap:
+        recent_floor = _ids(checked[1])[-1]
+        if _recent_tail_overlap(rows, recent_floor, previous):
+            queue_reason = "recent_tail_overlap"
+        elif _observed_frontier_shift(rows, recent_floor, checked, bookmark):
+            queue_reason = "observed_frontier_shift"
+    if queue_reason is None:
+        if _head_join(rows, bookmark, True) or _surviving_window(rows, previous):
+            updated = _updated_head(bookmark, checked)
+            updated.pop("source_scan_id", None)
+            updated.pop("source_generation", None)
+            if valid_gap_bookmark(scope, state, updated):
+                return updated, None
+            return None, "frontier_rebase_unverified"
+        if int(rows[-1]) <= int(previous[0]):
+            return None, "recent_overlap_unconfirmed"
+    if len(bookmark.get("deferred", [])) >= _MAX_DEFERRED:
+        return None, "deferred_limit"
+    # The old rows can now be several pages deeper. Continue from the fourth
+    # document actually read and retain the entire previous route until rejoined.
     fresh = new_gap_bookmark(scope, state, pages, observed_at)
-    if fresh is not None:
-        fresh["deferred"] = [_segment(bookmark), *bookmark.get("deferred", [])]
-    return fresh
+    if fresh is None:
+        return None, "frontier_rebase_unverified"
+    fresh["deferred"] = [_segment(bookmark), *bookmark.get("deferred", [])]
+    return fresh, queue_reason
+
+
+def rebase_gap_bookmark(scope, state, pages, observed_at, bookmark):
+    """Return the original recent-route bookmark for callers replaying earlier scans."""
+    return _recent_rebase(scope, state, pages, observed_at, bookmark, False)[0]
 
 
 def plan_gap_seed(scope, state, pages, observed_at, plan):
@@ -495,7 +561,9 @@ def plan_gap_seed(scope, state, pages, observed_at, plan):
     return plan
 
 
-def plan_gap_fallback(scope, state, pages, observed_at, bookmark, plan):
+def plan_gap_fallback(
+    scope, state, pages, observed_at, bookmark, plan, *, allow_partial_overlap=False
+):
     """Record an ordinary recent scan while a gap is open. A failure keeps the earlier bookmark."""
     if not valid_gap_bookmark(scope, state, bookmark):
         raise WatchPlanError("Unconfirmed gap for ordinary scan")
@@ -504,16 +572,23 @@ def plan_gap_fallback(scope, state, pages, observed_at, bookmark, plan):
     if plan["complete"]:
         _confirmed_completion(plan, bookmark)
         return _mark(plan, "completed", bookmark["depth"], eligible, "recent")
+    status, reason, updated = "held", "recent_plan_unconfirmed", None
     if eligible == len(pages) and plan["gap_reason"] in {
         "anchor_not_reached",
         "overlap_incomplete",
     }:
-        updated = rebase_gap_bookmark(scope, state, pages, observed_at, bookmark)
+        updated, reason = _recent_rebase(
+            scope, state, pages, observed_at, bookmark, allow_partial_overlap
+        )
         if updated is not None:
             status = (
                 "segment_queued"
                 if len(updated.get("deferred", [])) > len(bookmark.get("deferred", []))
                 else "head_rejoined"
             )
-            return _mark(plan, status, updated["depth"], eligible, "recent", next_bookmark=updated)
-    return _mark(plan, "held", bookmark["depth"], eligible, "recent")
+    plan = _mark(
+        plan, status, (updated or bookmark)["depth"], eligible, "recent", next_bookmark=updated
+    )
+    if allow_partial_overlap and reason:
+        plan["scan_result"]["gap_recovery"]["recovery_reason"] = reason
+    return plan

@@ -222,14 +222,21 @@ def _preceding_state(queue, scope, previous_state):
 
 def replay_gap_scan(queue, scope, latest, previous_state, scan_time):
     """Recompute the plan with the same closed source consumed at the scan commit."""
-    from image_monitor.watch_runtime import LONG_GAP_SCHEMA, _plan_observation, gap_seed
+    from image_monitor.watch_runtime import (
+        DURABLE_GAP_SCHEMAS,
+        PARTIAL_OVERLAP_SCHEMA,
+        _plan_observation,
+        gap_seed,
+    )
 
     result = latest["result"]
     control = result["control"]
+    schema = control.get("historical_route_schema")
     if (
         scope != MONITOR_SCOPE
         or control.get("follow_up_page_limit") != 4
-        or control.get("historical_route_schema") != LONG_GAP_SCHEMA
+        or type(schema) is not int
+        or schema not in DURABLE_GAP_SCHEMAS
     ):
         return None
     before = _preceding_state(queue, scope, previous_state)
@@ -247,6 +254,7 @@ def replay_gap_scan(queue, scope, latest, previous_state, scan_time):
         bookmark,
         allow_head_overlap=True,
         allow_seed_crossing=True,
+        allow_partial_overlap=schema == PARTIAL_OVERLAP_SCHEMA,
     )
 
 

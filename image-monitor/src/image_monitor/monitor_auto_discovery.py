@@ -19,7 +19,9 @@ from image_monitor.watch_lock import WatchRunBusy, watch_list_lock
 from image_monitor.watch_planner import next_poll_at, plan_scan
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
+    DURABLE_GAP_SCHEMAS,
     HEAD_OVERLAP_SCHEMA,
+    PARTIAL_OVERLAP_SCHEMA,
     _control,
     _cycle_summary,
     _eligibility,
@@ -29,6 +31,7 @@ from image_monitor.watch_runtime import (
     _stamp,
     _stored_time,
     confirmed_monitor_scan,
+    historical_route_policy,
     matches_partial_coverage_scan,
     monitor_scan_policy,
     run_watch_trial,
@@ -115,6 +118,7 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
             page_limit if page_limit > 2 else None,
             historical_source,
             allow_seed_crossing=True,
+            allow_partial_overlap=control.get("historical_route_schema") == PARTIAL_OVERLAP_SCHEMA,
         )
         if plan != verified_recent_plan(queue, MONITOR_SCOPE, after):
             raise _ScanReview("planner_check")
@@ -216,7 +220,7 @@ def _verified_scan(database, queue, before, after, raw, page_limit, historical_s
     raise _ScanReview("partial_check")
 
 
-def _can_retry_inspection(queue, before, after, evidence, bookmark):
+def _can_retry_inspection(queue, before, after, evidence, bookmark, raw):
     """Only a timed-out read of the proven bookmark's successor gets one later list check."""
     if not evidence or not isinstance(bookmark, dict) or "frontier" not in bookmark:
         return False
@@ -241,6 +245,14 @@ def _can_retry_inspection(queue, before, after, evidence, bookmark):
     ):
         return False
     latest = after["latest_scan"]
+    control = _control(after)
+    schema = control.get("historical_route_schema")
+    if type(schema) is not int or schema not in DURABLE_GAP_SCHEMAS:
+        return False
+    # Older failed schema-3 attempts did not carry this report field.
+    if schema == PARTIAL_OVERLAP_SCHEMA or "historical_route_schema" in raw:
+        if historical_route_policy(raw, control) != schema:
+            return False
     observed = latest["result"]["private_observation"]
     pages, visits = observed["pages"], observed["navigation"]
     if not (
@@ -352,7 +364,7 @@ def run_auto_discovery(
                 else:
                     evidence = current_list_review(database, queue, before, after, raw, stage=stage)
                     if eligibility == "waiting" and _can_retry_inspection(
-                        queue, before, after, evidence, historical_source
+                        queue, before, after, evidence, historical_source, raw
                     ):
                         return _result("waiting", "inspection_retry_due", due=due, closed=True) | {
                             "review": evidence

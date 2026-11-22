@@ -8,7 +8,11 @@ from datetime import datetime
 
 from image_monitor import PUBLIC_VERSION
 from image_monitor.monitor_date_report import public_date_cell_checks
-from image_monitor.monitor_gap_report import RECOVERY_MESSAGES
+from image_monitor.monitor_gap_report import (
+    RECOVERY_MESSAGES,
+    RECOVERY_REASON_MESSAGES,
+    checked_gap_route,
+)
 from image_monitor.monitor_list_review_text import describe_date_cells, describe_list_review
 from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
 
@@ -37,6 +41,20 @@ _HISTORICAL_REASON_KO = {
 }
 
 
+def _describe_recovery_reason(check):
+    if "recovery_reason" not in check:
+        return {}
+    try:
+        route = checked_gap_route(check, check.get("visited_page_numbers"), check.get("page_limit"))
+    except (KeyError, TypeError, ValueError):
+        return {}
+    code = route["recovery_reason"]
+    return {
+        "recovery_reason": code,
+        "recovery_reason_ko": RECOVERY_REASON_MESSAGES[route["recovery_status"]][code],
+    }
+
+
 def _describe_list_check(check):
     if not isinstance(check, dict):
         return check
@@ -53,8 +71,13 @@ def _describe_list_check(check):
             described["review"] = review
     recovery = described.pop("recovery_status", None)
     described.pop("recovery_status_ko", None)
+    described.pop("recovery_reason", None)
+    described.pop("recovery_reason_ko", None)
     if isinstance(recovery, str) and recovery in RECOVERY_MESSAGES:
         described.update(recovery_status=recovery, recovery_status_ko=RECOVERY_MESSAGES[recovery])
+        described.update(_describe_recovery_reason(check))
+        if recovery == "held" and "recovery_reason" not in described:
+            described["recovery_status_ko"] += " 이 기록에는 세부 보류 사유가 없습니다."
     reason = described.pop("historical_reason", None)
     described.pop("historical_reason_ko", None)
     join = described.pop("head_join", None)
@@ -75,6 +98,15 @@ def _describe_list_check(check):
 
 def _describe_result(report):
     result = report.copy()
+    if report.get("mode") == "list_recovery_test" and report.get("max_cycles") == 2:
+        summary = {
+            "list_coverage_confirmed": "이전 완료 지점까지 목록이 이어졌습니다.",
+            "cycle_limit_reached": "두 차례 확인했습니다. 남은 구간은 다음 감시에서 이어갑니다.",
+            "recovery_followup_deferred": "복구 위치를 확정할 수 없어 추가 확인을 보류했습니다.",
+            "inspection_retry_due": "두 차례 확인했습니다. 다음 확인 가능 시각을 기록했습니다.",
+        }.get(report.get("reason"))
+        if summary:
+            result["list_test_summary_ko"] = summary
     for key in ("previous_list_review", "last_inspection_retry"):
         if key in result:
             review = describe_list_review(result.pop(key))
@@ -148,6 +180,8 @@ def _show_progress(report, stream):
             "recovery_crossed_search_range"
         ):
             message += " · 다음 검색 구간 진입"
+        if explanation := _describe_recovery_reason(last_list).get("recovery_reason_ko"):
+            message += f" | {explanation}"
     if phase == "waiting" and last_list and last_list.get("reason") == "inspection_retry_due":
         page = (last_list.get("review") or {}).get("failed_page")
         if type(page) is int:

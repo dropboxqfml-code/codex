@@ -347,7 +347,7 @@ def test_watch_command_uses_exact_roots_and_opens_one_result(
     if stage == "monitor_resume_once":
         expected_args = ["--work-root", str(appdata / "ImageMonitorWatch")]
     elif stage == "test_list_recovery":
-        expected_args = ["--watch-root", str(appdata / "ImageMonitorWatch")]
+        expected_args = ["--watch-root", str(appdata / "ImageMonitorWatch"), "--follow-gap"]
     elif stage in {"auto_collect_once", "auto_monitor"}:
         expected_args = [
             "--watch-root",

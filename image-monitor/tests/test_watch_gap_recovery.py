@@ -42,8 +42,8 @@ def page(number, ids, *, window=None, links=()):
     )
 
 
-def ordinary(rows, count=4):
-    return [document(i, rows[(i - 1) * 5 : i * 5], i + 1) for i in range(1, count + 1)]
+def ordinary(rows, count=4, *, size=5):
+    return [document(i, rows[(i - 1) * size : i * size], i + 1) for i in range(1, count + 1)]
 
 
 @pytest.fixture
@@ -126,6 +126,169 @@ def test_second_disjoint_outage_rejoins_without_returning_to_stale_page_ordinal(
     else:
         pytest.fail("Jumped back into a stale page ordinal after the second outage")
     assert seen_rejoin and m["status"] == "completed"
+
+
+def recent_fallback(state, pages, bookmark, *, allow_partial_overlap):
+    recent = plan_scan(SCOPE, state, pages, NOW, allow_verified_live=True)
+    return plan_gap_fallback(
+        SCOPE, state, pages, NOW, bookmark, recent, allow_partial_overlap=allow_partial_overlap
+    )["scan_result"]["gap_recovery"]
+
+
+@pytest.fixture
+def shifting_head(state):
+    old = list(range(600, 101, -2)) + [101, 100, *range(99, 60, -1)]
+    active = new_gap_bookmark(SCOPE, state, ordinary(old, size=20), NOW)
+    earlier = new_gap_bookmark(SCOPE, state, ordinary(old[80:], size=20), NOW)
+    earlier.pop("target_ids")
+    active["deferred"] = [earlier]
+    return old, active
+
+
+@pytest.mark.parametrize(
+    ("removed", "old_status"), [(set(), "head_rejoined"), ({600, 588}, "held")]
+)
+def test_clipped_tail_after_69_arrivals_reopens_only_the_newly_checked_frontier(
+    state, shifting_head, removed, old_status
+):
+    old, active = shifting_head
+    fresh = [*range(800, 731, -1), *(post_id for post_id in old if post_id not in removed)]
+    docs = ordinary(fresh, 6, size=20)
+    legacy = recent_fallback(state, docs[:4], active, allow_partial_overlap=False)
+    assert legacy["status"] == old_status and "recovery_reason" not in legacy
+    if legacy["bookmark"]:
+        stale = plan_gap_scan(
+            SCOPE, state, [docs[0], docs[1], docs[3], docs[4]], NOW, legacy["bookmark"]
+        )
+        assert stale["scan_result"]["gap_recovery"]["status"] == "frontier_changed"
+    new = recent_fallback(state, docs[:4], active, allow_partial_overlap=True)
+    assert (new["status"], new["recovery_reason"]) == ("segment_queued", "recent_tail_overlap")
+    next_book = new["bookmark"]
+    assert next_book["target_ids"] == active["target_ids"]
+    assert next_book["frontier_ids"] == [str(i) for i in fresh[60:80]]
+    assert next_book["deferred"][0]["frontier_ids"] == active["frontier_ids"]
+    assert next_book["deferred"][1:] == active["deferred"]
+    for offset, expected in ((3, "segment_rejoined"), (4, "advanced")):
+        pages = [*docs[:2], docs[offset], docs[offset + 1]]
+        for n in (2, 3):
+            assert gap_next_url(SCOPE, state, pages[:n], NOW, next_book) == pages[n]["url"]
+        following = plan_gap_scan(SCOPE, state, pages, NOW, next_book)
+        assert not following["complete"]
+        marker = following["scan_result"]["gap_recovery"]
+        assert marker["status"] == expected
+        next_book = marker["bookmark"]
+        assert next_book["deferred"] == active["deferred"]
+
+
+@pytest.mark.parametrize("arrivals", [40, 60])
+def test_full_head_on_page_three_or_four_can_relocate_a_directly_observed_stale_frontier(
+    state, shifting_head, arrivals
+):
+    old, active = shifting_head
+    fresh = [*range(800, 800 - arrivals, -1), *old]
+    docs = ordinary(fresh, 5, size=20)
+    old_result = recent_fallback(state, docs[:4], active, allow_partial_overlap=False)
+    assert old_result["status"] == "head_rejoined"
+    later = [docs[0], docs[1], docs[3], docs[4]]
+    for _ in range(2):
+        legacy = plan_gap_scan(SCOPE, state, later, NOW, old_result["bookmark"])
+        marker = legacy["scan_result"]["gap_recovery"]
+        assert marker["status"] == "frontier_changed" and marker["bookmark"] is None
+    new = recent_fallback(state, docs[:4], active, allow_partial_overlap=True)
+    assert (new["status"], new["recovery_reason"]) == ("segment_queued", "observed_frontier_shift")
+    assert new["bookmark"]["frontier_ids"] == [str(i) for i in fresh[60:80]]
+    assert new["bookmark"]["deferred"][0]["frontier_ids"] == active["frontier_ids"]
+    assert new["bookmark"]["deferred"][1:] == active["deferred"]
+    next_plan = plan_gap_scan(SCOPE, state, later, NOW, new["bookmark"])
+    assert not next_plan["complete"] and next_plan["scan_result"]["gap_recovery"]["depth"] == 5
+
+
+@pytest.mark.parametrize(
+    "case", ["head_on_second_page", "unobserved_frontier", "frontier_still_matches"]
+)
+def test_full_head_keeps_prior_route_unless_its_deep_shift_is_fully_observed(
+    state, shifting_head, case
+):
+    old, active = shifting_head
+    arrivals = 20 if case == "head_on_second_page" else 40
+    fresh = [*range(800, 800 - arrivals, -1), *old]
+    pages = ordinary(fresh, size=20)
+    if case == "unobserved_frontier":
+        active.update(frontier=cursor(8), frontier_ids=list(map(str, old[140:160])), depth=8)
+    elif case == "frontier_still_matches":
+        # The previously checked fourth URL contains its original ordered window.
+        pages[3] = document(4, list(map(int, active["frontier_ids"])), 5)
+    legacy = recent_fallback(state, pages, active, allow_partial_overlap=False)
+    assert legacy["status"] == "head_rejoined"
+    assert recent_fallback(state, pages, active, allow_partial_overlap=True) == legacy
+
+
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        ("third_missing", "recent_overlap_unconfirmed"),
+        ("interleaved", "recent_overlap_unconfirmed"),
+        ("unmatched_before", "recent_overlap_unconfirmed"),
+        ("too_few", "recent_overlap_unconfirmed"),
+        ("unlinked", "recent_chain_unverified"),
+        ("deferred_full", "deferred_limit"),
+        ("reordered", "recent_plan_unconfirmed"),
+    ],
+)
+def test_unproven_tail_does_not_replace_the_active_or_deferred_bookmarks(
+    state, shifting_head, change, reason
+):
+    old, active = shifting_head
+    removed = {600, 588}
+    if change == "third_missing":
+        removed.add(586)
+    count = 78 if change == "too_few" else 69
+    fresh = [*range(800, 800 - count, -1), *(n for n in old if n not in removed)]
+    if change == "interleaved":
+        fresh.insert(fresh.index(590), 591)
+    elif change == "unmatched_before":
+        fresh.insert(fresh.index(598), 599)  # Still older than the missing old first ID, 600.
+    elif change == "reordered":
+        fresh[70], fresh[71] = fresh[71], fresh[70]
+    elif change == "deferred_full":
+        active["deferred"] *= 8
+    pages = ordinary(fresh, size=20)
+    if change == "unlinked":
+        pages[2]["pagination_candidates"] *= 2
+    before = deepcopy(active)
+    marker = recent_fallback(state, pages, active, allow_partial_overlap=True)
+    assert (marker["status"], marker["recovery_reason"]) == ("held", reason)
+    assert marker["bookmark"] is None and active == before
+
+
+def test_clipped_overlap_across_ranges_keeps_the_exact_observed_cursor(state, shifting_head):
+    old, active = shifting_head
+    fresh = [*range(800, 731, -1), *(n for n in old if n not in {600, 588})]
+    window = "-4097"
+    crossing = cursor(1, window) | {"label_kind": "next_search"}
+    docs = [
+        page(1, fresh[:20], links=[cursor(2)]),
+        page(2, fresh[20:40], links=[crossing]),
+        page(1, fresh[40:60], window=window, links=[cursor(2, window)]),
+        page(2, fresh[60:80], window=window, links=[cursor(3, window)]),
+    ]
+    recent = plan_gap_seed_route(SCOPE, state, docs, NOW)
+    result = plan_gap_fallback(
+        SCOPE, state, docs, NOW, active, deepcopy(recent), allow_partial_overlap=True
+    )
+    marker = result["scan_result"]["gap_recovery"]
+    assert marker["recovery_reason"] == "recent_tail_overlap"
+    assert marker["bookmark"]["depth"] == 4 and marker["bookmark"]["frontier"] == cursor(2, window)
+    docs[1]["pagination_candidates"].append(cursor(1, "-5099") | {"label_kind": "next_search"})
+    ambiguous = plan_gap_fallback(
+        SCOPE, state, docs, NOW, active, deepcopy(recent), allow_partial_overlap=True
+    )["scan_result"]["gap_recovery"]
+    assert (
+        ambiguous["recovery_reason"] == "recent_chain_unverified" and ambiguous["bookmark"] is None
+    )
+    docs[3]["scope"] = docs[3]["scope"] | {"keyword": "different"}
+    with pytest.raises(WatchPlanError):
+        plan_gap_fallback(SCOPE, state, docs, NOW, active, recent, allow_partial_overlap=True)
 
 
 def test_foreign_or_ambiguous_range_link_and_range_cycles_do_not_advance(state):

@@ -2,12 +2,15 @@
 
 import json
 from copy import deepcopy
+from datetime import datetime
 
 import pytest
+import test_monitor_long_gap as long_gap
 from test_monitor_long_gap import OLD_HEAD
 from test_monitor_long_gap import starting_watch as starting_watch
 
-from image_monitor.monitor_gap_store import bookmark_seal, load_bookmark
+from image_monitor.monitor_gap_store import bookmark_seal, load_bookmark, replay_gap_scan
+from image_monitor.monitor_list_history import previous_list_checks
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_runtime import verified_recent_plan
 from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
@@ -92,6 +95,40 @@ def test_stale_frontier_and_its_candidates_are_rejected_together(tmp_path, advan
             ).fetchone()
             is None
         )
+
+
+def test_same_four_pages_replay_with_the_rule_of_the_recorded_generation(
+    tmp_path, starting_watch, monkeypatch
+):
+    feed, clock, _ = starting_watch
+    monkeypatch.setattr(long_gap, "PAGE_SIZE", 20)
+    old_head = OLD_HEAD + 125
+    feed.ids[:0] = range(old_head, OLD_HEAD, -1)
+    for length in (2, 3, 4):
+        assert feed.run(tmp_path, clock)["pages_checked"] == length
+    before, _ = persisted(tmp_path)
+    feed.ids.remove(old_head)
+    feed.ids.remove(old_head - 6)
+    feed.ids[:0] = range(old_head + 69, old_head, -1)
+    current = feed.run(tmp_path, clock)
+    assert current["new_candidates"] == 69
+    assert current["recovery_status"] == "segment_queued"
+    assert current["recovery_reason"] == "recent_tail_overlap"
+    assert previous_list_checks(tmp_path)[-1]["recovery_reason"] == "recent_tail_overlap"
+    after, _ = persisted(tmp_path)
+    assert before["checkpoint"] == after["checkpoint"]
+    scan = deepcopy(after["latest_scan"])
+    with QueueStore(tmp_path / "watch.sqlite", read_only=True) as queue:
+        assert verified_recent_plan(queue, MONITOR_SCOPE, after)
+        # Only the schema changes. Generations written by alpha.15 used the
+        # same predecessor and candidate rows but retained the old frontier.
+        scan["result"]["control"]["historical_route_schema"] = 3
+        legacy = replay_gap_scan(
+            queue, MONITOR_SCOPE, scan, before, datetime.fromisoformat(scan["observed_at"])
+        )
+    marker = legacy["scan_result"]["gap_recovery"]
+    assert marker["status"] == "held" and marker["bookmark"] is None
+    assert "recovery_reason" not in marker and legacy["complete"] is False
 
 
 def test_failure_cannot_substitute_a_genuine_but_superseded_frontier(tmp_path, advancing):

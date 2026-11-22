@@ -18,6 +18,31 @@ RECOVERY_MESSAGES = {
 }
 
 
+RECOVERY_REASON_MESSAGES = {
+    "segment_queued": {
+        "recent_tail_overlap": (
+            "최근 네 쪽의 끝에서 지난 첫 쪽의 일반 글 세 건 이상을 같은 순서로 확인했습니다. "
+            "현재 네 번째 방문 지점부터 새 구간을 이어서 확인하며 이전 복구 위치도 보관합니다."
+        ),
+        "observed_frontier_shift": (
+            "지난 첫 쪽의 일반 글 전체가 최근 목록 뒤쪽으로 밀렸고, "
+            "이전 복구 페이지에서는 모두 더 새로운 글이 보였습니다. "
+            "현재 네 번째 방문 지점에서 새 구간을 이어가도록 기록했습니다."
+        ),
+    },
+    "held": {
+        "recent_page_limit": "확인한 최근 목록이 네 쪽 미만이라 연결 여부를 판단할 수 없습니다.",
+        "recent_chain_unverified": "최근 네 쪽의 링크와 글 순서가 이어지는지 확인하지 못했습니다.",
+        "recent_overlap_unconfirmed": (
+            "최근 네 쪽과 지난 첫 쪽 사이에서 글 순서를 충분히 대조하지 못했습니다."
+        ),
+        "deferred_limit": "보관 가능한 구간 수가 한도에 도달해 새 구간 추가를 보류했습니다.",
+        "recent_plan_unconfirmed": "이번 확인 결과로는 밀린 구간을 이어갈 수 없습니다.",
+        "frontier_rebase_unverified": "최근 목록과 이전 복구 위치를 다시 연결하지 못했습니다.",
+    },
+}
+
+
 def public_recovery_pages(numbers, limit=MAX_MONITOR_SCAN_PAGES):
     """Bound the displayed page numbers for recent visits and a possible bookmarked pair."""
     if (
@@ -96,7 +121,23 @@ def checked_gap_route(turn, numbers, limit):
         or turn["status"] not in ("complete", "partial")
     ):
         raise ValueError("Invalid recovery page sequence or progress")
+    reason_fields = {}
+    if "recovery_reason" in turn:
+        reason = turn["recovery_reason"]
+        if (
+            route != "recent"
+            or not isinstance(reason, str)
+            or reason not in RECOVERY_REASON_MESSAGES.get(status, {})
+            or (reason == "recent_page_limit" and len(numbers) >= MAX_MONITOR_SCAN_PAGES)
+            or (
+                reason not in {"recent_page_limit", "recent_plan_unconfirmed"}
+                and len(numbers) != MAX_MONITOR_SCAN_PAGES
+            )
+        ):
+            raise ValueError("Invalid recovery reason for the observed route")
+        reason_fields["recovery_reason"] = reason
     return {
+        **reason_fields,
         **checked_window_starts(turn, numbers, limit, bookmark=route == "bookmark"),
         "recovery_status": status,
         "recovery_depth": depth,
@@ -115,6 +156,11 @@ def gap_route_details(record):
             "search_window_start_visits": search_window_start_visits(record),
             "recovery_status": marker["status"],
             "recovery_route": marker["route"],
+            **(
+                {"recovery_reason": marker["recovery_reason"]}
+                if "recovery_reason" in marker
+                else {}
+            ),
             "recovery_depth": marker["depth"],
             "recovery_crossed_search_range": marker["crossed_search_range"],
         },

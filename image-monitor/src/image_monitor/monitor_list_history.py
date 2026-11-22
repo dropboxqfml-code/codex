@@ -17,6 +17,7 @@ from image_monitor.watch_images_check import _read_mode, _UnstableDatabase
 from image_monitor.watch_lock import watch_run_lock
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
+    DURABLE_GAP_SCHEMAS,
     HEAD_OVERLAP_SCHEMA,
     LONG_GAP_SCHEMA,
     _cycle_summary,
@@ -94,7 +95,7 @@ def _historical_check(database, queue, before, after):
     ):
         return None
     limit, source = monitor_scan_policy(
-        database, queue, before, recover_long_gaps=policy == LONG_GAP_SCHEMA
+        database, queue, before, recover_long_gaps=policy in DURABLE_GAP_SCHEMAS
     )
     if crossed_seed:
         if (
@@ -137,7 +138,7 @@ def _historical_check(database, queue, before, after):
         if not starts:
             return None
         details = checked_window_starts({"search_window_start_visits": starts}, pages, limit)
-    elif policy == LONG_GAP_SCHEMA:
+    elif policy in DURABLE_GAP_SCHEMAS:
         details = gap_route_details(record)
     else:
         details = historical_route_details(

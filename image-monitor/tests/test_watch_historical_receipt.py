@@ -212,3 +212,66 @@ def test_unverified_historical_layout_keeps_only_the_verified_recent_rows(
         posts = {row["post_id"]: row for row in store.list_candidates(MONITOR_SCOPE)}
         latest = state["latest_scan"]["scan_id"]
         assert {key for key in posts if posts[key]["latest_scan_id"] == latest} == {"135", "130"}
+
+
+@pytest.mark.parametrize(
+    "version,receipt_schema,control_schema,accepted",
+    [
+        ("0.5.0-alpha.12", 3, 3, 3),
+        ("0.5.0-alpha.15", 3, 3, 3),
+        ("0.5.0-alpha.15", 4, 4, None),
+        ("0.5.0-alpha.16", 4, 4, 4),
+        ("0.5.0-alpha.16", 3, 4, None),
+        ("0.5.0-alpha.16", 4, 3, None),
+        ("0.5.0-alpha.16", 4, 4.0, None),
+        ("0.5.0-alpha.16", 5, 5, None),
+        ("0.6.0", 3, 3, 3),
+        ("0.6.0", 4, 4, 4),
+        ("0.6.0", 5, 5, None),
+    ],
+)
+def test_bookmarked_route_version_requires_compatible_matching_capability(
+    version, receipt_schema, control_schema, accepted
+):
+    assert (
+        watch_runtime.historical_route_policy(
+            {"program_version": version, "historical_route_schema": receipt_schema},
+            {"historical_route_schema": control_schema},
+        )
+        == accepted
+    )
+
+
+@pytest.mark.parametrize("fault", ["missing_bookmark", "new_reason_on_old_schema"])
+def test_partial_overlap_claim_requires_its_bookmark_and_schema(tmp_path, monkeypatch, fault):
+    from test_watch_runtime import BrowserFactory, FakeClock, baseline_outcome
+
+    from image_monitor.monitor_gap_store import bookmark_seal
+
+    monkeypatch.setattr(watch_runtime, "require_windows", lambda: None)
+    report = watch_runtime.run_watch_trial(
+        tmp_path,
+        "chrome",
+        cycles=1,
+        clock=FakeClock(),
+        backend_factory=BrowserFactory(baseline_outcome),
+        scope=MONITOR_SCOPE,
+        follow_up_gaps=True,
+        recover_long_gaps=True,
+    )
+    database = tmp_path / "watch.sqlite"
+    with QueueStore(database) as queue:
+        scan = WatchStore(queue).get_state(MONITOR_SCOPE)["latest_scan"]
+    assert watch_runtime.confirmed_monitor_scan(database, scan)
+    receipt = Path(report["report_path"])
+    public = json.loads(receipt.read_bytes())
+    if fault == "missing_bookmark":
+        public.update(program_version="0.5.0-alpha.16", historical_route_schema=4)
+    else:
+        public.update(program_version="0.5.0-alpha.15", historical_route_schema=3)
+        scan["result"]["gap_recovery"] = {"recovery_reason": "recent_page_limit"}
+    scan["result"]["control"]["historical_route_schema"] = public["historical_route_schema"]
+    if fault == "new_reason_on_old_schema":
+        public["gap_bookmark_digest"] = bookmark_seal(scan)
+    receipt.write_text(json.dumps(public), encoding="utf-8")
+    assert not watch_runtime.confirmed_monitor_scan(database, scan)

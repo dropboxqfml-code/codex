@@ -275,3 +275,62 @@ def test_date_checks_keep_only_anonymous_counts_at_the_verified_visit():
     assert "date_cell_checks" not in auto_monitor_cli._describe_list_check(
         result | {"status": "review"}
     )
+
+
+def test_catch_up_command_allows_enter_and_reports_verified_totals(tmp_path, monkeypatch, capsys):
+    from image_monitor import monitor_auto_session
+    from image_monitor.monitor_settings import MAX_CATCH_UP_SCANS
+
+    def pressed():
+        return True
+
+    def stop_early(*paths, max_cycles, should_stop, on_progress, list_only):
+        assert paths == (tmp_path, None, None)
+        assert list_only and max_cycles == MAX_CATCH_UP_SCANS
+        assert should_stop is pressed
+        result = {
+            "mode": "list_recovery_test",
+            "max_cycles": max_cycles,
+            "phase": "scanning",
+            "status": "auto_monitor_stopped",
+            "reason": "requested_stop",
+            "list_checks": 2,
+            "cycles_completed": 2,
+            "new_candidates": 29,
+            "posts_saved": 0,
+            "files_verified": 0,
+        }
+        on_progress(result)
+        return result
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["image-monitor", "test-list-recovery", "--watch-root", str(tmp_path), "--catch-up"],
+    )
+    monkeypatch.setattr(auto_monitor_cli, "_console_stop", lambda: pressed)
+    monkeypatch.setattr(monitor_auto_session, "run_auto_monitor", stop_early)
+    monkeypatch.delenv("IMAGE_MONITOR_CONSOLE_PROGRESS", raising=False)
+    assert main() == 0
+    output = capsys.readouterr()
+    assert "Enter" in output.err and "확인 완료 2회 · 새 후보 29건" in output.err
+    assert "중단 요청" in json.loads(output.out)["list_test_summary_ko"]
+
+
+def test_catch_up_and_single_follow_up_are_mutually_exclusive(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "image-monitor",
+            "test-list-recovery",
+            "--watch-root",
+            str(tmp_path),
+            "--follow-gap",
+            "--catch-up",
+        ],
+    )
+    with pytest.raises(SystemExit) as stopped:
+        main()
+    assert stopped.value.code == 2
+    assert "--catch-up" in capsys.readouterr().err

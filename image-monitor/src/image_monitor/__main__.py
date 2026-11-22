@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from image_monitor import PUBLIC_VERSION
+from image_monitor.monitor_settings import MAX_CATCH_UP_SCANS
 from image_monitor.paths import destination, plan_folder
 from image_monitor.validation import verify_image
 
@@ -68,8 +69,21 @@ def main() -> int:
         help="Check the next eligible monitor list without starting an image collection",
     )
     list_recovery.add_argument("--watch-root", type=Path, required=True)
-    list_recovery.add_argument(
-        "--follow-gap", action="store_true", help="Follow a verified recovery route once if needed"
+    list_recovery.set_defaults(scan_limit=1)
+    recovery_modes = list_recovery.add_mutually_exclusive_group()
+    recovery_modes.add_argument(
+        "--follow-gap",
+        dest="scan_limit",
+        action="store_const",
+        const=2,
+        help="Follow a verified recovery route once if needed",
+    )
+    recovery_modes.add_argument(
+        "--catch-up",
+        dest="scan_limit",
+        action="store_const",
+        const=MAX_CATCH_UP_SCANS,
+        help=f"Follow a progressing recovery route for up to {MAX_CATCH_UP_SCANS} list scans",
     )
     diagnosis = commands.add_parser(
         "monitor-diagnosis",
@@ -157,9 +171,7 @@ def main() -> int:
     if args.command == "test-list-recovery":
         from image_monitor.auto_monitor_cli import run_auto_monitor_cli
 
-        return run_auto_monitor_cli(
-            args.watch_root, None, None, 2 if args.follow_gap else 1, list_only=True
-        )
+        return run_auto_monitor_cli(args.watch_root, None, None, args.scan_limit, list_only=True)
     if args.command == "auto-monitor":
         if args.max_cycles is not None and args.max_cycles < 1:
             parser.error("--max-cycles must be at least 1")

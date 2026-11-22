@@ -12,6 +12,7 @@ from image_monitor.queue import QueueError
 SETTINGS_NAME = "monitor-settings.json"
 MAX_SETTINGS_BYTES = 8192
 DEFAULT_INTERVAL_SECONDS = 60
+MAX_CATCH_UP_SCANS = 8
 
 
 def validate_interval(value):

@@ -679,9 +679,10 @@ start "" notepad.exe "%LOG_FILE%"
 exit /b %WATCH_EXIT_CODE%
 
 :test_list_recovery
+set "IMAGE_MONITOR_CONSOLE_PROGRESS=1"
 echo Checking the monitored list in background Chrome. The result TXT will open automatically.
 >>"%LOG_FILE%" echo STAGE: test_list_recovery
-"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor test-list-recovery --watch-root "%LOCALAPPDATA%\ImageMonitorWatch" --follow-gap >>"%LOG_FILE%" 2>&1
+"%UV_EXE%" --no-progress run --locked --extra windows --python 3.12.14 --managed-python image-monitor test-list-recovery --watch-root "%LOCALAPPDATA%\ImageMonitorWatch" --catch-up >>"%LOG_FILE%" 2>&1
 set "WATCH_EXIT_CODE=%ERRORLEVEL%"
 >>"%LOG_FILE%" echo Test list recovery exit code: %WATCH_EXIT_CODE%
 goto finish_watch_result

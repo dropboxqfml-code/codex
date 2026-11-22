@@ -43,6 +43,14 @@ RECOVERY_REASON_MESSAGES = {
 }
 
 
+RECOVERY_OBSERVATION_MESSAGES = {
+    "disjoint_recent_rows": (
+        "최근 네 쪽의 일반 글 번호가 모두 이전 첫 쪽의 가장 큰 글 번호보다 컸습니다. "
+        "이전 복구 위치를 보관하고 이번에 읽은 네 번째 목록에서 새 구간을 이어갑니다."
+    )
+}
+
+
 def public_recovery_pages(numbers, limit=MAX_MONITOR_SCAN_PAGES):
     """Bound the displayed page numbers for recent visits and a possible bookmarked pair."""
     if (
@@ -136,6 +144,17 @@ def checked_gap_route(turn, numbers, limit):
         ):
             raise ValueError("Invalid recovery reason for the observed route")
         reason_fields["recovery_reason"] = reason
+    if "recovery_observation" in turn:
+        if (
+            turn["recovery_observation"] != "disjoint_recent_rows"
+            or reason_fields
+            or status != "segment_queued"
+            or route != "recent"
+            or depth != MAX_MONITOR_SCAN_PAGES
+            or len(numbers) != MAX_MONITOR_SCAN_PAGES
+        ):
+            raise ValueError("Invalid recovery observation for the observed route")
+        reason_fields["recovery_observation"] = "disjoint_recent_rows"
     return {
         **reason_fields,
         **checked_window_starts(turn, numbers, limit, bookmark=route == "bookmark"),
@@ -144,6 +163,49 @@ def checked_gap_route(turn, numbers, limit):
         "recovery_route": route,
         "recovery_crossed_search_range": crossed,
     }
+
+
+def _disjoint_recent_rows(record):
+    """Compare the replayed four documents with the prior head retained by this exact scan."""
+    from image_monitor.watch_history import _descending, _ids, _joined_rows
+    from image_monitor.watch_planner import _cursor
+
+    marker = record["gap_recovery"]
+    pages = record["private_observation"]["pages"]
+    if (
+        record["complete"] is not False
+        or marker.get("status") != "segment_queued"
+        or marker.get("route") != "recent"
+        or "recovery_reason" in marker
+        or type(marker.get("eligible_pages")) is not int
+        or marker["eligible_pages"] != MAX_MONITOR_SCAN_PAGES
+        or marker.get("depth") != MAX_MONITOR_SCAN_PAGES
+        or len(pages) != MAX_MONITOR_SCAN_PAGES
+    ):
+        return False
+    try:
+        current = marker["bookmark"]
+        prior_head = current["deferred"][0]["head_ids"]
+        checks = record["pages"]
+        rows = [_ids(page) for page in pages]
+        return (
+            len(checks) == len(pages)
+            and all(
+                check["rows_complete"] is True
+                and all(check[key] == value for key, value in _cursor(page).items())
+                for check, page in zip(checks, pages, strict=True)
+            )
+            and _descending(prior_head)
+            and all(
+                _joined_rows(first, second) for first, second in zip(rows, rows[1:], strict=False)
+            )
+            and rows[0] == current["head_ids"]
+            and rows[-1] == current["frontier_ids"]
+            and _cursor(pages[-1]) == current["frontier"]
+            and int(rows[-1][-1]) > int(prior_head[0])
+        )
+    except (AttributeError, IndexError, KeyError, TypeError):
+        return False
 
 
 def gap_route_details(record):
@@ -159,6 +221,11 @@ def gap_route_details(record):
             **(
                 {"recovery_reason": marker["recovery_reason"]}
                 if "recovery_reason" in marker
+                else {}
+            ),
+            **(
+                {"recovery_observation": "disjoint_recent_rows"}
+                if _disjoint_recent_rows(record)
                 else {}
             ),
             "recovery_depth": marker["depth"],

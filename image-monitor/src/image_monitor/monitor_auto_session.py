@@ -16,7 +16,7 @@ from image_monitor.monitor_gap_report import checked_gap_route, checked_window_s
 from image_monitor.monitor_list_history import previous_list_checks
 from image_monitor.monitor_list_review import previous_list_review, public_list_review
 from image_monitor.monitor_save_ledger import _root, _roots
-from image_monitor.monitor_settings import load_monitor_settings
+from image_monitor.monitor_settings import MAX_CATCH_UP_SCANS, load_monitor_settings
 from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON, PARTIAL_RETRY_REASON
 from image_monitor.post_worker import share_setup_diagnostics
 from image_monitor.queue import QueueStore
@@ -96,7 +96,8 @@ def _record_list_pages(report, turn):
     if numbers != expected:
         raise ValueError("Unexpected verified list page sequence")
     last.update(pages_checked=count, page_limit=limit, visited_page_numbers=numbers.copy())
-    if report.get("mode") == "list_recovery_test" and report.get("max_cycles") == 2:
+    recovery_trial = report.get("mode") == "list_recovery_test"
+    if recovery_trial and report.get("max_cycles") in (2, MAX_CATCH_UP_SCANS):
         last["new_candidates"] = _count(turn, "new_candidates")
     if checks := public_date_cell_checks(turn.get("date_cell_checks"), numbers):
         last["date_cell_checks"] = checks
@@ -112,8 +113,10 @@ def _record_list_pages(report, turn):
                 and join in HEAD_JOIN_METHODS
             ):
                 last["head_join"] = join
-    # Keep both cycles of the short Windows test while bounding continuous-session output.
-    report["recent_list_checks"] = [*report["recent_list_checks"][-1:], last.copy()]
+    history_limit = (
+        MAX_CATCH_UP_SCANS if recovery_trial and report["max_cycles"] == MAX_CATCH_UP_SCANS else 2
+    )
+    report["recent_list_checks"] = [*report["recent_list_checks"], last.copy()][-history_limit:]
     if limit > 2:
         report["gap_followup_checks"] += 1
         report["gap_followups_completed"] += int(turn["status"] == "complete")
@@ -309,11 +312,40 @@ class _NativeSaveLists:
             thread.join()
 
 
+def _catch_up_pause(checks):
+    """A new segment may reset depth. A verified bookmark successor must move it forward."""
+    current = checks[-1]
+    previous = checks[-2] if len(checks) >= 2 else None
+    status = current.get("recovery_status")
+    if current["pages_checked"] != MAX_MONITOR_SCAN_PAGES:
+        return "recovery_followup_deferred"
+    if current.get("recovery_route") == "recent" and status in {"segment_queued", "head_rejoined"}:
+        if previous and previous.get("recovery_route") == "recent":
+            return "recovery_progress_stalled"
+        return None
+    if (
+        current.get("recovery_route") != "bookmark"
+        or status not in {"advanced", "overlap_pending", "segment_rejoined"}
+    ):
+        return "recovery_followup_deferred"
+    if (
+        status != "segment_rejoined"
+        and previous
+        and current["recovery_depth"] <= previous["recovery_depth"]
+    ):
+        return "recovery_progress_stalled"
+    return None
+
+
 def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, collect_runner):
     interval = load_monitor_settings(roots[0])["interval_seconds"]
     report["interval_seconds"] = interval
     list_interval = timedelta(seconds=interval)
-    follow_gap = report["mode"] == "list_recovery_test" and report["max_cycles"] == 2
+    follow_gap = report["mode"] == "list_recovery_test" and report["max_cycles"] in (
+        2,
+        MAX_CATCH_UP_SCANS,
+    )
+    catch_up = follow_gap and report["max_cycles"] == MAX_CATCH_UP_SCANS
     list_attempts = 0
     list_due = None
     due = None
@@ -404,7 +436,7 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
             if due is None or due <= turn_started_at:
                 return _finish(report, "review", "invalid_wait_deadline")
             if phase == "scanning" and reason == "inspection_retry_due":
-                if follow_gap and list_attempts >= 2:
+                if follow_gap and list_attempts >= report["max_cycles"]:
                     return _finish(report, "waiting", reason)
                 if inspection_retry_pending:
                     report["last_list"].update(status="review", reason="list_scan_requires_review")
@@ -466,9 +498,11 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
         if follow_gap:
             if status == "complete":
                 return _finish(report, "completed", "list_coverage_confirmed")
-            if list_attempts >= 2:
+            if catch_up and (pause := _catch_up_pause(report["recent_list_checks"])):
+                return _finish(report, "completed", pause)
+            if list_attempts >= report["max_cycles"]:
                 return _finish(report, "completed", "cycle_limit_reached")
-            if report["last_list"].get("recovery_status") not in {
+            if not catch_up and report["last_list"].get("recovery_status") not in {
                 "head_rejoined",
                 "segment_rejoined",
                 "segment_queued",
@@ -532,7 +566,7 @@ def run_auto_monitor(
         if stop_requested(should_stop):
             return _finish(report, "stopped", "requested_stop")
         if list_only:
-            if max_cycles not in (1, 2):
+            if max_cycles not in (1, 2, MAX_CATCH_UP_SCANS):
                 return _finish(report, "review", "invalid_cycle_limit")
             roots = (_root(watch_root),)
         else:

@@ -1,20 +1,26 @@
 """The continuous monitor and offline diagnosis show physical and logical page positions."""
 
 import io
+import json
 from copy import deepcopy
 
 import pytest
+from test_monitor_long_gap import starting_watch as starting_watch  # noqa: PLC0414
 
 from image_monitor.auto_monitor_cli import _describe_list_check, _describe_result, _show_progress
 from image_monitor.monitor_auto_session import _record_list_pages
 from image_monitor.monitor_gap_report import (
     RECOVERY_MESSAGES,
+    RECOVERY_OBSERVATION_MESSAGES,
     RECOVERY_REASON_MESSAGES,
     checked_gap_route,
     gap_route_details,
 )
+from image_monitor.monitor_list_history import previous_list_checks
+from image_monitor.queue import QueueStore
 from image_monitor.watch_diagnosis import diagnose_list_scan, public_list_diagnosis
 from image_monitor.watch_gap_recovery import GAP_RECOVERY_REASONS, GAP_STATUSES
+from image_monitor.watch_store import MONITOR_SCOPE, WatchStore
 
 
 def test_private_recovery_receipts_have_bounded_public_progress_across_a_search_range():
@@ -233,3 +239,100 @@ def test_original_held_marker_does_not_imply_a_specific_reason():
         "recovery_reason_ko" not in described
         and "세부 보류 사유가 없습니다" in described["recovery_status_ko"]
     )
+
+
+def test_disjoint_segment_checked_from_live_and_reopened_unchanged_receipt(
+    tmp_path, starting_watch
+):
+    feed, clock, _ = starting_watch
+    feed.ids[:0] = range(1150, 1000, -1)
+    for _ in range(3):
+        assert feed.run(tmp_path, clock)["status"] == "partial"
+    # Every ordinary post on the next four pages is newer than the previous head.
+    feed.ids[:0] = range(1260, 1150, -1)
+    turn = feed.run(tmp_path, clock)
+    assert turn["recovery_status"] == "segment_queued"
+    assert turn["recovery_observation"] == "disjoint_recent_rows" and "recovery_reason" not in turn
+    files = {f: (f.read_bytes(), f.stat().st_mtime_ns) for f in tmp_path.rglob("*") if f.is_file()}
+    previous = previous_list_checks(tmp_path)[-1]
+    assert previous["recovery_observation"] == turn["recovery_observation"]
+    assert (
+        _describe_list_check(previous)["recovery_observation_ko"]
+        == RECOVERY_OBSERVATION_MESSAGES["disjoint_recent_rows"]
+    )
+    assert files == {
+        f: (f.read_bytes(), f.stat().st_mtime_ns) for f in tmp_path.rglob("*") if f.is_file()
+    }
+    with QueueStore(tmp_path / "watch.sqlite", read_only=True) as queue:
+        record = WatchStore(queue).get_state(MONITOR_SCOPE)["latest_scan"]["result"]
+    assert "recovery_observation" not in record["gap_recovery"]
+    assert "recovery_reason" not in record["gap_recovery"]
+    assert "1260" not in repr(_describe_list_check(turn))
+    for damage in (
+        "same_floor",
+        "missing_prior",
+        "different_cursor",
+        "middle_order",
+        "missing_rows",
+    ):
+        altered = deepcopy(record)
+        bookmark = altered["gap_recovery"]["bookmark"]
+        pages = altered["private_observation"]["pages"]
+        if damage == "same_floor":
+            bookmark["deferred"][0]["head_ids"] = [pages[-1]["rows"][-1]["post_id"]]
+        elif damage == "missing_prior":
+            del bookmark["deferred"]
+        elif damage == "different_cursor":
+            bookmark["frontier"]["canonical_url"] += "PRIVATE"
+        elif damage == "middle_order":
+            pages[1]["rows"].reverse()
+        else:
+            altered["pages"][2]["rows_complete"] = False
+        details = gap_route_details(altered)
+        assert details["recovery_status"] == "segment_queued"
+        assert "recovery_observation" not in details
+
+    # Even a structurally plausible replacement is outside the original sealed receipt.
+    record["gap_recovery"]["bookmark"]["deferred"][0]["head_ids"] = ["1149", "1148"]
+    with QueueStore(tmp_path / "watch.sqlite") as queue:
+        scan = WatchStore(queue).get_state(MONITOR_SCOPE)["latest_scan"]
+        queue.connection.execute(
+            "UPDATE watch_scans SET result_json=? WHERE scan_id=?",
+            (json.dumps(record), scan["scan_id"]),
+        )
+    assert all(
+        check.get("recovery_status") != "segment_queued" for check in previous_list_checks(tmp_path)
+    )
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"status": "complete"},
+        {"recovery_reason": "recent_tail_overlap"},
+        {"recovery_route": "bookmark"},
+        {"visited_page_numbers": [1, 2, 3]},
+        {"recovery_depth": 5},
+        {"recovery_status": "held"},
+        {"recovery_observation": "PRIVATE"},
+    ],
+)
+def test_unverified_or_conflicting_observation_is_not_displayed(changes):
+    turn = {
+        "status": "partial",
+        "page_limit": 4,
+        "visited_page_numbers": [1, 2, 3, 4],
+        "recovery_route": "recent",
+        "recovery_status": "segment_queued",
+        "recovery_depth": 4,
+        "recovery_crossed_search_range": False,
+        "recovery_observation": "disjoint_recent_rows",
+        "recovery_observation_ko": "PRIVATE",
+    } | changes
+    public = _describe_list_check(turn)
+    assert "recovery_observation" not in public and "recovery_observation_ko" not in public
+    assert "PRIVATE" not in repr(public)
+    marker = recent_record(
+        "segment_queued", [1, 2, 3, 4], recovery_observation="disjoint_recent_rows"
+    )
+    assert "recovery_observation" not in gap_route_details(marker)

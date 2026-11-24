@@ -1,0 +1,52 @@
+{
+  "baseCommit": "b6b5da9b8bca1d3a676a27a36be72fea9545fec3",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.1",
+  "userConfirmed020StartupWindowSizeAppropriate": true,
+  "portableTests": {
+    "passed": 1143,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1143,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "windowsChartKeyboardSmokeChecksAdded": true,
+  "windowsChartKeyboardSmokeChecksExecuted": false,
+  "newReleaseWindowsRenderingOrScreenReaderTested": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.1-WIN10-X64.zip",
+    "bytes": 293908,
+    "sha256": "fd2927dea2f8b0f8b84a7c7201fc21de2ba0c2933197f0926d7800d6448689ec",
+    "entries": 9,
+    "sourceFileCount": 201,
+    "productSourceFingerprintSha256": "90977a5ca0a815ce9c6a1f7adb308dae22ed18f9982bb8ca9f57348fb5cfdbc6",
+    "releaseVersion": "0.2.1",
+    "guiVersionResource": {
+      "fileVersion": "0.2.1.0",
+      "productVersion": "0.2.1"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "d215e869a4f38d86a72144d162d7f4c3e626bf8a4f8c7d72488c5bf8564232b2"
+    },
+    "portable-tests.log": {
+      "bytes": 103953,
+      "sha256": "1102fd7dae32590a47f4bf62ac7f3b66d195f2b0ca85950f0e349c5ebc026ec4"
+    },
+    "solution-build.log": {
+      "bytes": 2034,
+      "sha256": "06d891e559a67275d597ab299e17af1985ef4c2d7092cfbbe34b6d5900f3b0f4"
+    }
+  }
+}

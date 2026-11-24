@@ -1,4 +1,4 @@
-"""Package the neutral 0.2.0 release with friendly labels and passive battery observation chart."""
+"""Package 0.2.x releases with friendly labels and a passive battery observation chart."""
 import argparse
 import json
 from pathlib import Path
@@ -8,24 +8,23 @@ import pefile
 from package_manual_control_beta import PROGRAM_NAMES, sha, source_closure, validate
 
 
-ARCHIVE_NAME = 'ATIVBatteryGuard-0.2.0-WIN10-X64.zip'
 RELEASE_VERSION = '0.2.0'
 
 
-def gui_version(data):
+def gui_version(data, release_version=RELEASE_VERSION):
     pe = pefile.PE(data=data)
     fixed = pe.VS_FIXEDFILEINFO[0]
     actual = (fixed.FileVersionMS >> 16, fixed.FileVersionMS & 65535,
               fixed.FileVersionLS >> 16, fixed.FileVersionLS & 65535)
-    if actual != (0, 2, 0, 0):
-        raise ValueError('The GUI PE file version must identify release 0.2.0.')
+    if actual != tuple(int(part) for part in release_version.split('.')) + (0,):
+        raise ValueError('The GUI PE file version must match the requested release.')
     strings = {}
     for group in pe.FileInfo:
         for item in group:
             for table in getattr(item, 'StringTable', []):
                 strings.update(table.entries)
     product = strings.get(b'ProductVersion', b'').decode('utf-8')
-    if product != RELEASE_VERSION:
+    if product != release_version:
         raise ValueError('The GUI informational version must match the screen/report release.')
     return {'fileVersion': '.'.join(str(x) for x in actual), 'productVersion': product}
 
@@ -34,10 +33,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test-report', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--release-version', choices=('0.2.0', '0.2.1'), default=RELEASE_VERSION)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     suite = json.loads(args.test_report.read_text())
-    if not (suite['passed'] > 1119 and suite['registered'] == suite['passed'] and
+    if not (suite['passed'] >= (1143 if args.release_version == '0.2.1' else 1120) and suite['registered'] == suite['passed'] and
             suite['failed'] == 0 and suite.get('skipped', 0) == 0):
         raise ValueError('The previous and new usability regression groups must pass.')
     app = root/'src/ATIVBatteryGuard.App'
@@ -49,18 +49,19 @@ def main():
         if files[name] != (helper/'bin/Release/net48'/name).read_bytes():
             raise ValueError('The app and helper must contain the same shared build bytes.')
     audits = validate(files)
-    version = gui_version(files['ATIVBatteryGuard.exe'])
+    version = gui_version(files['ATIVBatteryGuard.exe'], args.release_version)
     sources = dict(source_closure(root, app/'ATIVBatteryGuard.App.csproj'))
     sources.update(source_closure(root, helper/'ATIVBatteryGuard.ManualProtectionHelper.csproj'))
     sources = sorted(sources.items())
     if any(name.startswith('tests/') or '/tests/' in name for name, _ in sources):
         raise ValueError('Tests cannot enter the product source closure.')
     fingerprint = sha(b''.join(name.encode()+b'\0'+data+b'\0' for name, data in sources))
-    guide = (root/'RELEASE_020_USER_STEPS.txt').read_bytes()
+    guide_name = 'RELEASE_' + args.release_version.replace('.', '') + '_USER_STEPS.txt'
+    guide = (root/guide_name).read_bytes()
     info = {
-        'schemaVersion': 1, 'dateKorea': '2026-11-10',
+        'schemaVersion': 1, 'dateKorea': '2026-11-25' if args.release_version == '0.2.1' else '2026-11-10',
         'application': 'ATIV Battery Guard',
-        'releaseVersion': RELEASE_VERSION, 'guiVersionResource': version,
+        'releaseVersion': args.release_version, 'guiVersionResource': version,
         'target': 'Windows10x64/.NETFramework4.8/940X3G-930X3G/P05ACJ',
         'productSourceFingerprintSha256': fingerprint, 'sourceFileCount': len(sources),
         'sourceFiles': [{'file': name, 'sha256': sha(data)} for name, data in sources],
@@ -87,6 +88,8 @@ def main():
         'chartUnknownNoBatteryReadErrorAndGapsBreakSegments': True,
         'chartAxis': 'Elapsed seconds horizontally and observed battery percentage from 0 to 100 vertically.',
         'chartHoverUsesOnlyActualObservedPoints': True,
+        'chartKeyboardObservedPointNavigation': args.release_version == '0.2.1',
+        'chartKeyboardWindowsRuntimeTested': False,
         'chartStopPreservesHistoryAndClearResets': True,
         'chartHiddenWhileMockActive': True,
         'existingObservationSessionCsvAndExportUnchanged': True,
@@ -131,7 +134,7 @@ def main():
     files['먼저 읽어주세요.txt'] = guide.decode('utf-8-sig').replace('\r\n', '\n').replace('\n', '\r\n').encode('utf-8-sig')
     files['SHA256SUMS.txt'] = ''.join(sha(data)+'  '+name+'\n' for name, data in sorted(files.items())).encode()
     args.output.mkdir(parents=True, exist_ok=True)
-    target = args.output/ARCHIVE_NAME
+    target = args.output/('ATIVBatteryGuard-' + args.release_version + '-WIN10-X64.zip')
     with zipfile.ZipFile(target, 'x', zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
             archive.writestr(name, data)
@@ -144,7 +147,7 @@ def main():
     print(json.dumps({'file': target.name, 'bytes': target.stat().st_size,
                       'sha256': sha(target.read_bytes()), 'entries': len(files),
                       'sourceFileCount': len(sources), 'productSourceFingerprintSha256': fingerprint,
-                      'releaseVersion': RELEASE_VERSION, 'guiVersionResource': version}))
+                      'releaseVersion': args.release_version, 'guiVersionResource': version}))
 
 
 if __name__ == '__main__':

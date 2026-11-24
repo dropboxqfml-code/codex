@@ -20,6 +20,13 @@ namespace ATIVBatteryGuard.Controls
             new FrameworkPropertyMetadata(BatteryObservationGraph.Empty,
                 FrameworkPropertyMetadataOptions.AffectsRender, OnGraphChanged));
 
+        private static readonly DependencyPropertyKey SelectedPointTextPropertyKey = DependencyProperty.RegisterReadOnly(
+            nameof(SelectedPointText), typeof(string), typeof(BatteryObservationChart),
+            new PropertyMetadata("Tab으로 그래프 선택 · ←/→ 이전·다음 표본 · Home/End 처음·마지막 표본"));
+        public static readonly DependencyProperty SelectedPointTextProperty = SelectedPointTextPropertyKey.DependencyProperty;
+        public string SelectedPointText => (string)GetValue(SelectedPointTextProperty);
+        private readonly BatteryObservationChartSelection selection = new BatteryObservationChartSelection();
+
         private static readonly Brush LabelBrush = FrozenBrush(71, 85, 105);
         private static readonly Brush ObservationBrush = FrozenBrush(0, 109, 194);
         private static readonly Pen GridPen = FrozenPen(FrozenBrush(220, 227, 234), 1);
@@ -29,7 +36,7 @@ namespace ATIVBatteryGuard.Controls
 
         public BatteryObservationChart()
         {
-            Focusable = false;
+            Focusable = true;
             ClipToBounds = true;
             SnapsToDevicePixels = true;
         }
@@ -52,6 +59,8 @@ namespace ATIVBatteryGuard.Controls
             drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
             if (ActualWidth <= 0 || ActualHeight <= 0) return;
 
+            if (IsKeyboardFocused)
+                drawingContext.DrawRectangle(null, AxisPen, new Rect(1, 1, Math.Max(0, ActualWidth - 2), Math.Max(0, ActualHeight - 2)));
             Rect plot = PlotBounds();
             if (plot.Width < 50 || plot.Height < 45)
             {
@@ -87,7 +96,7 @@ namespace ATIVBatteryGuard.Controls
                 ActualHeight - FontSize * 1.35, plot.Width, LabelBrush, TextAlignment.Center);
 
             Rect observationBounds = plot;
-            observationBounds.Inflate(3, 3);
+            observationBounds.Inflate(6, 6);
             var observationClip = new RectangleGeometry(observationBounds);
             observationClip.Freeze();
             drawingContext.PushClip(observationClip);
@@ -108,6 +117,11 @@ namespace ATIVBatteryGuard.Controls
                 drawingContext.DrawEllipse(ObservationBrush, null, point, 2.75, 2.75);
                 previous = point;
                 previousElapsed = sample.ElapsedSeconds;
+            }
+            if (IsKeyboardFocused && selection.Point != null)
+            {
+                Point selected = Position(selection.Point, plot, domain);
+                drawingContext.DrawEllipse(Brushes.White, ObservationPen, selected, 5, 5);
             }
             drawingContext.Pop();
 
@@ -144,10 +158,7 @@ namespace ATIVBatteryGuard.Controls
                     }
                 }
             }
-            string text = nearest == null ? null : "경과 " + ElapsedLabel(nearest.ElapsedSeconds)
-                + " (분:초) · " + nearest.Percent.ToString(ChartCulture) + "%"
-                + "\n외부 전원: " + PowerText(nearest.ExternalPower)
-                + " · " + ChargeText(nearest.ChargeState);
+            string text = nearest == null ? null : DescribePoint(nearest);
             if (!Equals(ToolTip, text)) ToolTip = text;
         }
 
@@ -155,6 +166,56 @@ namespace ATIVBatteryGuard.Controls
         {
             base.OnMouseLeave(e);
             ToolTip = null;
+        }
+
+        protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
+        {
+            base.OnGotKeyboardFocus(e);
+            if (selection.Point == null) selection.Select(selection.Graph.Points.Count - 1);
+            UpdateSelectionText();
+        }
+
+        protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
+        {
+            base.OnLostKeyboardFocus(e);
+            InvalidateVisual();
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.Handled || Keyboard.Modifiers != ModifierKeys.None) return;
+            switch (e.Key)
+            {
+                case Key.Left: selection.Move(-1); break;
+                case Key.Right: selection.Move(1); break;
+                case Key.Home: selection.Select(0); break;
+                case Key.End: selection.Select(selection.Graph.Points.Count - 1); break;
+                default: return;
+            }
+            UpdateSelectionText();
+            e.Handled = true;
+        }
+
+        private void UpdateSelectionText()
+        {
+            string previous = SelectedPointText;
+            string current = selection.Point == null
+                ? "Tab으로 그래프 선택 · ←/→ 이전·다음 표본 · Home/End 처음·마지막 표본"
+                : "선택 표본 " + (selection.Index + 1).ToString(ChartCulture) + "/"
+                    + selection.Graph.Points.Count.ToString(ChartCulture) + " · " + DescribePoint(selection.Point);
+            SetValue(SelectedPointTextPropertyKey, current);
+            InvalidateVisual();
+            AutomationPeer peer = UIElementAutomationPeer.FromElement(this);
+            if (peer != null && previous != current)
+                peer.RaisePropertyChangedEvent(AutomationElementIdentifiers.ItemStatusProperty, previous, current);
+        }
+
+        private static string DescribePoint(BatteryObservationGraphPoint point)
+        {
+            return "경과 " + ElapsedLabel(point.ElapsedSeconds) + " (분:초) · "
+                + point.Percent.ToString(ChartCulture) + "%"
+                + "\n외부 전원: " + PowerText(point.ExternalPower) + " · " + ChargeText(point.ChargeState);
         }
 
         protected override AutomationPeer OnCreateAutomationPeer()
@@ -243,6 +304,10 @@ namespace ATIVBatteryGuard.Controls
         {
             var chart = (BatteryObservationChart)sender;
             chart.ToolTip = null;
+            chart.selection.UpdateGraph(e.NewValue as BatteryObservationGraph);
+            if (chart.IsKeyboardFocused && chart.selection.Point == null)
+                chart.selection.Select(chart.selection.Graph.Points.Count - 1);
+            chart.UpdateSelectionText();
             AutomationPeer peer = UIElementAutomationPeer.FromElement(chart);
             if (peer != null)
                 peer.RaisePropertyChangedEvent(AutomationElementIdentifiers.HelpTextProperty,
@@ -272,7 +337,12 @@ namespace ATIVBatteryGuard.Controls
             public ChartAutomationPeer(BatteryObservationChart owner) : base(owner) { }
             protected override string GetClassNameCore() { return nameof(BatteryObservationChart); }
             protected override AutomationControlType GetAutomationControlTypeCore() { return AutomationControlType.Image; }
-            protected override string GetHelpTextCore() { return DescribeGraph(((BatteryObservationChart)Owner).Graph); }
+            protected override string GetHelpTextCore()
+            {
+                return DescribeGraph(((BatteryObservationChart)Owner).Graph)
+                    + " Tab으로 그래프에 접근하고 좌우 화살표로 표본을 이동합니다. Home은 처음, End는 마지막 표본입니다.";
+            }
+            protected override string GetItemStatusCore() { return ((BatteryObservationChart)Owner).SelectedPointText; }
         }
     }
 }

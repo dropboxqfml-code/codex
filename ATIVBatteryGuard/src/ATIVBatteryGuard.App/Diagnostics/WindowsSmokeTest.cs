@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Automation.Peers;
+using ATIVBatteryGuard.Controls;
 using System.Windows.Threading;
 using ATIVBatteryGuard.Core.Models;
 using ATIVBatteryGuard.Core.Services;
@@ -185,6 +188,7 @@ namespace ATIVBatteryGuard.Diagnostics
 				window.Show();
 				window.UpdateLayout();
 				await Idle(app);
+                await CheckChartKeyboardAsync(app, window);
 				Button apply = Find<Button>(window, "MockApplyButton");
 				Button save = Find<Button>(window, "SavePreferencesButton");
 				CheckBox mock = Find<CheckBox>(window, "MockSwitch");
@@ -285,6 +289,57 @@ namespace ATIVBatteryGuard.Diagnostics
 			}
 			return (!(report.Status == "passed") || report.BindingErrors != 0) ? 1 : 0;
 		}
+
+        private static async Task CheckChartKeyboardAsync(Application app, MainWindow window)
+        {
+            var chart = Find<BatteryObservationChart>(window, "ObservationChart");
+            var caption = Find<TextBlock>(window, "ObservationChartSelectionText");
+            BatteryObservationGraph original = chart.Graph;
+            Require(chart.Focusable && chart.IsTabStop, "CHART_NOT_KEYBOARD_REACHABLE");
+            try
+            {
+                var session = new BatteryObservationSession();
+                session.Start();
+                session.Record(TimeSpan.Zero,
+                    new BatterySnapshot(0, ExternalPowerStatus.Disconnected, BatteryChargeState.Discharging, ""));
+                session.Record(TimeSpan.FromSeconds(10),
+                    new BatterySnapshot(null, ExternalPowerStatus.Unknown, BatteryChargeState.Unknown, ""));
+                session.Record(TimeSpan.FromSeconds(40),
+                    new BatterySnapshot(100, ExternalPowerStatus.Connected, BatteryChargeState.NotCharging, ""));
+                session.Stop();
+                chart.SetCurrentValue(BatteryObservationChart.GraphProperty,
+                    BatteryObservationGraph.FromSamples(session.Samples, session.Status));
+                SendChartKey(chart, Key.Home);
+                Require(chart.SelectedPointText.Contains("1/2") && chart.SelectedPointText.Contains("0%")
+                    && chart.SelectedPointText.Contains("방전 중"), "CHART_FIRST_POINT_INVALID");
+                SendChartKey(chart, Key.Right);
+                Require(chart.SelectedPointText.Contains("2/2") && chart.SelectedPointText.Contains("100%")
+                    && chart.SelectedPointText.Contains("0:40"), "CHART_NEXT_POINT_INVALID");
+                SendChartKey(chart, Key.Right);
+                Require(chart.SelectedPointText.Contains("2/2"), "CHART_MOVED_BEYOND_END");
+                SendChartKey(chart, Key.Left);
+                Require(chart.SelectedPointText.Contains("1/2"), "CHART_PREVIOUS_POINT_INVALID");
+                SendChartKey(chart, Key.End);
+                var peer = UIElementAutomationPeer.CreatePeerForElement(chart);
+                Require(peer != null && peer.GetItemStatus() == chart.SelectedPointText, "CHART_ACCESSIBILITY_SELECTION_INVALID");
+                await Idle(app);
+                Require(caption.Text == chart.SelectedPointText, "CHART_SELECTION_BINDING_INVALID");
+                chart.SetCurrentValue(BatteryObservationChart.GraphProperty, BatteryObservationGraph.Empty);
+                Require(!chart.SelectedPointText.Contains("선택 표본"), "CHART_CLEAR_RETAINED_SELECTION");
+                SendChartKey(chart, Key.End);
+                Require(!chart.SelectedPointText.Contains("선택 표본"), "CHART_EMPTY_INVENTED_SELECTION");
+            }
+            finally
+            {
+                chart.SetCurrentValue(BatteryObservationChart.GraphProperty, original);
+            }
+        }
+
+        private static void SendChartKey(BatteryObservationChart chart, Key key)
+        {
+            chart.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(chart), 0, key)
+            { RoutedEvent = Keyboard.KeyDownEvent });
+        }
 
 		private static Task Idle(Application app)
 		{

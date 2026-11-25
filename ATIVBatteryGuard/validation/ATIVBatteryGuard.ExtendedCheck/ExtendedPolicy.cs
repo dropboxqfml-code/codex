@@ -8,6 +8,7 @@ namespace ATIVBatteryGuard.ExtendedValidation
     {
         public const int QuickCycles = 30;
         public const int SoakMinutes = 20;
+        public static bool IsIme(string[] args) => args != null && args.Length == 1 && args[0] == "--ime";
         public static bool IsSoak(string[] args)
         {
             if (args == null || args.Length != 1 || (args[0] != "--quick" && args[0] != "--soak"))

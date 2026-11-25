@@ -11,7 +11,7 @@ namespace ATIVBatteryGuard.ExtendedValidation
     public sealed class StartupEvidence
     {
         [DataMember] public int SchemaVersion = 1;
-        [DataMember] public string ToolRevision = "extended-v2";
+        [DataMember] public string ToolRevision = "extended-v3";
         [DataMember] public string ReleaseVersion = "0.3.0-rc.2";
         [DataMember] public string StartedUtc = DateTime.UtcNow.ToString("O");
         [DataMember] public string UpdatedUtc;
@@ -57,6 +57,7 @@ namespace ATIVBatteryGuard.ExtendedValidation
         }
         public void SelectMode(bool soak)
         { evidence.Mode = soak ? "soak-20-minutes" : "quick-30-cycles"; Save(); }
+        public void SelectImeMode() { evidence.Mode = "guided-ime"; Save(); }
         public void Fail(Exception error)
         {
             if (HasFailure) return;

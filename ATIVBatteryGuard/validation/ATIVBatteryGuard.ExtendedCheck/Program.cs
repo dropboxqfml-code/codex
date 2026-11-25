@@ -31,7 +31,7 @@ namespace ATIVBatteryGuard.ExtendedValidation
                 Console.WriteLine("오류값(HResult): 0x" + error.HResult.ToString("X8"));
                 if (diagnosticSaved) Console.WriteLine("진단 결과: extended-results\\" + Path.GetFileName(journal.ReportPath));
                 else Console.WriteLine("시작 진단 파일도 저장하지 못했습니다. 이 폴더의 쓰기 권한과 파일 잠금을 확인하세요.");
-                Console.WriteLine("통과로 기록하지 않았습니다. 빠른 검사만 다시 확인하고 시작 진단 결과를 전달하세요.");
+                Console.WriteLine("통과로 기록하지 않았습니다. 같은 검사를 반복하기 전에 시작 진단 결과를 전달하세요.");
                 return 2;
             }
         }
@@ -41,7 +41,10 @@ namespace ATIVBatteryGuard.ExtendedValidation
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static int RunChecked(string[] args, StartupJournal journal)
         {
-            journal.Advance("arguments"); bool soak = ExtendedPolicy.IsSoak(args); journal.SelectMode(soak);
+            journal.Advance("arguments");
+            bool ime = ExtendedPolicy.IsIme(args);
+            bool soak = !ime && ExtendedPolicy.IsSoak(args);
+            if (ime) journal.SelectImeMode(); else journal.SelectMode(soak);
             journal.Advance("platform");
             var os = Environment.OSVersion;
             if (os.Platform != PlatformID.Win32NT || !Environment.Is64BitOperatingSystem
@@ -63,11 +66,12 @@ namespace ATIVBatteryGuard.ExtendedValidation
             var version = System.Diagnostics.FileVersionInfo.GetVersionInfo(Path.Combine(root, "ATIVBatteryGuard.exe"));
             if (version.ProductVersion != ApplicationRelease.Version || version.FileVersion != ApplicationRelease.FileVersion)
                 throw new InvalidDataException();
-            Console.WriteLine(soak ? "20분 반복 검사 · 합성 예제만 사용합니다." : "빠른 추가 검사 · 합성 예제만 사용합니다.");
-            Console.WriteLine("두 검증 창의 입력은 자동입니다. 중단하려면 검증 창의 X 또는 콘솔 Ctrl+C를 누르세요.");
+            Console.WriteLine(ime ? "한글 입력 확인 · 안내에 따라 직접 입력하세요." : soak ? "20분 반복 검사 · 합성 예제만 사용합니다." : "빠른 추가 검사 · 합성 예제만 사용합니다.");
+            Console.WriteLine(ime ? "기존 빠른/20분 검사는 반복하지 않습니다. 입력 완료 후 결과 저장을 누르세요."
+                : "두 검증 창의 입력은 자동입니다. 중단하려면 검증 창의 X 또는 콘솔 Ctrl+C를 누르세요.");
             Console.CancelKeyPress += (sender, e) => { e.Cancel = true; StopRequested = true; };
             journal.Advance("application-create");
-            var app = new ExtendedApplication(root, manifest, soak, journal);
+            var app = new ExtendedApplication(root, manifest, soak, ime, journal);
             journal.Advance("resources-load"); app.InitializeResources();
             app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             journal.Advance("dispatcher-start");
@@ -79,10 +83,10 @@ namespace ATIVBatteryGuard.ExtendedValidation
     {
         private readonly string root;
         private readonly ValidationManifest manifest;
-        private readonly bool soak;
+        private readonly bool soak, ime;
         private readonly StartupJournal journal;
-        public ExtendedApplication(string root, ValidationManifest manifest, bool soak, StartupJournal journal)
-        { this.root = root; this.manifest = manifest; this.soak = soak; this.journal = journal; }
+        public ExtendedApplication(string root, ValidationManifest manifest, bool soak, bool ime, StartupJournal journal)
+        { this.root = root; this.manifest = manifest; this.soak = soak; this.ime = ime; this.journal = journal; }
         public void InitializeResources()
         {
             // The host owns this dictionary. Product App.InitializeComponent cannot
@@ -94,7 +98,11 @@ namespace ATIVBatteryGuard.ExtendedValidation
         {
             base.OnStartup(e);
             int code;
-            try { journal.Advance("runner-start"); code = await new Runner(this, root, manifest, soak).Run(); }
+            try
+            {
+                journal.Advance("runner-start");
+                code = ime ? await new ImeRunner(this, root, manifest).Run() : await new Runner(this, root, manifest, soak).Run();
+            }
             catch (Exception error)
             {
                 try { journal.Fail(error); } catch { }

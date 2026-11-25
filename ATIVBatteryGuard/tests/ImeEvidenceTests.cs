@@ -1,0 +1,54 @@
+using System;
+using System.IO;
+using System.Runtime.Serialization.Json;
+using ATIVBatteryGuard.ExtendedValidation;
+
+internal static partial class Program
+{
+    private static ImeEvidence CompleteImeEvidence() => new ImeEvidence {
+        SaveCompositionStarts = 1, SaveCompositionUpdates = 2, CloseCompositionStarts = 1, CloseCompositionUpdates = 2,
+        SaveKoreanImeObserved = true, CloseKoreanImeObserved = true, SavePointerObserved = true,
+        SaveRoundtripPassed = true, CloseCancelPassed = true, UserConfirmedCompositionActions = true };
+    private static void RegisterImeEvidenceTests()
+    {
+        Add("guided IME needs actual composition evidence from both phases even when roundtrips pass", () =>
+        {
+            var e = CompleteImeEvidence(); Equal("user-assisted-ime-checks-passed-release-pending", e.Outcome(false, true, true, true, null));
+            foreach (Action<ImeEvidence> clear in new Action<ImeEvidence>[] { x=>x.SaveCompositionStarts=0, x=>x.SaveCompositionUpdates=0,
+                x=>x.CloseCompositionStarts=0, x=>x.CloseCompositionUpdates=0, x=>x.SaveKoreanImeObserved=false,
+                x=>x.CloseKoreanImeObserved=false, x=>x.SavePointerObserved=false })
+            { var changed=CompleteImeEvidence(); clear(changed); Equal("roundtrip-passed-ime-evidence-incomplete", changed.Outcome(false,true,true,true,null)); }
+        });
+        Add("guided IME does not confuse focus commit with missing composition and requires explicit user confirmation", () =>
+        {
+            var e=CompleteImeEvidence(); e.SaveCompositionActiveAtPointer=false; e.CloseCompositionActiveAtRequest=false;
+            Equal("user-assisted-ime-checks-passed-release-pending",e.Outcome(false,true,true,true,null));
+            e.UserConfirmedCompositionActions=false; Equal("user-confirmation-pending",e.Outcome(false,true,true,true,null));
+        });
+        Add("guided IME refuses synthetic input cancellation incomplete actions file changes and cleanup failure", () =>
+        {
+            var e=CompleteImeEvidence(); e.SyntheticKoreanInputInjected=true; Equal("not-passed",e.Outcome(false,true,true,true,null));
+            e=CompleteImeEvidence(); e.SaveRoundtripPassed=false; Equal("not-completed",e.Outcome(false,true,true,true,null));
+            e=CompleteImeEvidence(); e.CloseCancelPassed=false; Equal("not-completed",e.Outcome(false,true,true,true,null));
+            e=CompleteImeEvidence(); Equal("stopped-not-passed",e.Outcome(true,true,true,true,null));
+            Equal("not-passed",e.Outcome(false,false,true,true,null)); Equal("not-passed",e.Outcome(false,true,false,true,null));
+            Equal("not-passed",e.Outcome(false,true,true,false,null)); Equal("not-passed",e.Outcome(false,true,true,true,"ERROR"));
+        });
+        Add("guided IME mode does not accept extra arguments and evidence never serializes typed text", () =>
+        {
+            Check(ExtendedPolicy.IsIme(new[]{"--ime"}),"IME mode missing");
+            Check(!ExtendedPolicy.IsIme(new[]{"--ime","private"}) && !ExtendedPolicy.IsIme(new[]{"--ime;run"}) && !ExtendedPolicy.IsIme(null),"unexpected arguments accepted");
+            using(var output=new MemoryStream())
+            {
+                new DataContractJsonSerializer(typeof(ImeEvidence)).WriteObject(output,CompleteImeEvidence());
+                string text=System.Text.Encoding.UTF8.GetString(output.ToArray());
+                Check(!text.Contains(ImeEvidence.SavePhrase) && !text.Contains(ImeEvidence.ClosePhrase) && !text.Contains("Text\":"),"text persisted");
+            }
+            using(var f=new Fixture())
+            {
+                var journal=new StartupJournal(f.DirectoryPath); journal.SelectImeMode();
+                Equal("guided-ime",ReadStartup(journal.ReportPath).Mode);
+            }
+        });
+    }
+}

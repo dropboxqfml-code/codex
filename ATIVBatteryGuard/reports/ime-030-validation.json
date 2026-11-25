@@ -1,0 +1,92 @@
+{
+  "dateKorea": "2026-11-25",
+  "baseCommit": "6da00dc0b0c52837bc6687e906086dd9007411dd",
+  "releaseVersion": "0.3.0-rc.2",
+  "toolRevision": "extended-v3",
+  "stage": "guided-ime-windows-execution-pending",
+  "previousV2Quick30AndSoak533WindowsEvidenceRetained": true,
+  "previousEvidence": "field-extended-v2/assessment.json",
+  "productSourceCount": 207,
+  "productSourceFingerprintSha256": "ebfa10658ccd42d482d1d26dd799e57af696f5e11e9be6a02398b8779d5bc18f",
+  "productSourceAndSixProgramBytesUnchanged": true,
+  "oldRc2AndV2PackagesUnchanged": true,
+  "imeModeUsesActualProductWindowViewModelAndStorage": true,
+  "guideAddedOnlyToTestHost": true,
+  "requiresUserTypedPhrases": true,
+  "compositionEventTextOrKeysPersisted": false,
+  "requiresBothPhaseStartUpdateKoreanImeOnAndExplicitUserConfirmation": true,
+  "unobservedImeRemainsIncompleteRatherThanPassed": true,
+  "focusCommitAtClickNotMisclassifiedByActiveFlagAlone": true,
+  "globalInputOrKeyboardHooksOrInputLanguageChange": false,
+  "hardwareOrHelperActions": 0,
+  "newWindowsImeModeExecuted": false,
+  "newWindowsPowerShellOrDefenderOrSigningExecuted": false,
+  "certificateOrSigningServiceProvided": false,
+  "signingPurchaseOrIssuancePerformed": false,
+  "finalReleaseApproved": false,
+  "portableTests": {
+    "passed": 1267,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1267,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newImePolicyPrivacyRegressionGroups": 4,
+  "portableBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "extendedWpfBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "releaseEvidenceRegressions": {
+    "passed": 13,
+    "failed": 0,
+    "newGroups": 4
+  },
+  "finalReleasePredicateRequiresExactSixFiles": true,
+  "finalReleasePredicateRequiresTimestampPerAllFourPeFiles": true,
+  "windowsCollectorTimestampMetadataAndRequireTimestampOptionAdded": true,
+  "finalVersionSignedGuiAndPackagingEvidenceIntegrationPending": true,
+  "hostBinaryAudit": {
+    "hostBase": "System.Windows.Application",
+    "ownResourceDictionaryBamlPresent": true
+  },
+  "toolVersionResource": {
+    "fileVersion": "0.3.0.0",
+    "productVersion": "0.3.0-rc.2"
+  },
+  "toolSha256": "4c7f30f474676509053cd6f3974cf4f549ec41671388d0b41d78a3bbb317d0f4",
+  "toolAsInvoker": true,
+  "zipCrcInternalHashesManifestVerified": true,
+  "package": {
+    "file": "ATIVBatteryGuard-0.3.0-rc.2-EXTENDED-CHECKS-v3.zip",
+    "bytes": 351275,
+    "sha256": "4cfc6b8aa604794cf9312faf1362a5bdbdf1c84a52a2e1a31b579f0fe1222768",
+    "entries": 19,
+    "releaseVersion": "0.3.0-rc.2",
+    "toolSourceFileCount": 14,
+    "toolSourceFingerprintSha256": "b9aa9913c2f2267ea4a21e16bb158b44f79ca0b3f4ca5bb6267aac9f2d3bc0b0",
+    "productSourceFingerprintSha256": "ebfa10658ccd42d482d1d26dd799e57af696f5e11e9be6a02398b8779d5bc18f"
+  },
+  "logs": {
+    "build.log": {
+      "bytes": 241,
+      "sha256": "95eb291e7fe1d5975635dcba1aa584890f9c3aa8b595a44aed25015480d34be6"
+    },
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "e76beb3354b04330d8f45b07ca8aca6a0debf5dd5ab0d14084e66c6d88ac0eaa"
+    },
+    "portable-tests.log": {
+      "bytes": 116275,
+      "sha256": "9eb315ccd1bc67b9135874cfad648b34e10d0aa27d13a675dc995d2ea00dbe79"
+    },
+    "release-gates.log": {
+      "bytes": 2065,
+      "sha256": "0ea472b782a8faba5f8df74f4b956419ac8a6a4c633651f59b9469127a487e52"
+    }
+  },
+  "nextUserAction": "Run only 한글입력확인.cmd; directly type the two guided phrases and provide startup/ime JSON. Do not repeat quick, soak or hardware trials."
+}

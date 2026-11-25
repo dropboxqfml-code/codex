@@ -6,7 +6,7 @@ import sys
 import tempfile
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
-from release_validation import validate_release
+from release_validation import validate_release, validate_final_release
 
 
 class ReleaseValidationTests(unittest.TestCase):
@@ -80,6 +80,46 @@ class ReleaseValidationTests(unittest.TestCase):
                 changed = dict(files, **{name: b'changed after scan'})
                 with self.assertRaises(ValueError):
                     validate_release(report, changed, 'abc', self.now)
+
+    def timestamped_current_app_evidence(self):
+        files, report = self.current_app_evidence()
+        for entry in report['signatures'].values():
+            entry.update(timestamped=True, timestampThumbprint='c' * 40)
+        return files, report
+
+    def test_final_signed_evidence_requires_timestamp_for_all_four_pe_files(self):
+        files, report = self.timestamped_current_app_evidence()
+        validate_final_release(report, files, 'abc', self.now)
+        for name in report['signatures']:
+            for field, value in [('timestamped', False), ('timestamped', 1),
+                                 ('timestampThumbprint', ''), ('timestampThumbprint', 'x' * 40)]:
+                with self.subTest(file=name, field=field, value=value):
+                    changed = copy.deepcopy(report)
+                    changed['signatures'][name][field] = value
+                    with self.assertRaises(ValueError):
+                        validate_final_release(changed, files, 'abc', self.now)
+
+    def test_final_signing_does_not_accept_old_signature_only_evidence(self):
+        files, report = self.current_app_evidence()
+        validate_release(report, files, 'abc', self.now)
+        with self.assertRaises(ValueError):
+            validate_final_release(report, files, 'abc', self.now)
+
+    def test_final_signing_rejects_the_legacy_three_file_scope(self):
+        report = copy.deepcopy(self.report)
+        for entry in report['signatures'].values():
+            entry.update(timestamped=True, timestampThumbprint='c' * 40)
+        with self.assertRaises(ValueError):
+            validate_final_release(report, self.files, 'abc', self.now)
+
+    def test_timestamp_does_not_override_detections_or_changed_file_bytes(self):
+        files, report = self.timestamped_current_app_evidence()
+        for changes in [dict(detections=1), dict(realTimeProtectionEnabled=False), dict(sourceFingerprintSha256='other')]:
+            with self.assertRaises(ValueError):
+                validate_final_release(dict(report, **changes), files, 'abc', self.now)
+        changed = dict(files, **{'ATIVBatteryGuard.ManualProtectionHelper.exe': b'changed'})
+        with self.assertRaises(ValueError):
+            validate_final_release(report, changed, 'abc', self.now)
 
     def test_stale_future_wrong_source(self):
         for key, value in [('completedUtc', (self.now - timedelta(days=2)).isoformat()),

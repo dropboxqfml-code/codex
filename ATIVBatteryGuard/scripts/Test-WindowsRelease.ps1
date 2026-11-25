@@ -4,7 +4,8 @@
 param(
     [Parameter(Mandatory=$true)][string]$BuildDirectory,
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{64}$')][string]$SourceFingerprint,
-    [Parameter(Mandatory=$true)][string]$ReportPath
+    [Parameter(Mandatory=$true)][string]$ReportPath,
+    [switch]$RequireTimestamp
 )
 $ErrorActionPreference = 'Stop'
 $build = (Resolve-Path -LiteralPath $BuildDirectory).Path
@@ -23,7 +24,11 @@ foreach ($name in $names) {
     if ([IO.Path]::GetExtension($name) -in @('.exe', '.dll')) {
         $sig = Get-AuthenticodeSignature -LiteralPath $file
         if ($sig.Status -ne 'Valid' -or !$sig.SignerCertificate) { throw "Publisher signature not valid: $name" }
-        $signatures[$name] = @{status='Valid'; thumbprint=$sig.SignerCertificate.Thumbprint}
+        $timestamped = $null -ne $sig.TimeStamperCertificate
+        if ($RequireTimestamp -and !$timestamped) { throw "Timestamp evidence missing: $name" }
+        $timestampThumbprint = if ($timestamped) { $sig.TimeStamperCertificate.Thumbprint } else { '' }
+        $signatures[$name] = @{status='Valid'; thumbprint=$sig.SignerCertificate.Thumbprint;
+            timestamped=$timestamped; timestampThumbprint=$timestampThumbprint}
     }
 }
 $publishers = @($signatures.Values | ForEach-Object { $_.thumbprint.ToUpperInvariant() } | Select-Object -Unique)

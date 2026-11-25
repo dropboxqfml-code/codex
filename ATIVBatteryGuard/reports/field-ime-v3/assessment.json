@@ -1,0 +1,59 @@
+{
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.3.0-rc.2",
+  "toolRevision": "extended-v3",
+  "candidateCommit": "bca27d5990b982247a8b510b1b17b0ae9e62ce39",
+  "uploadedFiles": [
+    {
+      "file": "startup-76ff716863ec45b8937abb41ee74795f.json",
+      "bytes": 481,
+      "sha256": "e7fa4579845bdb00e54d8bde83da215da2e3e6a8710f845f16aa9a5e4e230eac"
+    },
+    {
+      "file": "ime-13d5b9d799ed47ea87c0761785f54a58.json",
+      "bytes": 1106,
+      "sha256": "c6aad9327a1abfb1fc88bd1b45ee9fc7f64d336102afe922b44ecad5b2322f16"
+    }
+  ],
+  "pairingBasis": "Unique guided-ime mode and containing timestamps; no common run-ID field.",
+  "reportsConsistent": true,
+  "sourceFingerprintMatchesReleasedRc2": true,
+  "startupSucceeded": true,
+  "validationExitCode": 1,
+  "overallImePassed": false,
+  "outcome": "not-passed",
+  "errorCode": "IME_CANCEL_DRAFT_MISMATCH",
+  "saveRoundtripPassed": true,
+  "closeCancelPassed": false,
+  "imeEventsObservedInBothPhases": true,
+  "compositionActiveAtSaveAndCloseObserved": true,
+  "userConfirmedCompositionActions": true,
+  "syntheticKoreanInputInjected": false,
+  "saveCompositionStarts": 12,
+  "saveCompositionUpdates": 15,
+  "closeCompositionStarts": 6,
+  "closeCompositionUpdates": 12,
+  "cancelDialogCount": 1,
+  "closeGuardDecisionPassedInferredFromFailureCodeLocation": true,
+  "exactFailedDraftSubconditionKnown": false,
+  "characterLossConfirmed": false,
+  "possibleFailedConditions": [
+    "Window still visible",
+    "Draft marked modified",
+    "ViewModel draft equals expected close phrase",
+    "Displayed text equals expected close phrase",
+    "Previously stored note unchanged"
+  ],
+  "fileChecksBeforeAndAfterPassed": true,
+  "cleanupSucceeded": true,
+  "stopRequested": false,
+  "hardwareWritesPerformed": false,
+  "programOrPackagesChanged": false,
+  "newCloudBuildOrWindowsExecution": false,
+  "finalReleaseApproved": false,
+  "startedKorea": "2026-11-25T21:21:11.080562+09:00",
+  "completedKorea": "2026-11-25T21:22:03.552573+09:00",
+  "nextDevelopment": "Separate the close-cancel diagnostic predicates without recording text, then investigate UI composition-to-ViewModel handoff before confirmation. Preserve prior quick/soak/save successes and do not ask for repeat with unchanged v3.",
+  "userWindowsImeModeExecuted": true,
+  "newDefenderOrSigningEvidence": false
+}

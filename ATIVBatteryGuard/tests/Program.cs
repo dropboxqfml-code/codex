@@ -449,6 +449,7 @@ internal static partial class Program
         RegisterLocalActionGuidanceTests();
         RegisterBatteryObservationGraphTests();
         RegisterBatteryObservationChartSelectionTests();
+        RegisterObservationFinalSaveTests();
         RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();

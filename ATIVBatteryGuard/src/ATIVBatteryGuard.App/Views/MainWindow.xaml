@@ -159,14 +159,13 @@
                     <TextBlock Text="80% 유지나 ‘충전 중 아님’만으로 충전 제한 성공을 판정하지 않습니다."
                                Style="{StaticResource Detail}" />
                     <WrapPanel Margin="0,0,0,10">
-                        <TextBlock FontWeight="SemiBold" Margin="0,0,16,0" TextWrapping="Wrap">
+                        <TextBlock Text="{Binding ObservationStatusText}" FontWeight="SemiBold" Margin="0,0,16,0" TextWrapping="Wrap"
+                                   AutomationProperties.LiveSetting="Polite">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="관찰 대기 · 중단" />
                                     <Setter Property="Foreground" Value="#475569" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding ObservationActive}" Value="True">
-                                            <Setter Property="Text" Value="관찰 중" />
                                             <Setter Property="Foreground" Value="#00603A" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -205,7 +204,7 @@
                                                               AutomationProperties.Name="관찰한 Windows 배터리 잔량 변화" />
                             <TextBlock x:Name="ObservationChartSelectionText" Text="{Binding SelectedPointText, ElementName=ObservationChart, Mode=OneWay}"
                                        TextWrapping="Wrap" Margin="0,4,0,0" Foreground="#475569"
-                                       AutomationProperties.Name="그래프 키보드 조작과 선택 표본" />
+                                       AutomationProperties.Name="그래프 조작 안내와 선택 표본" />
                         </StackPanel>
                     </Border>
                     <Expander Header="관찰 기록 보기" IsExpanded="False"

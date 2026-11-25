@@ -1,0 +1,63 @@
+{
+  "baseCommit": "bd5c4aa98f0b7ba6c07d037d7a8cd5e3c555bc0d",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.2",
+  "previous021UserConfirmedTabSampleInspection": true,
+  "portableTests": {
+    "passed": 1150,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1150,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 7,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "mousePointHitRadiusDip": 14,
+  "equalDistanceSelectsLaterPoint": true,
+  "blankClickPreservesExistingSelection": true,
+  "pointerAndKeyboardShareSelection": true,
+  "observationFinalSaveIdentity": [
+    "session",
+    "sampleCount",
+    "status"
+  ],
+  "terminalStatusLabelsReuseSessionDescription": true,
+  "windowsChartCoordinateSelectionSmokeChecksAdded": true,
+  "windowsSmokeChecksExecuted": false,
+  "newReleaseWindowsRenderingMouseFocusOrScreenReaderTested": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.2-WIN10-X64.zip",
+    "bytes": 294495,
+    "sha256": "2e632a321dcdebf5643ad350089789b0ee8ec987c85d9389032e911aef9f05e1",
+    "entries": 9,
+    "sourceFileCount": 201,
+    "productSourceFingerprintSha256": "967582725cdd81db9e3a0b0b2a4b08cc9b5935a44491701b4f7a6de5d9e4e917",
+    "releaseVersion": "0.2.2",
+    "guiVersionResource": {
+      "fileVersion": "0.2.2.0",
+      "productVersion": "0.2.2"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "dbd329b2b1660a76582f70043da83a6060c795f6c14b68214989b550cd8a9fe0"
+    },
+    "portable-tests.log": {
+      "bytes": 104642,
+      "sha256": "3fa8b161cc37771f301ab2133ecc02cdf13ccd1cb2d6ba49721420add8aa4f24"
+    },
+    "solution-build.log": {
+      "bytes": 2034,
+      "sha256": "b4f2fa9beac012b653ee27bdcf8442b11f580e153384c3e7741b8a2decb095cd"
+    }
+  }
+}

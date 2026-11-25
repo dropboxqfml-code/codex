@@ -267,7 +267,7 @@ internal static partial class Program
             }
         });
 
-        Add("observation save status is local to its card and unchanged rows cannot be saved twice even after stop", () =>
+        Add("observation save status is local to its card and each recording or terminal revision is saved once", () =>
         {
             using (var f = new Fixture()) using (var vm = f.ViewModel())
             {
@@ -278,11 +278,13 @@ internal static partial class Program
                 Check(vm.ObservationSaveStatusText.Contains("battery-observation-example.txt"), "saved file name is not visible near the observation");
                 Check(!vm.SaveBatteryObservationCommand.CanExecute(null), "same recording remains saveable");
                 vm.SaveBatteryObservationCommand.Execute(null); vm.StopBatteryObservationCommand.Execute(null);
-                vm.SaveBatteryObservationCommand.Execute(null); Equal(1, f.Interaction.ObservationSaves);
-                Check(!vm.SaveBatteryObservationCommand.CanExecute(null), "stop alone created duplicate data revision");
+                Check(vm.SaveBatteryObservationCommand.CanExecute(null), "terminal status cannot be saved");
+                vm.SaveBatteryObservationCommand.Execute(null); Equal(2, f.Interaction.ObservationSaves);
+                Check(f.Interaction.LastObservation.Contains("상태: 사용자 중지"), "final status was not exported");
+                Check(!vm.SaveBatteryObservationCommand.CanExecute(null), "same terminal revision can be saved twice");
                 vm.StartBatteryObservationCommand.Execute(null); vm.RefreshBattery();
                 Check(vm.SaveBatteryObservationCommand.CanExecute(null), "new session cannot save identical values");
-                vm.SaveBatteryObservationCommand.Execute(null); Equal(2, f.Interaction.ObservationSaves);
+                vm.SaveBatteryObservationCommand.Execute(null); Equal(3, f.Interaction.ObservationSaves);
             }
         });
 

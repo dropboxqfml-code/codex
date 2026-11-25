@@ -22,7 +22,7 @@ namespace ATIVBatteryGuard.Controls
 
         private static readonly DependencyPropertyKey SelectedPointTextPropertyKey = DependencyProperty.RegisterReadOnly(
             nameof(SelectedPointText), typeof(string), typeof(BatteryObservationChart),
-            new PropertyMetadata("Tab으로 그래프 선택 · ←/→ 이전·다음 표본 · Home/End 처음·마지막 표본"));
+            new PropertyMetadata("클릭 또는 Tab으로 그래프 선택 · 점 클릭 또는 ←/→로 표본 확인 · Home/End 처음·마지막"));
         public static readonly DependencyProperty SelectedPointTextProperty = SelectedPointTextPropertyKey.DependencyProperty;
         public string SelectedPointText => (string)GetValue(SelectedPointTextProperty);
         private readonly BatteryObservationChartSelection selection = new BatteryObservationChartSelection();
@@ -69,7 +69,7 @@ namespace ATIVBatteryGuard.Controls
             }
 
             BatteryObservationGraph graph = Graph ?? BatteryObservationGraph.Empty;
-            double domain = DomainSeconds(graph);
+            double domain = selection.DomainSeconds;
             DrawText(drawingContext, "잔량 (%)", 0, 0, 100, LabelBrush);
             string legend = ActualWidth >= 470 ? "관찰값 · 공백은 선을 잇지 않음" : "관찰 잔량";
             DrawText(drawingContext, legend, plot.Left, 0, plot.Width, ObservationBrush, TextAlignment.Right);
@@ -141,25 +141,25 @@ namespace ATIVBatteryGuard.Controls
             base.OnMouseMove(e);
             Rect plot = PlotBounds();
             Point pointer = e.GetPosition(this);
-            BatteryObservationGraph graph = Graph ?? BatteryObservationGraph.Empty;
-            BatteryObservationGraphPoint nearest = null;
-            double nearestDistance = 14 * 14;
-            if (plot.Width > 0 && plot.Height > 0 && plot.Contains(pointer))
-            {
-                double domain = DomainSeconds(graph);
-                foreach (BatteryObservationGraphPoint sample in graph.Points)
-                {
-                    if (!IsDrawable(sample)) continue;
-                    Vector offset = Position(sample, plot, domain) - pointer;
-                    if (offset.LengthSquared <= nearestDistance)
-                    {
-                        nearest = sample;
-                        nearestDistance = offset.LengthSquared;
-                    }
-                }
-            }
-            string text = nearest == null ? null : DescribePoint(nearest);
+            int index = selection.FindPointIndex(pointer.X - plot.Left, pointer.Y - plot.Top, plot.Width, plot.Height);
+            string text = index < 0 ? null : DescribePoint(selection.Graph.Points[index]);
             if (!Equals(ToolTip, text)) ToolTip = text;
+        }
+
+        protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
+        {
+            base.OnMouseLeftButtonDown(e);
+            SelectAt(e.GetPosition(this));
+            e.Handled = true;
+        }
+
+        internal void SelectAt(Point pointer)
+        {
+            Rect plot = PlotBounds();
+            int index = selection.FindPointIndex(pointer.X - plot.Left, pointer.Y - plot.Top, plot.Width, plot.Height);
+            if (index >= 0) selection.Select(index);
+            Focus();
+            UpdateSelectionText();
         }
 
         protected override void OnMouseLeave(MouseEventArgs e)
@@ -201,7 +201,7 @@ namespace ATIVBatteryGuard.Controls
         {
             string previous = SelectedPointText;
             string current = selection.Point == null
-                ? "Tab으로 그래프 선택 · ←/→ 이전·다음 표본 · Home/End 처음·마지막 표본"
+                ? "클릭 또는 Tab으로 그래프 선택 · 점 클릭 또는 ←/→로 표본 확인 · Home/End 처음·마지막"
                 : "선택 표본 " + (selection.Index + 1).ToString(ChartCulture) + "/"
                     + selection.Graph.Points.Count.ToString(ChartCulture) + " · " + DescribePoint(selection.Point);
             SetValue(SelectedPointTextPropertyKey, current);
@@ -231,14 +231,6 @@ namespace ATIVBatteryGuard.Controls
         private static bool IsDrawable(BatteryObservationGraphPoint point)
         {
             return point != null && point.ElapsedSeconds >= 0 && point.Percent >= 0 && point.Percent <= 100;
-        }
-
-        private static double DomainSeconds(BatteryObservationGraph graph)
-        {
-            double seconds = Math.Max(60, graph.ElapsedSeconds);
-            foreach (BatteryObservationGraphPoint point in graph.Points)
-                if (IsDrawable(point)) seconds = Math.Max(seconds, point.ElapsedSeconds);
-            return seconds;
         }
 
         private static Point Position(BatteryObservationGraphPoint point, Rect plot, double domain)
@@ -340,7 +332,7 @@ namespace ATIVBatteryGuard.Controls
             protected override string GetHelpTextCore()
             {
                 return DescribeGraph(((BatteryObservationChart)Owner).Graph)
-                    + " Tab으로 그래프에 접근하고 좌우 화살표로 표본을 이동합니다. Home은 처음, End는 마지막 표본입니다.";
+                    + " 클릭 또는 Tab으로 그래프에 접근합니다. 점을 클릭하거나 좌우 화살표로 표본을 이동합니다. Home은 처음, End는 마지막 표본입니다.";
             }
             protected override string GetItemStatusCore() { return ((BatteryObservationChart)Owner).SelectedPointText; }
         }

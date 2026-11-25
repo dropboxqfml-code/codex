@@ -188,7 +188,7 @@ namespace ATIVBatteryGuard.Diagnostics
 				window.Show();
 				window.UpdateLayout();
 				await Idle(app);
-                await CheckChartKeyboardAsync(app, window);
+                await CheckChartInputAsync(app, window, model);
 				Button apply = Find<Button>(window, "MockApplyButton");
 				Button save = Find<Button>(window, "SavePreferencesButton");
 				CheckBox mock = Find<CheckBox>(window, "MockSwitch");
@@ -290,11 +290,14 @@ namespace ATIVBatteryGuard.Diagnostics
 			return (!(report.Status == "passed") || report.BindingErrors != 0) ? 1 : 0;
 		}
 
-        private static async Task CheckChartKeyboardAsync(Application app, MainWindow window)
+        private static async Task CheckChartInputAsync(Application app, MainWindow window, MainViewModel model)
         {
             var chart = Find<BatteryObservationChart>(window, "ObservationChart");
             var caption = Find<TextBlock>(window, "ObservationChartSelectionText");
-            BatteryObservationGraph original = chart.Graph;
+            model.StartBatteryObservationCommand.Execute(null);
+            await Idle(app);
+            window.UpdateLayout();
+            chart.BringIntoView();
             Require(chart.Focusable && chart.IsTabStop, "CHART_NOT_KEYBOARD_REACHABLE");
             try
             {
@@ -309,6 +312,20 @@ namespace ATIVBatteryGuard.Diagnostics
                 session.Stop();
                 chart.SetCurrentValue(BatteryObservationChart.GraphProperty,
                     BatteryObservationGraph.FromSamples(session.Samples, session.Status));
+                window.UpdateLayout();
+                double plotWidth = Math.Max(0, chart.ActualWidth - 72);
+                double plotHeight = Math.Max(0, chart.ActualHeight - 80);
+                Require(plotWidth > 0 && plotHeight > 0, "CHART_NOT_LAID_OUT");
+                chart.SelectAt(new Point(54, 32 + plotHeight));
+                Require(chart.SelectedPointText.Contains("1/2") && chart.SelectedPointText.Contains("0%"),
+                    "CHART_MOUSE_FIRST_POINT_INVALID");
+                chart.SelectAt(new Point(10, 10));
+                Require(chart.SelectedPointText.Contains("1/2"), "CHART_BLANK_CLICK_CHANGED_SELECTION");
+                chart.SelectAt(new Point(54 + plotWidth * 40 / 60, 32));
+                Require(chart.SelectedPointText.Contains("2/2") && chart.SelectedPointText.Contains("100%"),
+                    "CHART_MOUSE_LAST_POINT_INVALID");
+                SendChartKey(chart, Key.Left);
+                Require(chart.SelectedPointText.Contains("1/2"), "CHART_MOUSE_KEYBOARD_SELECTION_NOT_SHARED");
                 SendChartKey(chart, Key.Home);
                 Require(chart.SelectedPointText.Contains("1/2") && chart.SelectedPointText.Contains("0%")
                     && chart.SelectedPointText.Contains("방전 중"), "CHART_FIRST_POINT_INVALID");
@@ -331,7 +348,7 @@ namespace ATIVBatteryGuard.Diagnostics
             }
             finally
             {
-                chart.SetCurrentValue(BatteryObservationChart.GraphProperty, original);
+                model.ClearBatteryObservationCommand.Execute(null);
             }
         }
 

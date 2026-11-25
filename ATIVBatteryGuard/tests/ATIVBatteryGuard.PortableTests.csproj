@@ -25,6 +25,7 @@
     <Compile Include="LocalActionGuidanceTests.cs" />
     <Compile Include="BatteryObservationGraphTests.cs" />
     <Compile Include="BatteryObservationChartSelectionTests.cs" />
+    <Compile Include="ObservationFinalSaveTests.cs" />
     <Compile Include="../src/ATIVBatteryGuard.App/Controls/BatteryObservationChartSelection.cs" Link="Controls/BatteryObservationChartSelection.cs" />
     <Compile Include="ProtectionPresentationAndGraphViewModelTests.cs" />
     <Compile Include="ManualProtectionClientSessionTests.cs" />

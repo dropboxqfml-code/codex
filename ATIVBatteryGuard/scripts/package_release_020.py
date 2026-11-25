@@ -33,11 +33,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test-report', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--release-version', choices=('0.2.0', '0.2.1'), default=RELEASE_VERSION)
+    parser.add_argument('--release-version', choices=('0.2.0', '0.2.1', '0.2.2'), default=RELEASE_VERSION)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     suite = json.loads(args.test_report.read_text())
-    if not (suite['passed'] >= (1143 if args.release_version == '0.2.1' else 1120) and suite['registered'] == suite['passed'] and
+    if not (suite['passed'] >= {'0.2.0': 1120, '0.2.1': 1143, '0.2.2': 1150}[args.release_version] and suite['registered'] == suite['passed'] and
             suite['failed'] == 0 and suite.get('skipped', 0) == 0):
         raise ValueError('The previous and new usability regression groups must pass.')
     app = root/'src/ATIVBatteryGuard.App'
@@ -59,7 +59,7 @@ def main():
     guide_name = 'RELEASE_' + args.release_version.replace('.', '') + '_USER_STEPS.txt'
     guide = (root/guide_name).read_bytes()
     info = {
-        'schemaVersion': 1, 'dateKorea': '2026-11-25' if args.release_version == '0.2.1' else '2026-11-10',
+        'schemaVersion': 1, 'dateKorea': '2026-11-10' if args.release_version == '0.2.0' else '2026-11-25',
         'application': 'ATIV Battery Guard',
         'releaseVersion': args.release_version, 'guiVersionResource': version,
         'target': 'Windows10x64/.NETFramework4.8/940X3G-930X3G/P05ACJ',
@@ -88,7 +88,12 @@ def main():
         'chartUnknownNoBatteryReadErrorAndGapsBreakSegments': True,
         'chartAxis': 'Elapsed seconds horizontally and observed battery percentage from 0 to 100 vertically.',
         'chartHoverUsesOnlyActualObservedPoints': True,
-        'chartKeyboardObservedPointNavigation': args.release_version == '0.2.1',
+        'chartKeyboardObservedPointNavigation': args.release_version in ('0.2.1', '0.2.2'),
+        'chartMouseClickFocusAndSelection': args.release_version == '0.2.2',
+        'chartMouseSelectionWindowsRuntimeTested': False,
+        'previous021UserConfirmedTabSampleInspection': args.release_version == '0.2.2',
+        'observationFinalStatusCanBeSavedOnceWithoutNewRows': args.release_version == '0.2.2',
+        'observationTerminalReasonVisible': args.release_version == '0.2.2',
         'chartKeyboardWindowsRuntimeTested': False,
         'chartStopPreservesHistoryAndClearResets': True,
         'chartHiddenWhileMockActive': True,

@@ -73,6 +73,7 @@ namespace ATIVBatteryGuard.Core.Services
         private BatteryObservationSessionStatus status;
 
         public BatteryObservationSessionStatus Status { get { lock (sync) return status; } }
+        public string StatusDescription { get { lock (sync) return StatusText(status); } }
         public bool IsRecording { get { lock (sync) return status == BatteryObservationSessionStatus.Recording; } }
         public int SampleCount { get { lock (sync) return samples.Count; } }
         public int GapCount { get { lock (sync) return gapCount; } }

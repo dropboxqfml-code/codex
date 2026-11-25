@@ -59,6 +59,8 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private int savedObservationSamples = -1;
 
+		private BatteryObservationSessionStatus savedObservationStatus;
+
 		private string observationSaveStatusText = "저장은 ‘관찰 TXT 저장’을 누를 때만 합니다. 저장 폴더를 바로 열어 새 파일을 확인할 수 있습니다.";
 
 		private bool observationSaveFailed;
@@ -301,6 +303,8 @@ namespace ATIVBatteryGuard.ViewModels
 		public bool ObservationGraphVisible => !IsMockMode && observationGraph.Status != BatteryObservationSessionStatus.NotStarted;
 
 		public bool ObservationActive => observation.IsRecording;
+
+		public string ObservationStatusText => observation.StatusDescription;
 
 		public int ObservationSampleCount => observation.SampleCount;
 
@@ -1216,14 +1220,19 @@ namespace ATIVBatteryGuard.ViewModels
 		private void SaveBatteryObservation()
 		{
 			if (!CanSaveBatteryObservation()) return;
+			long session = observationSession;
+			int sampleCount = observation.SampleCount;
+			BatteryObservationSessionStatus status = observation.Status;
 			try
 			{
-				string message = interaction.SaveBatteryObservation(observation.ExportText());
+				string text = observation.ExportText();
+				string message = interaction.SaveBatteryObservation(text);
 				if (string.IsNullOrWhiteSpace(message)) throw new InvalidOperationException();
-				savedObservationSession = observationSession;
-				savedObservationSamples = observation.SampleCount;
+				savedObservationSession = session;
+				savedObservationSamples = sampleCount;
+				savedObservationStatus = status;
 				observationSaveFailed = false;
-				observationSaveStatusText = message + " 새 샘플이 추가되기 전에는 중복 저장하지 않습니다.";
+				observationSaveStatusText = message + " 기록 수나 관찰 상태가 바뀌면 다시 저장할 수 있습니다.";
 				StatusMessage = observationSaveStatusText;
 			}
 			catch
@@ -1238,7 +1247,8 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private bool CanSaveBatteryObservation()
 			=> !disposed && observation.CanExport &&
-				(savedObservationSession != observationSession || savedObservationSamples != observation.SampleCount);
+				(savedObservationSession != observationSession || savedObservationSamples != observation.SampleCount ||
+				 savedObservationStatus != observation.Status);
 
 		private void NotifyBatteryObservation()
 		{
@@ -1247,6 +1257,7 @@ namespace ATIVBatteryGuard.ViewModels
 			Changed("ObservationGraphVisible");
 			Changed("ObservationText");
 			Changed("ObservationActive");
+			Changed("ObservationStatusText");
 			Changed("ObservationSampleCount");
 			Changed("ObservationGapCount");
 			Changed("ObservationSaveStatusText");

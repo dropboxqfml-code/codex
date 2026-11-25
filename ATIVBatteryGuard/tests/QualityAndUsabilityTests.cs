@@ -205,6 +205,44 @@ internal static partial class Program
             }
         });
 
+        Add("recent refresh ignores transient selection clearing caused by a two-way items-source binding", () =>
+        {
+            using (var f = new Fixture())
+            {
+                var notes = new ObservationNoteStore(f.DirectoryPath); ConfigureNotes(f, notes);
+                var history = new RecentObservationStore(f.DirectoryPath);
+                var record = NoteRecord(Path.Combine(f.DirectoryPath, "selected.txt")); history.Record(record.SourcePath, record);
+                f.Interaction.RecentReader = () => history.Load().Select(e => e.WithNote(notes.Load(e.NoteKey))).ToList().AsReadOnly();
+                f.Interaction.RecentOpener = e => record;
+                using (var vm = f.ViewModel())
+                {
+                    vm.SelectedRecentObservation = vm.RecentObservations[0];
+                    int sourceChanges = 0;
+                    vm.PropertyChanged += (sender, args) => {
+                        if (args.PropertyName == "RecentObservations")
+                        {
+                            sourceChanges++;
+                            // WPF Selector clears SelectedItem when ItemsSource is replaced.
+                            vm.SelectedRecentObservation = null;
+                        }
+                    };
+                    vm.OpenRecentObservationCommand.Execute(null);
+                    Check(vm.SelectedRecentObservation != null && vm.SelectedRecentObservation.Path == record.SourcePath,
+                        "two-way items-source update erased selected path");
+                    vm.SavedObservationNote.Text = "선택 유지 확인"; vm.SavedObservationNote.SaveCommand.Execute(null);
+                    Check(vm.SelectedRecentObservation != null && vm.SelectedRecentObservation.NotePreview.Contains("선택 유지 확인"),
+                        "memo refresh lost selection or preview");
+                    Check(sourceChanges >= 2 && vm.OpenRecentObservationCommand.CanExecute(null), "selection not restored after refresh");
+                    vm.SelectedRecentObservation = null;
+                    Check(vm.SelectedRecentObservation == null && !vm.OpenRecentObservationCommand.CanExecute(null), "explicit deselection outside refresh blocked");
+                    vm.SelectedRecentObservation = vm.RecentObservations[0];
+                    f.Interaction.RecentReader = () => Array.AsReadOnly(new RecentObservationEntry[0]);
+                    vm.SavedObservationNote.Text = "목록 제거 확인"; vm.SavedObservationNote.SaveCommand.Execute(null);
+                    Check(vm.SelectedRecentObservation == null && !vm.OpenRecentObservationCommand.CanExecute(null), "removed item remained selected");
+                }
+            }
+        });
+
         Add("memo saved empty modified and reverted states stay clear with normalized Korean multiline drafts", () =>
         {
             using (var f = new Fixture())

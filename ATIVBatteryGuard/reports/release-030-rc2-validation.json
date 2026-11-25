@@ -1,0 +1,119 @@
+{
+  "baseCommit": "d705c9c43be84c94ad6374b3559776756775502b",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.3.0-rc.2",
+  "stage": "validation-in-progress",
+  "final030ReleaseApproved": false,
+  "rc1FieldAssessment": "field-030-rc1/assessment.json",
+  "rc1NativeGuiPassed": false,
+  "rc1GuiFailure": "RECENT_SELECTION_NOT_PRESERVED",
+  "rc1UserManualReportRetained": true,
+  "rc1UserReportedDefenderNoIssues": true,
+  "rc1DefenderMachineEvidenceSupplied": false,
+  "portableTests": {
+    "passed": 1252,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1252,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newSelectionReentryRegressionGroups": 1,
+  "reproductionBeforeFix": {
+    "passed": 1251,
+    "failed": 1,
+    "skipped": 0,
+    "registered": 1252,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "signedReleaseGateRegressions": {
+    "passed": 6,
+    "failed": 0
+  },
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48ValidationToolBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "applicationSourceChangesComparedToRc1": [
+    "src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs",
+    "src/ATIVBatteryGuard.Core/Models/ApplicationRelease.cs"
+  ],
+  "appHelperClosureSourceCount": 207,
+  "allOtherAppHelperClosureSourcesByteIdenticalToRc1": true,
+  "xamlAndHardwareControlSourcesUnchanged": true,
+  "nativeGuiFailureAssertionRetained": true,
+  "candidateProgramBytesMatchValidationKit": true,
+  "validationManifestMatchesCandidate": true,
+  "zipCrcAndEveryInternalHashVerified": true,
+  "guiAndCheckerProductVersion": "0.3.0-rc.2",
+  "ordinaryGuiHelperAndCheckerAsInvoker": true,
+  "validationToolNetworkUacHelperOrPolicyChanges": false,
+  "newCandidateWindowsGuiToolExecuted": false,
+  "newCandidateWindowsDefenderScanExecuted": false,
+  "authenticodeSigned": false,
+  "firstLaunchWarningTypeDetermined": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "previousHardwareChargeRestrictionDisableAndRestartEvidenceRetained": true,
+  "newHardwareTrialsRequired": false,
+  "nextUserAction": "Run RC2 automatic validation only and provide the two new JSON results.",
+  "package": {
+    "file": "ATIVBatteryGuard-0.3.0-rc.2-WIN10-X64.zip",
+    "bytes": 316016,
+    "sha256": "913af094e552113813f97fe483fa6af37648c4f6473723eeacaadf37045b42ab",
+    "entries": 9,
+    "sourceFileCount": 207,
+    "productSourceFingerprintSha256": "ebfa10658ccd42d482d1d26dd799e57af696f5e11e9be6a02398b8779d5bc18f",
+    "releaseVersion": "0.3.0-rc.2",
+    "guiVersionResource": {
+      "fileVersion": "0.3.0.0",
+      "productVersion": "0.3.0-rc.2"
+    }
+  },
+  "validationKit": {
+    "file": "ATIVBatteryGuard-0.3.0-rc.2-VALIDATION-KIT.zip",
+    "bytes": 331213,
+    "sha256": "d2030f031f1e630d3554a8431436eecaa7460e8dcf44bde515c4f14d3d948417",
+    "entries": 17,
+    "releaseVersion": "0.3.0-rc.2",
+    "candidateZipSha256": "913af094e552113813f97fe483fa6af37648c4f6473723eeacaadf37045b42ab",
+    "validatorSourceFileCount": 7,
+    "validatorSourceFingerprintSha256": "980f942c865f10e97e11badf995aa398138b28622c17cb7acc63f14f5300a89c"
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "95e9f73321e246cd4db41039fa28d50ef7361353449d7d7433441d40d5b56d67"
+    },
+    "portable-tests.log": {
+      "bytes": 114787,
+      "sha256": "c350e90bb05207a1e3fa49eaa609d0d5c23e3d85571ad1e3cb8afbd0dcaaab4a"
+    },
+    "release-gates.log": {
+      "bytes": 828,
+      "sha256": "20b17053d2e372d0957d9a1ea48f182fed0fe085a27a6e449dd5f9d8bd02a841"
+    },
+    "repro-build.log": {
+      "bytes": 206,
+      "sha256": "dc8c91bee3ca67b8bb24724f4cd19b00cc437e8177e905a84de9a8ef3205aa31"
+    },
+    "repro-tests.log": {
+      "bytes": 114837,
+      "sha256": "0df6f270d6696c008fbc7e415610d85f14e00b51f3c9b27c0a643f51cec7bd48"
+    },
+    "validator-build.log": {
+      "bytes": 247,
+      "sha256": "07d97fc5154e47ece5b9e3105bcd4afc74b7536bb0fea3fbdfc553bc4622823f"
+    },
+    "wpf-build.log": {
+      "bytes": 2034,
+      "sha256": "d4c15d0bc0e015f031664868ba113effe13eff0a8dcde915145661222e4c9d26"
+    }
+  }
+}

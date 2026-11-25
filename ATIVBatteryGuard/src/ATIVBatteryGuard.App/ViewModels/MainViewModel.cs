@@ -64,6 +64,7 @@ namespace ATIVBatteryGuard.ViewModels
         private IReadOnlyList<RecentObservationEntry> recentObservations = Array.AsReadOnly(new RecentObservationEntry[0]);
         private RecentObservationEntry selectedRecentObservation;
         private string recentObservationNotice = "";
+        private bool refreshingRecentObservations;
 
 		private readonly Stopwatch observationClock = new Stopwatch();
 
@@ -316,7 +317,7 @@ namespace ATIVBatteryGuard.ViewModels
             get { return selectedRecentObservation; }
             set
             {
-                if (disposed) return;
+                if (disposed || refreshingRecentObservations) return;
                 selectedRecentObservation = value;
                 Changed();
                 OpenRecentObservationCommand?.Refresh();
@@ -1305,25 +1306,34 @@ namespace ATIVBatteryGuard.ViewModels
 
         private void RefreshRecentObservations()
         {
+            if (disposed || refreshingRecentObservations) return;
+            refreshingRecentObservations = true;
             try
             {
-                var loaded = interaction.ReadRecentObservations();
-                if (loaded == null) throw new InvalidOperationException();
-                string selectedPath = selectedRecentObservation?.Path;
-                recentObservations = loaded;
-                selectedRecentObservation = selectedPath == null ? null : loaded.FirstOrDefault(entry =>
-                    string.Equals(entry.Path, selectedPath, Environment.OSVersion.Platform == PlatformID.Win32NT
-                        ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
-                recentObservationNotice = interaction.RecentObservationNotice;
+                try
+                {
+                    var loaded = interaction.ReadRecentObservations();
+                    if (loaded == null) throw new InvalidOperationException();
+                    if (disposed) return;
+                    string selectedPath = selectedRecentObservation?.Path;
+                    recentObservations = loaded;
+                    selectedRecentObservation = selectedPath == null ? null : loaded.FirstOrDefault(entry =>
+                        string.Equals(entry.Path, selectedPath, Environment.OSVersion.Platform == PlatformID.Win32NT
+                            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
+                    recentObservationNotice = interaction.RecentObservationNotice;
+                }
+                catch
+                {
+                    recentObservationNotice = "최근 기록 목록을 읽지 못했습니다. 관찰 TXT 열기로 파일을 선택할 수 있습니다.";
+                }
+                // ItemsSource replacement can synchronously clear SelectedItem through the
+                // two-way binding. Keep the intended selection until both target updates finish.
+                Changed("RecentObservations");
+                Changed("SelectedRecentObservation");
+                Changed("RecentObservationNotice");
+                OpenRecentObservationCommand?.Refresh();
             }
-            catch
-            {
-                recentObservationNotice = "최근 기록 목록을 읽지 못했습니다. 관찰 TXT 열기로 파일을 선택할 수 있습니다.";
-            }
-            Changed("RecentObservations");
-            Changed("SelectedRecentObservation");
-            Changed("RecentObservationNotice");
-            OpenRecentObservationCommand?.Refresh();
+            finally { refreshingRecentObservations = false; }
         }
 
         private void OpenSavedObservationFile(RecentObservationEntry recent, bool comparison = false, bool importBundle = false)

@@ -1,0 +1,42 @@
+{
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.3.0-rc.1",
+  "sourceFingerprintMatchesReleasedRc1": true,
+  "uploadedFiles": [
+    {
+      "file": "gui-671a3c94e3de40859f930fc57fa3ae2e.json",
+      "bytes": 207,
+      "sha256": "59b965acd9b4e936f8f4f963d61fbe5c842722a8a90078e29836df58fcf90d02"
+    },
+    {
+      "file": "validation-6fb7b68f676345bbbb44a501d532b3dd.json",
+      "bytes": 884,
+      "sha256": "93ebdef96ac5d90ceee5d57f6bbeb89c62c58c7893e1ec92c2dd6287e7623aa6"
+    }
+  ],
+  "embeddedGuiMatchesStandalone": true,
+  "filesVerifiedBeforeAndAfter": true,
+  "guiPassed": false,
+  "guiFailureCodes": [
+    "RECENT_SELECTION_NOT_PRESERVED"
+  ],
+  "bindingErrors": 0,
+  "hardwareWritesPerformed": false,
+  "nativePowerStatus": "not-run",
+  "nativeWmiStatus": "not-run",
+  "manualUserReport": {
+    "previousSteps123NoMajorIssue": true,
+    "currentScaleTextAndBordersNormal": true,
+    "windowResizeMouseClicksWork": true,
+    "defenderNoIssuesReported": true,
+    "defenderMachineEvidenceSupplied": false,
+    "firstLaunchWarningObserved": true,
+    "exactWarningTypeKnown": false
+  },
+  "automatedWrapperDefenderScanExecuted": false,
+  "automatedWrapperManualUserFlowsConfirmed": false,
+  "authenticodeSigned": false,
+  "finalReleaseApproved": false,
+  "nextCandidate": "0.3.0-rc.2",
+  "nextAction": "Rerun only automatic validation with RC2; retain completed manual observations."
+}

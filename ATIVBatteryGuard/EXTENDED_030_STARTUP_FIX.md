@@ -21,3 +21,7 @@ WPF/제품 타입을 사용하는 시작 메서드는 NoInlining으로 분리하
 v2의 실제 Windows 시작과 검사 실행은 이 Linux에서 확인하지 않았습니다. 사용자에게 [v2 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.2-EXTENDED-CHECKS-v2.zip)을 새 폴더에 풀고 빠른추가검사.cmd만 먼저 실행하도록 안내합니다. 실패하면 startup JSON, 실행됐다면 startup과 extended JSON을 받습니다. 시작 실패 중에는 20분 검사를 반복하지 않습니다. 기존 프로그램 GUI/충전 시험은 반복하지 않습니다.
 
 [새 검증 기록](reports/extended-030-v2-validation.json) · [실행 순서](EXTENDED_030_USER_STEPS.txt)
+
+## 현장 확인 수신
+
+이후 [사용자 JSON4개](FIELD_EXTENDED_030_V2_RESULT.md)에서 v2 빠른/20분 시작과 본 검사 종료0·통과를 확인했습니다. 이전 시작 실패는 이번 두 실행에서 발생하지 않았습니다. 제품/ZIP 변경 없이 별도 수신 기록을 추가했으며 같은 검사를 반복하지 않습니다. v1의 원래 정확한 예외는 여전히 로그로 확인되지 않았습니다.

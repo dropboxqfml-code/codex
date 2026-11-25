@@ -4,6 +4,8 @@
 
 [추가 검사 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.2-EXTENDED-CHECKS-v2.zip) · [실행 순서](EXTENDED_030_USER_STEPS.txt) · [구현](validation/ATIVBatteryGuard.ExtendedCheck/Runner.cs) · [클라우드 검사 기록](reports/extended-030-v2-validation.json)
 
+현재 상태(2026-11-25): [사용자 Windows 결과](FIELD_EXTENDED_030_V2_RESULT.md)의 빠른30회와20분533회가 모두 통과했습니다. 시작 실패가 이번 두 실행에서 발생하지 않았으며 같은 검사를 반복하지 않습니다. 아래 클라우드 미실행 설명은 그대로 유효하고 사용자 장치 실행 근거를 별도로 연결합니다.
+
 ## 자동화한 항목
 
 | 항목 | 구현한 검사 |
@@ -47,4 +49,4 @@ dotnet run --project tests/ATIVBatteryGuard.PortableTests.csproj -c Release -- -
 python scripts/package_extended_030.py --candidate-zip ../downloads/ATIVBatteryGuard-0.3.0-rc.2-WIN10-X64.zip --test-report /tmp/extended-tests.json --output /tmp/extended-package
 ```
 
-사용자는 v1의 두 모드가 시작 안내 오류로 실행되지 않았다고 보고했습니다. 기존 v1 자료는 보존하고 [시작 구조 수정과 진단](EXTENDED_030_STARTUP_FIX.md)을 추가했습니다. 다음은 사용자 Windows에서 v2 빠른 검사 결과를 받는 것입니다. 시작이 안 되면 20분 검사를 반복하지 않습니다. 이미 통과한 기존 검증시작.cmd와 충전 시험은 반복하지 않습니다. 이후 실제 IME 조합 확인과 서명 배포 준비를 이어갑니다.
+사용자는 v1의 두 모드가 시작 안내 오류로 실행되지 않았다고 보고했습니다. 기존 v1 자료는 보존하고 [시작 구조 수정과 진단](EXTENDED_030_STARTUP_FIX.md)을 추가했습니다. 이후 사용자 Windows에서 v2 빠른/20분 두 검사 모두 통과했습니다. 같은 검사는 반복하지 않고 실제 IME 조합과 서명 배포 근거를 보완합니다. 이미 통과한 기존 검증시작.cmd와 충전 시험은 반복하지 않습니다. 이후 실제 IME 조합 확인과 서명 배포 준비를 이어갑니다.

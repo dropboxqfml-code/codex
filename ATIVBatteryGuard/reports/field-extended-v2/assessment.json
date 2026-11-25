@@ -1,0 +1,145 @@
+{
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.3.0-rc.2",
+  "toolRevision": "extended-v2",
+  "candidateCommit": "ac833c1de8028322ad0e7f0548cad34c6129bc52",
+  "uploadedFiles": [
+    {
+      "file": "startup-56a7f7d68b7b4b3287d9f9592c5bf5fe.json",
+      "bytes": 486,
+      "sha256": "3c4daa1a18f9fa9fe36fa5ba6dd956abf2fdd6ef1ed36edca47376c2bc8eb50a"
+    },
+    {
+      "file": "extended-4a5e2ba5678448dca0330a3e4106e472.json",
+      "bytes": 1601,
+      "sha256": "cdf46f3fbfa36e8a68eda425c34e796178642b259a73ab744d6980dc20ab84e4"
+    },
+    {
+      "file": "extended-d4a4f4fb761942a5a93b8727bc843abc.json",
+      "bytes": 8652,
+      "sha256": "9e5347ce8aeb6182f69f93617bdcb00430a9e9b1eeaba16a2d920679c9c2bebf"
+    },
+    {
+      "file": "startup-4043443a94c8444e9430132f8ee217ab.json",
+      "bytes": 486,
+      "sha256": "4d6a1b30b9b2518de3f68a7ddb7ab6286f91f2bc7d84d877c9432f569a394ccc"
+    }
+  ],
+  "sourceFingerprintMatchesReleasedRc2": true,
+  "sourceFingerprintSha256": "ebfa10658ccd42d482d1d26dd799e57af696f5e11e9be6a02398b8779d5bc18f",
+  "allUploadedReportsConsistent": true,
+  "runs": [
+    {
+      "mode": "quick-30-cycles",
+      "startupFile": "startup-56a7f7d68b7b4b3287d9f9592c5bf5fe.json",
+      "extendedFile": "extended-4a5e2ba5678448dca0330a3e4106e472.json",
+      "pairingBasis": "Unique mode and containing UTC timestamps; no shared run-ID field exists.",
+      "startupPassed": true,
+      "validationExitCode": 0,
+      "automatedChecksPassed": true,
+      "completedCycles": 30,
+      "repetitionSeconds": 4.1346299,
+      "maximumCycleGapSeconds": 0.2014806,
+      "sampleCount": 2,
+      "metrics": {
+        "PrivateBytes": {
+          "first": 117186560,
+          "last": 114171904,
+          "minimum": 114171904,
+          "maximum": 117186560
+        },
+        "WorkingSetBytes": {
+          "first": 128528384,
+          "last": 127225856,
+          "minimum": 127225856,
+          "maximum": 128528384
+        },
+        "ManagedBytes": {
+          "first": 6900048,
+          "last": 6672192,
+          "minimum": 6672192,
+          "maximum": 6900048
+        },
+        "HandleCount": {
+          "first": 508,
+          "last": 533,
+          "minimum": 508,
+          "maximum": 533
+        },
+        "DispatcherRoundTripMilliseconds": {
+          "first": 1.2696,
+          "last": 0.09960000000000001,
+          "minimum": 0.09960000000000001,
+          "maximum": 1.2696
+        }
+      },
+      "startedKorea": "2026-11-25T20:16:28.373099+09:00",
+      "completedKorea": "2026-11-25T20:16:35.691960+09:00"
+    },
+    {
+      "mode": "soak-20-minutes",
+      "startupFile": "startup-4043443a94c8444e9430132f8ee217ab.json",
+      "extendedFile": "extended-d4a4f4fb761942a5a93b8727bc843abc.json",
+      "pairingBasis": "Unique mode and containing UTC timestamps; no shared run-ID field exists.",
+      "startupPassed": true,
+      "validationExitCode": 0,
+      "automatedChecksPassed": true,
+      "completedCycles": 533,
+      "repetitionSeconds": 1201.9095402,
+      "maximumCycleGapSeconds": 2.5790693999999803,
+      "sampleCount": 40,
+      "metrics": {
+        "PrivateBytes": {
+          "first": 121577472,
+          "last": 116678656,
+          "minimum": 111267840,
+          "maximum": 121577472
+        },
+        "WorkingSetBytes": {
+          "first": 132521984,
+          "last": 127303680,
+          "minimum": 124592128,
+          "maximum": 132521984
+        },
+        "ManagedBytes": {
+          "first": 8187880,
+          "last": 4482816,
+          "minimum": 4475360,
+          "maximum": 8187880
+        },
+        "HandleCount": {
+          "first": 501,
+          "last": 516,
+          "minimum": 501,
+          "maximum": 528
+        },
+        "DispatcherRoundTripMilliseconds": {
+          "first": 1.2099,
+          "last": 0.2495,
+          "minimum": 0.06620000000000001,
+          "maximum": 1.2099
+        }
+      },
+      "startedKorea": "2026-11-25T20:17:52.729900+09:00",
+      "completedKorea": "2026-11-25T20:37:57.487210+09:00"
+    }
+  ],
+  "v2StartupFailureNotObservedInBothRuns": true,
+  "bindingErrors": 0,
+  "allSixScenarioFlagsPassedInBothRuns": true,
+  "fileChecksBeforeAndAfterPassedInBothRuns": true,
+  "cleanupSucceededInBothRuns": true,
+  "automatedDialogCountPerRun": 10,
+  "hardwareWritesPerformed": false,
+  "batteryOrOemQueriesPerformed": false,
+  "memoryInterpretation": "40 soak samples remained within observed bounds; ending private, working-set and managed values were lower than first values. Handle count 501 to 516, maximum 528. This is no proof of leak absence or long-term stability.",
+  "imeCompositionEngineTested": false,
+  "nativeFilePickersAutomated": false,
+  "separateProcessContentionTested": false,
+  "newDefenderScanEvidence": false,
+  "authenticodeSigningPerformed": false,
+  "finalReleaseApproved": false,
+  "programOrPackagesChanged": false,
+  "cloudWindowsTestRerun": false,
+  "nextAction": "No repeat of quick or 20-minute checks. Confirm actual IME composition separately; finish signing and exact final-artifact security/release evidence."
+}

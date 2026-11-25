@@ -460,6 +460,7 @@ internal static partial class Program
         RegisterObservationBundleTests();
         RegisterQualityAndUsabilityTests();
         RegisterFinalUsageValidationTests();
+        RegisterExtendedValidationPolicyTests();
         RegisterBeginnerExperienceTests();
         RegisterReleaseValidationEvidenceTests();
         RegisterProtectionPresentationAndGraphViewModelTests();

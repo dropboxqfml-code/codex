@@ -36,6 +36,8 @@
     <Compile Include="ObservationBundleTests.cs" />
     <Compile Include="QualityAndUsabilityTests.cs" />
     <Compile Include="FinalUsageValidationTests.cs" />
+    <Compile Include="ExtendedValidationPolicyTests.cs" />
+    <Compile Include="../validation/ATIVBatteryGuard.ExtendedCheck/ExtendedPolicy.cs" Link="ExtendedPolicy.cs" />
     <Compile Include="BeginnerExperienceTests.cs" />
     <Compile Include="ReleaseValidationEvidenceTests.cs" />
     <EmbeddedResource Include="../validation/samples/sample-a.ativrecord" LogicalName="Validation.SampleA.ativrecord" />

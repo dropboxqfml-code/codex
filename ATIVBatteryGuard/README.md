@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 남은 실사용 검증 자동화 / 2026-11-25 한국 시간:** [추가 자동 검사 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.2-EXTENDED-CHECKS-v1.zip) · [실행 순서](EXTENDED_030_USER_STEPS.txt) · [범위·코드·검증 근거](EXTENDED_030_AUTOMATION.md). 기존 RC2를 보존하고 실제 WPF 화면/저장 확인 대화상자·취소·두 창 충돌·잠금 실패 재시도와 빠른30회/20분 반복 검사 도구를 추가했습니다. 1258회귀와 별도 WPF 도구 빌드가 통과했습니다. 새 도구의 실제 Windows 실행은 아직 확인하지 않았고, 실제 IME 조합·파일 선택 대화상자·서명/최종 출시를 자동 통과로 표시하지 않습니다. 아래는 이전 기록입니다.
+
 **최신 — 0.3.0 남은 실사용 검증 준비 / 2026-11-25 한국 시간:** [확인 순서·결과 양식 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.2-MANUAL-CHECKS.zip) · [확인 순서](VALIDATION_030_REMAINING_USER_STEPS.txt) · [서명 배포 준비](RELEASE_030_SIGNING_READINESS.md) · [검사 결과](reports/final-030-readiness-validation.json). 프로그램은 Windows 자동 검사가 통과한 RC2 그대로입니다. 두 화면의 메모 충돌·잠금 실패·250회 A/B 편집기 수명 검사를 추가해 1255회귀와 서명/보안 증거 판정9개가 통과했습니다. 실제 IME 조합·대화상자·장시간 사용은 짧은 순서로 확인하며, 같은 자동 검사와 충전 시험은 반복하지 않습니다. 서명 검사 대상에 helper/WMI도 포함했고 실제 서명/Windows 보안 실행은 남아 있습니다. 아래는 이전 기록입니다.
 
 **최신 — RC2 Windows 자동 검사 통과 / 2026-11-25 한국 시간:** [사용자 결과와 확인 범위](FIELD_030_RC2_RESULT.md) · [검증 현황](VALIDATION_030.md). 전달된 RC2 JSON에서 파일 전후 확인·GUI 검사와 최근 선택 유지 검사가 통과했습니다. 종료0/오류·바인딩 오류0, 배터리 available/WMI complete, 하드웨어 쓰기 false입니다. 같은 자동 검사는 반복할 필요가 없습니다. 남은 IME 조합·취소/충돌·장시간 사용과 서명 배포를 확인하며 최종 0.3.0 완료로 확대하지 않습니다. 프로그램과 ZIP은 변경하지 않았습니다. 아래는 이전 기록입니다.

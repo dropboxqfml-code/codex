@@ -1,0 +1,96 @@
+{
+  "dateKorea": "2026-11-25",
+  "baseCommit": "1b0becc44a5d51124a4301b4ab0c4e42951bfa8d",
+  "releaseVersion": "0.3.0-rc.2",
+  "toolRevision": "extended-v1",
+  "stage": "new-windows-tool-execution-pending",
+  "finalReleaseApproved": false,
+  "productUnchanged": true,
+  "productSourceFileCount": 207,
+  "productSourceFingerprintSha256": "ebfa10658ccd42d482d1d26dd799e57af696f5e11e9be6a02398b8779d5bc18f",
+  "allSixProductProgramBytesMatchReleasedRc2": true,
+  "oldRc2ProgramAndValidationKitZipHashesUnchanged": true,
+  "previousRc2WindowsGuiPassRetained": true,
+  "newExtendedWindowsToolExecuted": false,
+  "portableTests": {
+    "passed": 1258,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1258,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newPurePolicyRegressionGroups": 3,
+  "portableBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "extendedNet48WpfBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "toolVersionResource": {
+    "fileVersion": "0.3.0.0",
+    "productVersion": "0.3.0-rc.2"
+  },
+  "toolSha256": "eed2ee675a0f92e4a8108f2704e037634aed74566de3edd504ab318e3dbb426c",
+  "toolAsInvoker": true,
+  "toolDpiSettingsAndConfigMatchProduct": true,
+  "productResourcesAndViewModelsReferencedRatherThanCopied": true,
+  "productNormalStartupAndPollingInvoked": false,
+  "implementedScenarios": [
+    "Committed Korean TextBox binding save reopen",
+    "Owned native save/discard/cancel dialogs and hosted window-close guard",
+    "A/B cancel preserves drafts",
+    "Two windows in one harness process: stale save and close blocked, backup, reload cancel/discard",
+    "Real file lease failure and retry",
+    "30-cycle quick or 20-minute repeat with memory, handles and dispatcher samples",
+    "Before and after program hashes, cleanup and fail-closed outcomes"
+  ],
+  "globalKeyboardOrPointerInput": false,
+  "otherAppWindowsEnumerated": false,
+  "physicalPointerHitTesting": false,
+  "actualImeCompositionEngineTested": false,
+  "nativeFilePickersAutomated": false,
+  "separateProcessContentionTested": false,
+  "leakAbsenceCertified": false,
+  "memoryVerdict": "observations-only",
+  "newWindowsPowerShellDefenderOrSigningExecuted": false,
+  "newOemOrFirmwareActions": 0,
+  "staticProcessLaunchAndNamedHardwareConstructionPatternHits": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.3.0-rc.2-EXTENDED-CHECKS-v1.zip",
+    "bytes": 342939,
+    "sha256": "2854dda4987741f2bfa1f96fe4a6b59ae74623dcd83171fe9a2f1b7a9ded91c5",
+    "entries": 18,
+    "releaseVersion": "0.3.0-rc.2",
+    "toolSourceFileCount": 10,
+    "toolSourceFingerprintSha256": "595e51bcf7eb99b203ccfbf17a90e7b064dca5001b25f86d01f493af4d8e98a1",
+    "productSourceFingerprintSha256": "ebfa10658ccd42d482d1d26dd799e57af696f5e11e9be6a02398b8779d5bc18f"
+  },
+  "zipCrcAndEveryInternalHashVerified": true,
+  "embeddedFixtureHashes": {
+    "sample-a.ativrecord": "9d70e7bdc7a95288ea3a34bd9ba6635229384f3ba07cb90aae41e2797ff4fc87",
+    "sample-b.ativrecord": "77025a1762a7dd0688b0e2e13a809708f355ad1c37dad551d4f068e651a9f8fb"
+  },
+  "oldOriginalGuideRetainedAndNormalizedSourceHashMatches": true,
+  "cmdPreservesToolExitCode": true,
+  "logs": {
+    "build.log": {
+      "bytes": 241,
+      "sha256": "8bfa3efbfe6b01c10af070fde944f065ba2cde488af5ce5279684a976ec02d75"
+    },
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "71d0f5bdb6062abdbbe543e0faa3185cb5f04956b6627b25bba4adc9b4947471"
+    },
+    "portable-tests.log": {
+      "bytes": 115397,
+      "sha256": "5fa63a23b98d68a19e60642825814f0395a4e0346d7025809809531d0d55902b"
+    },
+    "restore.log": {
+      "bytes": 174,
+      "sha256": "3ebd094977c9ff7c7526bd0c0fe30375009182e50fb80fe2cbc90c399c13ea2d"
+    }
+  },
+  "nextAction": "Run quick additional check; on pass run 20-minute repeat; provide each new extended JSON. Actual IME composition and release evidence remain separate."
+}

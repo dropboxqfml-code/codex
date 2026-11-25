@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 남은 실사용 검증 자동화 도구 v1 / 2026-11-25 한국 시간
+
+사용자가 남은 수동 검증을 위한 자동 코드를 요청했습니다. [구현 범위와 한계](EXTENDED_030_AUTOMATION.md), [실행 순서](EXTENDED_030_USER_STEPS.txt), [추가 검사 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.2-EXTENDED-CHECKS-v1.zip), [검증 기록](reports/extended-030-validation.json)을 먼저 읽습니다. 프로그램은 기존 RC2/e710446의207소스와6파일 그대로이며 별도의 net48 WPF 호스트/검사 도구만 추가했습니다.
+
+실제 RC2 리소스/MainWindow/ViewModel/저장소를 사용하고 확정 한글·줄바꿈 저장/재열기, 실제 MessageBox의 저장/취소/저장 없이 진행, X/A-B 취소, 두 창 충돌/초안 백업/다시 읽기, 실제 메모 잠금 실패 재시도와 빠른30회/20분 반복을 구현했습니다. 확인 대화상자는 현재 UI 스레드와 정확한 소유 창의 버튼만 조작합니다. 일반 앱 시작/폴링·실제 배터리/OEM·helper는 실행하지 않습니다. 전역 입력/정책 변경/자동 전송도 없습니다.
+
+추가 정책 회귀3개 포함1258통과·실패/skip0, portable/별도 net48 WPF 도구 빌드 경고/오류0입니다. 기존 RC2 앱·검증 키트는 보존했고 새18항목 ZIP의 바이트/CRC/내부 SHA/버전/일반 권한을 검사했습니다. 실제 Windows에서 새 도구/20분 반복 실행은 미확인이며 기존 RC2 Windows GUI 통과와 혼동하지 않습니다.
+
+다음은 새 도구의 빠른추가검사.cmd → 통과하면20분반복검사.cmd 결과 JSON을 받는 것입니다. 기존 자동 검사/충전 시험을 반복하는 요청은 아닙니다. 확정 한글 주입은 실제 IME 조합 검사와 다르므로 ImeCompositionEngineTested=false를 유지합니다. 파일 선택 대화상자/독립 프로세스 경쟁/물리적 클릭도 이번 자동화 범위 밖입니다. 메모리/핸들/응답 수치는 관찰로 남기며 누수 부재를 자동 확정하지 않습니다. 서명·보안/최종 출시는 계속 미완료입니다.
+
 ## 최신 — 남은 실사용·서명 배포 검증 보강 / 2026-11-25 한국 시간
 
 [남은 확인 순서](VALIDATION_030_REMAINING_USER_STEPS.txt), [결과 양식](VALIDATION_030_REMAINING_RESPONSE.txt), [서명 배포 준비](RELEASE_030_SIGNING_READINESS.md), [새 검증 기록](reports/final-030-readiness-validation.json)을 먼저 읽습니다. 현재 프로그램은 사용자 Windows 자동 검사가 통과한 0.3.0-rc.2/e710446 그대로입니다. 앱/helper 207소스 지문·현재 빌드 바이트·기존 프로그램/검증 키트 ZIP 해시가 모두 일치하며 새 프로그램 버전을 만들지 않았습니다.

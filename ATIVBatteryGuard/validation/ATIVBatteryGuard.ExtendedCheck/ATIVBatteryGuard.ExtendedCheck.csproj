@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework><OutputType>Exe</OutputType>
+    <UseWPF>true</UseWPF><EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>ATIVBatteryGuard.ExtendedCheck</AssemblyName>
+    <PlatformTarget>x64</PlatformTarget><LangVersion>7.3</LangVersion>
+    <Version>0.3.0-rc.2</Version><FileVersion>0.3.0.0</FileVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AppConfig>../../src/ATIVBatteryGuard.App/app.config</AppConfig>
+    <StartupObject>ATIVBatteryGuard.ExtendedValidation.Program</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Load the unchanged RC2 product assemblies, not a duplicate ViewModel implementation. -->
+    <Reference Include="ATIVBatteryGuard"><HintPath>../../src/ATIVBatteryGuard.App/bin/Release/net48/ATIVBatteryGuard.exe</HintPath><Private>true</Private></Reference>
+    <Reference Include="ATIVBatteryGuard.Core"><HintPath>../../src/ATIVBatteryGuard.App/bin/Release/net48/ATIVBatteryGuard.Core.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="System.Runtime.Serialization" />
+    <Compile Include="../../src/ATIVBatteryGuard.Core/Storage/LocalJsonDocument.cs" Link="LocalJsonDocument.cs" />
+    <Compile Include="../ATIVBatteryGuard.ValidationCheck/ValidationEvidence.cs" Link="ValidationEvidence.cs" />
+    <EmbeddedResource Include="../samples/sample-a.ativrecord" LogicalName="Extended.SampleA" />
+    <EmbeddedResource Include="../samples/sample-b.ativrecord" LogicalName="Extended.SampleB" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

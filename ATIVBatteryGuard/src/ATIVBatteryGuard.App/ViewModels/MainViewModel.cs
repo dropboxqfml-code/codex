@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -55,6 +56,10 @@ namespace ATIVBatteryGuard.ViewModels
         private bool openingSavedObservation;
         private bool savedObservationOpenFailed;
         private string savedObservationOpenStatus = "";
+        private bool confirmingObservationLoss;
+        private IReadOnlyList<RecentObservationEntry> recentObservations = Array.AsReadOnly(new RecentObservationEntry[0]);
+        private RecentObservationEntry selectedRecentObservation;
+        private string recentObservationNotice = "";
 
 		private readonly Stopwatch observationClock = new Stopwatch();
 
@@ -298,6 +303,27 @@ namespace ATIVBatteryGuard.ViewModels
 		public RelayCommand ClearBatteryObservationCommand { get; }
 
 		public RelayCommand SaveBatteryObservationCommand { get; }
+
+        public RelayCommand OpenRecentObservationCommand { get; }
+        public IReadOnlyList<RecentObservationEntry> RecentObservations => recentObservations;
+        public string RecentObservationNotice => recentObservationNotice;
+        public RecentObservationEntry SelectedRecentObservation
+        {
+            get { return selectedRecentObservation; }
+            set
+            {
+                if (disposed) return;
+                selectedRecentObservation = value;
+                Changed();
+                OpenRecentObservationCommand?.Refresh();
+            }
+        }
+
+        public bool HasUnsavedObservation => !disposed && observation.CanExport &&
+            (CanSaveBatteryObservation() || observation.IsRecording);
+        public string ObservationPersistenceText => !observation.CanExport ? ""
+            : HasUnsavedObservation ? "기록을 바꾸거나 앱을 닫기 전에 저장 여부를 확인합니다."
+            : "현재 관찰 기록을 TXT로 저장했습니다.";
 
         public RelayCommand OpenSavedObservationCommand { get; }
         public RelayCommand CloseSavedObservationCommand { get; }
@@ -848,13 +874,15 @@ namespace ATIVBatteryGuard.ViewModels
 			ClearProtectionReviewCommand = new RelayCommand(ClearProtectionReview,
 				() => !mainViewModel.disposed);
 			StartBatteryObservationCommand = new RelayCommand(StartBatteryObservation,
-				() => !mainViewModel.disposed && !mainViewModel.IsMockMode && !mainViewModel.observation.IsRecording);
+				() => !mainViewModel.disposed && !mainViewModel.confirmingObservationLoss && !mainViewModel.IsMockMode && !mainViewModel.observation.IsRecording);
 			StopBatteryObservationCommand = new RelayCommand(StopBatteryObservation,
 				() => !mainViewModel.disposed && mainViewModel.observation.IsRecording);
 			ClearBatteryObservationCommand = new RelayCommand(ClearBatteryObservation,
-				() => !mainViewModel.disposed);
+				() => !mainViewModel.disposed && !mainViewModel.confirmingObservationLoss);
 			SaveBatteryObservationCommand = new RelayCommand(SaveBatteryObservation,
 				() => mainViewModel.CanSaveBatteryObservation());
+            OpenRecentObservationCommand = new RelayCommand(OpenRecentObservation,
+                () => !disposed && !openingSavedObservation && selectedRecentObservation != null);
             OpenSavedObservationCommand = new RelayCommand(OpenSavedObservation,
                 () => !disposed && !openingSavedObservation);
             CloseSavedObservationCommand = new RelayCommand(CloseSavedObservation,
@@ -867,6 +895,7 @@ namespace ATIVBatteryGuard.ViewModels
 				() => CanWriteManualProtection());
 			ManualSaveResultCommand = new RelayCommand(SaveManualProtectionResult,
 				() => !disposed && !manualProtectionBusy && manualReport != null && !ReferenceEquals(manualReport, savedManualReport));
+            RefreshRecentObservations();
 			log.Write("APP_STARTED");
 			log.Write(string.IsNullOrEmpty(settingsLoadResult.Warning) ? "SETTINGS_LOADED" : "SETTINGS_RECOVERED");
 			RefreshBattery();
@@ -1203,14 +1232,41 @@ namespace ATIVBatteryGuard.ViewModels
 			return "관련 정리는 끝났지만 보호 상태를 확인하지 못했습니다. 결과 TXT를 저장하고 보호 상태 확인을 직접 눌러 다시 읽으세요. 자동 재시도하지 않습니다.";
 		}
 
-        private void OpenSavedObservation()
+        private void OpenSavedObservation() { OpenSavedObservationFile(null); }
+
+        private void OpenRecentObservation()
+        {
+            if (selectedRecentObservation != null) OpenSavedObservationFile(selectedRecentObservation);
+        }
+
+        private void RefreshRecentObservations()
+        {
+            try
+            {
+                var loaded = interaction.ReadRecentObservations();
+                if (loaded == null) throw new InvalidOperationException();
+                recentObservations = loaded;
+                selectedRecentObservation = null;
+                recentObservationNotice = interaction.RecentObservationNotice;
+            }
+            catch
+            {
+                recentObservationNotice = "최근 기록 목록을 읽지 못했습니다. 관찰 TXT 열기로 파일을 선택할 수 있습니다.";
+            }
+            Changed("RecentObservations");
+            Changed("SelectedRecentObservation");
+            Changed("RecentObservationNotice");
+            OpenRecentObservationCommand?.Refresh();
+        }
+
+        private void OpenSavedObservationFile(RecentObservationEntry recent)
         {
             if (disposed || openingSavedObservation) return;
             openingSavedObservation = true;
             NotifySavedObservation();
             try
             {
-                SavedBatteryObservation loaded = interaction.OpenBatteryObservation();
+                SavedBatteryObservation loaded = recent == null ? interaction.OpenBatteryObservation() : interaction.OpenRecentObservation(recent);
                 if (disposed) return;
                 savedObservationOpenFailed = loaded != null && !loaded.Success;
                 if (loaded == null)
@@ -1221,6 +1277,7 @@ namespace ATIVBatteryGuard.ViewModels
                 {
                     savedObservation = loaded;
                     savedObservationOpenStatus = "저장된 관찰 기록을 열었습니다.";
+                    RefreshRecentObservations();
                 }
             }
             catch
@@ -1228,7 +1285,7 @@ namespace ATIVBatteryGuard.ViewModels
                 if (!disposed)
                 {
                     savedObservationOpenFailed = true;
-                    savedObservationOpenStatus = "파일을 읽지 못했습니다. 로컬 TXT 파일과 읽기 권한을 확인하세요.";
+                    savedObservationOpenStatus = "파일을 읽지 못했습니다. 파일의 이동·삭제 여부와 로컬 TXT 읽기 권한을 확인하세요.";
                     log.Write("OBSERVATION_OPEN_FAILED");
                 }
             }
@@ -1258,11 +1315,51 @@ namespace ATIVBatteryGuard.ViewModels
             Changed("SavedObservationOpenFailed");
             OpenSavedObservationCommand?.Refresh();
             CloseSavedObservationCommand?.Refresh();
+            OpenRecentObservationCommand?.Refresh();
+        }
+
+        public bool TryPrepareToClose()
+        {
+            if (ManualProtectionBusy) { NotifyManualCloseBlocked(); return false; }
+            return ConfirmObservationLoss("앱 종료");
+        }
+
+        private bool ConfirmObservationLoss(string action)
+        {
+            if (disposed || confirmingObservationLoss) return false;
+            if (!HasUnsavedObservation) return true;
+            confirmingObservationLoss = true;
+            NotifyBatteryObservation();
+            try
+            {
+                ObservationLossChoice choice = interaction.ConfirmUnsavedObservation(action);
+                if (disposed) return false;
+                if (choice == ObservationLossChoice.Discard) return true;
+                if (choice == ObservationLossChoice.Save)
+                {
+                    StopBatteryObservation();
+                    SaveBatteryObservation();
+                    return !disposed && !CanSaveBatteryObservation();
+                }
+                StatusMessage = "관찰 기록을 유지했습니다.";
+                return false;
+            }
+            catch
+            {
+                StatusMessage = "저장 확인을 완료하지 못해 관찰 기록을 유지했습니다.";
+                log.Write("OBSERVATION_CONFIRM_FAILED");
+                return false;
+            }
+            finally
+            {
+                confirmingObservationLoss = false;
+                NotifyBatteryObservation();
+            }
         }
 
 		private void StartBatteryObservation()
 		{
-			if (disposed || IsMockMode || observation.IsRecording) return;
+			if (disposed || IsMockMode || observation.IsRecording || !ConfirmObservationLoss("새 관찰 시작")) return;
 			observation.Start();
 			observationSession++;
 			observationSaveFailed = false;
@@ -1283,7 +1380,7 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private void ClearBatteryObservation()
 		{
-			if (disposed) return;
+			if (disposed || !ConfirmObservationLoss("관찰 지우기")) return;
 			observationClock.Reset();
 			observation.Clear();
 			observationSession++;
@@ -1309,6 +1406,7 @@ namespace ATIVBatteryGuard.ViewModels
 				observationSaveFailed = false;
 				observationSaveStatusText = message + " 기록 수나 관찰 상태가 바뀌면 다시 저장할 수 있습니다.";
 				StatusMessage = observationSaveStatusText;
+                RefreshRecentObservations();
 			}
 			catch
 			{
@@ -1332,6 +1430,8 @@ namespace ATIVBatteryGuard.ViewModels
 			Changed("ObservationGraphVisible");
 			Changed("ObservationText");
 			Changed("ObservationActive");
+            Changed("HasUnsavedObservation");
+            Changed("ObservationPersistenceText");
 			Changed("ObservationStatusText");
 			Changed("ObservationSampleCount");
 			Changed("ObservationGapCount");

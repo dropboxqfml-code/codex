@@ -1,0 +1,73 @@
+{
+  "baseCommit": "6768617f46f81227a732abef0d8133e568e9cf8e",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.4",
+  "previous023UserConfirmedHistoricalGraphAndKeyboardMouseSelection": true,
+  "portableTests": {
+    "passed": 1179,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1179,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 16,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "unsavedGuards": [
+    "new observation",
+    "clear observation",
+    "normal window close"
+  ],
+  "guardChoices": [
+    "save final TXT then proceed",
+    "discard then proceed",
+    "cancel and retain"
+  ],
+  "saveFailurePreventsDestructiveAction": true,
+  "activeMidRecordingSaveRequiresFinalStatusDecision": true,
+  "helperActivityBlocksCloseBeforeObservationGuard": true,
+  "recentMaximumEntries": 10,
+  "recentIndexFile": "recent-observations.json",
+  "recentIndexStoresPathsAndValidatedSnapshotMetadataLocally": true,
+  "recentLoadDoesNotOpenReferencedFiles": true,
+  "indexUpdateUsesFileLeaseMergeAndAtomicReplace": true,
+  "multipleStoreInstancesAndLeaseContentionTested": true,
+  "indexFailurePreservesSuccessfulTxtOutcome": true,
+  "windowsRecentAndConfirmationSmokeChecksAddedAndCompiled": true,
+  "windowsSmokeChecksExecuted": false,
+  "newReleaseWindowsConfirmationOrRecentUiTested": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.4-WIN10-X64.zip",
+    "bytes": 301998,
+    "sha256": "aa0380c48395da9f6f6600cd2f0ae304c7b9f0e513a9148297b170d8a2263930",
+    "entries": 9,
+    "sourceFileCount": 203,
+    "productSourceFingerprintSha256": "54f30e8f4cf503a1c947f6d112c48784b507c3a0c03be294dbedfe4757256b3e",
+    "releaseVersion": "0.2.4",
+    "guiVersionResource": {
+      "fileVersion": "0.2.4.0",
+      "productVersion": "0.2.4"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "b4025ad62304538c2a1ad299485f56c02eb87d39f2cba6e5881a5b358f751843"
+    },
+    "portable-tests.log": {
+      "bytes": 107289,
+      "sha256": "2d2df77719695f6383b1812a7d3d00ffef7bfaaec3ba40abf010b5dc5e41df15"
+    },
+    "solution-build.log": {
+      "bytes": 2034,
+      "sha256": "6010e4e71246c2b01f70a0e6e7f024fff42abef85a0f4730d0eb1a054b675132"
+    }
+  }
+}

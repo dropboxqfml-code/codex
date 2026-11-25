@@ -452,6 +452,8 @@ internal static partial class Program
         RegisterObservationFinalSaveTests();
         RegisterSavedBatteryObservationTests();
         RegisterSavedObservationViewModelTests();
+        RegisterObservationProtectionTests();
+        RegisterRecentObservationTests();
         RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();
@@ -535,6 +537,11 @@ internal static partial class Program
         public string LastFileInspection;
         public int ObservationSaves;
         public int ObservationOpens;
+        public int ObservationConfirmations;
+        public Func<string, ObservationLossChoice> ObservationConfirmer;
+        public IReadOnlyList<RecentObservationEntry> RecentEntries = Array.AsReadOnly(new RecentObservationEntry[0]);
+        public Func<RecentObservationEntry, SavedBatteryObservation> RecentOpener;
+        public string RecentObservationNotice { get; set; } = "";
         public Func<SavedBatteryObservation> ObservationOpener;
         public int FoldersOpened;
         public Action FolderOpener;
@@ -549,6 +556,9 @@ internal static partial class Program
         public void CopyDiagnostics(string text) { Copies++; LastCopiedText = text; }
         public string SaveDiagnostics(string text) { Saves++; return Saver == null ? "saved" : Saver(text); }
         public string SaveSamsungFileInspection(string text) { FileInspectionSaves++; LastFileInspection = text; return FileInspectionSaver == null ? "saved" : FileInspectionSaver(text); }
+        public ObservationLossChoice ConfirmUnsavedObservation(string action) { ObservationConfirmations++; return ObservationConfirmer == null ? ObservationLossChoice.Discard : ObservationConfirmer(action); }
+        public IReadOnlyList<RecentObservationEntry> ReadRecentObservations() { return RecentEntries; }
+        public SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry) { return RecentOpener?.Invoke(entry); }
         public SavedBatteryObservation OpenBatteryObservation() { ObservationOpens++; return ObservationOpener?.Invoke(); }
         public string SaveBatteryObservation(string text) { ObservationSaves++; LastObservation = text; return ObservationSaver == null ? "saved" : ObservationSaver(text); }
         public string SaveManualProtectionResult(string text) { ManualResultSaves++; LastManualResult = text; return ManualResultSaver == null ? "saved" : ManualResultSaver(text); }

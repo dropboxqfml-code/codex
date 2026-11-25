@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -78,6 +79,16 @@ namespace ATIVBatteryGuard.Diagnostics
 			{
 				return "관찰 기록 저장 모의 처리";
 			}
+
+            public ObservationLossChoice ObservationChoice = ObservationLossChoice.Discard;
+            public IReadOnlyList<RecentObservationEntry> RecentEntries = Array.AsReadOnly(new RecentObservationEntry[0]);
+            public ObservationLossChoice ConfirmUnsavedObservation(string action) { return ObservationChoice; }
+            public string RecentObservationNotice => "";
+            public IReadOnlyList<RecentObservationEntry> ReadRecentObservations()
+            {
+                return RecentEntries;
+            }
+            public SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry) { return OpenBatteryObservation(); }
 
             public SavedBatteryObservation OpenBatteryObservation()
             {
@@ -188,6 +199,8 @@ namespace ATIVBatteryGuard.Diagnostics
 				Directory.CreateDirectory(temporary);
 				SettingsStore store = new SettingsStore(temporary);
 				SmokeInteraction interaction = new SmokeInteraction();
+                interaction.RecentEntries = new RecentObservationStore(temporary).Record(
+                    Path.Combine(temporary, "smoke-observation.txt"), interaction.OpenBatteryObservation());
 				model = new MainViewModel(new SyntheticBattery(), store, new LocalLog(temporary), interaction);
 				window = (MainWindow)(app.MainWindow = new MainWindow
 				{
@@ -211,6 +224,22 @@ namespace ATIVBatteryGuard.Diagnostics
                 model.CloseSavedObservationCommand.Execute(null);
                 await Idle(app);
                 Require(!model.SavedObservationVisible && savedChart.Graph.Points.Count == 0, "SAVED_GRAPH_CLOSE_INVALID");
+                Require(Find<ListBox>(window, "RecentObservationsList").Items.Count == 1, "RECENT_LIST_BINDING_INVALID");
+                var recentList = Find<ListBox>(window, "RecentObservationsList");
+                recentList.SelectedIndex = 0;
+                recentList.GetBindingExpression(Selector.SelectedItemProperty)?.UpdateSource();
+                await Idle(app);
+                Execute(Find<Button>(window, "OpenRecentObservationButton"));
+                await Idle(app);
+                Require(model.SavedObservationVisible, "RECENT_OPEN_BINDING_INVALID");
+                model.CloseSavedObservationCommand.Execute(null);
+                model.StartBatteryObservationCommand.Execute(null); model.RefreshBattery();
+                interaction.ObservationChoice = ObservationLossChoice.Cancel;
+                Require(!model.TryPrepareToClose() && model.ObservationActive, "OBSERVATION_CANCEL_INVALID");
+                interaction.ObservationChoice = ObservationLossChoice.Save;
+                Require(model.TryPrepareToClose() && !model.HasUnsavedObservation, "OBSERVATION_FINAL_SAVE_INVALID");
+                interaction.ObservationChoice = ObservationLossChoice.Discard;
+                model.ClearBatteryObservationCommand.Execute(null);
 				Button apply = Find<Button>(window, "MockApplyButton");
 				Button save = Find<Button>(window, "SavePreferencesButton");
 				CheckBox mock = Find<CheckBox>(window, "MockSwitch");

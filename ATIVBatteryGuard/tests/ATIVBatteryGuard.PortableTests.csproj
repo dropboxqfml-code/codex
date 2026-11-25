@@ -28,6 +28,8 @@
     <Compile Include="ObservationFinalSaveTests.cs" />
     <Compile Include="SavedBatteryObservationTests.cs" />
     <Compile Include="SavedObservationViewModelTests.cs" />
+    <Compile Include="ObservationProtectionTests.cs" />
+    <Compile Include="RecentObservationTests.cs" />
     <Compile Include="../src/ATIVBatteryGuard.App/Controls/BatteryObservationChartSelection.cs" Link="Controls/BatteryObservationChartSelection.cs" />
     <Compile Include="ProtectionPresentationAndGraphViewModelTests.cs" />
     <Compile Include="ManualProtectionClientSessionTests.cs" />

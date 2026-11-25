@@ -66,6 +66,7 @@ namespace ATIVBatteryGuard
                     if (closing.Cancel) return;
                     if (viewModel.ManualProtectionBusy)
                     { closing.Cancel = true; viewModel.NotifyManualCloseBlocked(); }
+                    else if (!viewModel.TryPrepareToClose()) closing.Cancel = true;
                 };
                 window.Closed += delegate
                 {

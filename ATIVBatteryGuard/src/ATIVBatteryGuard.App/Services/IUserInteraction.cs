@@ -1,8 +1,12 @@
+using System.Collections.Generic;
+using ATIVBatteryGuard.Core.Storage;
 using ATIVBatteryGuard.Core.Models;
 using ATIVBatteryGuard.Core.Services;
 
 namespace ATIVBatteryGuard.Services
 {
+    public enum ObservationLossChoice { Cancel, Save, Discard }
+
 	public interface IUserInteraction
 	{
 		DeviceDiagnosticsResult ReadDiagnostics();
@@ -20,6 +24,11 @@ namespace ATIVBatteryGuard.Services
 		string SaveBatteryObservation(string text);
 
 		SavedBatteryObservation OpenBatteryObservation();
+
+        ObservationLossChoice ConfirmUnsavedObservation(string action);
+        IReadOnlyList<RecentObservationEntry> ReadRecentObservations();
+        SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry);
+        string RecentObservationNotice { get; }
 
 		string SaveManualProtectionResult(string text);
 	}

@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -17,6 +18,7 @@ namespace ATIVBatteryGuard.Services
 		private readonly string directory;
 
 		private readonly LocalLog log;
+        public string RecentObservationNotice { get; private set; } = "";
 
 		public LocalUserInteraction(string directory, LocalLog log)
 		{
@@ -97,6 +99,7 @@ namespace ATIVBatteryGuard.Services
 		public string SaveBatteryObservation(string text)
 		{
 			string fileName = SaveLocalText("battery-observation-", text);
+            RememberObservation(Path.Combine(directory, fileName), SavedBatteryObservation.Parse(text, fileName));
 			return "관찰 TXT 저장 완료: " + fileName + " · ‘관찰 저장 폴더 열기’에서 확인하세요. 업로드하지 않았습니다.";
 		}
 
@@ -111,11 +114,52 @@ namespace ATIVBatteryGuard.Services
                 Multiselect = false
             };
             if (dialog.ShowDialog(Application.Current.MainWindow) != true) return null;
-            string path = dialog.FileName;
+            return ReadObservationFile(dialog.FileName);
+        }
+
+        private SavedBatteryObservation ReadObservationFile(string path)
+        {
             LocalPathPolicy.NormalizeDirectory(Path.GetDirectoryName(path));
             LocalPathPolicy.EnsureNoReparsePoints(path);
+            SavedBatteryObservation observation;
             using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-                return SavedBatteryObservation.Read(stream, Path.GetFileName(path));
+                observation = SavedBatteryObservation.Read(stream, Path.GetFileName(path));
+            if (observation.Success) RememberObservation(path, observation);
+            return observation;
+        }
+
+        private void RememberObservation(string path, SavedBatteryObservation observation)
+        {
+            try
+            {
+                new RecentObservationStore(directory).Record(path, observation);
+                RecentObservationNotice = "";
+            }
+            catch
+            {
+                RecentObservationNotice = "TXT 작업은 완료했지만 최근 기록 목록을 갱신하지 못했습니다.";
+            }
+        }
+
+        public IReadOnlyList<RecentObservationEntry> ReadRecentObservations()
+        {
+            return new RecentObservationStore(directory).Load();
+        }
+
+        public SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry)
+        {
+            return ReadObservationFile(entry.Path);
+        }
+
+        public ObservationLossChoice ConfirmUnsavedObservation(string action)
+        {
+            string message = "저장 확인이 필요한 관찰 기록이 있습니다.\n\n"
+                + "예를 누르면 관찰을 중단하고 TXT를 저장한 뒤 " + action + " 작업을 진행합니다.\n"
+                + "아니요를 누르면 저장 없이 진행합니다.\n취소를 누르면 현재 기록으로 돌아갑니다.";
+            var result = MessageBox.Show(Application.Current.MainWindow, message, "관찰 기록 저장 확인",
+                MessageBoxButton.YesNoCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
+            return result == MessageBoxResult.Yes ? ObservationLossChoice.Save
+                : result == MessageBoxResult.No ? ObservationLossChoice.Discard : ObservationLossChoice.Cancel;
         }
 
 		public string SaveManualProtectionResult(string text)

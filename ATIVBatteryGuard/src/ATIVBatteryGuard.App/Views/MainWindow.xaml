@@ -175,6 +175,8 @@
                         <TextBlock Text="{Binding ObservationSampleCount, StringFormat='기록 {0}건'}" Margin="0,0,16,0" />
                         <TextBlock Text="{Binding ObservationGapCount, StringFormat='기록 공백 {0}건'}" />
                     </WrapPanel>
+                    <TextBlock Text="{Binding ObservationPersistenceText}" TextWrapping="Wrap"
+                               Foreground="#475569" Margin="0,0,0,6" AutomationProperties.LiveSetting="Polite" />
                     <WrapPanel>
                         <Button x:Name="StartBatteryObservationButton" Content="새 관찰 시작" Command="{Binding StartBatteryObservationCommand}" />
                         <Button Content="관찰 중단" Command="{Binding StopBatteryObservationCommand}" />
@@ -237,6 +239,32 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
+                    <Expander Header="최근 저장·열기 기록" Margin="0,0,0,10">
+                        <StackPanel>
+                            <ListBox x:Name="RecentObservationsList" ItemsSource="{Binding RecentObservations}"
+                                     SelectedItem="{Binding SelectedRecentObservation, Mode=TwoWay}" MaxHeight="180"
+                                     HorizontalContentAlignment="Stretch"
+                                     AutomationProperties.Name="최근 관찰 기록 목록">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="AutomationProperties.Name" Value="{Binding FileName}" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="2,4">
+                                            <TextBlock Text="{Binding FileName}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <Button x:Name="OpenRecentObservationButton" Content="선택 기록 열기" Command="{Binding OpenRecentObservationCommand}"
+                                    HorizontalAlignment="Left" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Expander>
+                    <TextBlock Text="{Binding RecentObservationNotice}" TextWrapping="Wrap" Foreground="#9C2F18"
+                               AutomationProperties.LiveSetting="Polite" />
                     <StackPanel Visibility="{Binding SavedObservationVisible, Converter={StaticResource ObservationGraphVisibility}}">
                         <TextBlock Text="{Binding SavedObservationName}" FontWeight="SemiBold" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding SavedObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />

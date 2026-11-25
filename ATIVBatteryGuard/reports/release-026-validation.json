@@ -1,0 +1,66 @@
+{
+  "baseCommit": "863f1dcd39c032020f298edab92b7217a25b3f66",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.6",
+  "previous025UserConfirmedABComparison": true,
+  "portableTests": {
+    "passed": 1201,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1201,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 15,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "noteMaximumCharacters": 1000,
+  "noteIdentity": "SHA256 of normalized full location and BOM/newline-normalized validated TXT content.",
+  "noteDirectory": "observation-notes",
+  "notesSurviveRecentTenEntryEviction": true,
+  "sourceTxtBytesPreservedTested": true,
+  "sameRecordSharesABDraft": true,
+  "distinctRecordsKeepIndependentNotes": true,
+  "recentPreviewUsesStoredNotes": true,
+  "replaceCloseAndExitProtectDirtyDrafts": true,
+  "failedSaveAndConflictRetainDraft": true,
+  "cleanReopenRefreshesStoredNote": true,
+  "fileLeaseRevisionCheckAndAtomicReplace": true,
+  "legacyRecentEntriesAndExistingTwoArgumentParserApisSupported": true,
+  "windowsNoteSmokeChecksAddedAndCompiled": true,
+  "windowsSmokeChecksExecuted": false,
+  "newReleaseWindowsNoteUiOrDialogsTested": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.6-WIN10-X64.zip",
+    "bytes": 308829,
+    "sha256": "5b815915f9717fe82dd04a66fbb3e4e496f14a73eb2ed430b11b2e9407192e00",
+    "entries": 9,
+    "sourceFileCount": 205,
+    "productSourceFingerprintSha256": "e6afb38c3115d0d8bd2218d0527600e7814d690f0ca29334508c7c33642e1567",
+    "releaseVersion": "0.2.6",
+    "guiVersionResource": {
+      "fileVersion": "0.2.6.0",
+      "productVersion": "0.2.6"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "ae074dc7bac7ca809db25f5064d5ccf24f9422ea49106710c889f18d0af72460"
+    },
+    "portable-tests.log": {
+      "bytes": 109456,
+      "sha256": "028f74562c78a01297f085aa5f732173058d7962e923597877e61a9104024cbd"
+    },
+    "solution-build.log": {
+      "bytes": 2034,
+      "sha256": "7cfdb537d4e89d132b5697460534de197e20374ab2dd24a4ca7c85a11ea8bd5b"
+    }
+  }
+}

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using ATIVBatteryGuard.Core.Models;
+using ATIVBatteryGuard.Core.Storage;
 
 namespace ATIVBatteryGuard.Core.Services
 {
@@ -16,6 +17,7 @@ namespace ATIVBatteryGuard.Core.Services
         private static readonly UTF8Encoding Utf8 = new UTF8Encoding(false, true);
 
         public string FileName { get; }
+        public string NoteKey { get; }
         public BatteryObservationGraph Graph { get; }
         public string ErrorMessage { get; }
         public bool Success => ErrorMessage.Length == 0;
@@ -25,11 +27,12 @@ namespace ATIVBatteryGuard.Core.Services
             + " · 마지막 경과 " + TimeSpan.FromSeconds(Graph.ElapsedSeconds).ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture)
             + " · 기록 공백 " + Graph.GapCount.ToString(CultureInfo.InvariantCulture) + "건";
 
-        private SavedBatteryObservation(string fileName, BatteryObservationGraph graph, string error)
+        private SavedBatteryObservation(string fileName, BatteryObservationGraph graph, string error, string noteKey = "")
         {
             string leaf = (fileName ?? "관찰 TXT").Replace('\\', '/');
             FileName = leaf.Substring(leaf.LastIndexOf('/') + 1);
             Graph = graph;
+            NoteKey = noteKey;
             ErrorMessage = error;
         }
 
@@ -38,7 +41,9 @@ namespace ATIVBatteryGuard.Core.Services
             return new SavedBatteryObservation(null, BatteryObservationGraph.Empty, message);
         }
 
-        public static SavedBatteryObservation Read(Stream input, string fileName)
+        public static SavedBatteryObservation Read(Stream input, string fileName) { return Read(input, fileName, null); }
+
+        public static SavedBatteryObservation Read(Stream input, string fileName, string sourcePath)
         {
             if (input == null) throw new ArgumentNullException(nameof(input));
             using (var bytes = new MemoryStream())
@@ -51,12 +56,14 @@ namespace ATIVBatteryGuard.Core.Services
                     if (bytes.Length > MaximumBytes)
                         return Fail("관찰 TXT는 256 KiB 이하만 열 수 있습니다.");
                 }
-                try { return Parse(Utf8.GetString(bytes.ToArray()), fileName); }
+                try { return Parse(Utf8.GetString(bytes.ToArray()), fileName, sourcePath); }
                 catch (DecoderFallbackException) { return Fail("UTF-8 관찰 TXT 파일인지 확인하세요."); }
             }
         }
 
-        public static SavedBatteryObservation Parse(string text, string fileName)
+        public static SavedBatteryObservation Parse(string text, string fileName) { return Parse(text, fileName, null); }
+
+        public static SavedBatteryObservation Parse(string text, string fileName, string sourcePath)
         {
             if (text == null) return Fail("관찰 TXT 내용이 없습니다.");
             try
@@ -153,7 +160,8 @@ namespace ATIVBatteryGuard.Core.Services
                         status != BatteryObservationSessionStatus.DurationLimitReached))
                     return Fail("관찰 종료 상태와 표본 수가 서로 맞지 않습니다.");
                 return new SavedBatteryObservation(fileName,
-                    BatteryObservationGraph.FromSamples(rows.AsReadOnly(), status.Value), "");
+                    BatteryObservationGraph.FromSamples(rows.AsReadOnly(), status.Value), "",
+                    sourcePath == null ? "" : ObservationNoteStore.Identity(sourcePath, text));
             }
         }
 

@@ -257,6 +257,8 @@
                                         <StackPanel Margin="2,4">
                                             <TextBlock Text="{Binding FileName}" TextWrapping="Wrap" FontWeight="SemiBold" />
                                             <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding NotePreview}" TextWrapping="Wrap" Foreground="#475569"
+                                                       Visibility="{Binding HasNote, Converter={StaticResource ObservationGraphVisibility}}" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
@@ -272,6 +274,21 @@
                                    Visibility="{Binding ComparisonObservationVisible, Converter={StaticResource ObservationGraphVisibility}}" />
                         <TextBlock Text="{Binding SavedObservationTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding SavedObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
+                        <TextBlock Text="{Binding SavedObservationNote.Preview}" TextWrapping="Wrap" Foreground="#475569" Margin="0,0,0,6" />
+                        <Expander Header="관찰 메모 편집" Margin="0,0,0,10">
+                            <StackPanel DataContext="{Binding SavedObservationNote}" Margin="0,8,0,0">
+                                <TextBox x:Name="ANoteText" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsReadOnly}" AcceptsReturn="True" TextWrapping="Wrap"
+                                         MaxLength="1000" MinHeight="60" MaxHeight="140" VerticalScrollBarVisibility="Auto"
+                                         AutomationProperties.Name="기록 A 관찰 메모" />
+                                <TextBlock Text="{Binding CharacterCountText}" Foreground="#475569" />
+                                <WrapPanel>
+                                    <Button x:Name="SaveANoteButton" Content="메모 저장" Command="{Binding SaveCommand}" />
+                                    <Button Content="메모 다시 읽기" Command="{Binding ReloadCommand}" />
+                                </WrapPanel>
+                                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                            </StackPanel>
+                        </Expander>
                         <Border Background="#F8FAFC" BorderBrush="#D3DCE6" BorderThickness="1" CornerRadius="6" Padding="8">
                             <StackPanel>
                                 <controls:BatteryObservationChart x:Name="SavedObservationChart" IsSavedRecord="True"
@@ -288,6 +305,21 @@
                                 Visibility="{Binding ComparisonObservationVisible, Converter={StaticResource ObservationGraphVisibility}}">
                         <TextBlock Text="{Binding ComparisonObservationName}" TextWrapping="Wrap" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding ComparisonObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
+                        <TextBlock Text="{Binding ComparisonObservationNote.Preview}" TextWrapping="Wrap" Foreground="#475569" Margin="0,0,0,6" />
+                        <Expander Header="관찰 메모 편집" Margin="0,0,0,10">
+                            <StackPanel DataContext="{Binding ComparisonObservationNote}" Margin="0,8,0,0">
+                                <TextBox x:Name="BNoteText" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsReadOnly}" AcceptsReturn="True" TextWrapping="Wrap"
+                                         MaxLength="1000" MinHeight="60" MaxHeight="140" VerticalScrollBarVisibility="Auto"
+                                         AutomationProperties.Name="기록 B 관찰 메모" />
+                                <TextBlock Text="{Binding CharacterCountText}" Foreground="#475569" />
+                                <WrapPanel>
+                                    <Button x:Name="SaveBNoteButton" Content="메모 저장" Command="{Binding SaveCommand}" />
+                                    <Button Content="메모 다시 읽기" Command="{Binding ReloadCommand}" />
+                                </WrapPanel>
+                                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                            </StackPanel>
+                        </Expander>
                         <Border Background="#F8FAFC" BorderBrush="#D3DCE6" BorderThickness="1" CornerRadius="6" Padding="8">
                             <StackPanel>
                                 <controls:BatteryObservationChart x:Name="ComparisonObservationChart" IsSavedRecord="True"

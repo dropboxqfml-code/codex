@@ -455,6 +455,8 @@ internal static partial class Program
         RegisterObservationProtectionTests();
         RegisterRecentObservationTests();
         RegisterObservationComparisonTests();
+        RegisterObservationNoteStoreTests();
+        RegisterObservationNoteViewModelTests();
         RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();
@@ -538,8 +540,13 @@ internal static partial class Program
         public string LastFileInspection;
         public int ObservationSaves;
         public int ObservationOpens;
+        public Func<SavedBatteryObservation, ObservationNote> NoteLoader;
+        public Func<SavedBatteryObservation, string, string, ObservationNote> NoteSaver;
+        public Func<string, string, ObservationLossChoice> NoteConfirmer;
+        public int NoteLoads, NoteSaves, NoteConfirmations;
         public int ObservationConfirmations;
         public Func<string, ObservationLossChoice> ObservationConfirmer;
+        public Func<IReadOnlyList<RecentObservationEntry>> RecentReader;
         public IReadOnlyList<RecentObservationEntry> RecentEntries = Array.AsReadOnly(new RecentObservationEntry[0]);
         public Func<RecentObservationEntry, SavedBatteryObservation> RecentOpener;
         public string RecentObservationNotice { get; set; } = "";
@@ -557,8 +564,11 @@ internal static partial class Program
         public void CopyDiagnostics(string text) { Copies++; LastCopiedText = text; }
         public string SaveDiagnostics(string text) { Saves++; return Saver == null ? "saved" : Saver(text); }
         public string SaveSamsungFileInspection(string text) { FileInspectionSaves++; LastFileInspection = text; return FileInspectionSaver == null ? "saved" : FileInspectionSaver(text); }
+        public ObservationNote LoadObservationNote(SavedBatteryObservation record) { NoteLoads++; return NoteLoader == null ? ObservationNote.Empty : NoteLoader(record); }
+        public ObservationNote SaveObservationNote(SavedBatteryObservation record, string text, string expectedRevision) { NoteSaves++; return NoteSaver == null ? ObservationNote.Unavailable("save unavailable") : NoteSaver(record, text, expectedRevision); }
+        public ObservationLossChoice ConfirmUnsavedObservationNote(string fileName, string action) { NoteConfirmations++; return NoteConfirmer == null ? ObservationLossChoice.Discard : NoteConfirmer(fileName, action); }
         public ObservationLossChoice ConfirmUnsavedObservation(string action) { ObservationConfirmations++; return ObservationConfirmer == null ? ObservationLossChoice.Discard : ObservationConfirmer(action); }
-        public IReadOnlyList<RecentObservationEntry> ReadRecentObservations() { return RecentEntries; }
+        public IReadOnlyList<RecentObservationEntry> ReadRecentObservations() { return RecentReader == null ? RecentEntries : RecentReader(); }
         public SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry) { return RecentOpener?.Invoke(entry); }
         public SavedBatteryObservation OpenBatteryObservation() { ObservationOpens++; return ObservationOpener?.Invoke(); }
         public string SaveBatteryObservation(string text) { ObservationSaves++; LastObservation = text; return ObservationSaver == null ? "saved" : ObservationSaver(text); }

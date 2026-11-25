@@ -80,13 +80,23 @@ namespace ATIVBatteryGuard.Diagnostics
 				return "관찰 기록 저장 모의 처리";
 			}
 
+            public string SourceDirectory;
+            public ObservationNoteStore Notes;
+            public ObservationLossChoice NoteChoice = ObservationLossChoice.Discard;
+            public ObservationNote LoadObservationNote(SavedBatteryObservation record) { return Notes.Load(record.NoteKey); }
+            public ObservationNote SaveObservationNote(SavedBatteryObservation record, string text, string expectedRevision)
+            { return Notes.Save(record.NoteKey, text, expectedRevision); }
+            public ObservationLossChoice ConfirmUnsavedObservationNote(string fileName, string action) { return NoteChoice; }
+
             public ObservationLossChoice ObservationChoice = ObservationLossChoice.Discard;
             public IReadOnlyList<RecentObservationEntry> RecentEntries = Array.AsReadOnly(new RecentObservationEntry[0]);
             public ObservationLossChoice ConfirmUnsavedObservation(string action) { return ObservationChoice; }
             public string RecentObservationNotice => "";
             public IReadOnlyList<RecentObservationEntry> ReadRecentObservations()
             {
-                return RecentEntries;
+                var rows = new List<RecentObservationEntry>();
+                foreach (var entry in RecentEntries) rows.Add(entry.WithNote(Notes.Load(entry.NoteKey)));
+                return rows.AsReadOnly();
             }
             public SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry) { return OpenBatteryObservation(); }
 
@@ -100,7 +110,7 @@ namespace ATIVBatteryGuard.Diagnostics
                     session.Record(TimeSpan.FromSeconds(ObservationEndSeconds),
                         new BatterySnapshot(85, ExternalPowerStatus.Connected, BatteryChargeState.Charging, ""));
                 session.Stop();
-                return SavedBatteryObservation.Parse(session.ExportText(), "smoke-observation.txt");
+                return SavedBatteryObservation.Parse(session.ExportText(), "smoke-observation.txt", Path.Combine(SourceDirectory, "smoke-observation.txt"));
             }
 
 			public string SaveManualProtectionResult(string text)
@@ -202,7 +212,7 @@ namespace ATIVBatteryGuard.Diagnostics
 				temporary = Path.Combine(path, "ativ-gui-smoke-" + Guid.NewGuid().ToString("N"));
 				Directory.CreateDirectory(temporary);
 				SettingsStore store = new SettingsStore(temporary);
-				SmokeInteraction interaction = new SmokeInteraction();
+				SmokeInteraction interaction = new SmokeInteraction { SourceDirectory = temporary, Notes = new ObservationNoteStore(temporary) };
                 interaction.RecentEntries = new RecentObservationStore(temporary).Record(
                     Path.Combine(temporary, "smoke-observation.txt"), interaction.OpenBatteryObservation());
 				model = new MainViewModel(new SyntheticBattery(), store, new LocalLog(temporary), interaction);
@@ -225,6 +235,16 @@ namespace ATIVBatteryGuard.Diagnostics
                 Require(savedChart.SelectedPointText.Contains("80%"), "SAVED_GRAPH_SELECTION_INVALID");
                 var savedPeer = UIElementAutomationPeer.CreatePeerForElement(savedChart);
                 Require(savedPeer.GetHelpText().Contains("파일에 저장된 과거"), "SAVED_GRAPH_PROVENANCE_INVALID");
+                var noteA = Find<TextBox>(window, "ANoteText");
+                noteA.SetCurrentValue(TextBox.TextProperty, "보호 켜기 관찰");
+                noteA.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                await Idle(app);
+                Require(model.SavedObservationNote.HasChanges, "NOTE_A_EDIT_BINDING_INVALID");
+                Execute(Find<Button>(window, "SaveANoteButton"));
+                await Idle(app);
+                Require(!model.SavedObservationNote.HasChanges && model.SavedObservationNote.Preview.Contains("보호 켜기"),
+                    "NOTE_A_SAVE_INVALID");
+                Require(model.RecentObservations[0].NotePreview.Contains("보호 켜기"), "NOTE_RECENT_PREVIEW_INVALID");
                 interaction.ObservationEndSeconds = 120;
                 Execute(Find<Button>(window, "OpenComparisonObservationButton"));
                 await Idle(app);
@@ -241,6 +261,17 @@ namespace ATIVBatteryGuard.Diagnostics
                 comparisonChart.SelectAt(new Point(comparisonChart.ActualWidth - 18,
                     32 + (comparisonChart.ActualHeight - 80) * 0.15));
                 Require(comparisonChart.SelectedPointText.Contains("2/2"), "COMPARISON_POINTER_SCALE_INVALID");
+                var noteB = Find<TextBox>(window, "BNoteText");
+                noteB.SetCurrentValue(TextBox.TextProperty, "보호 해제 관찰");
+                noteB.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                await Idle(app);
+                interaction.NoteChoice = ObservationLossChoice.Cancel;
+                Require(!model.TryPrepareToClose() && model.ComparisonObservationNote.HasChanges, "NOTE_CLOSE_CANCEL_INVALID");
+                Execute(Find<Button>(window, "SaveBNoteButton"));
+                await Idle(app);
+                Require(model.SavedObservationNote.Text == "보호 켜기 관찰" && model.ComparisonObservationNote.Text == "보호 해제 관찰",
+                    "NOTE_AB_IDENTITY_INVALID");
+                interaction.NoteChoice = ObservationLossChoice.Discard;
                 Execute(Find<Button>(window, "CloseComparisonObservationButton"));
                 await Idle(app);
                 Require(!model.ComparisonObservationVisible && model.SavedObservationVisible
@@ -258,6 +289,7 @@ namespace ATIVBatteryGuard.Diagnostics
                 Execute(Find<Button>(window, "OpenRecentObservationButton"));
                 await Idle(app);
                 Require(model.SavedObservationVisible, "RECENT_OPEN_BINDING_INVALID");
+                Require(model.SavedObservationNote.Text == "보호 켜기 관찰", "NOTE_REOPEN_INVALID");
                 model.CloseSavedObservationCommand.Execute(null);
                 model.StartBatteryObservationCommand.Execute(null); model.RefreshBattery();
                 interaction.ObservationChoice = ObservationLossChoice.Cancel;

@@ -54,6 +54,8 @@ namespace ATIVBatteryGuard.ViewModels
 
         private SavedBatteryObservation savedObservation;
         private SavedBatteryObservation comparisonObservation;
+        private ObservationNoteViewModel savedObservationNote;
+        private ObservationNoteViewModel comparisonObservationNote;
         private bool openingSavedObservation;
         private bool savedObservationOpenFailed;
         private string savedObservationOpenStatus = "";
@@ -325,6 +327,9 @@ namespace ATIVBatteryGuard.ViewModels
         public string ObservationPersistenceText => !observation.CanExport ? ""
             : HasUnsavedObservation ? "기록을 바꾸거나 앱을 닫기 전에 저장 여부를 확인합니다."
             : "현재 관찰 기록을 TXT로 저장했습니다.";
+
+        public ObservationNoteViewModel SavedObservationNote => savedObservationNote;
+        public ObservationNoteViewModel ComparisonObservationNote => comparisonObservationNote;
 
         public RelayCommand OpenComparisonObservationCommand { get; }
         public RelayCommand CloseComparisonObservationCommand { get; }
@@ -1292,8 +1297,30 @@ namespace ATIVBatteryGuard.ViewModels
                     savedObservationOpenStatus = (comparison ? "비교 기록 B 열기 실패 · " : "파일 열기 실패 · ") + loaded.ErrorMessage;
                 else
                 {
-                    if (comparison) comparisonObservation = loaded;
-                    else savedObservation = loaded;
+                    var currentNote = comparison ? comparisonObservationNote : savedObservationNote;
+                    var otherNote = comparison ? savedObservationNote : comparisonObservationNote;
+                    bool sameRecord = !string.IsNullOrEmpty(loaded.NoteKey) && currentNote?.RecordKey == loaded.NoteKey;
+                    if (!sameRecord && currentNote != null && !ReferenceEquals(currentNote, otherNote)
+                        && !currentNote.TryPrepareToClose("기록 교체"))
+                    {
+                        NoteActionInterrupted("기록 교체");
+                        return;
+                    }
+                    ObservationNoteViewModel note;
+                    if (sameRecord) note = currentNote;
+                    else if (!string.IsNullOrEmpty(loaded.NoteKey) && otherNote?.RecordKey == loaded.NoteKey) note = otherNote;
+                    else note = CreateObservationNote(loaded);
+                    if (!note.HasChanges && (ReferenceEquals(note, currentNote) || ReferenceEquals(note, otherNote)))
+                        note.ReloadCommand.Execute(null);
+                    if (disposed)
+                    {
+                        if (!ReferenceEquals(note, currentNote) && !ReferenceEquals(note, otherNote)) note.Dispose();
+                        return;
+                    }
+                    if (comparison) { comparisonObservation = loaded; comparisonObservationNote = note; }
+                    else { savedObservation = loaded; savedObservationNote = note; }
+                    if (currentNote != null && !ReferenceEquals(currentNote, note) && !ReferenceEquals(currentNote, otherNote))
+                        currentNote.Dispose();
                     savedObservationOpenStatus = comparison ? "비교 기록 B를 열었습니다." : "저장된 관찰 기록을 열었습니다.";
                     RefreshRecentObservations();
                 }
@@ -1315,9 +1342,48 @@ namespace ATIVBatteryGuard.ViewModels
             }
         }
 
+        private ObservationNoteViewModel CreateObservationNote(SavedBatteryObservation record)
+        {
+            var note = new ObservationNoteViewModel(interaction, record);
+            note.StoredNoteChanged += (sender, args) => { if (!disposed) RefreshRecentObservations(); };
+            return note;
+        }
+
+        private bool ConfirmObservationNotes(string action)
+        {
+            if (savedObservationNote != null && !savedObservationNote.TryPrepareToClose(action))
+            { NoteActionInterrupted(action); return false; }
+            if (comparisonObservationNote != null && !ReferenceEquals(comparisonObservationNote, savedObservationNote)
+                && !comparisonObservationNote.TryPrepareToClose(action))
+            { NoteActionInterrupted(action); return false; }
+            return true;
+        }
+
+        private void NoteActionInterrupted(string action)
+        {
+            savedObservationOpenFailed = false;
+            savedObservationOpenStatus = "메모를 보관하며 " + action + " 작업을 중단했습니다.";
+            NotifySavedObservation();
+        }
+
+        private void ReleaseObservationNotes()
+        {
+            var first = savedObservationNote;
+            var second = comparisonObservationNote;
+            savedObservationNote = null;
+            comparisonObservationNote = null;
+            first?.Dispose();
+            if (!ReferenceEquals(first, second)) second?.Dispose();
+        }
+
         private void CloseComparisonObservation()
         {
             if (disposed || openingSavedObservation) return;
+            if (comparisonObservationNote != null && !ReferenceEquals(comparisonObservationNote, savedObservationNote)
+                && !comparisonObservationNote.TryPrepareToClose("비교 닫기"))
+            { NoteActionInterrupted("비교 닫기"); return; }
+            if (!ReferenceEquals(comparisonObservationNote, savedObservationNote)) comparisonObservationNote?.Dispose();
+            comparisonObservationNote = null;
             comparisonObservation = null;
             savedObservationOpenFailed = false;
             savedObservationOpenStatus = "";
@@ -1326,7 +1392,8 @@ namespace ATIVBatteryGuard.ViewModels
 
         private void CloseSavedObservation()
         {
-            if (disposed || openingSavedObservation) return;
+            if (disposed || openingSavedObservation || !ConfirmObservationNotes("기록 모두 닫기")) return;
+            ReleaseObservationNotes();
             savedObservation = null;
             comparisonObservation = null;
             savedObservationOpenFailed = false;
@@ -1337,6 +1404,8 @@ namespace ATIVBatteryGuard.ViewModels
         private void NotifySavedObservation()
         {
             Changed("SavedObservationVisible");
+            Changed("SavedObservationNote");
+            Changed("ComparisonObservationNote");
             Changed("SavedObservationTitle");
             Changed("ComparisonObservationVisible");
             Changed("ComparisonObservationGraph");
@@ -1359,6 +1428,7 @@ namespace ATIVBatteryGuard.ViewModels
         public bool TryPrepareToClose()
         {
             if (ManualProtectionBusy) { NotifyManualCloseBlocked(); return false; }
+            if (openingSavedObservation || !ConfirmObservationNotes("앱 종료")) return false;
             return ConfirmObservationLoss("앱 종료");
         }
 
@@ -1835,6 +1905,7 @@ namespace ATIVBatteryGuard.ViewModels
 					Save();
 				}
 				disposed = true;
+                ReleaseObservationNotes();
                 savedObservation = null;
                 comparisonObservation = null;
                 savedObservationOpenStatus = "";

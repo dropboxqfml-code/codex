@@ -29,6 +29,9 @@ namespace ATIVBatteryGuard.Services
         IReadOnlyList<RecentObservationEntry> ReadRecentObservations();
         SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry);
         string RecentObservationNotice { get; }
+        ObservationNote LoadObservationNote(SavedBatteryObservation record);
+        ObservationNote SaveObservationNote(SavedBatteryObservation record, string text, string expectedRevision);
+        ObservationLossChoice ConfirmUnsavedObservationNote(string fileName, string action);
 
 		string SaveManualProtectionResult(string text);
 	}

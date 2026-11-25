@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -99,7 +100,7 @@ namespace ATIVBatteryGuard.Services
 		public string SaveBatteryObservation(string text)
 		{
 			string fileName = SaveLocalText("battery-observation-", text);
-            RememberObservation(Path.Combine(directory, fileName), SavedBatteryObservation.Parse(text, fileName));
+            RememberObservation(Path.Combine(directory, fileName), SavedBatteryObservation.Parse(text, fileName, Path.Combine(directory, fileName)));
 			return "관찰 TXT 저장 완료: " + fileName + " · ‘관찰 저장 폴더 열기’에서 확인하세요. 업로드하지 않았습니다.";
 		}
 
@@ -123,7 +124,7 @@ namespace ATIVBatteryGuard.Services
             LocalPathPolicy.EnsureNoReparsePoints(path);
             SavedBatteryObservation observation;
             using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-                observation = SavedBatteryObservation.Read(stream, Path.GetFileName(path));
+                observation = SavedBatteryObservation.Read(stream, Path.GetFileName(path), path);
             if (observation.Success) RememberObservation(path, observation);
             return observation;
         }
@@ -143,12 +144,36 @@ namespace ATIVBatteryGuard.Services
 
         public IReadOnlyList<RecentObservationEntry> ReadRecentObservations()
         {
-            return new RecentObservationStore(directory).Load();
+            var notes = new ObservationNoteStore(directory);
+            return new RecentObservationStore(directory).Load()
+                .Select(entry => entry.WithNote(string.IsNullOrEmpty(entry.NoteKey) ? ObservationNote.Empty : notes.Load(entry.NoteKey)))
+                .ToList().AsReadOnly();
         }
 
         public SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry)
         {
             return ReadObservationFile(entry.Path);
+        }
+
+        public ObservationNote LoadObservationNote(SavedBatteryObservation record)
+        {
+            return new ObservationNoteStore(directory).Load(record.NoteKey);
+        }
+
+        public ObservationNote SaveObservationNote(SavedBatteryObservation record, string text, string expectedRevision)
+        {
+            return new ObservationNoteStore(directory).Save(record.NoteKey, text, expectedRevision);
+        }
+
+        public ObservationLossChoice ConfirmUnsavedObservationNote(string fileName, string action)
+        {
+            string message = fileName + "의 수정 중인 메모를 확인하세요.\n\n"
+                + "예를 누르면 메모를 저장한 뒤 " + action + " 작업을 진행합니다.\n"
+                + "아니요를 누르면 저장 없이 진행하고, 취소를 누르면 메모로 돌아갑니다.";
+            var choice = MessageBox.Show(Application.Current.MainWindow, message, "관찰 메모 저장 확인",
+                MessageBoxButton.YesNoCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
+            return choice == MessageBoxResult.Yes ? ObservationLossChoice.Save
+                : choice == MessageBoxResult.No ? ObservationLossChoice.Discard : ObservationLossChoice.Cancel;
         }
 
         public ObservationLossChoice ConfirmUnsavedObservation(string action)

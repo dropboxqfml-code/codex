@@ -16,6 +16,9 @@ namespace ATIVBatteryGuard.Core.Storage
         [DataMember(Order = 1, IsRequired = true)] public int SampleCount { get; private set; }
         [DataMember(Order = 2, IsRequired = true)] public int ElapsedSeconds { get; private set; }
         [DataMember(Order = 3, IsRequired = true)] public BatteryObservationSessionStatus Status { get; private set; }
+        [DataMember(Order = 4, EmitDefaultValue = false)] public string NoteKey { get; private set; }
+        public string NotePreview { get; private set; } = "";
+        public bool HasNote => !string.IsNullOrEmpty(NotePreview);
         public string FileName => System.IO.Path.GetFileName(Path);
         public string Summary => "표본 " + SampleCount.ToString(CultureInfo.InvariantCulture) + "건 · "
             + TimeSpan.FromSeconds(ElapsedSeconds).ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture)
@@ -27,6 +30,14 @@ namespace ATIVBatteryGuard.Core.Storage
             SampleCount = observation.Graph.SampleCount;
             ElapsedSeconds = observation.Graph.ElapsedSeconds;
             Status = observation.Graph.Status;
+            NoteKey = observation.NoteKey;
+        }
+
+        public RecentObservationEntry WithNote(ObservationNote note)
+        {
+            var copy = (RecentObservationEntry)MemberwiseClone();
+            copy.NotePreview = note.Available ? ObservationNote.Preview(note.Text) : "메모를 읽지 못했습니다.";
+            return copy;
         }
 
         internal bool IsValid()
@@ -40,7 +51,8 @@ namespace ATIVBatteryGuard.Core.Storage
                 && SampleCount >= 1 && SampleCount <= BatteryObservationSession.MaxSamples
                 && ElapsedSeconds >= 0 && ElapsedSeconds <= 7200
                 && Enum.IsDefined(typeof(BatteryObservationSessionStatus), Status)
-                && Status != BatteryObservationSessionStatus.NotStarted;
+                && Status != BatteryObservationSessionStatus.NotStarted
+                && (string.IsNullOrEmpty(NoteKey) || ObservationNoteStore.IsValidKey(NoteKey));
         }
     }
 

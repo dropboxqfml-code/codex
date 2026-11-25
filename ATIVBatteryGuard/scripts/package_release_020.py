@@ -33,11 +33,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test-report', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--release-version', choices=('0.2.0', '0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6'), default=RELEASE_VERSION)
+    parser.add_argument('--release-version', choices=('0.2.0', '0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7'), default=RELEASE_VERSION)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     suite = json.loads(args.test_report.read_text())
-    if not (suite['passed'] >= {'0.2.0': 1120, '0.2.1': 1143, '0.2.2': 1150, '0.2.3': 1163, '0.2.4': 1179, '0.2.5': 1186, '0.2.6': 1201}[args.release_version] and suite['registered'] == suite['passed'] and
+    if not (suite['passed'] >= {'0.2.0': 1120, '0.2.1': 1143, '0.2.2': 1150, '0.2.3': 1163, '0.2.4': 1179, '0.2.5': 1186, '0.2.6': 1201, '0.2.7': 1219}[args.release_version] and suite['registered'] == suite['passed'] and
             suite['failed'] == 0 and suite.get('skipped', 0) == 0):
         raise ValueError('The previous and new usability regression groups must pass.')
     app = root/'src/ATIVBatteryGuard.App'
@@ -88,33 +88,41 @@ def main():
         'chartUnknownNoBatteryReadErrorAndGapsBreakSegments': True,
         'chartAxis': 'Elapsed seconds horizontally and observed battery percentage from 0 to 100 vertically.',
         'chartHoverUsesOnlyActualObservedPoints': True,
-        'chartKeyboardObservedPointNavigation': args.release_version in ('0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6'),
-        'chartMouseClickFocusAndSelection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6'),
+        'chartKeyboardObservedPointNavigation': args.release_version in ('0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7'),
+        'chartMouseClickFocusAndSelection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7'),
         'chartMouseSelectionWindowsRuntimeTested': False,
-        'savedObservationTxtOpenAndHistoricalGraph': args.release_version in ('0.2.3', '0.2.4', '0.2.5', '0.2.6'),
+        'savedObservationTxtOpenAndHistoricalGraph': args.release_version in ('0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7'),
         'savedObservationMaximumBytes': 262144,
         'savedObservationStrictUtf8AndPreviousExportFormat': True,
         'savedObservationFilePickerWindowsRuntimeTested': False,
-        'unsavedObservationSaveDiscardCancelGuard': args.release_version in ('0.2.4', '0.2.5', '0.2.6'),
+        'unsavedObservationSaveDiscardCancelGuard': args.release_version in ('0.2.4', '0.2.5', '0.2.6', '0.2.7'),
         'recentObservationLocalIndexMaximumEntries': 10,
         'recentIndexFailureChangesTxtSaveOutcome': False,
         'recentIndexAndConfirmationWindowsRuntimeTested': False,
-        'twoSavedObservationGraphsWithCommonElapsedAxis': args.release_version in ('0.2.5', '0.2.6'),
-        'comparisonPreservesIndependentTimestampsGapsAndSelection': args.release_version in ('0.2.5', '0.2.6'),
+        'twoSavedObservationGraphsWithCommonElapsedAxis': args.release_version in ('0.2.5', '0.2.6', '0.2.7'),
+        'comparisonPreservesIndependentTimestampsGapsAndSelection': args.release_version in ('0.2.5', '0.2.6', '0.2.7'),
         'comparisonWindowsRuntimeTested': False,
-        'recordNotesInLocalAppData': args.release_version == '0.2.6',
+        'recordNotesInLocalAppData': args.release_version in ('0.2.6', '0.2.7'),
+        'txtAndNoteBundleExportImport': args.release_version == '0.2.7',
+        'bundleMaximumBytes': 2097152,
+        'bundleVersion': 1,
+        'bundleHashesProvideAuthenticity': False,
+        'bundleImportUsesUniqueLocalDirectoryAndRebindsNote': args.release_version == '0.2.7',
+        'bundleExportIncludesDisplayedDraftWithoutMarkingLocalNoteSaved': args.release_version == '0.2.7',
+        'bundleNativeFileDialogsWindowsRuntimeTested': False,
+        'previous026UserConfirmedNoteInput': args.release_version == '0.2.7',
         'recordNoteMaximumCharacters': 1000,
         'noteIdentityUsesFileLocationAndNormalizedTxtContent': True,
         'noteStoreIndependentOfRecentTenEntryLimit': True,
         'noteConcurrentRevisionCheckAndAtomicReplace': True,
         'noteWindowsRuntimeTested': False,
-        'previous025UserConfirmedABComparison': args.release_version == '0.2.6',
-        'previous024UserConfirmedRecentSelectionGraphOpen': args.release_version in ('0.2.5', '0.2.6'),
-        'previous023UserConfirmedHistoricalGraphAndInputSelection': args.release_version in ('0.2.4', '0.2.5', '0.2.6'),
-        'previous022UserConfirmedMouseSelection': args.release_version in ('0.2.3', '0.2.4', '0.2.5', '0.2.6'),
-        'previous021UserConfirmedTabSampleInspection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6'),
-        'observationFinalStatusCanBeSavedOnceWithoutNewRows': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6'),
-        'observationTerminalReasonVisible': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6'),
+        'previous025UserConfirmedABComparison': args.release_version in ('0.2.6', '0.2.7'),
+        'previous024UserConfirmedRecentSelectionGraphOpen': args.release_version in ('0.2.5', '0.2.6', '0.2.7'),
+        'previous023UserConfirmedHistoricalGraphAndInputSelection': args.release_version in ('0.2.4', '0.2.5', '0.2.6', '0.2.7'),
+        'previous022UserConfirmedMouseSelection': args.release_version in ('0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7'),
+        'previous021UserConfirmedTabSampleInspection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7'),
+        'observationFinalStatusCanBeSavedOnceWithoutNewRows': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7'),
+        'observationTerminalReasonVisible': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7'),
         'chartKeyboardWindowsRuntimeTested': False,
         'chartStopPreservesHistoryAndClearResets': True,
         'chartHiddenWhileMockActive': True,

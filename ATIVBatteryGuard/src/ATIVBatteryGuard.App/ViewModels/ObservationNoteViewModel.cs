@@ -46,6 +46,7 @@ namespace ATIVBatteryGuard.ViewModels
         }
         public bool HasChanges => text != saved.Text;
         public bool IsReadOnly => disposed || busy || confirming || !saved.Available || !ObservationNoteStore.IsValidKey(RecordKey);
+        public bool CanExport => !IsReadOnly && ObservationNoteStore.IsValidText(text);
         public bool CanSave => !disposed && !busy && !IsReadOnly && HasChanges && ObservationNoteStore.IsValidText(text);
         public string Preview => ObservationNote.Preview(saved.Text);
         public string CharacterCountText => text.Length + "/1000자";
@@ -123,7 +124,7 @@ namespace ATIVBatteryGuard.ViewModels
         private void Notify()
         {
             Changed("Text"); Changed("HasChanges"); Changed("IsReadOnly"); Changed("CanSave");
-            Changed("Preview"); Changed("CharacterCountText"); Changed("Status");
+            Changed("CanExport"); Changed("Preview"); Changed("CharacterCountText"); Changed("Status");
             SaveCommand.Refresh(); ReloadCommand.Refresh();
         }
 

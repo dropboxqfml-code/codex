@@ -108,6 +108,25 @@ namespace ATIVBatteryGuard.Core.Storage
             catch { return ObservationNote.Unavailable("메모를 읽지 못했습니다. 로컬 저장 위치와 읽기 권한을 확인하세요."); }
         }
 
+        // Rollback only a note created for an unpublished import, guarded against concurrent edits.
+        internal bool RemoveImportedRevision(string key, string revision)
+        {
+            try
+            {
+                string path = FilePath(key);
+                LocalPathPolicy.EnsureNoReparsePoints(path + ".lock");
+                using (var lease = new FileStream(path + ".lock", FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                {
+                    var current = Load(key);
+                    if (!current.Available || current.Revision != revision) return false;
+                    LocalPathPolicy.EnsureNoReparsePoints(path);
+                    File.Delete(path);
+                    return true;
+                }
+            }
+            catch { return false; }
+        }
+
         public ObservationNote Save(string key, string text, string expectedRevision)
         {
             text = ObservationNote.Normalize(text);

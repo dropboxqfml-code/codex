@@ -18,6 +18,8 @@ namespace ATIVBatteryGuard.Core.Services
 
         public string FileName { get; }
         public string NoteKey { get; }
+        public string Text { get; }
+        public string SourcePath { get; }
         public BatteryObservationGraph Graph { get; }
         public string ErrorMessage { get; }
         public bool Success => ErrorMessage.Length == 0;
@@ -27,12 +29,14 @@ namespace ATIVBatteryGuard.Core.Services
             + " · 마지막 경과 " + TimeSpan.FromSeconds(Graph.ElapsedSeconds).ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture)
             + " · 기록 공백 " + Graph.GapCount.ToString(CultureInfo.InvariantCulture) + "건";
 
-        private SavedBatteryObservation(string fileName, BatteryObservationGraph graph, string error, string noteKey = "")
+        private SavedBatteryObservation(string fileName, BatteryObservationGraph graph, string error, string noteKey = "", string text = "", string sourcePath = "")
         {
             string leaf = (fileName ?? "관찰 TXT").Replace('\\', '/');
             FileName = leaf.Substring(leaf.LastIndexOf('/') + 1);
             Graph = graph;
             NoteKey = noteKey;
+            Text = text;
+            SourcePath = sourcePath;
             ErrorMessage = error;
         }
 
@@ -161,7 +165,7 @@ namespace ATIVBatteryGuard.Core.Services
                     return Fail("관찰 종료 상태와 표본 수가 서로 맞지 않습니다.");
                 return new SavedBatteryObservation(fileName,
                     BatteryObservationGraph.FromSamples(rows.AsReadOnly(), status.Value), "",
-                    sourcePath == null ? "" : ObservationNoteStore.Identity(sourcePath, text));
+                    sourcePath == null ? "" : ObservationNoteStore.Identity(sourcePath, text), text, sourcePath ?? "");
             }
         }
 

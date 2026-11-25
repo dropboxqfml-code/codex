@@ -457,6 +457,7 @@ internal static partial class Program
         RegisterObservationComparisonTests();
         RegisterObservationNoteStoreTests();
         RegisterObservationNoteViewModelTests();
+        RegisterObservationBundleTests();
         RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();
@@ -540,6 +541,15 @@ internal static partial class Program
         public string LastFileInspection;
         public int ObservationSaves;
         public int ObservationOpens;
+        public Func<SavedBatteryObservation, string, string> BundleExporter;
+        public Func<ObservationBundle> BundleOpener;
+        public Func<ObservationBundle, SavedBatteryObservation> BundleImporter;
+        public int BundleExports, BundleOpens, BundleImports;
+        public string ExportObservationBundle(SavedBatteryObservation record, string noteText)
+        { BundleExports++; return BundleExporter?.Invoke(record, noteText); }
+        public ObservationBundle OpenObservationBundle() { BundleOpens++; return BundleOpener?.Invoke(); }
+        public SavedBatteryObservation ImportObservationBundle(ObservationBundle bundle)
+        { BundleImports++; return BundleImporter?.Invoke(bundle); }
         public Func<SavedBatteryObservation, ObservationNote> NoteLoader;
         public Func<SavedBatteryObservation, string, string, ObservationNote> NoteSaver;
         public Func<string, string, ObservationLossChoice> NoteConfirmer;

@@ -331,6 +331,10 @@ namespace ATIVBatteryGuard.ViewModels
         public ObservationNoteViewModel SavedObservationNote => savedObservationNote;
         public ObservationNoteViewModel ComparisonObservationNote => comparisonObservationNote;
 
+        public RelayCommand ImportObservationBundleCommand { get; }
+        public RelayCommand ImportComparisonBundleCommand { get; }
+        public RelayCommand ExportObservationBundleCommand { get; }
+        public RelayCommand ExportComparisonBundleCommand { get; }
         public RelayCommand OpenComparisonObservationCommand { get; }
         public RelayCommand CloseComparisonObservationCommand { get; }
         public bool ComparisonObservationVisible => comparisonObservation != null;
@@ -899,6 +903,14 @@ namespace ATIVBatteryGuard.ViewModels
 				() => !mainViewModel.disposed && !mainViewModel.confirmingObservationLoss);
 			SaveBatteryObservationCommand = new RelayCommand(SaveBatteryObservation,
 				() => mainViewModel.CanSaveBatteryObservation());
+            ImportObservationBundleCommand = new RelayCommand(() => OpenSavedObservationFile(null, false, true),
+                () => !disposed && !openingSavedObservation);
+            ImportComparisonBundleCommand = new RelayCommand(() => OpenSavedObservationFile(null, true, true),
+                () => !disposed && !openingSavedObservation && SavedObservationVisible);
+            ExportObservationBundleCommand = new RelayCommand(() => ExportObservationBundle(false),
+                () => !disposed && !openingSavedObservation && savedObservationNote?.CanExport == true);
+            ExportComparisonBundleCommand = new RelayCommand(() => ExportObservationBundle(true),
+                () => !disposed && !openingSavedObservation && comparisonObservationNote?.CanExport == true);
             OpenRecentObservationCommand = new RelayCommand(OpenRecentObservation,
                 () => !disposed && !openingSavedObservation && selectedRecentObservation != null);
             OpenSavedObservationCommand = new RelayCommand(OpenSavedObservation,
@@ -1281,14 +1293,16 @@ namespace ATIVBatteryGuard.ViewModels
             OpenRecentObservationCommand?.Refresh();
         }
 
-        private void OpenSavedObservationFile(RecentObservationEntry recent, bool comparison = false)
+        private void OpenSavedObservationFile(RecentObservationEntry recent, bool comparison = false, bool importBundle = false)
         {
             if (disposed || openingSavedObservation || (comparison && savedObservation == null)) return;
             openingSavedObservation = true;
             NotifySavedObservation();
             try
             {
-                SavedBatteryObservation loaded = recent == null ? interaction.OpenBatteryObservation() : interaction.OpenRecentObservation(recent);
+                var bundle = importBundle ? interaction.OpenObservationBundle() : null;
+                SavedBatteryObservation loaded = importBundle ? bundle?.Observation
+                    : recent == null ? interaction.OpenBatteryObservation() : interaction.OpenRecentObservation(recent);
                 if (disposed) return;
                 savedObservationOpenFailed = loaded != null && !loaded.Success;
                 if (loaded == null)
@@ -1306,6 +1320,14 @@ namespace ATIVBatteryGuard.ViewModels
                         NoteActionInterrupted("기록 교체");
                         return;
                     }
+                    if (importBundle)
+                    {
+                        if (disposed) return;
+                        loaded = interaction.ImportObservationBundle(bundle);
+                        if (disposed) return;
+                        if (loaded == null || !loaded.Success || !ObservationNoteStore.IsValidKey(loaded.NoteKey))
+                            throw new InvalidOperationException();
+                    }
                     ObservationNoteViewModel note;
                     if (sameRecord) note = currentNote;
                     else if (!string.IsNullOrEmpty(loaded.NoteKey) && otherNote?.RecordKey == loaded.NoteKey) note = otherNote;
@@ -1321,16 +1343,24 @@ namespace ATIVBatteryGuard.ViewModels
                     else { savedObservation = loaded; savedObservationNote = note; }
                     if (currentNote != null && !ReferenceEquals(currentNote, note) && !ReferenceEquals(currentNote, otherNote))
                         currentNote.Dispose();
-                    savedObservationOpenStatus = comparison ? "비교 기록 B를 열었습니다." : "저장된 관찰 기록을 열었습니다.";
+                    savedObservationOpenStatus = importBundle
+                        ? (comparison ? "비교 기록 B" : "관찰 기록") + "의 TXT와 메모를 새 로컬 폴더에 복원했습니다. 원본 묶음은 보관됩니다."
+                        : comparison ? "비교 기록 B를 열었습니다." : "저장된 관찰 기록을 열었습니다.";
                     RefreshRecentObservations();
                 }
+            }
+            catch (System.IO.InvalidDataException ex)
+            {
+                if (!disposed) { savedObservationOpenFailed = true; savedObservationOpenStatus = ex.Message; }
             }
             catch
             {
                 if (!disposed)
                 {
                     savedObservationOpenFailed = true;
-                    savedObservationOpenStatus = (comparison ? "비교 기록 B를" : "파일을")
+                    savedObservationOpenStatus = importBundle
+                        ? "묶음을 복원하지 못했습니다. 원본 묶음과 기존 기록·메모는 보관됩니다. 로컬 저장 공간과 권한을 확인한 뒤 다시 시도하세요."
+                        : (comparison ? "비교 기록 B를" : "파일을")
                         + " 읽지 못했습니다. 파일의 이동·삭제 여부와 로컬 TXT 읽기 권한을 확인하세요.";
                     log.Write("OBSERVATION_OPEN_FAILED");
                 }
@@ -1342,10 +1372,53 @@ namespace ATIVBatteryGuard.ViewModels
             }
         }
 
+        private void ExportObservationBundle(bool comparison)
+        {
+            var record = comparison ? comparisonObservation : savedObservation;
+            var note = comparison ? comparisonObservationNote : savedObservationNote;
+            if (disposed || openingSavedObservation || record == null || note?.CanExport != true) return;
+            // Capture the displayed draft. Export never marks the local memo as saved.
+            string text = note.Text;
+            openingSavedObservation = true;
+            NotifySavedObservation();
+            try
+            {
+                string name = interaction.ExportObservationBundle(record, text);
+                if (disposed) return;
+                savedObservationOpenFailed = false;
+                savedObservationOpenStatus = name == null ? "묶음 내보내기를 취소했습니다."
+                    : (comparison ? "B" : "A") + "의 TXT·현재 메모를 내보냈습니다 · " + name
+                        + (note.HasChanges ? " · 로컬 메모는 수정 중입니다. 필요하면 메모 저장을 누르세요." : "");
+            }
+            catch (System.IO.InvalidDataException ex)
+            {
+                if (!disposed) { savedObservationOpenFailed = true; savedObservationOpenStatus = ex.Message; }
+            }
+            catch
+            {
+                if (!disposed)
+                {
+                    savedObservationOpenFailed = true;
+                    savedObservationOpenStatus = "묶음을 내보내지 못했습니다. 기존 파일과 입력한 메모는 보관됩니다. 다른 이름·로컬 저장 위치로 다시 시도하세요.";
+                }
+            }
+            finally { openingSavedObservation = false; NotifySavedObservation(); }
+        }
+
+        private void RefreshBundleCommands()
+        {
+            ImportObservationBundleCommand?.Refresh(); ImportComparisonBundleCommand?.Refresh();
+            ExportObservationBundleCommand?.Refresh(); ExportComparisonBundleCommand?.Refresh();
+        }
+
         private ObservationNoteViewModel CreateObservationNote(SavedBatteryObservation record)
         {
             var note = new ObservationNoteViewModel(interaction, record);
             note.StoredNoteChanged += (sender, args) => { if (!disposed) RefreshRecentObservations(); };
+            note.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == "CanExport") RefreshBundleCommands();
+            };
             return note;
         }
 
@@ -1403,6 +1476,7 @@ namespace ATIVBatteryGuard.ViewModels
 
         private void NotifySavedObservation()
         {
+            RefreshBundleCommands();
             Changed("SavedObservationVisible");
             Changed("SavedObservationNote");
             Changed("ComparisonObservationNote");

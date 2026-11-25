@@ -25,6 +25,10 @@ namespace ATIVBatteryGuard.Services
 
 		SavedBatteryObservation OpenBatteryObservation();
 
+        string ExportObservationBundle(SavedBatteryObservation record, string noteText);
+        ObservationBundle OpenObservationBundle();
+        SavedBatteryObservation ImportObservationBundle(ObservationBundle bundle);
+
         ObservationLossChoice ConfirmUnsavedObservation(string action);
         IReadOnlyList<RecentObservationEntry> ReadRecentObservations();
         SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry);

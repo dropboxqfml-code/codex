@@ -80,6 +80,20 @@ namespace ATIVBatteryGuard.Diagnostics
 				return "관찰 기록 저장 모의 처리";
 			}
 
+            public string BundleFile;
+            public string ExportObservationBundle(SavedBatteryObservation record, string noteText)
+            {
+                BundleFile = Path.Combine(SourceDirectory, Guid.NewGuid().ToString("N") + ObservationBundle.Extension);
+                ObservationBundle.Create(record, noteText).Export(BundleFile);
+                return Path.GetFileName(BundleFile);
+            }
+            public ObservationBundle OpenObservationBundle() { return ObservationBundle.ReadFile(BundleFile); }
+            public SavedBatteryObservation ImportObservationBundle(ObservationBundle bundle)
+            {
+                var record = bundle.Import(SourceDirectory);
+                RecentEntries = new RecentObservationStore(SourceDirectory).Record(record.SourcePath, record);
+                return record;
+            }
             public string SourceDirectory;
             public ObservationNoteStore Notes;
             public ObservationLossChoice NoteChoice = ObservationLossChoice.Discard;
@@ -290,6 +304,27 @@ namespace ATIVBatteryGuard.Diagnostics
                 await Idle(app);
                 Require(model.SavedObservationVisible, "RECENT_OPEN_BINDING_INVALID");
                 Require(model.SavedObservationNote.Text == "보호 켜기 관찰", "NOTE_REOPEN_INVALID");
+                Execute(Find<Button>(window, "ExportObservationBundleButton"));
+                await Idle(app);
+                Require(File.Exists(interaction.BundleFile), "BUNDLE_EXPORT_BUTTON_INVALID");
+                model.SavedObservationNote.Text = "메모 초안 보관";
+                interaction.NoteChoice = ObservationLossChoice.Cancel;
+                Execute(Find<Button>(window, "ImportObservationBundleButton"));
+                await Idle(app);
+                Require(model.SavedObservationNote.Text == "메모 초안 보관", "BUNDLE_IMPORT_CANCEL_LOST_DRAFT");
+                interaction.NoteChoice = ObservationLossChoice.Discard;
+                Execute(Find<Button>(window, "ImportObservationBundleButton"));
+                await Idle(app);
+                Require(model.SavedObservationNote.Text == "보호 켜기 관찰" && savedChart.Graph.SampleCount == 1,
+                    "BUNDLE_IMPORT_NOTE_OR_GRAPH_INVALID");
+                Execute(Find<Button>(window, "ImportComparisonBundleButton"));
+                await Idle(app);
+                Require(model.ComparisonObservationNote.Text == "보호 켜기 관찰" && model.ComparisonObservationVisible,
+                    "BUNDLE_COMPARISON_IMPORT_INVALID");
+                Execute(Find<Button>(window, "ExportComparisonBundleButton"));
+                await Idle(app);
+                Require(ObservationBundle.ReadFile(interaction.BundleFile).NoteText == "보호 켜기 관찰",
+                    "BUNDLE_COMPARISON_EXPORT_INVALID");
                 model.CloseSavedObservationCommand.Execute(null);
                 model.StartBatteryObservationCommand.Execute(null); model.RefreshBattery();
                 interaction.ObservationChoice = ObservationLossChoice.Cancel;

@@ -33,6 +33,7 @@
     <Compile Include="ObservationComparisonTests.cs" />
     <Compile Include="ObservationNoteStoreTests.cs" />
     <Compile Include="ObservationNoteViewModelTests.cs" />
+    <Compile Include="ObservationBundleTests.cs" />
     <Compile Include="../src/ATIVBatteryGuard.App/Controls/BatteryObservationChartSelection.cs" Link="Controls/BatteryObservationChartSelection.cs" />
     <Compile Include="ProtectionPresentationAndGraphViewModelTests.cs" />
     <Compile Include="ManualProtectionClientSessionTests.cs" />

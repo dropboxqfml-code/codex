@@ -1,0 +1,76 @@
+{
+  "baseCommit": "d467d7a6ff714f10c496347cb68a1c66da52c2f6",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.7",
+  "previous026UserConfirmedNoteInput": true,
+  "portableTests": {
+    "passed": 1219,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1219,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 18,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "bundleFormat": "ATIVBatteryGuard.ObservationBundle",
+  "bundleVersion": 1,
+  "bundleExtension": ".ativrecord",
+  "bundleMaximumBytes": 2097152,
+  "bundleMaximumNesting": 8,
+  "bundleStrictUtf8VersionRequiredFieldsContentHashesAndFileNameValidation": true,
+  "trailingDocumentsAndDuplicateRequiredMembersRejectedTested": true,
+  "hashesProvideAuthenticityOrEncryption": false,
+  "sourcePathAndLocalNoteKeyExported": false,
+  "exactTxtSnapshotWithBomAndCrlfBytesPreservedTested": true,
+  "exportIncludesDraftAndRetainsLocalUnsavedState": true,
+  "unavailableMemoExportBlocked": true,
+  "existingExportTargetNeverReplaced": true,
+  "importRoot": "imported-observations",
+  "importUsesUniqueDirectoryAndRebindsNote": true,
+  "importStagesTxtSavesNoteThenPublishesDirectory": true,
+  "rollbackGuardUsesFileLeaseAndExpectedNoteRevision": true,
+  "failedNoteStorageLeavesNoPublishedTxtAndAllowsRetryTested": true,
+  "crossDirectoryImportRecentReopenAndReExportRoundtripTested": true,
+  "abIndependentNotesAndRecentPreviewsTested": true,
+  "cancelFailureReentryAndLateResultPreserveExistingViewAndDraftTested": true,
+  "existingCaptureClockAndHardwareCallCountersPreservedTested": true,
+  "crashOrPowerLossRecoveryWindowsTested": false,
+  "windowsBundleButtonSmokeChecksAddedAndCompiled": true,
+  "windowsSmokeChecksExecuted": false,
+  "newReleaseWindowsBundleUiOrFileDialogsTested": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.7-WIN10-X64.zip",
+    "bytes": 313468,
+    "sha256": "ed99aebf25aad83dce39a19cc542b00f2039f797e5a02d0aac28c29c0d56a66d",
+    "entries": 9,
+    "sourceFileCount": 206,
+    "productSourceFingerprintSha256": "95cc16b712cff7bd2551a79f23afb1df65e1eed19d3a8cb8f092f6f16f8f1ae6",
+    "releaseVersion": "0.2.7",
+    "guiVersionResource": {
+      "fileVersion": "0.2.7.0",
+      "productVersion": "0.2.7"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "a10d5431cd17374acd22f6327e67042cca0dc8682bdb783937da1249dcb8cd26"
+    },
+    "portable-tests.log": {
+      "bytes": 111189,
+      "sha256": "f7ce9b8739100bb1afc0fa77b605b0222ba59ec064d99c4e15813a4dcf717e51"
+    },
+    "wpf-build.log": {
+      "bytes": 2034,
+      "sha256": "bc439e9783ef22b15d4b63c0f7da618d72f5283d6a3cd2c7a57e6cba7064f20b"
+    }
+  }
+}

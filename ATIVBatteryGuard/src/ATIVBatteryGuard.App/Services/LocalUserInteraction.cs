@@ -118,6 +118,47 @@ namespace ATIVBatteryGuard.Services
             return ReadObservationFile(dialog.FileName);
         }
 
+        public string ExportObservationBundle(SavedBatteryObservation record, string noteText)
+        {
+            var bundle = ObservationBundle.Create(record, noteText);
+            var dialog = new SaveFileDialog
+            {
+                Title = "관찰 TXT와 현재 입력한 메모를 함께 내보내기",
+                Filter = "ATIV 관찰 묶음 (*.ativrecord)|*.ativrecord",
+                DefaultExt = ObservationBundle.Extension, AddExtension = true,
+                FileName = Path.GetFileNameWithoutExtension(record.FileName) + ObservationBundle.Extension,
+                InitialDirectory = directory, OverwritePrompt = false
+            };
+            if (dialog.ShowDialog(Application.Current.MainWindow) != true) return null;
+            if (!dialog.FileName.EndsWith(ObservationBundle.Extension, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException(".ativrecord 확장자로 새 파일 이름을 지정하세요.");
+            if (File.Exists(dialog.FileName))
+                throw new InvalidDataException("기존 파일을 보존합니다. 다른 파일 이름으로 다시 내보내세요.");
+            bundle.Export(dialog.FileName);
+            return Path.GetFileName(dialog.FileName);
+        }
+
+        public ObservationBundle OpenObservationBundle()
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "TXT·메모 묶음 불러오기",
+                Filter = "ATIV 관찰 묶음 (*.ativrecord)|*.ativrecord",
+                InitialDirectory = directory, CheckFileExists = true, Multiselect = false
+            };
+            return dialog.ShowDialog(Application.Current.MainWindow) == true
+                ? ObservationBundle.ReadFile(dialog.FileName) : null;
+        }
+
+        public SavedBatteryObservation ImportObservationBundle(ObservationBundle bundle)
+        {
+            var record = bundle.Import(directory);
+            // A recent-index failure does not undo a successfully restored TXT and note.
+            // The snapshot carries its exact, internally generated destination path.
+            RememberObservation(record.SourcePath, record);
+            return record;
+        }
+
         private SavedBatteryObservation ReadObservationFile(string path)
         {
             LocalPathPolicy.NormalizeDirectory(Path.GetDirectoryName(path));

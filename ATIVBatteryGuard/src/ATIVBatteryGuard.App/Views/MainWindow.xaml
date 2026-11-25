@@ -228,6 +228,12 @@
                         <Button x:Name="CloseComparisonObservationButton" Content="비교 닫기" Command="{Binding CloseComparisonObservationCommand}" />
                         <Button Content="기록 모두 닫기" Command="{Binding CloseSavedObservationCommand}" />
                     </WrapPanel>
+                    <WrapPanel>
+                        <Button x:Name="ImportObservationBundleButton" Content="TXT·메모 묶음 불러오기" Command="{Binding ImportObservationBundleCommand}" />
+                        <Button x:Name="ImportComparisonBundleButton" Content="비교 묶음 불러오기" Command="{Binding ImportComparisonBundleCommand}" />
+                    </WrapPanel>
+                    <TextBlock Text="묶음은 TXT와 메모를 함께 옮깁니다. 불러오면 새 로컬 폴더에 복원하고 기존 자료를 보관합니다."
+                               TextWrapping="Wrap" Style="{StaticResource Detail}" />
                     <TextBlock Text="{Binding SavedObservationOpenStatus}" TextWrapping="Wrap" Margin="0,2,0,8"
                                AutomationProperties.LiveSetting="Polite">
                         <TextBlock.Style>
@@ -275,6 +281,10 @@
                         <TextBlock Text="{Binding SavedObservationTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding SavedObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
                         <TextBlock Text="{Binding SavedObservationNote.Preview}" TextWrapping="Wrap" Foreground="#475569" Margin="0,0,0,6" />
+                        <Button x:Name="ExportObservationBundleButton" Content="이 기록 TXT·메모 내보내기"
+                                Command="{Binding ExportObservationBundleCommand}" HorizontalAlignment="Left" />
+                        <TextBlock Text="현재 입력한 메모를 포함합니다. 로컬 메모 저장 상태는 별도로 표시됩니다."
+                                   TextWrapping="Wrap" Style="{StaticResource Detail}" />
                         <Expander Header="관찰 메모 편집" Margin="0,0,0,10">
                             <StackPanel DataContext="{Binding SavedObservationNote}" Margin="0,8,0,0">
                                 <TextBox x:Name="ANoteText" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
@@ -306,6 +316,10 @@
                         <TextBlock Text="{Binding ComparisonObservationName}" TextWrapping="Wrap" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding ComparisonObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
                         <TextBlock Text="{Binding ComparisonObservationNote.Preview}" TextWrapping="Wrap" Foreground="#475569" Margin="0,0,0,6" />
+                        <Button x:Name="ExportComparisonBundleButton" Content="비교 기록 TXT·메모 내보내기"
+                                Command="{Binding ExportComparisonBundleCommand}" HorizontalAlignment="Left" />
+                        <TextBlock Text="현재 입력한 메모를 포함합니다. 로컬 메모 저장 상태는 별도로 표시됩니다."
+                                   TextWrapping="Wrap" Style="{StaticResource Detail}" />
                         <Expander Header="관찰 메모 편집" Margin="0,0,0,10">
                             <StackPanel DataContext="{Binding ComparisonObservationNote}" Margin="0,8,0,0">
                                 <TextBox x:Name="BNoteText" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"

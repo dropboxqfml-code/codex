@@ -16,7 +16,7 @@ def gui_version(data, release_version=RELEASE_VERSION):
     fixed = pe.VS_FIXEDFILEINFO[0]
     actual = (fixed.FileVersionMS >> 16, fixed.FileVersionMS & 65535,
               fixed.FileVersionLS >> 16, fixed.FileVersionLS & 65535)
-    if actual != tuple(int(part) for part in release_version.split('.')) + (0,):
+    if actual != tuple(int(part) for part in release_version.split('-')[0].split('.')) + (0,):
         raise ValueError('The GUI PE file version must match the requested release.')
     strings = {}
     for group in pe.FileInfo:
@@ -33,11 +33,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test-report', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--release-version', choices=('0.2.0', '0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'), default=RELEASE_VERSION)
+    parser.add_argument('--release-version', choices=('0.2.0', '0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'), default=RELEASE_VERSION)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     suite = json.loads(args.test_report.read_text())
-    if not (suite['passed'] >= {'0.2.0': 1120, '0.2.1': 1143, '0.2.2': 1150, '0.2.3': 1163, '0.2.4': 1179, '0.2.5': 1186, '0.2.6': 1201, '0.2.7': 1219, '0.2.8': 1236, '0.2.9': 1243, '0.2.10': 1244, '0.2.11': 1245}[args.release_version] and suite['registered'] == suite['passed'] and
+    if not (suite['passed'] >= {'0.2.0': 1120, '0.2.1': 1143, '0.2.2': 1150, '0.2.3': 1163, '0.2.4': 1179, '0.2.5': 1186, '0.2.6': 1201, '0.2.7': 1219, '0.2.8': 1236, '0.2.9': 1243, '0.2.10': 1244, '0.2.11': 1245, '0.3.0-rc.1': 1251}[args.release_version] and suite['registered'] == suite['passed'] and
             suite['failed'] == 0 and suite.get('skipped', 0) == 0):
         raise ValueError('The previous and new usability regression groups must pass.')
     app = root/'src/ATIVBatteryGuard.App'
@@ -56,13 +56,13 @@ def main():
     if any(name.startswith('tests/') or '/tests/' in name for name, _ in sources):
         raise ValueError('Tests cannot enter the product source closure.')
     fingerprint = sha(b''.join(name.encode()+b'\0'+data+b'\0' for name, data in sources))
-    guide_name = 'RELEASE_' + args.release_version.replace('.', '') + '_USER_STEPS.txt'
+    guide_name = 'RELEASE_030_RC1_USER_STEPS.txt' if args.release_version == '0.3.0-rc.1' else 'RELEASE_' + args.release_version.replace('.', '') + '_USER_STEPS.txt'
     guide = (root/guide_name).read_bytes()
     info = {
         'schemaVersion': 1, 'dateKorea': '2026-11-10' if args.release_version == '0.2.0' else '2026-11-25',
         'application': 'ATIV Battery Guard',
         'releaseVersion': args.release_version, 'guiVersionResource': version,
-        'target': 'Windows10x64/.NETFramework4.8/940X3G/P05ACJ' if args.release_version in ('0.2.9', '0.2.10', '0.2.11') else 'Windows10x64/.NETFramework4.8/940X3G-930X3G/P05ACJ',
+        'target': 'Windows10x64/.NETFramework4.8/940X3G/P05ACJ' if args.release_version in ('0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1') else 'Windows10x64/.NETFramework4.8/940X3G-930X3G/P05ACJ',
         'productSourceFingerprintSha256': fingerprint, 'sourceFileCount': len(sources),
         'sourceFiles': [{'file': name, 'sha256': sha(data)} for name, data in sources],
         'userGuideSourceSha256': sha(guide),
@@ -77,23 +77,26 @@ def main():
         'currentUserSidReadInternallyForPipeAcl': True,
         'userNamesAndGroupsExplicitlyRead': False, 'sidJobNonceOrPersonalPathReported': False,
         'privateCorrelationIsDeviceAuthentication': False,
-        'frequentFunctionOrder': ['Battery and charging', 'Records and notes', 'Help and diagnostics'] if args.release_version in ('0.2.9', '0.2.10', '0.2.11') else ['Windows battery', 'Manual protection', 'Battery observation'],
-        'secondaryFeaturesCollapsedNotRemoved': args.release_version not in ('0.2.9', '0.2.10', '0.2.11'),
-        'beginnerThreeSectionNavigation': args.release_version in ('0.2.9', '0.2.10', '0.2.11'),
-        'modelPresentation940X3GOnly': args.release_version in ('0.2.9', '0.2.10', '0.2.11'),
-        'roundedSpacedTabHeaders': args.release_version in ('0.2.10', '0.2.11'),
-        'introAndRecordingPromotionCardsRemoved': args.release_version in ('0.2.10', '0.2.11'),
-        'powerAndChargeStateSemibold': args.release_version in ('0.2.10', '0.2.11'),
-        'routineDiagnosticSuccessFooterRemoved': args.release_version in ('0.2.10', '0.2.11'),
+        'frequentFunctionOrder': ['Battery and charging', 'Records and notes', 'Help and diagnostics'] if args.release_version in ('0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1') else ['Windows battery', 'Manual protection', 'Battery observation'],
+        'secondaryFeaturesCollapsedNotRemoved': args.release_version not in ('0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'beginnerThreeSectionNavigation': args.release_version in ('0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'modelPresentation940X3GOnly': args.release_version in ('0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'roundedSpacedTabHeaders': args.release_version in ('0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'introAndRecordingPromotionCardsRemoved': args.release_version in ('0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'powerAndChargeStateSemibold': args.release_version in ('0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'routineDiagnosticSuccessFooterRemoved': args.release_version in ('0.2.10', '0.2.11', '0.3.0-rc.1'),
         'actionableFeedbackAndSettingsWarningsRetained': True,
-        'headerOnlyTextColorAndWeight': args.release_version == '0.2.11',
-        'wrapPanelMeasuresCompleteRoundedHeaders': args.release_version == '0.2.11',
-        'unrequestedStartupNoticeChangesRevertedTo029': args.release_version == '0.2.11',
-        'nativeHeaderBoundsAndBodyContrastChecksCompiled': args.release_version == '0.2.11',
+        'headerOnlyTextColorAndWeight': args.release_version in ('0.2.11', '0.3.0-rc.1'),
+        'wrapPanelMeasuresCompleteRoundedHeaders': args.release_version in ('0.2.11', '0.3.0-rc.1'),
+        'unrequestedStartupNoticeChangesRevertedTo029': args.release_version in ('0.2.11', '0.3.0-rc.1'),
+        'nativeHeaderBoundsAndBodyContrastChecksCompiled': args.release_version in ('0.2.11', '0.3.0-rc.1'),
         'rawHardwareAdmissionProfilePreserved': True,
-        'inactivePreferencesMockHistoricalReviewInquiryAndFileResearchExcludedFromUi': args.release_version in ('0.2.9', '0.2.10', '0.2.11'),
+        'inactivePreferencesMockHistoricalReviewInquiryAndFileResearchExcludedFromUi': args.release_version in ('0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
         'recordNoteComparisonAndDiagnosticDataPreserved': True,
-        'prereleaseMarkerRemovedFromCurrentUserInterface': True,
+        'prereleaseMarkerRemovedFromCurrentUserInterface': args.release_version != '0.3.0-rc.1',
+        'releaseStage': 'validation-candidate' if args.release_version == '0.3.0-rc.1' else 'development-release',
+        'final030ReleaseApproved': False,
+        'previous0211UserConfirmedTextVisible': args.release_version == '0.3.0-rc.1',
         'friendlyProtectionLabels': True,
         'modeOneAloneImplies80Percent': False,
         'passiveBatteryChartOnObservationStart': True,
@@ -102,50 +105,50 @@ def main():
         'chartUnknownNoBatteryReadErrorAndGapsBreakSegments': True,
         'chartAxis': 'Elapsed seconds horizontally and observed battery percentage from 0 to 100 vertically.',
         'chartHoverUsesOnlyActualObservedPoints': True,
-        'chartKeyboardObservedPointNavigation': args.release_version in ('0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'chartMouseClickFocusAndSelection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
+        'chartKeyboardObservedPointNavigation': args.release_version in ('0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'chartMouseClickFocusAndSelection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
         'chartMouseSelectionWindowsRuntimeTested': False,
-        'savedObservationTxtOpenAndHistoricalGraph': args.release_version in ('0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
+        'savedObservationTxtOpenAndHistoricalGraph': args.release_version in ('0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
         'savedObservationMaximumBytes': 262144,
         'savedObservationStrictUtf8AndPreviousExportFormat': True,
         'savedObservationFilePickerWindowsRuntimeTested': False,
-        'unsavedObservationSaveDiscardCancelGuard': args.release_version in ('0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
+        'unsavedObservationSaveDiscardCancelGuard': args.release_version in ('0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
         'recentObservationLocalIndexMaximumEntries': 10,
         'recentIndexFailureChangesTxtSaveOutcome': False,
         'recentIndexAndConfirmationWindowsRuntimeTested': False,
-        'twoSavedObservationGraphsWithCommonElapsedAxis': args.release_version in ('0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'comparisonPreservesIndependentTimestampsGapsAndSelection': args.release_version in ('0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
+        'twoSavedObservationGraphsWithCommonElapsedAxis': args.release_version in ('0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'comparisonPreservesIndependentTimestampsGapsAndSelection': args.release_version in ('0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
         'comparisonWindowsRuntimeTested': False,
-        'recordNotesInLocalAppData': args.release_version in ('0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'txtAndNoteBundleExportImport': args.release_version in ('0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
+        'recordNotesInLocalAppData': args.release_version in ('0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'txtAndNoteBundleExportImport': args.release_version in ('0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
         'bundleMaximumBytes': 2097152,
         'bundleVersion': 1,
         'bundleHashesProvideAuthenticity': False,
-        'bundleImportUsesUniqueLocalDirectoryAndRebindsNote': args.release_version in ('0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'bundleExportIncludesDisplayedDraftWithoutMarkingLocalNoteSaved': args.release_version in ('0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
+        'bundleImportUsesUniqueLocalDirectoryAndRebindsNote': args.release_version in ('0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'bundleExportIncludesDisplayedDraftWithoutMarkingLocalNoteSaved': args.release_version in ('0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
         'bundleNativeFileDialogsWindowsRuntimeTested': False,
-        'previous026UserConfirmedNoteInput': args.release_version in ('0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'previous027UserConfirmedBundleExportImport': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'strictBoundedJsonForSettingsNotesRecentsAndBundle': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'settingsCrossProcessLeaseAndRevisionCheck': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'validSettingsReadOnlyFallback': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'importRecoveryCopyPreparedBeforeTxtAndNote': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'abandonedImportRecoveryGuidanceWithoutAutomaticDeletion': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'recentSelectionPreservedDuringMemoRefresh': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'matchingFileNamesHaveShortRecordIdentityLabels': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11'),
+        'previous026UserConfirmedNoteInput': args.release_version in ('0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'previous027UserConfirmedBundleExportImport': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'strictBoundedJsonForSettingsNotesRecentsAndBundle': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'settingsCrossProcessLeaseAndRevisionCheck': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'validSettingsReadOnlyFallback': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'importRecoveryCopyPreparedBeforeTxtAndNote': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'abandonedImportRecoveryGuidanceWithoutAutomaticDeletion': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'recentSelectionPreservedDuringMemoRefresh': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'matchingFileNamesHaveShortRecordIdentityLabels': args.release_version in ('0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
         'windowsImeDpiDefenderAndPowerLossTested': False,
         'recordNoteMaximumCharacters': 1000,
         'noteIdentityUsesFileLocationAndNormalizedTxtContent': True,
         'noteStoreIndependentOfRecentTenEntryLimit': True,
         'noteConcurrentRevisionCheckAndAtomicReplace': True,
         'noteWindowsRuntimeTested': False,
-        'previous025UserConfirmedABComparison': args.release_version in ('0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'previous024UserConfirmedRecentSelectionGraphOpen': args.release_version in ('0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'previous023UserConfirmedHistoricalGraphAndInputSelection': args.release_version in ('0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'previous022UserConfirmedMouseSelection': args.release_version in ('0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'previous021UserConfirmedTabSampleInspection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'observationFinalStatusCanBeSavedOnceWithoutNewRows': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
-        'observationTerminalReasonVisible': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11'),
+        'previous025UserConfirmedABComparison': args.release_version in ('0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'previous024UserConfirmedRecentSelectionGraphOpen': args.release_version in ('0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'previous023UserConfirmedHistoricalGraphAndInputSelection': args.release_version in ('0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'previous022UserConfirmedMouseSelection': args.release_version in ('0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'previous021UserConfirmedTabSampleInspection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'observationFinalStatusCanBeSavedOnceWithoutNewRows': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
+        'observationTerminalReasonVisible': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.2.8', '0.2.9', '0.2.10', '0.2.11', '0.3.0-rc.1'),
         'chartKeyboardWindowsRuntimeTested': False,
         'chartStopPreservesHistoryAndClearResets': True,
         'chartHiddenWhileMockActive': True,

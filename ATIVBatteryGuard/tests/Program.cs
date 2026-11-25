@@ -460,6 +460,7 @@ internal static partial class Program
         RegisterObservationBundleTests();
         RegisterQualityAndUsabilityTests();
         RegisterBeginnerExperienceTests();
+        RegisterReleaseValidationEvidenceTests();
         RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();

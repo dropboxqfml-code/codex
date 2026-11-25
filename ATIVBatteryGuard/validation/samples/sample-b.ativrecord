@@ -1,0 +1,9 @@
+{
+  "Format": "ATIVBatteryGuard.ObservationBundle",
+  "Version": 1,
+  "ObservationFileName": "검증예제-B-실측아님.txt",
+  "ObservationText": "ATIV Battery Guard — 읽기 전용 Windows 배터리 관측\n상태: 사용자 중지\n관측 샘플: 3 / 긴 갱신 간격: 0\n마지막 샘플 경과초: 20\n검증용 예제 · 실제 측정 아님\nelapsed_seconds,percent,ac,state,quality,read_error,gap_before\n0,78,Connected,Charging,Observed,No,No\n10,79,Connected,Charging,Observed,No,No\n20,80,Connected,Charging,Observed,No,No\n",
+  "ObservationSha256": "b15204f707bc629c80f9431b3cc4db4287bcc793b9d8824fa876a08119e48b10",
+  "NoteText": "검증용 예제 B · 실제 측정 아님\n한글 메모 확인",
+  "NoteSha256": "91f30d39464694bc78b5c9a27cd6a248334a0e9b7b3207dabc2b00e7e75ffc6f"
+}

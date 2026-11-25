@@ -106,6 +106,29 @@ internal static partial class Program
             Check(tabs.All(t => t.Elements(ui + "ScrollViewer").Any()), "a section cannot scroll at small sizes");
         });
 
+        AddAsync("successful diagnostics clear routine footer notices while copy results failures and settings warnings remain visible", async () =>
+        {
+            using (var f = new Fixture())
+            using (var vm = ManualVm(f, new ManualVmService()))
+            {
+                Check(!vm.HasStatusNotice, "startup still shows a routine notice");
+                int changes = 0; vm.PropertyChanged += (sender, args) => { if (args.PropertyName == "HasStatusNotice") changes++; };
+                await vm.RefreshDiagnosticsAsync();
+                Check(vm.DiagnosticsSucceeded && !vm.HasStatusNotice && vm.StatusMessage == "", "successful diagnosis left a footer notice");
+                vm.CopyDiagnosticsCommand.Execute(null); Check(vm.HasStatusNotice && vm.StatusMessage.Contains("복사"), "copy feedback was lost");
+                f.Interaction.Reader = () => throw new InvalidOperationException("PRIVATE");
+                await vm.RefreshDiagnosticsAsync();
+                Check(vm.HasStatusNotice && vm.StatusMessage.Contains("실패") && !vm.StatusMessage.Contains("PRIVATE"), "diagnostic failure hidden or leaked");
+                Check(changes > 0, "footer visibility was not notified");
+            }
+            using (var f = new Fixture())
+            {
+                System.IO.File.WriteAllText(f.Store.FilePath, "{\"schemaVersion\":99}");
+                using (var vm = ManualVm(f, new ManualVmService()))
+                    Check(vm.HasStatusNotice && vm.SettingsWarning.Length > 0, "settings warning hidden");
+            }
+        });
+
         Add("production interface excludes inactive preferences simulations historical experiments inquiry drafts and file research controls", () =>
         {
             var document = BeginnerWindow(); XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";

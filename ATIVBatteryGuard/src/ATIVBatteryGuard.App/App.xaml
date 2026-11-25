@@ -57,8 +57,43 @@
             </Style.Triggers>
         </Style>
         <Style TargetType="TabItem">
-            <Setter Property="Padding" Value="14,9" /><Setter Property="FontSize" Value="15" />
-            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Padding" Value="14,9" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Margin" Value="0,0,8,8" />
+            <Setter Property="Background" Value="#F5F7FA" />
+            <Setter Property="Foreground" Value="#26364A" />
+            <Setter Property="BorderBrush" Value="#BDCAD9" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocus}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#E7EDF5" /></Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#1D5CA8" /><Setter Property="BorderBrush" Value="#1D5CA8" />
+                    <Setter Property="Foreground" Value="White" /><Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+                <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                        <Condition Property="IsSelected" Value="True" /><Condition Property="IsMouseOver" Value="True" />
+                    </MultiTrigger.Conditions>
+                    <Setter Property="Background" Value="#164C8E" />
+                </MultiTrigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#EDF1F5" /><Setter Property="Foreground" Value="#64748B" />
+                    <Setter Property="BorderBrush" Value="#D4DDE7" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="Padding" Value="10,7" /><Setter Property="BorderBrush" Value="#BDCAD9" />

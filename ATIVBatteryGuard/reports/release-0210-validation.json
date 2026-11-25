@@ -1,0 +1,63 @@
+{
+  "baseCommit": "729ba3f29f4e99e292e183074e00808b3fe3b67f",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.10",
+  "portableTests": {
+    "passed": 1244,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1244,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 1,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "roundedTabHeadersCornerRadius": 6,
+  "tabItemMargin": "0,0,8,8",
+  "tabItemMinimumHeight": 40,
+  "powerAndChargeStateSemibold": true,
+  "introAndRecordingPromotionCardsAbsent": true,
+  "existingHelpRetainsRequiredUsageInstructionsWithoutDuplicateCards": true,
+  "routineStartupAndSuccessfulDiagnosticFooterRemoved": true,
+  "emptyFooterCollapsed": true,
+  "copyFeedbackDiagnosticFailureAndSettingsWarningsRetainedTested": true,
+  "footerVisibilityChangeNotificationTested": true,
+  "newWindowsAppearanceKeyboardFocusAndDpiTested": false,
+  "windowsSmokeExecuted": false,
+  "authenticodeSigned": false,
+  "windowsDefenderScanExecuted": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.10-WIN10-X64.zip",
+    "bytes": 313595,
+    "sha256": "fa8a6e0b7debd2449a2cdfd49e77eafc3add2f4ac06a8324ab9b53e86457bc95",
+    "entries": 9,
+    "sourceFileCount": 207,
+    "productSourceFingerprintSha256": "55934c52ee0ce10d9958f54db80dc0c920d171e0afce4afa53e7fbc4646d28b7",
+    "releaseVersion": "0.2.10",
+    "guiVersionResource": {
+      "fileVersion": "0.2.10.0",
+      "productVersion": "0.2.10"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "c62589ec859d8c85893d0ccf79db914afd43eccebfa0c00d26994eaec5b12391"
+    },
+    "portable-tests.log": {
+      "bytes": 113914,
+      "sha256": "5f9fabff8be3c785638031074f48f2629f77f583a19afda986e00ea93186fe96"
+    },
+    "wpf-build.log": {
+      "bytes": 2034,
+      "sha256": "a59b3d864608f277cd39e3ed2d9e3d6ce99df23acc7e99c45a06f48c55d0d1c0"
+    }
+  }
+}

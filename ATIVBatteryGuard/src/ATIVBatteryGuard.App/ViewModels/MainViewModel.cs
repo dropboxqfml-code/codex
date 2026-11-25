@@ -801,6 +801,8 @@ namespace ATIVBatteryGuard.ViewModels
 			}
 		}
 
+        public bool HasStatusNotice => !string.IsNullOrWhiteSpace(SettingsWarning) || !string.IsNullOrWhiteSpace(StatusMessage);
+
 		public string StatusMessage
 		{
 			get
@@ -811,6 +813,7 @@ namespace ATIVBatteryGuard.ViewModels
 			{
 				statusMessage = value;
 				Changed("StatusMessage");
+                Changed("HasStatusNotice");
 			}
 		}
 
@@ -849,15 +852,9 @@ namespace ATIVBatteryGuard.ViewModels
 			settings = settingsLoadResult.Settings;
 			canSave = settingsLoadResult.CanSave;
 			SettingsWarning = settingsLoadResult.Warning;
-			bool mockModeEnabled = settings.MockModeEnabled;
-			settings.MockModeEnabled = false;
-			statusMessage = ((!string.IsNullOrEmpty(settingsLoadResult.Warning)) ? settingsLoadResult.Warning :
-				ManualProtectionAvailable ? "준비되었습니다. 현재 설정 확인부터 시작하세요."
-				: "이 환경에서는 충전 제어를 사용할 수 없습니다. 기록과 진단은 사용할 수 있습니다.");
-			if (mockModeEnabled)
-			{
-				statusMessage += " 이전 개발용 모드는 꺼져 있습니다.";
-			}
+            settings.MockModeEnabled = false;
+            statusMessage = ManualProtectionAvailable ? ""
+                : "이 환경에서는 충전 제어를 사용할 수 없습니다. 기록과 진단은 사용할 수 있습니다.";
 			ApplyCommand = new RelayCommand(Apply, () => mainViewModel.CanApply);
 			SaveCommand = new RelayCommand(Save, () => mainViewModel.canSave && !mainViewModel.disposed);
 			RefreshCommand = new RelayCommand(RefreshBattery, () => !mainViewModel.disposed);
@@ -1735,7 +1732,7 @@ namespace ATIVBatteryGuard.ViewModels
 					device = deviceDiagnosticsResult ?? new DeviceDiagnosticsResult(null, null, null, null, null, null, new string[1] { "장치 진단 결과를 받지 못했습니다." });
 					hasDiagnostics = true;
 					DiagnosticsText = device.ToDisplayText();
-					StatusMessage = (DiagnosticsSucceeded ? "읽기 전용 진단을 완료했습니다. 하드웨어 쓰기는 하지 않았습니다." : "진단 정보에 누락 또는 오류가 있습니다. 상세 결과를 확인하거나 로컬에 저장할 수 있습니다.");
+					StatusMessage = (DiagnosticsSucceeded ? "" : "진단 정보에 누락 또는 오류가 있습니다. 상세 결과를 확인하거나 로컬에 저장할 수 있습니다.");
 					log.Write(DiagnosticsSucceeded ? "DIAGNOSTICS_READ" : "DIAGNOSTICS_FAILED");
 				}
 			}

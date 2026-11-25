@@ -450,6 +450,8 @@ internal static partial class Program
         RegisterBatteryObservationGraphTests();
         RegisterBatteryObservationChartSelectionTests();
         RegisterObservationFinalSaveTests();
+        RegisterSavedBatteryObservationTests();
+        RegisterSavedObservationViewModelTests();
         RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();
@@ -532,6 +534,8 @@ internal static partial class Program
         public Func<string, string> FileInspectionSaver;
         public string LastFileInspection;
         public int ObservationSaves;
+        public int ObservationOpens;
+        public Func<SavedBatteryObservation> ObservationOpener;
         public int FoldersOpened;
         public Action FolderOpener;
         public Func<string, string> ObservationSaver;
@@ -545,6 +549,7 @@ internal static partial class Program
         public void CopyDiagnostics(string text) { Copies++; LastCopiedText = text; }
         public string SaveDiagnostics(string text) { Saves++; return Saver == null ? "saved" : Saver(text); }
         public string SaveSamsungFileInspection(string text) { FileInspectionSaves++; LastFileInspection = text; return FileInspectionSaver == null ? "saved" : FileInspectionSaver(text); }
+        public SavedBatteryObservation OpenBatteryObservation() { ObservationOpens++; return ObservationOpener?.Invoke(); }
         public string SaveBatteryObservation(string text) { ObservationSaves++; LastObservation = text; return ObservationSaver == null ? "saved" : ObservationSaver(text); }
         public string SaveManualProtectionResult(string text) { ManualResultSaves++; LastManualResult = text; return ManualResultSaver == null ? "saved" : ManualResultSaver(text); }
     }

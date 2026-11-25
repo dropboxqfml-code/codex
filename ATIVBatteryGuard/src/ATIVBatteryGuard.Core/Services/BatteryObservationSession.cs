@@ -190,7 +190,7 @@ namespace ATIVBatteryGuard.Core.Services
             return text.ToString();
         }
 
-        private static string StatusText(BatteryObservationSessionStatus value)
+        internal static string StatusText(BatteryObservationSessionStatus value)
         {
             switch (value)
             {

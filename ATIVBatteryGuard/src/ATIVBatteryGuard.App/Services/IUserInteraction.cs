@@ -1,4 +1,5 @@
 using ATIVBatteryGuard.Core.Models;
+using ATIVBatteryGuard.Core.Services;
 
 namespace ATIVBatteryGuard.Services
 {
@@ -17,6 +18,8 @@ namespace ATIVBatteryGuard.Services
 		string SaveSamsungFileInspection(string text);
 
 		string SaveBatteryObservation(string text);
+
+		SavedBatteryObservation OpenBatteryObservation();
 
 		string SaveManualProtectionResult(string text);
 	}

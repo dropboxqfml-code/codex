@@ -1,0 +1,63 @@
+{
+  "baseCommit": "e05a72cb1a81ab2f6e7de9cfc36b59f5ddfe2854",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.3",
+  "previous022UserConfirmedMouseGraphAccessAndPointSelection": true,
+  "portableTests": {
+    "passed": 1163,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1163,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 13,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "previous020021022ExportTextImplementationsComparedAndIdentical": true,
+  "savedObservationMaximumBytes": 262144,
+  "savedObservationMaximumSamples": 721,
+  "savedObservationMaximumElapsedSeconds": 7200,
+  "strictUtf8WithOptionalBomAndCrLfOrLf": true,
+  "summaryAndRowConsistencyValidated": true,
+  "coldReopenFromDiskInNewViewModelTested": true,
+  "sourceFileBytesPreserved": true,
+  "cancelAndFailedReplacementRetainPreviousSuccessfulRecord": true,
+  "loadingDoesNotChangeLiveObservationOrControlState": true,
+  "windowsSavedObservationSmokeChecksAddedAndCompiled": true,
+  "windowsSmokeChecksExecuted": false,
+  "newReleaseWindowsFilePickerOrGuiOrScreenReaderTested": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.3-WIN10-X64.zip",
+    "bytes": 298442,
+    "sha256": "d6299509385d2d0de40e706bd5dabca52bac0cd569882a23466555cf19d6e602",
+    "entries": 9,
+    "sourceFileCount": 202,
+    "productSourceFingerprintSha256": "1fa350fd9fec1ab7b0e8fd88f1c2d0b00b3f0e446614630a657d2051c4414cf0",
+    "releaseVersion": "0.2.3",
+    "guiVersionResource": {
+      "fileVersion": "0.2.3.0",
+      "productVersion": "0.2.3"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "b44f71a4bdbca7a83402d0205186613d44942b1b75ec95d37a0a25541a48e63e"
+    },
+    "portable-tests.log": {
+      "bytes": 105870,
+      "sha256": "052546f2e98bb2ef2fe16215065b7d351772624622c5c0e556c55152e9becc37"
+    },
+    "solution-build.log": {
+      "bytes": 2034,
+      "sha256": "c269b3170a1a61e1df12f60e49855f42cc7feea9b15c4f3bf95be017752ee37d"
+    }
+  }
+}

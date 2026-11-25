@@ -47,6 +47,9 @@ namespace ATIVBatteryGuard.Controls
             set { SetValue(GraphProperty, value); }
         }
 
+        // Set by the view for a file snapshot whose graph changes only on open/close.
+        public bool IsSavedRecord { get; set; }
+
         protected override Size MeasureOverride(Size constraint)
         {
             return new Size(double.IsInfinity(constraint.Width) ? 360 : constraint.Width,
@@ -296,6 +299,7 @@ namespace ATIVBatteryGuard.Controls
         {
             var chart = (BatteryObservationChart)sender;
             chart.ToolTip = null;
+            if (chart.IsSavedRecord) chart.selection.UpdateGraph(BatteryObservationGraph.Empty);
             chart.selection.UpdateGraph(e.NewValue as BatteryObservationGraph);
             if (chart.IsKeyboardFocused && chart.selection.Point == null)
                 chart.selection.Select(chart.selection.Graph.Points.Count - 1);
@@ -303,11 +307,11 @@ namespace ATIVBatteryGuard.Controls
             AutomationPeer peer = UIElementAutomationPeer.FromElement(chart);
             if (peer != null)
                 peer.RaisePropertyChangedEvent(AutomationElementIdentifiers.HelpTextProperty,
-                    DescribeGraph(e.OldValue as BatteryObservationGraph),
-                    DescribeGraph(e.NewValue as BatteryObservationGraph));
+                    DescribeGraph(e.OldValue as BatteryObservationGraph, chart.IsSavedRecord),
+                    DescribeGraph(e.NewValue as BatteryObservationGraph, chart.IsSavedRecord));
         }
 
-        private static string DescribeGraph(BatteryObservationGraph graph)
+        private static string DescribeGraph(BatteryObservationGraph graph, bool savedRecord)
         {
             graph = graph ?? BatteryObservationGraph.Empty;
             string text = "읽기 전용 Windows 배터리 잔량 그래프. 세로축 0에서 100퍼센트, 가로축 관찰 시작 후 경과 시간. "
@@ -319,8 +323,9 @@ namespace ATIVBatteryGuard.Controls
                 text += "마지막 잔량 " + last.Percent.ToString(ChartCulture) + "퍼센트, 경과 "
                     + ElapsedLabel(last.ElapsedSeconds) + " (분:초). ";
             }
-            else if (graph.Status == BatteryObservationSessionStatus.Recording)
+            else if (!savedRecord && graph.Status == BatteryObservationSessionStatus.Recording)
                 text += "다음 표시 가능한 배터리 갱신을 기다리는 중입니다. ";
+            if (savedRecord) return text + "파일에 저장된 과거 관찰 기록입니다. 파일명과 저장 당시 상태는 그래프 위에 표시됩니다.";
             return text + "관찰 요약은 아래 관찰 기록 보기에서, 개별 기록은 관찰 TXT 저장으로 확인할 수 있습니다. 충전 제한 성공을 판정하지 않습니다.";
         }
 
@@ -331,7 +336,7 @@ namespace ATIVBatteryGuard.Controls
             protected override AutomationControlType GetAutomationControlTypeCore() { return AutomationControlType.Image; }
             protected override string GetHelpTextCore()
             {
-                return DescribeGraph(((BatteryObservationChart)Owner).Graph)
+                return DescribeGraph(((BatteryObservationChart)Owner).Graph, ((BatteryObservationChart)Owner).IsSavedRecord)
                     + " 클릭 또는 Tab으로 그래프에 접근합니다. 점을 클릭하거나 좌우 화살표로 표본을 이동합니다. Home은 처음, End는 마지막 표본입니다.";
             }
             protected override string GetItemStatusCore() { return ((BatteryObservationChart)Owner).SelectedPointText; }

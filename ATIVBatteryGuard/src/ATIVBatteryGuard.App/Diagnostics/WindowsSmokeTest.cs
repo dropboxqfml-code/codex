@@ -79,6 +79,15 @@ namespace ATIVBatteryGuard.Diagnostics
 				return "관찰 기록 저장 모의 처리";
 			}
 
+            public SavedBatteryObservation OpenBatteryObservation()
+            {
+                var session = new BatteryObservationSession();
+                session.Start();
+                session.Record(TimeSpan.Zero, new BatterySnapshot(80, ExternalPowerStatus.Connected, BatteryChargeState.NotCharging, ""));
+                session.Stop();
+                return SavedBatteryObservation.Parse(session.ExportText(), "smoke-observation.txt");
+            }
+
 			public string SaveManualProtectionResult(string text)
 			{
 				throw new SmokeFailure("UNEXPECTED_MANUAL_RESULT_SAVE");
@@ -189,6 +198,19 @@ namespace ATIVBatteryGuard.Diagnostics
 				window.UpdateLayout();
 				await Idle(app);
                 await CheckChartInputAsync(app, window, model);
+                Execute(Find<Button>(window, "OpenSavedObservationButton"));
+                await Idle(app);
+                Require(model.SavedObservationVisible && model.SavedObservationName == "smoke-observation.txt"
+                    && !model.ObservationActive, "SAVED_OBSERVATION_BINDING_INVALID");
+                var savedChart = Find<BatteryObservationChart>(window, "SavedObservationChart");
+                Require(savedChart.IsSavedRecord && savedChart.Graph.Points.Count == 1, "SAVED_GRAPH_BINDING_INVALID");
+                SendChartKey(savedChart, Key.Home);
+                Require(savedChart.SelectedPointText.Contains("80%"), "SAVED_GRAPH_SELECTION_INVALID");
+                var savedPeer = UIElementAutomationPeer.CreatePeerForElement(savedChart);
+                Require(savedPeer.GetHelpText().Contains("파일에 저장된 과거"), "SAVED_GRAPH_PROVENANCE_INVALID");
+                model.CloseSavedObservationCommand.Execute(null);
+                await Idle(app);
+                Require(!model.SavedObservationVisible && savedChart.Graph.Points.Count == 0, "SAVED_GRAPH_CLOSE_INVALID");
 				Button apply = Find<Button>(window, "MockApplyButton");
 				Button save = Find<Button>(window, "SavePreferencesButton");
 				CheckBox mock = Find<CheckBox>(window, "MockSwitch");

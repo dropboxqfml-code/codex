@@ -51,6 +51,11 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private BatteryObservationGraph observationGraph = BatteryObservationGraph.Empty;
 
+        private SavedBatteryObservation savedObservation;
+        private bool openingSavedObservation;
+        private bool savedObservationOpenFailed;
+        private string savedObservationOpenStatus = "";
+
 		private readonly Stopwatch observationClock = new Stopwatch();
 
 		private long observationSession;
@@ -293,6 +298,15 @@ namespace ATIVBatteryGuard.ViewModels
 		public RelayCommand ClearBatteryObservationCommand { get; }
 
 		public RelayCommand SaveBatteryObservationCommand { get; }
+
+        public RelayCommand OpenSavedObservationCommand { get; }
+        public RelayCommand CloseSavedObservationCommand { get; }
+        public bool SavedObservationVisible => savedObservation != null;
+        public BatteryObservationGraph SavedObservationGraph => savedObservation?.Graph ?? BatteryObservationGraph.Empty;
+        public string SavedObservationName => savedObservation?.FileName ?? "";
+        public string SavedObservationSummary => savedObservation?.Summary ?? "";
+        public string SavedObservationOpenStatus => savedObservationOpenStatus;
+        public bool SavedObservationOpenFailed => savedObservationOpenFailed;
 
 		public string ObservationText => observation.ToDisplayText();
 
@@ -841,6 +855,10 @@ namespace ATIVBatteryGuard.ViewModels
 				() => !mainViewModel.disposed);
 			SaveBatteryObservationCommand = new RelayCommand(SaveBatteryObservation,
 				() => mainViewModel.CanSaveBatteryObservation());
+            OpenSavedObservationCommand = new RelayCommand(OpenSavedObservation,
+                () => !disposed && !openingSavedObservation);
+            CloseSavedObservationCommand = new RelayCommand(CloseSavedObservation,
+                () => !disposed && !openingSavedObservation && SavedObservationVisible);
 			ManualReadProtectionCommand = new RelayCommand(async () => await RunManualProtectionAsync(ManualProtectionOperation.ReadState),
 				() => CanReadManualProtection());
 			ManualEnableProtectionCommand = new RelayCommand(async () => await RunManualProtectionAsync(ManualProtectionOperation.Enable80),
@@ -1184,6 +1202,63 @@ namespace ATIVBatteryGuard.ViewModels
 			if (result.Status == ManualProtectionStatus.TimedOut) return "표시 시간은 초과됐지만 관련 정리는 끝났습니다. 현재 상태는 미확인입니다. 필요하면 보호 상태 확인을 직접 누르세요.";
 			return "관련 정리는 끝났지만 보호 상태를 확인하지 못했습니다. 결과 TXT를 저장하고 보호 상태 확인을 직접 눌러 다시 읽으세요. 자동 재시도하지 않습니다.";
 		}
+
+        private void OpenSavedObservation()
+        {
+            if (disposed || openingSavedObservation) return;
+            openingSavedObservation = true;
+            NotifySavedObservation();
+            try
+            {
+                SavedBatteryObservation loaded = interaction.OpenBatteryObservation();
+                if (disposed) return;
+                savedObservationOpenFailed = loaded != null && !loaded.Success;
+                if (loaded == null)
+                    savedObservationOpenStatus = "파일 선택을 취소했습니다.";
+                else if (!loaded.Success)
+                    savedObservationOpenStatus = "파일 열기 실패 · " + loaded.ErrorMessage;
+                else
+                {
+                    savedObservation = loaded;
+                    savedObservationOpenStatus = "저장된 관찰 기록을 열었습니다.";
+                }
+            }
+            catch
+            {
+                if (!disposed)
+                {
+                    savedObservationOpenFailed = true;
+                    savedObservationOpenStatus = "파일을 읽지 못했습니다. 로컬 TXT 파일과 읽기 권한을 확인하세요.";
+                    log.Write("OBSERVATION_OPEN_FAILED");
+                }
+            }
+            finally
+            {
+                openingSavedObservation = false;
+                NotifySavedObservation();
+            }
+        }
+
+        private void CloseSavedObservation()
+        {
+            if (disposed || openingSavedObservation) return;
+            savedObservation = null;
+            savedObservationOpenFailed = false;
+            savedObservationOpenStatus = "";
+            NotifySavedObservation();
+        }
+
+        private void NotifySavedObservation()
+        {
+            Changed("SavedObservationVisible");
+            Changed("SavedObservationGraph");
+            Changed("SavedObservationName");
+            Changed("SavedObservationSummary");
+            Changed("SavedObservationOpenStatus");
+            Changed("SavedObservationOpenFailed");
+            OpenSavedObservationCommand?.Refresh();
+            CloseSavedObservationCommand?.Refresh();
+        }
 
 		private void StartBatteryObservation()
 		{
@@ -1622,6 +1697,9 @@ namespace ATIVBatteryGuard.ViewModels
 					Save();
 				}
 				disposed = true;
+                savedObservation = null;
+                savedObservationOpenStatus = "";
+                NotifySavedObservation();
 				manualStateVersion++;
 				manualOperationSequence++;
 				manualProtectionResult = null;

@@ -5,6 +5,8 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using ATIVBatteryGuard.Core.Models;
+using ATIVBatteryGuard.Core.Services;
+using Microsoft.Win32;
 using ATIVBatteryGuard.Core.Storage;
 using ATIVBatteryGuard.Diagnostics;
 
@@ -97,6 +99,24 @@ namespace ATIVBatteryGuard.Services
 			string fileName = SaveLocalText("battery-observation-", text);
 			return "관찰 TXT 저장 완료: " + fileName + " · ‘관찰 저장 폴더 열기’에서 확인하세요. 업로드하지 않았습니다.";
 		}
+
+        public SavedBatteryObservation OpenBatteryObservation()
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "저장된 배터리 관찰 TXT 열기",
+                InitialDirectory = directory,
+                Filter = "배터리 관찰 TXT (*.txt)|*.txt",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+            if (dialog.ShowDialog(Application.Current.MainWindow) != true) return null;
+            string path = dialog.FileName;
+            LocalPathPolicy.NormalizeDirectory(Path.GetDirectoryName(path));
+            LocalPathPolicy.EnsureNoReparsePoints(path);
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                return SavedBatteryObservation.Read(stream, Path.GetFileName(path));
+        }
 
 		public string SaveManualProtectionResult(string text)
 		{

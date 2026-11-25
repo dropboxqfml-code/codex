@@ -217,6 +217,43 @@
                 </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource Card}" Padding="20">
+                <StackPanel>
+                    <TextBlock Text="저장된 관찰 기록" Style="{StaticResource SectionTitle}" />
+                    <WrapPanel>
+                        <Button x:Name="OpenSavedObservationButton" Content="관찰 TXT 열기" Command="{Binding OpenSavedObservationCommand}" />
+                        <Button Content="기록 닫기" Command="{Binding CloseSavedObservationCommand}" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding SavedObservationOpenStatus}" TextWrapping="Wrap" Margin="0,2,0,8"
+                               AutomationProperties.LiveSetting="Polite">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#475569" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SavedObservationOpenFailed}" Value="True">
+                                        <Setter Property="Foreground" Value="#9C2F18" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <StackPanel Visibility="{Binding SavedObservationVisible, Converter={StaticResource ObservationGraphVisibility}}">
+                        <TextBlock Text="{Binding SavedObservationName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding SavedObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
+                        <Border Background="#F8FAFC" BorderBrush="#D3DCE6" BorderThickness="1" CornerRadius="6" Padding="8">
+                            <StackPanel>
+                                <controls:BatteryObservationChart x:Name="SavedObservationChart" IsSavedRecord="True" Graph="{Binding SavedObservationGraph, Mode=OneWay}"
+                                                                  Height="180" HorizontalAlignment="Stretch"
+                                                                  AutomationProperties.Name="저장된 Windows 배터리 잔량 변화" />
+                                <TextBlock Text="{Binding SelectedPointText, ElementName=SavedObservationChart, Mode=OneWay}"
+                                           TextWrapping="Wrap" Margin="0,4,0,0" Foreground="#475569"
+                                           AutomationProperties.Name="저장 기록 그래프 조작 안내와 선택 표본" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource Card}" Background="#F8FAFC" Padding="16,12">
                 <StackPanel>
                     <TextBlock Text="최근 작업 안내" FontWeight="SemiBold" Margin="0,0,0,6" />

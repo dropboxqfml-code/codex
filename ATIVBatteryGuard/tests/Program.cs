@@ -458,6 +458,7 @@ internal static partial class Program
         RegisterObservationNoteStoreTests();
         RegisterObservationNoteViewModelTests();
         RegisterObservationBundleTests();
+        RegisterQualityAndUsabilityTests();
         RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();

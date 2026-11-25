@@ -19,6 +19,7 @@ namespace ATIVBatteryGuard.Core.Storage
         [DataMember(Order = 4, EmitDefaultValue = false)] public string NoteKey { get; private set; }
         public string NotePreview { get; private set; } = "";
         public bool HasNote => !string.IsNullOrEmpty(NotePreview);
+        public string IdentityText => ObservationNoteStore.IdentityLabel(NoteKey);
         public string FileName => System.IO.Path.GetFileName(Path);
         public string Summary => "표본 " + SampleCount.ToString(CultureInfo.InvariantCulture) + "건 · "
             + TimeSpan.FromSeconds(ElapsedSeconds).ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture)
@@ -46,7 +47,7 @@ namespace ATIVBatteryGuard.Core.Storage
                 && !Path.StartsWith(@"\\", StringComparison.Ordinal) && !Path.StartsWith("//", StringComparison.Ordinal)
                 && Path.IndexOf("://", StringComparison.Ordinal) < 0
                 && Path.IndexOfAny(System.IO.Path.GetInvalidPathChars()) < 0
-                && !string.IsNullOrEmpty(System.IO.Path.GetFileName(Path))
+                && LocalPathPolicy.IsSafeFileName(System.IO.Path.GetFileName(Path))
                 && System.IO.Path.GetFullPath(Path) == Path
                 && SampleCount >= 1 && SampleCount <= BatteryObservationSession.MaxSamples
                 && ElapsedSeconds >= 0 && ElapsedSeconds <= 7200
@@ -91,7 +92,7 @@ namespace ATIVBatteryGuard.Core.Storage
                     bytes.Write(buffer, 0, count);
                 }
                 bytes.Position = 0;
-                var index = (Index)new DataContractJsonSerializer(typeof(Index)).ReadObject(bytes);
+                var index = LocalJsonDocument.Read<Index>(bytes.ToArray(), MaximumBytes);
                 if (index == null || index.Version != 1 || index.Entries == null || index.Entries.Count > MaximumEntries
                     || index.Entries.Any(entry => entry == null || !entry.IsValid()))
                     throw new InvalidDataException();
@@ -105,7 +106,7 @@ namespace ATIVBatteryGuard.Core.Storage
             if (string.IsNullOrEmpty(path) || !System.IO.Path.IsPathRooted(path)
                 || path.StartsWith(@"\\", StringComparison.Ordinal) || path.StartsWith("//", StringComparison.Ordinal)
                 || path.IndexOf("://", StringComparison.Ordinal) >= 0) throw new IOException();
-            string fullPath = System.IO.Path.GetFullPath(path);
+            string fullPath = LocalPathPolicy.NormalizeFile(path);
             LocalPathPolicy.NormalizeDirectory(System.IO.Path.GetDirectoryName(fullPath));
             LocalPathPolicy.EnsureNoReparsePoints(fullPath);
             var entry = new RecentObservationEntry(fullPath, observation);

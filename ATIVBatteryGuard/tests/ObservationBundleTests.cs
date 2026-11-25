@@ -174,7 +174,7 @@ internal static partial class Program
                 foreach (string path in new[] { "//server/share/export.ativrecord", "relative.ativrecord" })
                 { ExpectBundleIo(() => bundle.Export(path)); ExpectBundleIo(() => ObservationBundle.ReadFile(path)); }
                 string real = Path.Combine(f.DirectoryPath, "real"); Directory.CreateDirectory(real);
-                string link = Path.Combine(f.DirectoryPath, "linked"); Directory.CreateSymbolicLink(link, real);
+                string link = Path.Combine(f.DirectoryPath, "linked"); if (!TryCreateQualityDirectoryLink(link, real)) return;
                 ExpectBundleIo(() => bundle.Export(Path.Combine(link, "a.ativrecord")));
                 ExpectBundleIo(() => bundle.Import(link)); Check(!Directory.EnumerateFileSystemEntries(real).Any(), "link followed");
                 string file = Path.Combine(f.DirectoryPath, "file"); File.WriteAllText(file, "unchanged");

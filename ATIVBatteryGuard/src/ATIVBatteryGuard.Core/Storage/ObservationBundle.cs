@@ -14,6 +14,7 @@ namespace ATIVBatteryGuard.Core.Storage
     {
         public const int MaximumBytes = 2 * 1024 * 1024;
         public const string Extension = ".ativrecord";
+        public const string RecoveryFileName = "import-recovery.ativrecord";
         private const string Format = "ATIVBatteryGuard.ObservationBundle";
         private static readonly UTF8Encoding Utf8 = new UTF8Encoding(false, true);
         public SavedBatteryObservation Observation { get; }
@@ -77,18 +78,7 @@ namespace ATIVBatteryGuard.Core.Storage
                         bytes.Write(buffer, 0, count);
                         if (bytes.Length > MaximumBytes) throw new InvalidDataException();
                     }
-                    // Reject invalid UTF-8 before the JSON reader can substitute replacement characters.
-                    EnsureSingleObject(Utf8.GetString(bytes.ToArray()));
-                    bytes.Position = 0;
-                    Document document;
-                    using (var reader = JsonReaderWriterFactory.CreateJsonReader(bytes, new System.Xml.XmlDictionaryReaderQuotas
-                    { MaxDepth = 8, MaxStringContentLength = MaximumBytes, MaxArrayLength = MaximumBytes,
-                        MaxBytesPerRead = 4096, MaxNameTableCharCount = 4096 }))
-                    {
-                        document = (Document)new DataContractJsonSerializer(typeof(Document),
-                            new DataContractJsonSerializerSettings { MaxItemsInObjectGraph = 32 }).ReadObject(reader);
-                        if (reader.Read()) throw new InvalidDataException();
-                    }
+                    var document = LocalJsonDocument.Read<Document>(bytes.ToArray(), MaximumBytes, 32);
                     if (document == null || document.Format != Format || document.Version != 1
                         || !IsValidFileName(document.ObservationFileName) || document.ObservationText == null || !ObservationNoteStore.IsValidText(document.NoteText)
                         || document.NoteText != ObservationNote.Normalize(document.NoteText)
@@ -106,49 +96,9 @@ namespace ATIVBatteryGuard.Core.Storage
             { throw new InvalidDataException("묶음 파일의 형식·버전·크기·내용 검증에 실패했습니다. 원본 .ativrecord 파일을 확인하세요."); }
         }
 
-        // The framework JSON reader can stop at the root and ignore trailing documents.
-        // Check its envelope before deserialization, tracking quoted/escaped braces.
-        private static void EnsureSingleObject(string json)
-        {
-            int start = 0;
-            while (start < json.Length && IsJsonSpace(json[start])) start++;
-            if (start == json.Length || json[start] != '{') throw new InvalidDataException();
-            int depth = 0; bool quoted = false, escaped = false;
-            for (int i = start; i < json.Length; i++)
-            {
-                char c = json[i];
-                if (quoted)
-                {
-                    if (escaped) escaped = false;
-                    else if (c == '\\') escaped = true;
-                    else if (c == '\"') quoted = false;
-                    continue;
-                }
-                if (c == '\"') quoted = true;
-                else if (c == '{' || c == '[') { if (++depth > 8) throw new InvalidDataException(); }
-                else if (c == '}' || c == ']')
-                {
-                    if (--depth == 0)
-                    {
-                        for (int j = i + 1; j < json.Length; j++) if (!IsJsonSpace(json[j])) throw new InvalidDataException();
-                        return;
-                    }
-                }
-            }
-            throw new InvalidDataException();
-        }
-
-        private static bool IsJsonSpace(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
-
         private static bool IsValidFileName(string name)
         {
-            if (string.IsNullOrWhiteSpace(name) || name.Length > 255 || !name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase)
-                || name.Any(c => char.IsControl(c) || "<>:\"/\\|?*".IndexOf(c) >= 0)) return false;
-            try { Utf8.GetByteCount(name); } catch (EncoderFallbackException) { return false; }
-            string stem = name.Split('.')[0].TrimEnd(' ');
-            return stem.Length != 0 && !new[] { "CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$" }
-                .Concat(Enumerable.Range(1, 9).SelectMany(i => new[] { "COM" + i, "LPT" + i }))
-                .Any(reserved => string.Equals(reserved, stem, StringComparison.OrdinalIgnoreCase));
+            return LocalPathPolicy.IsSafeFileName(name) && name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
         }
 
         public static ObservationBundle ReadFile(string path)
@@ -159,11 +109,7 @@ namespace ATIVBatteryGuard.Core.Storage
 
         private static void ValidateLocalFile(string path)
         {
-            if (string.IsNullOrWhiteSpace(path) || !Path.IsPathRooted(path)) throw new IOException();
-            LocalPathPolicy.NormalizeDirectory(Path.GetDirectoryName(path));
-            LocalPathPolicy.EnsureNoReparsePoints(path);
-            if (Environment.OSVersion.Platform == PlatformID.Win32NT && Path.GetFileName(path).IndexOf(':') >= 0)
-                throw new IOException();
+            LocalPathPolicy.NormalizeFile(path);
         }
 
         public void Export(string path)
@@ -191,6 +137,34 @@ namespace ATIVBatteryGuard.Core.Storage
             }
         }
 
+        public static string RecoveryNotice(string applicationDirectory)
+        {
+            try
+            {
+                string root = Path.Combine(LocalPathPolicy.NormalizeDirectory(applicationDirectory), "imported-observations");
+                LocalPathPolicy.EnsureNoReparsePoints(root);
+                if (!Directory.Exists(root)) return "";
+                foreach (string folder in Directory.EnumerateDirectories(root, ".import-*", SearchOption.TopDirectoryOnly).Take(64))
+                {
+                    string name = Path.GetFileName(folder); Guid id;
+                    if (name.Length != 40 || !Guid.TryParseExact(name.Substring(8), "N", out id)) continue;
+                    string recovery = Path.Combine(folder, RecoveryFileName);
+                    LocalPathPolicy.EnsureNoReparsePoints(recovery);
+                    string leasePath = folder + ".lock";
+                    LocalPathPolicy.EnsureNoReparsePoints(leasePath);
+                    if (File.Exists(leasePath))
+                    {
+                        try { using (var probe = new FileStream(leasePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { } }
+                        catch (IOException) { continue; } // Another app is still importing this record.
+                    }
+                    if (File.Exists(recovery)) return "중단된 복원 자료가 있습니다. ‘관찰 저장 폴더 열기’ → imported-observations → .import- 폴더의 "
+                        + RecoveryFileName + "을 ‘TXT·메모 묶음 불러오기’로 열어 다시 복원할 수 있습니다. 기존 자료는 자동 삭제하지 않습니다.";
+                }
+                return "";
+            }
+            catch { return "복원 중단 자료를 확인하지 못했습니다. 로컬 저장 폴더와 권한을 확인하세요."; }
+        }
+
         public SavedBatteryObservation Import(string applicationDirectory)
         {
             string root = Path.Combine(LocalPathPolicy.NormalizeDirectory(applicationDirectory), "imported-observations");
@@ -203,13 +177,24 @@ namespace ATIVBatteryGuard.Core.Storage
             var record = SavedBatteryObservation.Parse(Observation.Text, Observation.FileName, path);
             var notes = new ObservationNoteStore(applicationDirectory);
             ObservationNote savedNote = null;
-            bool published = false, createdFile = false, createdDirectory = false;
+            bool published = false, createdFile = false, createdDirectory = false, createdRecovery = false;
+            string recovery = Path.Combine(staging, RecoveryFileName);
+            string leasePath = staging + ".lock";
+            FileStream importLease = null;
             try
             {
+                LocalPathPolicy.EnsureNoReparsePoints(leasePath);
+                importLease = new FileStream(leasePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
                 if (Directory.Exists(staging)) throw new IOException();
                 Directory.CreateDirectory(staging);
                 createdDirectory = true;
                 LocalPathPolicy.EnsureNoReparsePoints(staging);
+                // A flushed, portable recovery copy precedes TXT/note changes. Do not auto-delete abandoned stages.
+                using (var output = new FileStream(recovery, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    createdRecovery = true; byte[] bytes = ToBytes();
+                    output.Write(bytes, 0, bytes.Length); output.Flush(true);
+                }
                 using (var output = new FileStream(Path.Combine(staging, Observation.FileName), FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
                     createdFile = true;
@@ -222,21 +207,43 @@ namespace ATIVBatteryGuard.Core.Storage
                 LocalPathPolicy.EnsureNoReparsePoints(staging);
                 Directory.Move(staging, target);
                 published = true;
+                try
+                {
+                    string completedRecovery = Path.Combine(target, RecoveryFileName);
+                    LocalPathPolicy.EnsureNoReparsePoints(completedRecovery);
+                    File.Delete(completedRecovery);
+                }
+                catch { /* A completed import remains successful; only its optional recovery copy remains. */ }
                 return record;
             }
             finally
             {
-                if (!published)
+                try
                 {
-                    // Only remove this transaction's revision. Concurrently changed data is retained.
-                    if (savedNote != null && savedNote.Available) notes.RemoveImportedRevision(record.NoteKey, savedNote.Revision);
-                    try
+                    if (!published)
                     {
-                        LocalPathPolicy.EnsureNoReparsePoints(staging);
-                        if (createdFile) File.Delete(Path.Combine(staging, Observation.FileName));
-                        if (createdDirectory && Directory.Exists(staging)) Directory.Delete(staging);
+                        // Only remove this transaction's revision. Concurrently changed data is retained.
+                        bool rolledBack = savedNote == null || !savedNote.Available || notes.RemoveImportedRevision(record.NoteKey, savedNote.Revision);
+                        try
+                        {
+                            LocalPathPolicy.EnsureNoReparsePoints(staging);
+                            if (rolledBack)
+                            {
+                                if (createdFile) File.Delete(Path.Combine(staging, Observation.FileName));
+                                if (createdRecovery) File.Delete(recovery);
+                                if (createdDirectory && Directory.Exists(staging)) Directory.Delete(staging);
+                            }
+                        }
+                        catch { /* Original bundle is retained and can be imported again. */ }
                     }
-                    catch { /* Original bundle is retained and can be imported again. */ }
+                }
+                finally
+                {
+                    if (importLease != null)
+                    {
+                        importLease.Dispose();
+                        try { LocalPathPolicy.EnsureNoReparsePoints(leasePath); File.Delete(leasePath); } catch { }
+                    }
                 }
             }
         }

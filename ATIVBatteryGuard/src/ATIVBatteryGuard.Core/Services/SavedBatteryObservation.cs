@@ -20,6 +20,7 @@ namespace ATIVBatteryGuard.Core.Services
         public string NoteKey { get; }
         public string Text { get; }
         public string SourcePath { get; }
+        public string IdentityText => ObservationNoteStore.IdentityLabel(NoteKey);
         public BatteryObservationGraph Graph { get; }
         public string ErrorMessage { get; }
         public bool Success => ErrorMessage.Length == 0;

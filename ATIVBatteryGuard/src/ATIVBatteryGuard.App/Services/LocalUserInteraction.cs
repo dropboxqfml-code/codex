@@ -19,7 +19,15 @@ namespace ATIVBatteryGuard.Services
 		private readonly string directory;
 
 		private readonly LocalLog log;
-        public string RecentObservationNotice { get; private set; } = "";
+        private string recentObservationNotice = "";
+        public string RecentObservationNotice
+        {
+            get
+            {
+                string recovery = ObservationBundle.RecoveryNotice(directory);
+                return recentObservationNotice + (recentObservationNotice.Length > 0 && recovery.Length > 0 ? "\n" : "") + recovery;
+            }
+        }
 
 		public LocalUserInteraction(string directory, LocalLog log)
 		{
@@ -161,8 +169,7 @@ namespace ATIVBatteryGuard.Services
 
         private SavedBatteryObservation ReadObservationFile(string path)
         {
-            LocalPathPolicy.NormalizeDirectory(Path.GetDirectoryName(path));
-            LocalPathPolicy.EnsureNoReparsePoints(path);
+            path = LocalPathPolicy.NormalizeFile(path);
             SavedBatteryObservation observation;
             using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
                 observation = SavedBatteryObservation.Read(stream, Path.GetFileName(path), path);
@@ -175,11 +182,11 @@ namespace ATIVBatteryGuard.Services
             try
             {
                 new RecentObservationStore(directory).Record(path, observation);
-                RecentObservationNotice = "";
+                recentObservationNotice = "";
             }
             catch
             {
-                RecentObservationNotice = "TXT 작업은 완료했지만 최근 기록 목록을 갱신하지 못했습니다.";
+                recentObservationNotice = "TXT 작업은 완료했지만 최근 기록 목록을 갱신하지 못했습니다.";
             }
         }
 

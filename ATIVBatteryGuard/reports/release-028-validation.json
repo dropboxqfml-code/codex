@@ -1,0 +1,105 @@
+{
+  "baseCommit": "74660262b9fb7ea8558cb4f7f6b3a957df53f7ea",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.8",
+  "previous027UserConfirmedBundleExportImport": true,
+  "portableTests": {
+    "passed": 1236,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1236,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 17,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "strictJsonCommonToSettingsNotesRecentsAndBundle": true,
+  "legacyBomWhitespaceAndSchemasTested": true,
+  "malformedInputPreservationTested": true,
+  "networkPrefixCheckedBeforeFilePathNormalization": true,
+  "streamReservedSuperscriptAndAliasFileNameTests": true,
+  "settingsCrossProcessLeaseAndExpectedRevision": true,
+  "settingsConcurrentDeletionExternalEditAndBusyRetryTested": true,
+  "validSettingsReadOnlyFallbackTested": true,
+  "settingsCorruptBytesPreservedUnderLease": true,
+  "recoveryCopyFlushedBeforeImportTxtAndNote": true,
+  "abandonedStagePreparedFixtureNotActualCrash": true,
+  "activeImportLeaseDistinguishedFromAbandonedStageTested": true,
+  "abandonedRecoveryCopyImportAndNoAutomaticDeletionTested": true,
+  "recentSelectionRebindAndRemovalTested": true,
+  "matchingFileNameIdentityLabelsTested": true,
+  "memoCleanEmptyDraftAndRevertStatesTested": true,
+  "knownLogCategoriesAndPrivateTextExclusionTested": true,
+  "repeatedOpenCompareNoteSaveCloseIterations": 100,
+  "fileAndLeaseExclusiveReopenAfterEachIterationTested": true,
+  "windowsHandleCountsPeakMemoryOrGuiLatencyMeasured": false,
+  "securityReview": {
+    "scope": "Current app/helper compiled source closure. Static API search, not Windows runtime traffic measurement.",
+    "sourceFileCount": 207,
+    "networkApiMatches": [],
+    "runtimeNetworkTrafficMeasured": false,
+    "windowsGuiExecuted": false,
+    "defenderScanExecuted": false,
+    "authenticodeSigned": false,
+    "reviewedBoundaryFiles": [
+      "src/ATIVBatteryGuard.App/Services/WindowsManualProtectionOperationService.cs",
+      "src/ATIVBatteryGuard.ManualProtectionHelper/ManualHelperAdmission.cs",
+      "src/ATIVBatteryGuard.ManualProtectionHelper/Program.cs",
+      "src/ATIVBatteryGuard.App/Application/App.cs",
+      "src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs",
+      "src/ATIVBatteryGuard.Core/Storage/LocalPathPolicy.cs",
+      "src/ATIVBatteryGuard.Core/Storage/LocalJsonDocument.cs",
+      "src/ATIVBatteryGuard.Core/Storage/SettingsStore.cs",
+      "src/ATIVBatteryGuard.Core/Storage/ObservationBundle.cs",
+      "src/ATIVBatteryGuard.Core/Storage/ObservationNoteStore.cs",
+      "src/ATIVBatteryGuard.Core/Storage/RecentObservationStore.cs",
+      "src/ATIVBatteryGuard.Core/Storage/LocalLog.cs"
+    ],
+    "productSourceFingerprintSha256": "9c4bb57fae389c9d35d42259cc2bafdb67dc39f45d90c004773029b0564bb477"
+  },
+  "windowsSelectionAndIdentitySmokeChecksAddedAndCompiled": true,
+  "windowsSmokeChecksExecuted": false,
+  "newReleaseWindowsUiImeDpiDiskFullOrPowerLossTested": false,
+  "maliciousSameAccountPathRacesCompletelyIsolated": false,
+  "multipleFileImportGuaranteedPowerLossAtomic": false,
+  "authenticodeSigned": false,
+  "windowsDefenderScanExecuted": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.8-WIN10-X64.zip",
+    "bytes": 315598,
+    "sha256": "b60c8cd3badf41ef08ef1b97d0971b1fb5893a84fccf560a5f56d405a54f0ecb",
+    "entries": 9,
+    "sourceFileCount": 207,
+    "productSourceFingerprintSha256": "9c4bb57fae389c9d35d42259cc2bafdb67dc39f45d90c004773029b0564bb477",
+    "releaseVersion": "0.2.8",
+    "guiVersionResource": {
+      "fileVersion": "0.2.8.0",
+      "productVersion": "0.2.8"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "e4b05c6f4634502b2a62c7dcacaae52617901d0481f7a54e197ed8f92b8555fb"
+    },
+    "portable-tests.log": {
+      "bytes": 112963,
+      "sha256": "a7fd8bb7244ebc50e230af958b39ee2a1ae6a70a8b2f76a784d881180bc54524"
+    },
+    "wpf-build.log": {
+      "bytes": 2034,
+      "sha256": "e6a2b2e2e1309dab908aa120786ab76cd7b42846d2aeb26e9de05e1565a236de"
+    },
+    "security-review.json": {
+      "bytes": 1208,
+      "sha256": "fb145052047f82d1d26d12f82028136dff83158de6ace4d70ccc724ff75a3614"
+    }
+  }
+}

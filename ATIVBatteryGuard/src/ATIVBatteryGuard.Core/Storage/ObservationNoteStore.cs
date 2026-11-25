@@ -66,6 +66,9 @@ namespace ATIVBatteryGuard.Core.Storage
                 return BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
         }
 
+        public static string IdentityLabel(string key)
+        { return IsValidKey(key) ? "기록 구분 · " + key.Substring(0, 12) : "기록을 다시 열면 구분 표시가 나타납니다."; }
+
         public static bool IsValidKey(string key)
         {
             return key != null && key.Length == 64 && key.All(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'));
@@ -99,7 +102,7 @@ namespace ATIVBatteryGuard.Core.Storage
                         bytes.Write(buffer, 0, count);
                     }
                     bytes.Position = 0;
-                    var document = (Document)new DataContractJsonSerializer(typeof(Document)).ReadObject(bytes);
+                    var document = LocalJsonDocument.Read<Document>(bytes.ToArray(), MaximumBytes);
                     if (document == null || document.Version != 1 || !IsValidText(document.Text))
                         return ObservationNote.Unavailable("메모 파일의 형식을 확인하세요.");
                     return ObservationNote.Ready(ObservationNote.Normalize(document.Text), Hash(bytes.ToArray()));

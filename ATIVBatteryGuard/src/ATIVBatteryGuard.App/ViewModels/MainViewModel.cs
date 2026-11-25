@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.ComponentModel;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -353,6 +354,8 @@ namespace ATIVBatteryGuard.ViewModels
         public BatteryObservationGraph SavedObservationGraph => savedObservation?.Graph ?? BatteryObservationGraph.Empty;
         public string SavedObservationName => savedObservation?.FileName ?? "";
         public string SavedObservationSummary => savedObservation?.Summary ?? "";
+        public string SavedObservationIdentityText => savedObservation?.IdentityText ?? "";
+        public string ComparisonObservationIdentityText => comparisonObservation?.IdentityText ?? "";
         public string SavedObservationOpenStatus => savedObservationOpenStatus;
         public bool SavedObservationOpenFailed => savedObservationOpenFailed;
 
@@ -1279,8 +1282,11 @@ namespace ATIVBatteryGuard.ViewModels
             {
                 var loaded = interaction.ReadRecentObservations();
                 if (loaded == null) throw new InvalidOperationException();
+                string selectedPath = selectedRecentObservation?.Path;
                 recentObservations = loaded;
-                selectedRecentObservation = null;
+                selectedRecentObservation = selectedPath == null ? null : loaded.FirstOrDefault(entry =>
+                    string.Equals(entry.Path, selectedPath, Environment.OSVersion.Platform == PlatformID.Win32NT
+                        ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
                 recentObservationNotice = interaction.RecentObservationNotice;
             }
             catch
@@ -1399,6 +1405,7 @@ namespace ATIVBatteryGuard.ViewModels
                 if (!disposed)
                 {
                     savedObservationOpenFailed = true;
+                    log.Write("OBSERVATION_BUNDLE_EXPORT_FAILED");
                     savedObservationOpenStatus = "묶음을 내보내지 못했습니다. 기존 파일과 입력한 메모는 보관됩니다. 다른 이름·로컬 저장 위치로 다시 시도하세요.";
                 }
             }
@@ -1490,6 +1497,7 @@ namespace ATIVBatteryGuard.ViewModels
             Changed("SavedObservationGraph");
             Changed("SavedObservationName");
             Changed("SavedObservationSummary");
+            Changed("SavedObservationIdentityText"); Changed("ComparisonObservationIdentityText");
             Changed("SavedObservationOpenStatus");
             Changed("SavedObservationOpenFailed");
             OpenComparisonObservationCommand?.Refresh();

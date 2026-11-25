@@ -303,6 +303,7 @@ namespace ATIVBatteryGuard.Diagnostics
                 Execute(Find<Button>(window, "OpenRecentObservationButton"));
                 await Idle(app);
                 Require(model.SavedObservationVisible, "RECENT_OPEN_BINDING_INVALID");
+                Require(model.SelectedRecentObservation != null, "RECENT_SELECTION_NOT_PRESERVED");
                 Require(model.SavedObservationNote.Text == "보호 켜기 관찰", "NOTE_REOPEN_INVALID");
                 Execute(Find<Button>(window, "ExportObservationBundleButton"));
                 await Idle(app);
@@ -321,6 +322,8 @@ namespace ATIVBatteryGuard.Diagnostics
                 await Idle(app);
                 Require(model.ComparisonObservationNote.Text == "보호 켜기 관찰" && model.ComparisonObservationVisible,
                     "BUNDLE_COMPARISON_IMPORT_INVALID");
+                Require(model.SavedObservationIdentityText != model.ComparisonObservationIdentityText,
+                    "MATCHING_FILE_NAMES_NOT_DISTINGUISHED");
                 Execute(Find<Button>(window, "ExportComparisonBundleButton"));
                 await Idle(app);
                 Require(ObservationBundle.ReadFile(interaction.BundleFile).NoteText == "보호 켜기 관찰",

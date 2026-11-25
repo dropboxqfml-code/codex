@@ -262,6 +262,7 @@
                                     <DataTemplate>
                                         <StackPanel Margin="2,4">
                                             <TextBlock Text="{Binding FileName}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding IdentityText}" TextWrapping="Wrap" Foreground="#475569" />
                                             <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
                                             <TextBlock Text="{Binding NotePreview}" TextWrapping="Wrap" Foreground="#475569"
                                                        Visibility="{Binding HasNote, Converter={StaticResource ObservationGraphVisibility}}" />
@@ -279,6 +280,7 @@
                         <TextBlock Text="{Binding ComparisonAxisText}" TextWrapping="Wrap" Margin="0,0,0,8"
                                    Visibility="{Binding ComparisonObservationVisible, Converter={StaticResource ObservationGraphVisibility}}" />
                         <TextBlock Text="{Binding SavedObservationTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding SavedObservationIdentityText}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
                         <TextBlock Text="{Binding SavedObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
                         <TextBlock Text="{Binding SavedObservationNote.Preview}" TextWrapping="Wrap" Foreground="#475569" Margin="0,0,0,6" />
                         <Button x:Name="ExportObservationBundleButton" Content="이 기록 TXT·메모 내보내기"
@@ -314,6 +316,7 @@
                     <StackPanel Margin="0,16,0,0"
                                 Visibility="{Binding ComparisonObservationVisible, Converter={StaticResource ObservationGraphVisibility}}">
                         <TextBlock Text="{Binding ComparisonObservationName}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding ComparisonObservationIdentityText}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
                         <TextBlock Text="{Binding ComparisonObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
                         <TextBlock Text="{Binding ComparisonObservationNote.Preview}" TextWrapping="Wrap" Foreground="#475569" Margin="0,0,0,6" />
                         <Button x:Name="ExportComparisonBundleButton" Content="비교 기록 TXT·메모 내보내기"

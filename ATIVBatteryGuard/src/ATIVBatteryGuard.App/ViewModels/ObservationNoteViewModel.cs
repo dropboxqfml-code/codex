@@ -50,7 +50,9 @@ namespace ATIVBatteryGuard.ViewModels
         public bool CanSave => !disposed && !busy && !IsReadOnly && HasChanges && ObservationNoteStore.IsValidText(text);
         public string Preview => ObservationNote.Preview(saved.Text);
         public string CharacterCountText => text.Length + "/1000자";
-        public string Status => status;
+        public string Status => status.Length > 0 ? status : !saved.Available ? "메모를 읽지 못했습니다. 다시 읽기로 확인하세요."
+            : HasChanges ? "메모 수정 중 · 저장해 주세요."
+            : saved.Text.Length == 0 ? "저장된 메모가 비어 있습니다." : "저장된 메모와 같습니다. 수정 사항이 없습니다.";
 
         private void ReadLatest()
         {

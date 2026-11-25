@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — RC2 Windows 자동 검사 통과 / 2026-11-25 한국 시간:** [사용자 결과와 확인 범위](FIELD_030_RC2_RESULT.md) · [검증 현황](VALIDATION_030.md). 전달된 RC2 JSON에서 파일 전후 확인·GUI 검사와 최근 선택 유지 검사가 통과했습니다. 종료0/오류·바인딩 오류0, 배터리 available/WMI complete, 하드웨어 쓰기 false입니다. 같은 자동 검사는 반복할 필요가 없습니다. 남은 IME 조합·취소/충돌·장시간 사용과 서명 배포를 확인하며 최종 0.3.0 완료로 확대하지 않습니다. 프로그램과 ZIP은 변경하지 않았습니다. 아래는 이전 기록입니다.
+
 **최신 — 0.3.0-rc.2 / 2026-11-25 한국 시간:** [새 검증 키트](../downloads/ATIVBatteryGuard-0.3.0-rc.2-VALIDATION-KIT.zip) · [이번 확인 순서](VALIDATION_030_USER_STEPS.txt) · [RC1 결과와 원인](FIELD_030_RC1_RESULT.md) · [검증 현황](VALIDATION_030.md). RC1의 수동 화면/사용/Defender 보고는 기록했지만 JSON 자동 검사는 최근 기록 선택 유지 오류로 실패했습니다. 목록 갱신 중 WPF 선택 초기화의 재진입을 막고 1252회귀·세 빌드를 통과했습니다. 화면과 충전 제어는 유지합니다. 다음은 RC2 자동 검사만 재실행하는 단계이며 Windows 수정 확인·서명·최종 출시는 아직 미완료입니다. 아래는 이전 기록입니다.
 
 **최신 — 0.3.0-rc.1 실사용 검증 시작 / 2026-11-25 한국 시간:** [Windows 검증 키트](../downloads/ATIVBatteryGuard-0.3.0-rc.1-VALIDATION-KIT.zip) · [검증 순서](VALIDATION_030_USER_STEPS.txt) · [현황과 확인 범위](VALIDATION_030.md). 0.2.11의 글자 정상 표시 사용자 확인을 기록했습니다. 앱/helper는 버전만 바꾸고 동결했으며 새 기능을 추가하지 않았습니다. 총 1251회귀와 세 빌드가 통과했고, Windows에서는 SDK 없이 검증시작.cmd로 파일/GUI 자동 검사를 실행할 수 있습니다. 실제 Windows/수동 사용/보안 검사 결과를 기다리는 후보이며 정식 0.3.0 완료판은 아닙니다. 아래는 이전 기록입니다.

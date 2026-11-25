@@ -1,0 +1,41 @@
+{
+  "dateKorea": "2026-11-25",
+  "candidateCommit": "e710446a59b7458ba71d2856fbd5f3afc107975d",
+  "releaseVersion": "0.3.0-rc.2",
+  "uploadedFiles": [
+    {
+      "file": "validation-e98f5b97d63e41c58d2f620ab6d9953e.json",
+      "bytes": 934,
+      "sha256": "c486d21605b15c7515fc355e7ad089641a3dbff8c3d7f147424daa5c56da5460"
+    },
+    {
+      "file": "gui-0ee9183fab6b40cd9a199981f5e2763a.json",
+      "bytes": 177,
+      "sha256": "2c6fdd4e0da09c31583aef18bd0f293c638253fc7fb997381a730e9d3210a41f"
+    }
+  ],
+  "sourceFingerprintMatchesReleasedRc2": true,
+  "validationManifestMatchesReport": true,
+  "embeddedGuiMatchesStandalone": true,
+  "reportedWindows10X64": true,
+  "filesVerifiedBeforeAndAfter": true,
+  "guiExecuted": true,
+  "guiExitCode": 0,
+  "guiPassed": true,
+  "bindingErrors": 0,
+  "guiFailureCodes": [],
+  "hardwareWritesPerformed": false,
+  "nativePowerStatus": "available",
+  "nativeWmiStatus": "complete",
+  "previousRc1RecentSelectionFailureNotObserved": true,
+  "completedUtc": "2026-11-25T09:59:14.5616763Z",
+  "completedKorea": "2026-11-25 18:59:14 +09:00",
+  "automatedWrapperManualUserFlowsConfirmed": false,
+  "automatedWrapperDefenderScanExecuted": false,
+  "authenticodeSigned": false,
+  "finalReleaseApproved": false,
+  "priorRc1ManualObservationsRetained": true,
+  "newRc2ManualOrDefenderEvidenceSupplied": false,
+  "programOrPackagesChanged": false,
+  "nextAction": "No RC2 automatic rerun needed. Remaining checks: specific IME composition, cancel/concurrent-edit flows, longer use, and signed distribution evidence."
+}

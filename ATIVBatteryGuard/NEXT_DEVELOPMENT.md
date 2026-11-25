@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — RC2 Windows 자동 검사 통과 / 2026-11-25 한국 시간
+
+[RC2 사용자 결과](FIELD_030_RC2_RESULT.md), [원본과 평가](reports/field-030-rc2/assessment.json), [검증 현황](VALIDATION_030.md)을 먼저 읽습니다. RC2/e710446 배포 지문과 일치하는 validation/gui 두 JSON을 받았으며 내장 Gui와 별도 파일도 같습니다. 검사 전후 파일 true, 종료0, GUI passed/오류 없음/바인딩 오류0, 하드웨어 쓰기 false입니다. 이전 RECENT_SELECTION_NOT_PRESERVED를 포함한 자동 검사가 통과했습니다. 기본 배터리 available/WMI complete입니다.
+
+RC2 Windows 자동 검사와 해당 선택 유지 수정 확인은 완료했으므로 같은 자동 검사나 이전 충전 시험을 다시 요청하지 않습니다. 아래 재실행 요청은 이전 이력입니다. 기존 수동 흐름/현재 배율/크기 변경 클릭/Defender 사용자 보고는 RC1 근거로 인계하며 RC2 서명·보안 검사 완료로 확대하지 않습니다. 남은 항목은 구체적 IME 조합 처리·취소/두 창 충돌·반복/장시간 사용과 서명 배포입니다. 최종 0.3.0은 미완료입니다.
+
+원본과 빌드/배포 매니페스트의 버전·소스 지문·성공 조건을 검사했습니다. 이번에는 코드/ZIP 변경과 Windows 실행/새 빌드/회귀 재실행이 없습니다. 기존 클라우드 빌드 보고서는 당시 미실행 사실을 보존하고 사용자 Windows 근거를 별도로 연결합니다.
+
 ## 최신 — RC1 사용자 결과 수신과 RC2 선택 유지 수정 / 2026-11-25 한국 시간
 
 [검증 현황](VALIDATION_030.md), [RC1 수신 결과](FIELD_030_RC1_RESULT.md), [새 RC2 키트](../downloads/ATIVBatteryGuard-0.3.0-rc.2-VALIDATION-KIT.zip), [RC2 클라우드 검사](reports/release-030-rc2-validation.json)를 먼저 읽습니다. 아래 RC1 시작 문단은 이력입니다. 현재 후보는 0.3.0-rc.2이며 최종 0.3.0 미완료입니다.

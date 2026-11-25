@@ -2,7 +2,7 @@
 
 2026-11-25 한국 시간. 현재 후보는 **0.3.0-rc.2**(파일 버전 0.3.0.0)입니다. 정식 0.3.0 출시 완료판이 아닙니다.
 
-[RC2 검증 키트](../downloads/ATIVBatteryGuard-0.3.0-rc.2-VALIDATION-KIT.zip) · [RC2 프로그램](../downloads/ATIVBatteryGuard-0.3.0-rc.2-WIN10-X64.zip) · [이번 확인 순서](VALIDATION_030_USER_STEPS.txt) · [RC1 실사용 결과](FIELD_030_RC1_RESULT.md) · [RC2 클라우드 검증](reports/release-030-rc2-validation.json) · [이전 RC1 빌드 근거](reports/release-030-rc1-validation.json)
+[RC2 검증 키트](../downloads/ATIVBatteryGuard-0.3.0-rc.2-VALIDATION-KIT.zip) · [RC2 프로그램](../downloads/ATIVBatteryGuard-0.3.0-rc.2-WIN10-X64.zip) · [이번 확인 순서](VALIDATION_030_USER_STEPS.txt) · [RC2 Windows 결과](FIELD_030_RC2_RESULT.md) · [RC1 실사용 결과](FIELD_030_RC1_RESULT.md) · [RC2 클라우드 검증](reports/release-030-rc2-validation.json) · [이전 RC1 빌드 근거](reports/release-030-rc1-validation.json)
 
 ## 검증 상태
 
@@ -16,7 +16,7 @@
 | RC2 portable 회귀 | 선택 초기화 콜백 재현 회귀 추가. 수정 전 1251통과/1실패 → 수정 후 1252통과/실패·skip0 |
 | 빌드 | portable·전체 net48 WPF·별도 net48 검증 도구, 경고/오류0 |
 | 서명 배포 조건 검사 | 기존 6개 회귀 통과. 실제 서명·백신 실행 증거는 아님 |
-| RC2 Windows 자동 검사 | 새 키트 제공, 결과 대기 |
+| RC2 Windows 자동 검사 | 사용자 JSON 통과: 파일 전후 확인 true, 종료0, GUI passed, 오류/바인딩 오류0. 기본 배터리 available / WMI complete, 하드웨어 쓰기 false |
 | IME 조합·취소/두 창 충돌·장시간 사용 | 아직 구체적인 결과 없음 |
 | 첫 실행 경고·서명 | 경고 사용자 보고. 미서명 배포. 정확한 경고 종류는 미확인 |
 | 최종 0.3.0 | 미완료 |
@@ -37,4 +37,4 @@ RC1(d705c9c43be84c94ad6374b3559776756775502b)의 앱/helper 소스 207파일과 
 
 ## 다음 진행
 
-이번에는 **RC2 자동 검사만 다시 실행**해 새 JSON 결과를 받습니다. 이미 확인한 수동 흐름·화면과 기존 충전 시험은 반복하지 않습니다. 이후 남은 IME 조합 처리·취소/동시 수정·반복 사용과 서명 배포 근거를 보완합니다. RC2 결과 전에는 Windows 수정 확인이나 최종 출시 완료를 주장하지 않습니다.
+RC2의 Windows 자동 검사와 이전 선택 유지 결함의 자동 검사 범위 수정 확인을 완료했습니다. [수신 근거](FIELD_030_RC2_RESULT.md)를 참고합니다. 같은 자동 검사·이미 확인한 수동 흐름·화면·충전 시험은 반복하지 않습니다. 다음은 남은 IME 조합 처리·취소/동시 수정·반복 사용과 서명 배포 근거를 보완하는 단계입니다. 자동 검사 통과를 수동/보안 검사와 최종 출시 완료로 확대하지 않습니다.

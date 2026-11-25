@@ -157,7 +157,7 @@ namespace ATIVBatteryGuard.Core.Storage
                         try { using (var probe = new FileStream(leasePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { } }
                         catch (IOException) { continue; } // Another app is still importing this record.
                     }
-                    if (File.Exists(recovery)) return "중단된 복원 자료가 있습니다. ‘관찰 저장 폴더 열기’ → imported-observations → .import- 폴더의 "
+                    if (File.Exists(recovery)) return "중단된 복원 자료가 있습니다. ‘저장 폴더 열기’ → imported-observations → .import- 폴더의 "
                         + RecoveryFileName + "을 ‘TXT·메모 묶음 불러오기’로 열어 다시 복원할 수 있습니다. 기존 자료는 자동 삭제하지 않습니다.";
                 }
                 return "";

@@ -38,7 +38,7 @@ namespace ATIVBatteryGuard.Core.Models
                 }
                 if (schema.Truncated) text.AppendLine("  항목 한도로 일부 정의를 생략했습니다.");
             }
-            text.AppendLine("실제 충전 제어: 미지원. 하드웨어 쓰기 허용: false.");
+            text.AppendLine("이 읽기 전용 진단은 충전 설정을 변경하지 않습니다. 하드웨어 쓰기 허용: false.");
             return text.ToString();
         }
         private static void AppendField(StringBuilder text, string prefix, WmiSchemaField field)

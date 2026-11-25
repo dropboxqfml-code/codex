@@ -55,7 +55,7 @@ namespace ATIVBatteryGuard.Core.Models
 		{
 			StringBuilder stringBuilder = new StringBuilder();
 			stringBuilder.AppendLine("ATIV Battery Guard — 충전 제어 경로 확인용 읽기 전용 보고서");
-			stringBuilder.AppendLine("실제 충전 제어: 미지원. 이 수집은 펌웨어·설정·서비스·드라이버를 변경하지 않습니다.");
+			stringBuilder.AppendLine("이 진단은 충전 설정·펌웨어·서비스·드라이버를 변경하지 않습니다.");
 			stringBuilder.AppendLine("프로그램/서비스/클래스가 발견돼도 충전 제한 API 또는 안전성이 검증된 것은 아닙니다.");
 			stringBuilder.AppendLine();
 			stringBuilder.Append(Device.ToDisplayText());

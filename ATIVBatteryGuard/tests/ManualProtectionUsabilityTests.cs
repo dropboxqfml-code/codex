@@ -19,7 +19,7 @@ internal static partial class Program
                 var battery = new OfflineReviewCountingBattery();
                 using (var vm = ManualUsabilityVm(f, service, clock, battery))
                 {
-                    Equal("0.2.8", ApplicationRelease.Version);
+                    Equal("0.2.9", ApplicationRelease.Version);
                     Equal(ApplicationRelease.DisplayText, vm.ApplicationVersionText);
                     int batteryReads = battery.Calls;
                     for (int i = 0; i < 25; i++)
@@ -198,7 +198,7 @@ internal static partial class Program
             var statuses = new[] { ManualProtectionStatus.Cancelled, ManualProtectionStatus.Unsupported,
                 ManualProtectionStatus.PreflightFailed, ManualProtectionStatus.Rejected, ManualProtectionStatus.Busy,
                 ManualProtectionStatus.TimedOut, ManualProtectionStatus.Unknown };
-            var guidance = new[] { "보호 상태 확인", "지원 범위", "배포 파일", "결과 TXT", "진행 중인 창", "정리는 끝났", "다시 읽으세요" };
+            var guidance = new[] { "현재 설정 확인", "지원 범위", "배포 파일", "결과 TXT", "진행 중인 창", "정리는 끝났", "다시 읽으세요" };
             for (int i = 0; i < statuses.Length; i++)
             using (var f = new Fixture())
             {
@@ -260,7 +260,7 @@ internal static partial class Program
                     Check(vm.ManualProtectionNotice.Contains("표시 시간") && vm.ManualProtectionNotice.Contains("실제 정리는 미확인"), "timeout was confused with actual completion");
                     Check(vm.ManualProtectionNotice.Contains("자동 재시도하지 않습니다") && vm.ManualProtectionPending, "timeout lost pending safety guidance");
                     Check(vm.ManualProtectionNotice.Contains("앱·helper를 강제로 닫거나 다시 실행하지 말고") &&
-                        !vm.ManualProtectionNotice.Contains("정리는 끝났") && !vm.ManualProtectionNotice.Contains("보호 상태 확인을 직접"), "completed-result advice overrode the pending cleanup hold");
+                        !vm.ManualProtectionNotice.Contains("정리는 끝났") && !vm.ManualProtectionNotice.Contains("현재 설정 확인을 직접"), "completed-result advice overrode the pending cleanup hold");
                     vm.ManualSaveResultCommand.Execute(null);
                     Check(f.Interaction.LastManualResult.Contains("SDK 진입·설정 진입·수용 읽기: 미관측"), "timeout invented zero calls");
                     Equal(4, clock.Calls); Equal(2, service.Operations.Count);

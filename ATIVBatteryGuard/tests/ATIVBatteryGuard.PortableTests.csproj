@@ -35,6 +35,8 @@
     <Compile Include="ObservationNoteViewModelTests.cs" />
     <Compile Include="ObservationBundleTests.cs" />
     <Compile Include="QualityAndUsabilityTests.cs" />
+    <Compile Include="BeginnerExperienceTests.cs" />
+    <EmbeddedResource Include="../src/ATIVBatteryGuard.App/Views/MainWindow.xaml" LogicalName="Beginner.MainWindow.xaml" />
     <Compile Include="../src/ATIVBatteryGuard.App/Controls/BatteryObservationChartSelection.cs" Link="Controls/BatteryObservationChartSelection.cs" />
     <Compile Include="ProtectionPresentationAndGraphViewModelTests.cs" />
     <Compile Include="ManualProtectionClientSessionTests.cs" />

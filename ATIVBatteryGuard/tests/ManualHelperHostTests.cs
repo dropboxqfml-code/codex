@@ -40,7 +40,7 @@ internal static partial class Program
             Check(read.Contains("최대3회") && read.Contains("설정은 변경하지 않습니다"), "read-only operation impact missing");
             Check(enable.Contains("최대7회") && enable.Contains("상한80·하한75") && enable.Contains("복원하지 않습니다"), "enable impact missing");
             Check(disable.Contains("최대3회") && disable.Contains("충전이 재개될 수") && disable.Contains("100% 충전을 보장하지"), "disable impact missing");
-            Check(new[] { read, enable, disable }.All(value => value.Contains("강제 종료하지") && value.Contains("profile")), "actual lifetime or target explanation missing");
+            Check(new[] { read, enable, disable }.All(value => value.Contains("강제 종료하지") && value.Contains("940X3G") && value.Contains("BIOS")), "actual lifetime or target explanation missing");
         });
 
         AddAsync("manual helper notice never substitutes for actual preparation return", async () =>

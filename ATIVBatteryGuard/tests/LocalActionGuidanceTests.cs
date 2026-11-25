@@ -124,12 +124,12 @@ internal static partial class Program
                 {
                     await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
                     string hold = vm.ManualProtectionNotice;
-                    Check(hold.Contains("실제 정리 완료를 기다리세요") && !hold.Contains("보호 상태 확인을 직접") &&
+                    Check(hold.Contains("실제 정리 완료를 기다리세요") && !hold.Contains("현재 설정 확인을 직접") &&
                         !hold.Contains("정리는 끝났"), "status-specific advice overrode the cleanup hold: " + status);
                     f.Interaction.FolderOpener = () => { throw new IOException("PRIVATE-PENDING-FOLDER"); };
                     vm.OpenSettingsFolderCommand.Execute(null);
                     Check(!vm.ManualSaveStatusText.Contains("다시 누르") && !vm.ManualSaveStatusText.Contains("다시 실행") &&
-                        !vm.ManualSaveStatusText.Contains("보호 상태 확인"), "folder failure advised a device retry or restart during cleanup");
+                        !vm.ManualSaveStatusText.Contains("현재 설정 확인"), "folder failure advised a device retry or restart during cleanup");
                     Equal(hold, vm.ManualProtectionNotice);
                     vm.ManualSaveResultCommand.Execute(null);
                     f.Interaction.FolderOpener = null; vm.OpenSettingsFolderCommand.Execute(null);
@@ -154,7 +154,7 @@ internal static partial class Program
                 {
                     await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
                     Check(vm.ManualProtectionNotice.Contains("UAC") && vm.ManualProtectionNotice.Contains("helper") &&
-                        vm.ManualProtectionNotice.Contains("취소") && vm.ManualProtectionNotice.Contains("보호 상태 확인"), "cancellation guidance assumes only one confirmation stage");
+                        vm.ManualProtectionNotice.Contains("취소") && vm.ManualProtectionNotice.Contains("현재 설정 확인"), "cancellation guidance assumes only one confirmation stage");
                     Check(!vm.ManualProtectionNotice.Contains("호출하지 않았") && !vm.ManualProtectionNotice.Contains("호출0") &&
                         !vm.ManualProtectionNotice.Contains("호출 0"), "cancellation notice inferred a hardware call count");
                     Check(!vm.ManualProtectionPending && vm.ManualReadProtectionCommand.CanExecute(null) &&

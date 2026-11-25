@@ -79,7 +79,7 @@ namespace ATIVBatteryGuard.Core.Services
 			}
 			stringBuilder.AppendLine("0% 또는 ‘충전 중 아님’만으로 배터리 고장이나 실제 충전 제한을 판정하지 않습니다.");
 			stringBuilder.AppendLine("이 보고서는 읽기 전용 관측이며 실제 펌웨어의 충전 상한 상태는 알 수 없습니다.");
-			stringBuilder.AppendLine("실제 충전 제어: 미지원. 이 조회 결과는 충전 제한 지원 또는 적용 성공의 증거가 아닙니다.");
+			stringBuilder.AppendLine("이 진단은 충전 설정을 변경하지 않습니다. 이 조회 결과는 충전 제한 지원 또는 적용 성공의 증거가 아닙니다.");
 			return stringBuilder.ToString();
 		}
 

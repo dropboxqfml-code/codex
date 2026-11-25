@@ -250,7 +250,7 @@ internal static partial class Program
                 Check(!entry.HardwareWriteAllowed && !report.HardwareWriteAllowed, "capability flag grants write access");
                 Equal<bool?>((flags & 1) != 0, entry.ChargeRequestSupported); Equal<bool?>((flags & 2) != 0, entry.DischargeRequestSupported);
                 string text = report.ToDisplayText();
-                Check(text.Contains("80% 충전 상한이나 OEM 기능 지원의 증거가 아닙니다") && text.Contains("실제 충전 제어: 미지원") &&
+                Check(text.Contains("80% 충전 상한이나 OEM 기능 지원의 증거가 아닙니다") && text.Contains("이 읽기 전용 진단은 충전 설정을 변경하지 않습니다") &&
                     text.Contains("표시된 지원 요청도 실행하지 않았습니다"), "request support misrepresented as verified charge control");
                 var diagnostics = new HardwareProbeReport(windowsBatteryCapabilities: report);
                 Check(diagnostics.ToDisplayText().Contains(text) && !diagnostics.HardwareWriteAllowed, "detailed diagnostics omit the read-only capability assessment");

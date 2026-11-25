@@ -25,7 +25,7 @@ internal static partial class Program
             var source = new FakeSchemaSource(); var report = WmiSchemaInspector.Inspect(source);
             Check(!WmiSchemaPolicy.HardwareWriteAllowed && !report.HardwareWriteAllowed && report.Classes.All(c => !c.HardwareWriteAllowed), "schema discovery grants write");
             string text = report.ToDisplayText();
-            Check(text.Contains("실제 충전 제어: 미지원") && text.Contains("충전 제한 지원이 검증된 것은 아닙니다") && text.Contains("호출하지 않았습니다"), "discovery misrepresented as support");
+            Check(text.Contains("이 읽기 전용 진단은 충전 설정을 변경하지 않습니다") && text.Contains("충전 제한 지원이 검증된 것은 아닙니다") && text.Contains("호출하지 않았습니다"), "discovery misrepresented as support");
         });
         foreach (WmiSchemaStatus status in Enum.GetValues(typeof(WmiSchemaStatus)))
         {

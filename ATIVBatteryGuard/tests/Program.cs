@@ -106,7 +106,7 @@ internal static partial class Program
         Add("cross check preserves zero without diagnosis", () =>
         {
             string text = BatteryCrossCheck.Format(new NativePowerReading(true, 1, 6, 0), new[] { new WmiBatteryReading(0, 2) });
-            Check(text.Contains("0%") && text.Contains("실제 충전 제어: 미지원"), "invalid zero diagnostic");
+            Check(text.Contains("0%") && text.Contains("이 진단은 충전 설정을 변경하지 않습니다"), "invalid zero diagnostic");
         });
         Add("multiple batteries do not replace native aggregate", () =>
         {
@@ -330,7 +330,7 @@ internal static partial class Program
         Add("Support inquiry includes device facts without inventing charge support", () =>
         {
             string text = SupportInquiryFormatter.Format(KnownDevice());
-            Check(text.Contains("940X3G/930X3G") && text.Contains("P05ACJ.128.140819.dg") && text.Contains("10.0.19045"), "device context missing");
+            Check(text.Contains("모델: 940X3G") && !text.Contains("930X3G") && text.Contains("P05ACJ.128.140819.dg") && text.Contains("10.0.19045"), "device context missing");
             Check(text.Contains("미지원") && text.Contains("공식 지원") && text.Contains("사용권"), "support uncertainty omitted");
         });
         Add("Support inquiry preserves unknown device fields", () =>
@@ -363,7 +363,7 @@ internal static partial class Program
                 await vm.RefreshDiagnosticsAsync();
                 vm.CopySupportInquiryCommand.Execute(null); Equal(1, f.Interaction.Copies);
                 Equal(vm.SupportInquiryText, f.Interaction.LastCopiedText);
-                Check(f.Interaction.LastCopiedText.Contains("940X3G/930X3G"), "wrong inquiry copied");
+                Check(f.Interaction.LastCopiedText.Contains("모델: 940X3G"), "wrong inquiry copied");
                 vm.Dispose(); vm.CopySupportInquiryCommand.Execute(null); Equal(1, f.Interaction.Copies);
             }
         });
@@ -459,6 +459,7 @@ internal static partial class Program
         RegisterObservationNoteViewModelTests();
         RegisterObservationBundleTests();
         RegisterQualityAndUsabilityTests();
+        RegisterBeginnerExperienceTests();
         RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();

@@ -123,7 +123,7 @@ namespace ATIVBatteryGuard.Core.Models
             text.AppendLine("조회 실패는 미지원 판정으로 바꾸지 않습니다. 표시된 지원 요청도 실행하지 않았습니다.");
             text.AppendLine("QUERY_TAG 및 QUERY_INFORMATION(BatteryInformation)만 사용합니다. SET 요청과 OEM 메서드는 호출하지 않습니다.");
             text.AppendLine("장치 경로·배터리 태그·시리얼번호·고유 ID는 보고서에 기록하지 않습니다.");
-            text.AppendLine("실제 충전 제어: 미지원. 하드웨어 쓰기 허용: false.");
+            text.AppendLine("이 읽기 전용 진단은 충전 설정을 변경하지 않습니다. 하드웨어 쓰기 허용: false.");
             return text.ToString();
         }
 

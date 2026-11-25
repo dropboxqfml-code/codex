@@ -13,7 +13,7 @@ namespace ATIVBatteryGuard.Core.Services
             var text = new StringBuilder();
             text.AppendLine("삼성 지원 문의 초안 — 직접 검토 후 전달하세요. 앱은 자동 전송하지 않습니다.");
             Append(text, "제조사", device.Manufacturer);
-            Append(text, "모델", device.Model);
+            Append(text, "모델", device.DisplayModel);
             Append(text, "BIOS", device.BiosVersion);
             Append(text, "Windows", device.WindowsName);
             Append(text, "Windows 버전", device.WindowsVersion);

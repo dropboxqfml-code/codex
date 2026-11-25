@@ -6,11 +6,63 @@
         <Style TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
+        <Style x:Key="ButtonFocus" TargetType="Control">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate><Rectangle Stroke="#006DC2" StrokeThickness="2" StrokeDashArray="2,2" Margin="-3" /></ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style TargetType="Button">
             <Setter Property="Padding" Value="14,9" />
-            <Setter Property="Margin" Value="0,0,10,10" />
+            <Setter Property="Margin" Value="0,0,8,8" />
             <Setter Property="MinHeight" Value="40" />
             <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="#26364A" />
+            <Setter Property="Background" Value="#F5F7FA" />
+            <Setter Property="BorderBrush" Value="#BDCAD9" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocus}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center" RecognizesAccessKey="True" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#E7EDF5" /></Trigger>
+                <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="#D7E2EF" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#EDF1F5" /><Setter Property="Foreground" Value="#64748B" />
+                    <Setter Property="BorderBrush" Value="#D4DDE7" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#1D5CA8" /><Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#1D5CA8" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#164C8E" /></Trigger>
+                <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="#123D73" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#EDF1F5" /><Setter Property="Foreground" Value="#64748B" />
+                    <Setter Property="BorderBrush" Value="#D4DDE7" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Padding" Value="14,9" /><Setter Property="FontSize" Value="15" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="10,7" /><Setter Property="BorderBrush" Value="#BDCAD9" />
+            <Setter Property="Background" Value="White" />
         </Style>
         <Style TargetType="RadioButton">
             <Setter Property="Margin" Value="0,0,20,12" />
@@ -27,13 +79,13 @@
             <Setter Property="BorderBrush" Value="#C7CDD4" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="24" />
-            <Setter Property="Margin" Value="0,0,0,18" />
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="Margin" Value="0,0,0,12" />
         </Style>
         <Style x:Key="SectionTitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontSize" Value="19" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,0,0,18" />
+            <Setter Property="Margin" Value="0,0,0,12" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style x:Key="Detail" TargetType="TextBlock">

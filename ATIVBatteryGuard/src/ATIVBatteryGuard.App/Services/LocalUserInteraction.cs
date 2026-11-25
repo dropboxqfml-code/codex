@@ -109,7 +109,7 @@ namespace ATIVBatteryGuard.Services
 		{
 			string fileName = SaveLocalText("battery-observation-", text);
             RememberObservation(Path.Combine(directory, fileName), SavedBatteryObservation.Parse(text, fileName, Path.Combine(directory, fileName)));
-			return "관찰 TXT 저장 완료: " + fileName + " · ‘관찰 저장 폴더 열기’에서 확인하세요. 업로드하지 않았습니다.";
+			return "관찰 TXT 저장 완료: " + fileName + " · ‘저장 폴더 열기’에서 확인하세요. 업로드하지 않았습니다.";
 		}
 
         public SavedBatteryObservation OpenBatteryObservation()

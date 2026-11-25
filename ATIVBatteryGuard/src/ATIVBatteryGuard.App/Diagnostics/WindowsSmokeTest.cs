@@ -238,6 +238,12 @@ namespace ATIVBatteryGuard.Diagnostics
 				window.Show();
 				window.UpdateLayout();
 				await Idle(app);
+                Require(Find<TabControl>(window, "MainSections").Items.Count == 3 && model.SelectedSection == 0,
+                    "BEGINNER_NAVIGATION_INVALID");
+                Require(window.FindName("MockSwitch") == null && window.FindName("ProtectionResultInput") == null,
+                    "DEVELOPMENT_TOOLS_STILL_PRESENT");
+                model.OpenRecordingSectionCommand.Execute(null);
+                await Idle(app);
                 await CheckChartInputAsync(app, window, model);
                 Execute(Find<Button>(window, "OpenSavedObservationButton"));
                 await Idle(app);
@@ -336,35 +342,17 @@ namespace ATIVBatteryGuard.Diagnostics
                 Require(model.TryPrepareToClose() && !model.HasUnsavedObservation, "OBSERVATION_FINAL_SAVE_INVALID");
                 interaction.ObservationChoice = ObservationLossChoice.Discard;
                 model.ClearBatteryObservationCommand.Execute(null);
-				Button apply = Find<Button>(window, "MockApplyButton");
-				Button save = Find<Button>(window, "SavePreferencesButton");
-				CheckBox mock = Find<CheckBox>(window, "MockSwitch");
-				RadioButton protection = Find<RadioButton>(window, "ProtectionChoice");
-				RadioButton normal = Find<RadioButton>(window, "NormalChoice");
-				TextBlock actual = Find<TextBlock>(window, "ActualHardwareState");
-				TextBlock textBlock = Find<TextBlock>(window, "BatteryChargeStateLabel");
-				Require(!apply.IsEnabled && !model.CanApply && !model.IsMockMode, "REAL_APPLY_NOT_DISABLED");
-				string physicalText = actual.Text;
-				Require(physicalText.Contains("미지원") && textBlock.Text == "충전 중 아님", "INITIAL_STATE_INVALID");
-				Require(!model.CanExportDiagnostics && !model.CopyDiagnosticsCommand.CanExecute(null), "STALE_DIAGNOSTICS_EXPORT_ENABLED");
-				Select(protection, value: true);
-				Select(mock, value: true);
-				await Idle(app);
-				Require(model.IsProtectionSelected && model.IsMockMode && apply.IsEnabled, "MOCK_BINDINGS_INVALID");
-				Execute(apply);
-				Require(model.MockActualModeText.Contains("80%") && actual.Text == physicalText, "MOCK_ON_INVALID");
-				Select(normal, value: true);
-				Execute(apply);
-				Require(model.MockActualModeText.Contains("100%") && actual.Text == physicalText, "MOCK_OFF_INVALID");
-				Select(mock, value: false);
-				await Idle(app);
-				Require(!apply.IsEnabled && !model.CanApply, "MOCK_DISABLE_INVALID");
-				Select(protection, value: true);
-				Execute(save);
-				Require(new SettingsStore(temporary).Load().Settings.DesiredMode == ChargeMode.Protection80, "PREFERENCE_SAVE_INVALID");
+                model.SelectedSection = 0;
+                await Idle(app);
+                Require(!model.CanApply && !model.IsMockMode, "REAL_APPLY_NOT_DISABLED");
+                string physicalText = model.ActualModeText;
+                Require(physicalText.Contains("미지원") && Find<TextBlock>(window, "BatteryChargeStateLabel").Text == "충전 중 아님", "INITIAL_STATE_INVALID");
+                Require(!model.CanExportDiagnostics && !model.CopyDiagnosticsCommand.CanExecute(null), "STALE_DIAGNOSTICS_EXPORT_ENABLED");
+                model.SelectedSection = 2;
+                await Idle(app);
 				await model.RefreshDiagnosticsAsync();
 				report.NativeWmiStatus = (model.DiagnosticsSucceeded ? "complete" : "partial-or-unavailable");
-				Require(model.CanExportDiagnostics && !model.DiagnosticsBusy && actual.Text == physicalText, "DIAGNOSTICS_STATE_INVALID");
+				Require(model.CanExportDiagnostics && !model.DiagnosticsBusy && model.ActualModeText == physicalText, "DIAGNOSTICS_STATE_INVALID");
 				model.CopyDiagnosticsCommand.Execute(null);
 				model.SaveDiagnosticsCommand.Execute(null);
 				Require(interaction.Copied && interaction.Saved, "LOCAL_DIAGNOSTIC_ACTION_INVALID");
@@ -373,7 +361,7 @@ namespace ATIVBatteryGuard.Diagnostics
 				model.Dispose();
 				using (MainViewModel mainViewModel = new MainViewModel(new SyntheticBattery(), new SettingsStore(temporary), new LocalLog(temporary), interaction))
 				{
-					Require(mainViewModel.IsProtectionSelected && !mainViewModel.IsMockMode && !mainViewModel.CanApply && mainViewModel.ActualModeText.Contains("미지원"), "RESTART_STATE_INVALID");
+					Require(!mainViewModel.IsMockMode && !mainViewModel.CanApply && mainViewModel.ActualModeText.Contains("미지원"), "RESTART_STATE_INVALID");
 				}
 				await Idle(app);
 				Require(bindingListener.ErrorCount == 0, "WPF_BINDING_ERRORS");

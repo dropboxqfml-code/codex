@@ -75,7 +75,7 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private BatteryObservationSessionStatus savedObservationStatus;
 
-		private string observationSaveStatusText = "저장은 ‘관찰 TXT 저장’을 누를 때만 합니다. 저장 폴더를 바로 열어 새 파일을 확인할 수 있습니다.";
+		private string observationSaveStatusText = "저장은 ‘기록 TXT 저장’을 누를 때만 합니다. 저장 폴더를 바로 열어 새 파일을 확인할 수 있습니다.";
 
 		private bool observationSaveFailed;
 
@@ -131,7 +131,7 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private long manualOperationSequence;
 
-		private string manualProtectionNotice = "먼저 보호 상태 확인을 누르세요. 앱 시작과 배터리 갱신은 OEM 호출을 하지 않습니다.";
+		private string manualProtectionNotice = "설정을 확인하거나 바꿀 때만 장치에 요청합니다. 확인은 자동으로 시작하지 않습니다.";
 
 		private readonly ISamsungAnalysisBundleService samsungAnalysis;
 
@@ -407,6 +407,28 @@ namespace ATIVBatteryGuard.ViewModels
 
 		public string ManualProtectionNotice => manualProtectionNotice;
 
+        private int selectedSection;
+        public int SelectedSection
+        {
+            get { return selectedSection; }
+            set
+            {
+                if (disposed || value < 0 || value > 2 || value == selectedSection) return;
+                selectedSection = value; Changed();
+            }
+        }
+        public RelayCommand OpenRecordingSectionCommand { get; }
+        public bool FirstUseGuidanceVisible => !disposed && !ManualProtectionBusy && manualProtectionResult == null;
+        public string ProtectionSummaryText => !ManualProtectionAvailable ? "이 환경에서는 충전 제어를 사용할 수 없습니다."
+            : ManualProtectionBusy || IsMockMode ? ManualProtectionStateText
+            : manualProtectionResult?.HasKnownMode == true ? "마지막 확인 · " + ManualProtectionPresentation.GetStateLabel(manualProtectionResult)
+            : "충전 제한 상태를 확인하세요";
+        public string ProtectionActionHint => ManualProtectionBusy ? "작업이 끝날 때까지 기다려 주세요. 같은 버튼을 다시 누르지 않아도 됩니다."
+            : manualProtectionResult?.Status == ManualProtectionStatus.Unsupported
+                ? "지원 조건을 확인하지 못했습니다. 도움말·진단에서 장치 정보를 확인하세요."
+            : CanWriteManualProtection() ? "전원을 자주 연결해 쓴다면 80% 제한을, 더 충전하고 싶다면 제한 해제를 선택하세요."
+            : "먼저 현재 설정 확인을 누르세요. 장치 상태가 확인되면 설정 버튼을 사용할 수 있습니다.";
+
 		public string ApplicationVersionText => ApplicationRelease.DisplayText;
 
 		public string ManualProtectionReadTimeText => manualProtectionReadTimeText;
@@ -572,7 +594,7 @@ namespace ATIVBatteryGuard.ViewModels
 				{
 					return "알 수 없음";
 				}
-				return device.Model;
+				return device.DisplayModel;
 			}
 		}
 
@@ -652,7 +674,7 @@ namespace ATIVBatteryGuard.ViewModels
 		}
 
 		public string SupportReason => ManualProtectionAvailable
-			? "수동 제어 · 해당 요청에서 Windows10 x64·940X3G/930X3G·P05ACJ profile과 고정 WMI 계약을 확인합니다. 지원 범위가 확인되기 전에는 설정하지 않습니다."
+			? "940X3G의 장치·BIOS 조건을 확인한 뒤 실행합니다. 조건을 확인하지 못하면 충전 설정을 바꾸지 않습니다."
 			: physical.GetCapabilities().Reason;
 
 		public string DesiredModeText => "사용자 희망값: " + ModeText(settings.DesiredMode) + " · 실제 적용과 별개";
@@ -719,7 +741,7 @@ namespace ATIVBatteryGuard.ViewModels
 					mock = new MockChargeLimitController();
 					log.Write(value ? "MOCK_ENABLED" : "MOCK_DISABLED");
 					StatusMessage = value ? "시뮬레이션을 켰습니다. 실제 충전 제어는 없습니다."
-						: ManualProtectionAvailable ? "시뮬레이션을 껐습니다. 실제 설정은 보호 상태 확인에서 다시 읽으세요."
+						: ManualProtectionAvailable ? "시뮬레이션을 껐습니다. 실제 설정은 현재 설정 확인에서 다시 읽으세요."
 						: "시뮬레이션을 껐습니다. 실제 장치 상태는 미지원입니다.";
 					Changed("IsMockMode");
 					Changed("MockModeText");
@@ -830,11 +852,11 @@ namespace ATIVBatteryGuard.ViewModels
 			bool mockModeEnabled = settings.MockModeEnabled;
 			settings.MockModeEnabled = false;
 			statusMessage = ((!string.IsNullOrEmpty(settingsLoadResult.Warning)) ? settingsLoadResult.Warning :
-				ManualProtectionAvailable ? "사용자 희망값을 읽었습니다. 수동 제어는 먼저 보호 상태 확인을 눌러 지원 범위와 저장 후보를 확인하세요."
-				: "사용자 희망값을 읽었습니다. 실제 충전 제한은 지원하지 않습니다.");
+				ManualProtectionAvailable ? "준비되었습니다. 현재 설정 확인부터 시작하세요."
+				: "이 환경에서는 충전 제어를 사용할 수 없습니다. 기록과 진단은 사용할 수 있습니다.");
 			if (mockModeEnabled)
 			{
-				statusMessage += " 이전 모의 모드는 꺼져 있습니다. 필요하면 직접 켜세요.";
+				statusMessage += " 이전 개발용 모드는 꺼져 있습니다.";
 			}
 			ApplyCommand = new RelayCommand(Apply, () => mainViewModel.CanApply);
 			SaveCommand = new RelayCommand(Save, () => mainViewModel.canSave && !mainViewModel.disposed);
@@ -932,6 +954,7 @@ namespace ATIVBatteryGuard.ViewModels
 				() => CanWriteManualProtection());
 			ManualSaveResultCommand = new RelayCommand(SaveManualProtectionResult,
 				() => !disposed && !manualProtectionBusy && manualReport != null && !ReferenceEquals(manualReport, savedManualReport));
+            OpenRecordingSectionCommand = new RelayCommand(() => SelectedSection = 1, () => !disposed);
             RefreshRecentObservations();
 			log.Write("APP_STARTED");
 			log.Write(string.IsNullOrEmpty(settingsLoadResult.Warning) ? "SETTINGS_LOADED" : "SETTINGS_RECOVERED");
@@ -1086,7 +1109,7 @@ namespace ATIVBatteryGuard.ViewModels
 					manualProtectionResult = null;
 					manualProtectionReadTimeText = ManualReadTimeUnobserved;
 					manualProtectionNotice = result.CleanupComplete
-						? "작업은 정리됐지만 절전 복귀·상태 초기화와 겹친 조회값은 현재값으로 표시하지 않습니다. 보호 상태 확인을 다시 누르세요."
+						? "작업은 정리됐지만 절전 복귀·상태 초기화와 겹친 조회값은 현재값으로 표시하지 않습니다. 현재 설정 확인을 다시 누르세요."
 						: "복귀 중 작업의 실제 종료가 확인되지 않았습니다. " + ManualPendingGuidance;
 				}
 				log.Write(result.IsSuccess ? "MANUAL_PROTECTION_COMPLETED" : "MANUAL_PROTECTION_NOT_CONFIRMED");
@@ -1140,7 +1163,7 @@ namespace ATIVBatteryGuard.ViewModels
 			if (!manualProtectionBusy) manualProtectionPhase = manualProtectionPending ? ManualProtectionPhase.Uncertain : ManualProtectionPhase.Idle;
 			manualProtectionNotice = manualProtectionPending
 				? "장치 작업의 실제 종료가 확인되지 않았습니다. 상태를 초기화해도 차단은 유지합니다. " + ManualPendingGuidance
-				: "보호 조회 후보를 비웠습니다. 실제 제어 전에 보호 상태 확인을 직접 눌러 다시 읽으세요.";
+				: "보호 조회 후보를 비웠습니다. 실제 제어 전에 현재 설정 확인을 직접 눌러 다시 읽으세요.";
 			NotifyManualProtection();
 		}
 
@@ -1189,6 +1212,7 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private void NotifyManualProtection()
 		{
+            Changed("FirstUseGuidanceVisible"); Changed("ProtectionSummaryText"); Changed("ProtectionActionHint");
 			Changed("ManualProtectionAvailable");
 			Changed("ManualProtectionBusy");
 			Changed("ManualProtectionPending");
@@ -1259,14 +1283,14 @@ namespace ATIVBatteryGuard.ViewModels
 					ManualPendingGuidance;
 			if (result.Status == ManualProtectionStatus.StateRead) return "이번 요청의 보호 저장 후보를 읽었습니다. 켜기·해제는 각각 직접 선택할 때만 요청합니다.";
 			if (result.Status == ManualProtectionStatus.ChangedCandidate) return "저장 후보 전환과 관련 정리를 확인했습니다. 실제 충전 효과는 Windows 배터리 경과와 구분해 확인하세요.";
-			if (result.Status == ManualProtectionStatus.AlreadyDesiredCandidate) return "이미 요청한 모드 후보이므로 설정하지 않았습니다. 임계값 확인이 필요하면 보호 상태 확인을 직접 누르세요.";
-			if (result.Status == ManualProtectionStatus.Cancelled) return "관리자 권한 요청(UAC) 또는 helper 실행 확인을 취소했습니다. 상태가 필요하면 보호 상태 확인을 직접 눌러 새 결과를 받으세요.";
+			if (result.Status == ManualProtectionStatus.AlreadyDesiredCandidate) return "이미 요청한 모드 후보이므로 설정하지 않았습니다. 임계값 확인이 필요하면 현재 설정 확인을 직접 누르세요.";
+			if (result.Status == ManualProtectionStatus.Cancelled) return "관리자 권한 요청(UAC) 또는 helper 실행 확인을 취소했습니다. 상태가 필요하면 현재 설정 확인을 직접 눌러 새 결과를 받으세요.";
 			if (result.Status == ManualProtectionStatus.Unsupported) return "지원 대상 확인이 맞지 않아 제어를 차단했습니다. 결과 TXT와 프로그램의 지원 범위를 확인하세요.";
 			if (result.Status == ManualProtectionStatus.PreflightFailed) return "실행 전 확인에 실패해 제어를 차단했습니다. 결과 TXT와 배포 파일이 모두 있는지 확인하세요.";
-			if (result.Status == ManualProtectionStatus.Rejected) return "요청·응답 조건이 맞지 않아 결과를 수용하지 않았습니다. 결과 TXT를 저장하고 필요하면 보호 상태 확인을 직접 요청하세요.";
+			if (result.Status == ManualProtectionStatus.Rejected) return "요청·응답 조건이 맞지 않아 결과를 수용하지 않았습니다. 결과 TXT를 저장하고 필요하면 현재 설정 확인을 직접 요청하세요.";
 			if (result.Status == ManualProtectionStatus.Busy) return "다른 작업이 진행 중이거나 시작이 차단됐습니다. 진행 중인 창에서 완료 상태를 확인하고 추가 요청 없이 기다리세요.";
-			if (result.Status == ManualProtectionStatus.TimedOut) return "표시 시간은 초과됐지만 관련 정리는 끝났습니다. 현재 상태는 미확인입니다. 필요하면 보호 상태 확인을 직접 누르세요.";
-			return "관련 정리는 끝났지만 보호 상태를 확인하지 못했습니다. 결과 TXT를 저장하고 보호 상태 확인을 직접 눌러 다시 읽으세요. 자동 재시도하지 않습니다.";
+			if (result.Status == ManualProtectionStatus.TimedOut) return "표시 시간은 초과됐지만 관련 정리는 끝났습니다. 현재 상태는 미확인입니다. 필요하면 현재 설정 확인을 직접 누르세요.";
+			return "관련 정리는 끝났지만 보호 상태를 확인하지 못했습니다. 결과 TXT를 저장하고 현재 설정 확인을 직접 눌러 다시 읽으세요. 자동 재시도하지 않습니다.";
 		}
 
         private void OpenSavedObservation() { OpenSavedObservationFile(null); }

@@ -1,0 +1,96 @@
+{
+  "baseCommit": "3ed29be548d5d1767fbc9c630d358f61c3cf3abe",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.9",
+  "portableTests": {
+    "passed": 1243,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1243,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 7,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "sections": [
+    "배터리",
+    "기록",
+    "도움말·진단"
+  ],
+  "defaultSection": "배터리",
+  "modelPresentation": "940X3G",
+  "rawFirmwareIdentityPreservedTested": true,
+  "unrecognizedDeviceIsDisplayedAsMismatchNotAuthorized": true,
+  "hardwareGuardAndTransportFilesUnchangedSha256": {
+    "src/ATIVBatteryGuard.Core/Services/ManualProtectionAttempt.cs": "ee497928abf10fac5088be34744e088aa641e3cd38d6ab4c93a0a7cf421a0796",
+    "src/ATIVBatteryGuard.Core/Services/ManualProtectionCoordinator.cs": "2049c3296412de38b8fcfc81133fec87b36ffd20e597362b91ae7301eac98a2d",
+    "src/ATIVBatteryGuard.Core/Services/ManualProtectionClientSession.cs": "6ea8b63f7c20dd94eb4da82e25ebbc6297d7bc9f8a456347376b6ae644764894",
+    "src/ATIVBatteryGuard.WmiInterop/WsabiWmiWindowsManualProtection.cs": "2c135a86451c171e71afb4a85e51a737410f5dee27a18ad24524589b8503cf7c",
+    "src/ATIVBatteryGuard.ProtectionTransitionTrial/WindowsProtectionPreflight.cs": "7a160d4efe756f20b387e380dcc88751436e066e76bbc2943d89b9c858ffd32a",
+    "src/ATIVBatteryGuard.App/Services/WindowsManualProtectionOperationService.cs": "614bec633961aecb30aba3db0fb47d434e53b2db107dbdb20f3d43050c486a15"
+  },
+  "helperArgumentAdmissionUnchanged": true,
+  "navigationNoDeviceBatteryDiagnosticsOrFileActionsTested": true,
+  "firstUseHintAcceptedReadGateFailureAndUnknownUpperTested": true,
+  "requiredRecordComparisonNotesImportExportAndDiagnosticsBindingsPreservedTested": true,
+  "excludedFromUserGui": [
+    "inactive desired-mode preferences",
+    "nonfunctional boot-restore preference",
+    "developer simulation and mock apply",
+    "historical experiment parsers",
+    "support inquiry draft",
+    "Samsung file research"
+  ],
+  "compatibilityCoreLogicTestsAndExistingLocalDataPreserved": true,
+  "diagnosticGlobalUnsupportedWordingScopedToReadOnlyCollection": true,
+  "keyboardFocusAndAccessKeysInButtonTemplate": true,
+  "startupSizeDip": [
+    750,
+    565
+  ],
+  "nominalMinimumSizeDip": [
+    480,
+    320
+  ],
+  "allSectionsHaveVerticalScroll": true,
+  "windowsSmokeUpdatedForNavigationAndRemovedDevelopmentControls": true,
+  "windowsSmokeCompiled": true,
+  "windowsSmokeExecuted": false,
+  "newWindowsVisualImeDpiAndFocusTested": false,
+  "authenticodeSigned": false,
+  "windowsDefenderScanExecuted": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.9-WIN10-X64.zip",
+    "bytes": 314405,
+    "sha256": "c3e5777439390476b8503e92e00a93e61d84275e507d46ddbaa67749383e9cfe",
+    "entries": 9,
+    "sourceFileCount": 207,
+    "productSourceFingerprintSha256": "750c11054da56ffc838510d27d1cd297aaf3110c400932aa37a661306a715fad",
+    "releaseVersion": "0.2.9",
+    "guiVersionResource": {
+      "fileVersion": "0.2.9.0",
+      "productVersion": "0.2.9"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "7ecfc4b96d12616b3782685c46220d79f0c4f46e6599c6c501b87b7d4e47867c"
+    },
+    "portable-tests.log": {
+      "bytes": 113792,
+      "sha256": "65791af0752e05834ceee643a9cd5c100c7ab56d5faf8a2f9601d36d6575e3f7"
+    },
+    "wpf-build.log": {
+      "bytes": 2034,
+      "sha256": "d1c5fd6200ac3e49c3f377d1099c96f2d02f3f3ce54830a5b723e07d659571e2"
+    }
+  }
+}

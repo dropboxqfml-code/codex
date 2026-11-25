@@ -37,7 +37,7 @@ namespace ATIVBatteryGuard.ManualProtectionHelper
             }
         }
 
-        private const string Common = "대상은 검증된940X3G/930X3G·P05ACJ profile이며 불일치에서는 호출하지 않습니다.\n" +
+        private const string Common = "940X3G · BIOS P05ACJ의 검증된 조건을 확인하며, 일치하지 않으면 실행하지 않습니다.\n" +
             "초기화·재시도·임의 명령·드라이버/서비스/보안 변경은 없습니다.\n" +
             "표시 시간 초과는 실제 종료가 아닙니다. 작업·정리 중 창이나 helper를 강제 종료하지 마세요.\n\n" +
             "이 동작을 지금 한 번 수행하시겠습니까?";

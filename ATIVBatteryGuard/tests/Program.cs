@@ -459,6 +459,7 @@ internal static partial class Program
         RegisterObservationNoteViewModelTests();
         RegisterObservationBundleTests();
         RegisterQualityAndUsabilityTests();
+        RegisterFinalUsageValidationTests();
         RegisterBeginnerExperienceTests();
         RegisterReleaseValidationEvidenceTests();
         RegisterProtectionPresentationAndGraphViewModelTests();

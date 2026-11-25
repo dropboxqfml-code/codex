@@ -2,7 +2,7 @@
 
 2026-11-25 한국 시간. 현재 후보는 **0.3.0-rc.2**(파일 버전 0.3.0.0)입니다. 정식 0.3.0 출시 완료판이 아닙니다.
 
-[RC2 검증 키트](../downloads/ATIVBatteryGuard-0.3.0-rc.2-VALIDATION-KIT.zip) · [RC2 프로그램](../downloads/ATIVBatteryGuard-0.3.0-rc.2-WIN10-X64.zip) · [이번 확인 순서](VALIDATION_030_USER_STEPS.txt) · [RC2 Windows 결과](FIELD_030_RC2_RESULT.md) · [RC1 실사용 결과](FIELD_030_RC1_RESULT.md) · [RC2 클라우드 검증](reports/release-030-rc2-validation.json) · [이전 RC1 빌드 근거](reports/release-030-rc1-validation.json)
+[RC2 검증 키트](../downloads/ATIVBatteryGuard-0.3.0-rc.2-VALIDATION-KIT.zip) · [RC2 프로그램](../downloads/ATIVBatteryGuard-0.3.0-rc.2-WIN10-X64.zip) · [남은 확인 순서](VALIDATION_030_REMAINING_USER_STEPS.txt) · [결과 양식](VALIDATION_030_REMAINING_RESPONSE.txt) · [새 회귀 기록](reports/final-030-readiness-validation.json) · [RC2 Windows 결과](FIELD_030_RC2_RESULT.md) · [RC1 실사용 결과](FIELD_030_RC1_RESULT.md) · [RC2 클라우드 검증](reports/release-030-rc2-validation.json) · [이전 RC1 빌드 근거](reports/release-030-rc1-validation.json)
 
 ## 검증 상태
 
@@ -13,9 +13,9 @@
 | 현재 배율·크기 변경 | 사용자: 글씨/테두리 정상, 창 크기 변경 후 마우스 클릭 가능. 정확한 배율 숫자는 미제공 |
 | RC1 Defender | 사용자 별도 수동 검사 특이사항 없음 보고. 자동 도구는 Defender를 실행하지 않음 |
 | 기존 충전 제한·해제·재시작 유지 | 이전 사용자 근거 인계. 반복 시험 없음 |
-| RC2 portable 회귀 | 선택 초기화 콜백 재현 회귀 추가. 수정 전 1251통과/1실패 → 수정 후 1252통과/실패·skip0 |
+| RC2 portable 회귀 | 선택 유지 수정 후1252개에 통합 충돌/잠금/250회 편집기 수명 검사3개를 추가해1255통과·실패/skip0 |
 | 빌드 | portable·전체 net48 WPF·별도 net48 검증 도구, 경고/오류0 |
-| 서명 배포 조건 검사 | 기존 6개 회귀 통과. 실제 서명·백신 실행 증거는 아님 |
+| 서명 배포 조건 검사 | 현재6파일과 EXE/DLL4개 서명 범위로 보강. 기존6+새3=9회귀 통과. 실제 서명·백신 실행 증거는 아님 |
 | RC2 Windows 자동 검사 | 사용자 JSON 통과: 파일 전후 확인 true, 종료0, GUI passed, 오류/바인딩 오류0. 기본 배터리 available / WMI complete, 하드웨어 쓰기 false |
 | IME 조합·취소/두 창 충돌·장시간 사용 | 아직 구체적인 결과 없음 |
 | 첫 실행 경고·서명 | 경고 사용자 보고. 미서명 배포. 정확한 경고 종류는 미확인 |
@@ -34,6 +34,14 @@ RC1(d705c9c43be84c94ad6374b3559776756775502b)의 앱/helper 소스 207파일과 
 성공해도 수동 사용·Defender·최종 출시는 미완료로 기록합니다. 따라서 사용자의 별도 수동 보고와 JSON 필드를 구분하고 원본의 false 값을 임의로 바꾸지 않습니다. 예제 A/B는 실제 측정이 아닌 합성 자료입니다.
 
 현재 미서명 배포의 첫 실행 경고는 Defender의 악성 코드 검사와 구분합니다. 정식 배포 전 배포자 코드 서명 인증서·타임스탬프·서명 후 파일 검증을 준비해야 하며 서명이 모든 평판 경고의 즉시 제거를 보장하지 않습니다. 보호 기능 해제나 예외 추가를 요구하지 않습니다.
+
+## 추가한 품질 검사
+
+두 MainViewModel의 동일 기록 충돌 뒤 닫기 차단·A/B 초안 유지·실제 .ativrecord 백업·취소·최신 내용 다시 읽기·반대 방향 충돌까지 확인했습니다. 실제 잠금 파일로 저장 실패와 해제 후 재시도를 검사했습니다. 250회의 A/B 편집기 생성·500회 저장·닫기 후 편집기 객체500개가 주 ViewModel이 살아 있어도 수거되고 파일/잠금이 해제되며 임시 파일이 남지 않았습니다. portable 빌드는 경고/오류0입니다. 이는 Linux의 모델/저장소 검사로 실제 WPF 메모리·IME·장시간 사용을 대신하지 않습니다.
+
+서명 후 Windows 검사 도구는 현재 프로그램6파일을 확인하고 EXE/DLL4개의 동일한 유효 서명을 요구합니다. Python 증거 판정도 공급된 모든 PE 파일을 검사합니다. helper/WMI 서명 누락·미서명·다른 게시자 및 바이트 변경 거부를 회귀로 확인했습니다. 실제 Windows PowerShell 실행이나 서명/백신 검사는 미수행입니다. [서명 배포 준비와 남은 의존성](RELEASE_030_SIGNING_READINESS.md)을 참고합니다.
+
+프로그램과 원래 RC2 배포 ZIP은 변경하지 않았습니다. [수동 확인 자료 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.2-MANUAL-CHECKS.zip)은 텍스트 순서/결과 양식/기준정보3개만 담고 실행 파일은 없습니다.
 
 ## 다음 진행
 

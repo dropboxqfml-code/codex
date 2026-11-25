@@ -43,6 +43,44 @@ class ReleaseValidationTests(unittest.TestCase):
             report['signatures']['ATIVBatteryGuard.exe'][key] = value
             with self.assertRaises(ValueError): self.check_report(report)
 
+    def current_app_evidence(self):
+        files = dict(self.files)
+        files.update({name: name.encode() for name in (
+            'ATIVBatteryGuard.WmiInterop.dll', 'ATIVBatteryGuard.ManualProtectionHelper.exe',
+            'ATIVBatteryGuard.ManualProtectionHelper.exe.config')})
+        report = copy.deepcopy(self.report)
+        report['fileHashes'] = {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}
+        for name in ('ATIVBatteryGuard.WmiInterop.dll', 'ATIVBatteryGuard.ManualProtectionHelper.exe'):
+            report['signatures'][name] = dict(status='Valid', thumbprint='a' * 40)
+        return files, report
+
+    def test_current_six_file_app_matching_evidence(self):
+        files, report = self.current_app_evidence()
+        validate_release(report, files, 'abc', self.now)
+
+    def test_current_helper_and_wmi_require_signature_and_same_publisher(self):
+        for name in ('ATIVBatteryGuard.WmiInterop.dll', 'ATIVBatteryGuard.ManualProtectionHelper.exe'):
+            for mutation in ('missing', 'unsigned', 'other-publisher'):
+                with self.subTest(file=name, mutation=mutation):
+                    files, report = self.current_app_evidence()
+                    if mutation == 'missing':
+                        del report['signatures'][name]
+                    elif mutation == 'unsigned':
+                        report['signatures'][name]['status'] = 'NotSigned'
+                    else:
+                        report['signatures'][name]['thumbprint'] = 'b' * 40
+                    with self.assertRaises(ValueError):
+                        validate_release(report, files, 'abc', self.now)
+
+    def test_current_helper_library_and_config_bytes_must_match_scan(self):
+        files, report = self.current_app_evidence()
+        for name in ('ATIVBatteryGuard.WmiInterop.dll', 'ATIVBatteryGuard.ManualProtectionHelper.exe',
+                     'ATIVBatteryGuard.ManualProtectionHelper.exe.config'):
+            with self.subTest(file=name):
+                changed = dict(files, **{name: b'changed after scan'})
+                with self.assertRaises(ValueError):
+                    validate_release(report, changed, 'abc', self.now)
+
     def test_stale_future_wrong_source(self):
         for key, value in [('completedUtc', (self.now - timedelta(days=2)).isoformat()),
                            ('completedUtc', (self.now + timedelta(minutes=1)).isoformat()),

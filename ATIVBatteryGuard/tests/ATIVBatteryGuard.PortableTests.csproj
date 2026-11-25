@@ -35,6 +35,7 @@
     <Compile Include="ObservationNoteViewModelTests.cs" />
     <Compile Include="ObservationBundleTests.cs" />
     <Compile Include="QualityAndUsabilityTests.cs" />
+    <Compile Include="FinalUsageValidationTests.cs" />
     <Compile Include="BeginnerExperienceTests.cs" />
     <Compile Include="ReleaseValidationEvidenceTests.cs" />
     <EmbeddedResource Include="../validation/samples/sample-a.ativrecord" LogicalName="Validation.SampleA.ativrecord" />

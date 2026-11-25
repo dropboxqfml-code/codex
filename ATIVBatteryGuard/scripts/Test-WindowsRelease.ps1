@@ -11,20 +11,23 @@ $build = (Resolve-Path -LiteralPath $BuildDirectory).Path
 $reportFull = [IO.Path]::GetFullPath($ReportPath)
 if (Test-Path -LiteralPath $reportFull) { throw 'Use a new evidence report path; old evidence is not overwritten.' }
 if ((Get-Item -LiteralPath $build).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Linked build folder rejected.' }
-$names = @('ATIVBatteryGuard.exe','ATIVBatteryGuard.Core.dll','ATIVBatteryGuard.exe.config')
+$names = @('ATIVBatteryGuard.exe','ATIVBatteryGuard.exe.config',
+    'ATIVBatteryGuard.Core.dll','ATIVBatteryGuard.WmiInterop.dll',
+    'ATIVBatteryGuard.ManualProtectionHelper.exe','ATIVBatteryGuard.ManualProtectionHelper.exe.config')
 $before = @{}
 $signatures = @{}
 foreach ($name in $names) {
     $file = Join-Path $build $name
     if ((Get-Item -LiteralPath $file).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Linked artifact rejected.' }
     $before[$name] = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($name -ne 'ATIVBatteryGuard.exe.config') {
+    if ([IO.Path]::GetExtension($name) -in @('.exe', '.dll')) {
         $sig = Get-AuthenticodeSignature -LiteralPath $file
         if ($sig.Status -ne 'Valid' -or !$sig.SignerCertificate) { throw "Publisher signature not valid: $name" }
         $signatures[$name] = @{status='Valid'; thumbprint=$sig.SignerCertificate.Thumbprint}
     }
 }
-if ($signatures[$names[0]].thumbprint -ne $signatures[$names[1]].thumbprint) { throw 'Publisher certificates differ.' }
+$publishers = @($signatures.Values | ForEach-Object { $_.thumbprint.ToUpperInvariant() } | Select-Object -Unique)
+if ($publishers.Count -ne 1) { throw 'Publisher certificates differ.' }
 $status = Get-MpComputerStatus
 if (!$status.AntivirusEnabled -or !$status.RealTimeProtectionEnabled -or !$status.AntivirusSignatureVersion -or $status.AntivirusSignatureAge -gt 7) {
     throw 'Defender must be enabled with current definitions and real-time protection.'

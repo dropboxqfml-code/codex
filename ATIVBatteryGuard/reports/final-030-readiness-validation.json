@@ -1,0 +1,87 @@
+{
+  "dateKorea": "2026-11-25",
+  "stage": "remaining-manual-validation-prepared",
+  "releaseVersion": "0.3.0-rc.2",
+  "candidateCommit": "e710446a59b7458ba71d2856fbd5f3afc107975d",
+  "finalReleaseApproved": false,
+  "productSourceFileCount": 207,
+  "productSourceFingerprintSha256": "ebfa10658ccd42d482d1d26dd799e57af696f5e11e9be6a02398b8779d5bc18f",
+  "productSourceUnchanged": true,
+  "rc2ProgramAndValidationKitUnchanged": true,
+  "builtProgramBytesMatchReleasedRc2": true,
+  "previousUserWindowsGuiPassRetained": true,
+  "previousWindowsEvidence": "field-030-rc2/assessment.json",
+  "portableTests": {
+    "passed": 1255,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1255,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newIntegratedRegressionGroups": 3,
+  "coveredScenarios": [
+    "Two MainViewModels with stale save and close cancellation, A/B draft retention, actual bundle backup, explicit reload and reverse conflict.",
+    "Real note lease failure blocks close and preserves drafts and previous bytes; retry after release.",
+    "250 A/B editor cycles, 500 saves, closed editor weak references collected while MainViewModel remains alive, files/leases released, no temporary files."
+  ],
+  "portableBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "releaseEvidenceRegressions": {
+    "passed": 9,
+    "failed": 0,
+    "newGroups": 3
+  },
+  "currentAppSignedEvidenceIncludesAllSixFiles": true,
+  "allFourPeSignaturesAndSamePublisherRequired": true,
+  "embeddedPeSignatureAudit": {
+    "ATIVBatteryGuard.exe": {
+      "embeddedCertificateTablePresent": false,
+      "sha256": "875f72982219d065b3aab8abaaa341ba1b9cb9168bc4a6b5178fcf4c873ff36d"
+    },
+    "ATIVBatteryGuard.Core.dll": {
+      "embeddedCertificateTablePresent": false,
+      "sha256": "e723275837fe19257e1e6da20f008358ceac20d1cb1784e416f0fd9b36daa79a"
+    },
+    "ATIVBatteryGuard.WmiInterop.dll": {
+      "embeddedCertificateTablePresent": false,
+      "sha256": "17405098cb9ed57b67c7146e2b485b7780a9df33ac7cc015eaf1c08102fcd534"
+    },
+    "ATIVBatteryGuard.ManualProtectionHelper.exe": {
+      "embeddedCertificateTablePresent": false,
+      "sha256": "35f5a99f9b183925aecca90d9638f7571e196420b62de03cf45183d5ad5b26e6"
+    }
+  },
+  "powershellWindowsScriptExecuted": false,
+  "newWindowsGuiOrImeExecution": false,
+  "manualImeCancelConcurrentWindowsAndLongUseCompleted": false,
+  "authenticodeSigningPerformed": false,
+  "newDefenderScanPerformed": false,
+  "newHardwareActions": 0,
+  "manualGuidePackage": {
+    "file": "ATIVBatteryGuard-0.3.0-rc.2-MANUAL-CHECKS.zip",
+    "bytes": 3206,
+    "sha256": "5f542f07b239b31ae80053e2db4e60a0d96f719ad5f0e827de616918a26c72ca",
+    "entries": 3,
+    "containsProgramOrScripts": false
+  },
+  "logs": {
+    "build.log": {
+      "bytes": 206,
+      "sha256": "33f24f28d7206e271d0ad5de93d72b2eba154ea9f63893fe18760b5bd3f07565"
+    },
+    "release-gates.log": {
+      "bytes": 1336,
+      "sha256": "455e7a8ff4e971077910b019847d796bb6f90b616d429f4d4f41ca8107dde288"
+    },
+    "tests.log": {
+      "bytes": 115108,
+      "sha256": "ed79bf3dd15c9e753407ed8ebd6b54352394a4a3c2e938cfecbee6cbffc481e1"
+    }
+  },
+  "unsignedAddedBinaryAcceptedBeforeAndRejectedAfter": [
+    "ATIVBatteryGuard.WmiInterop.dll",
+    "ATIVBatteryGuard.ManualProtectionHelper.exe"
+  ]
+}

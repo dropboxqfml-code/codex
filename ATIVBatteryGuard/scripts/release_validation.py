@@ -24,11 +24,15 @@ def validate_release(report, files, fingerprint, now=None):
         raise ValueError('Scanned files differ from the packaged build.')
     signatures = report.get('signatures', {})
     thumbprints = set()
-    for name in ('ATIVBatteryGuard.exe', 'ATIVBatteryGuard.Core.dll'):
+    # The old preview has two PE files; the current app also ships an elevated
+    # helper and WMI library. Require one publisher for every packaged PE.
+    binary_names = {'ATIVBatteryGuard.exe', 'ATIVBatteryGuard.Core.dll'} | {
+        name for name in files if name.lower().endswith(('.exe', '.dll'))}
+    for name in sorted(binary_names):
         entry = signatures.get(name, {})
         thumbprint = entry.get('thumbprint', '')
         if entry.get('status') != 'Valid' or len(thumbprint) != 40 or any(c not in '0123456789abcdefABCDEF' for c in thumbprint):
             raise ValueError('A valid Authenticode publisher signature is required: ' + name)
         thumbprints.add(thumbprint.upper())
     if len(thumbprints) != 1:
-        raise ValueError('Executable and library must have the same signing certificate.')
+        raise ValueError('All packaged executables and libraries must have the same signing certificate.')

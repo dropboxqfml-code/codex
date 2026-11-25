@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — 남은 실사용·서명 배포 검증 보강 / 2026-11-25 한국 시간
+
+[남은 확인 순서](VALIDATION_030_REMAINING_USER_STEPS.txt), [결과 양식](VALIDATION_030_REMAINING_RESPONSE.txt), [서명 배포 준비](RELEASE_030_SIGNING_READINESS.md), [새 검증 기록](reports/final-030-readiness-validation.json)을 먼저 읽습니다. 현재 프로그램은 사용자 Windows 자동 검사가 통과한 0.3.0-rc.2/e710446 그대로입니다. 앱/helper 207소스 지문·현재 빌드 바이트·기존 프로그램/검증 키트 ZIP 해시가 모두 일치하며 새 프로그램 버전을 만들지 않았습니다.
+
+새 통합 회귀3개: 두 MainViewModel의 같은 A 저장 충돌→닫기 차단→A/B 초안 보존→실제 묶음 백업→다시 읽기 취소/허용→반대 방향 충돌, 실제 메모 잠금으로 저장 실패/닫기 차단 후 잠금 해제 재시도, 250회 A/B 열기·500회 메모 저장·닫기 후 편집기500개 약한 참조의 수거와 파일/잠금 해제·임시 파일 없음입니다. 전체1255통과·실패/skip0, portable 빌드 경고/오류0입니다. 이 객체 수명 검사를 WPF/Windows 메모리나 장시간 실사용 검사로 확대하지 않습니다.
+
+서명/보안 판정 회귀는 기존6+새3=9통과입니다. Windows 서명 후 검사 스크립트의 대상을 현재6파일로 확대하고 EXE/DLL4개의 동일한 유효 서명을 요구합니다. Python도 전달된 모든 PE 서명을 검사합니다. 실제 PowerShell Windows 실행·Authenticode 검증/서명·Defender 검사는 하지 않았습니다. 최종 버전/바이트의 서명/타임스탬프/새 해시/매니페스트와 정식 패키징 증거 연결은 남습니다. 인증서·개인 키·비밀번호를 저장소에 추가하지 않습니다.
+
+사용자에게는 현재 RC2에서 남은 IME 조합 저장/닫기·A/B 닫기 취소·두 창 동일 TXT 저장 충돌/초안 백업·20~30분 반복 사용만 확인하도록 안내합니다. 작은 MANUAL-CHECKS ZIP은 확인 순서/결과 양식/기준 배포정보3개이며 프로그램·실행 스크립트가 없습니다. 같은 GUI 자동 검사나 이전 충전 시험을 요청하지 않습니다. 실제 새 수동 결과를 받기 전 통과로 표시하지 않으며 최종0.3.0은 미완료입니다.
+
 ## 최신 — RC2 Windows 자동 검사 통과 / 2026-11-25 한국 시간
 
 [RC2 사용자 결과](FIELD_030_RC2_RESULT.md), [원본과 평가](reports/field-030-rc2/assessment.json), [검증 현황](VALIDATION_030.md)을 먼저 읽습니다. RC2/e710446 배포 지문과 일치하는 validation/gui 두 JSON을 받았으며 내장 Gui와 별도 파일도 같습니다. 검사 전후 파일 true, 종료0, GUI passed/오류 없음/바인딩 오류0, 하드웨어 쓰기 false입니다. 이전 RECENT_SELECTION_NOT_PRESERVED를 포함한 자동 검사가 통과했습니다. 기본 배터리 available/WMI complete입니다.

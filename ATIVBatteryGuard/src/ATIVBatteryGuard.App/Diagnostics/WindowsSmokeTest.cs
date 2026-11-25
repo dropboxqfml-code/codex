@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Automation.Peers;
 using ATIVBatteryGuard.Controls;
 using System.Windows.Threading;
@@ -242,6 +243,7 @@ namespace ATIVBatteryGuard.Diagnostics
                     "BEGINNER_NAVIGATION_INVALID");
                 Require(window.FindName("MockSwitch") == null && window.FindName("ProtectionResultInput") == null,
                     "DEVELOPMENT_TOOLS_STILL_PRESENT");
+                await CheckTabPresentationAsync(app, window, model);
                 model.OpenRecordingSectionCommand.Execute(null);
                 await Idle(app);
                 await CheckChartInputAsync(app, window, model);
@@ -424,6 +426,58 @@ namespace ATIVBatteryGuard.Diagnostics
 			}
 			return (!(report.Status == "passed") || report.BindingErrors != 0) ? 1 : 0;
 		}
+
+        // Native WPF checks: page text must stay dark; the complete header must fit its panel.
+        private static async Task CheckTabPresentationAsync(Application app, MainWindow window, MainViewModel model)
+        {
+            var tabs = Find<TabControl>(window, "MainSections");
+            double previousWidth = window.Width;
+            int previousSection = model.SelectedSection;
+            try
+            {
+                foreach (double width in new[] { previousWidth, Math.Min(previousWidth, 480) })
+                {
+                    window.Width = width;
+                    for (int section = 0; section < tabs.Items.Count; section++)
+                    {
+                        model.SelectedSection = section;
+                        await Idle(app); window.UpdateLayout();
+                        var page = tabs.SelectedContent as Control;
+                        Require(page != null && ReadableOnWhite(page.Foreground), "SELECTED_PAGE_TEXT_COLOR_LEAK");
+                        var panel = tabs.Template.FindName("NavigationHeaders", tabs) as FrameworkElement;
+                        Require(panel != null && panel.ActualWidth > 0 && panel.ActualHeight > 0, "TAB_HEADER_PANEL_NOT_MEASURED");
+                        foreach (TabItem item in tabs.Items)
+                        {
+                            item.ApplyTemplate();
+                            var border = item.Template.FindName("TabHeaderBorder", item) as Border;
+                            var title = item.Template.FindName("TabHeaderContent", item) as ContentPresenter;
+                            Require(border != null && title != null && border.ActualWidth > 0 && border.ActualHeight > 0,
+                                "TAB_HEADER_NOT_MEASURED");
+                            Rect bounds = border.TransformToAncestor(panel).TransformBounds(new Rect(0, 0, border.ActualWidth, border.ActualHeight));
+                            Require(bounds.Left >= -0.5 && bounds.Top >= -0.5 && bounds.Right <= panel.ActualWidth + 0.5
+                                && bounds.Bottom <= panel.ActualHeight + 0.5, "ROUNDED_TAB_HEADER_CLIPPED");
+                            if (item.IsSelected)
+                                Require(ReadableOnWhite(System.Windows.Documents.TextElement.GetForeground(title)), "SELECTED_HEADER_TEXT_COLOR_INVALID");
+                        }
+                    }
+                }
+            }
+            finally { window.Width = previousWidth; model.SelectedSection = previousSection; await Idle(app); }
+        }
+
+        private static bool ReadableOnWhite(Brush brush)
+        {
+            var solid = brush as SolidColorBrush;
+            if (solid == null || solid.Color.A != 255) return false;
+            Func<byte, double> linear = value =>
+            {
+                double channel = value / 255.0;
+                return channel <= 0.04045 ? channel / 12.92 : Math.Pow((channel + 0.055) / 1.055, 2.4);
+            };
+            var c = solid.Color;
+            double luminance = 0.2126 * linear(c.R) + 0.7152 * linear(c.G) + 0.0722 * linear(c.B);
+            return 1.05 / (luminance + 0.05) >= 4.5;
+        }
 
         private static async Task CheckChartInputAsync(Application app, MainWindow window, MainViewModel model)
         {

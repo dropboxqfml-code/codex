@@ -1,0 +1,66 @@
+{
+  "baseCommit": "e0bedf493044fb2fe6f463b375d1906c61bb78fb",
+  "restorationBaselineCommit": "729ba3f29f4e99e292e183074e00808b3fe3b67f",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.11",
+  "portableTests": {
+    "passed": 1245,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1245,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 1,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "finding": "0.2.10 selected TabItem Foreground/FontWeight setters could inherit into selected page content.",
+  "containerLevelSelectionTextColorAndWeightRemoved": true,
+  "selectedHeaderUsesLightBackgroundAndDarkText": true,
+  "wrapPanelMeasuresCompleteHeadersWithMargins": true,
+  "selectedContentPresenterPreserved": true,
+  "mainWindowEquals029AfterOnlyRequestedTransforms": true,
+  "nonNavigationGlobalStylesEqual029": true,
+  "startupInitializationRestoredTo029": true,
+  "normalDiagnosticSuccessNoticeRemovalAndFourRequestedChangesRetained": true,
+  "nativeWindowsBodyAndHeaderContrastChecksCompiled": true,
+  "nativeWindowsFullHeaderBoundsChecksCompiled": true,
+  "nativeWindowsChecksCoverOriginalAnd480Width": true,
+  "nativeWindowsChecksExecuted": false,
+  "reportedWindowsVisualFailureReproducedOrResolutionObservedInCloud": false,
+  "windowsDefenderScanExecuted": false,
+  "authenticodeSigned": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.11-WIN10-X64.zip",
+    "bytes": 315940,
+    "sha256": "b56d87110a9db62eecc12e99aa311e60febf96b09373f5c7402b8ae2d1bcfa64",
+    "entries": 9,
+    "sourceFileCount": 207,
+    "productSourceFingerprintSha256": "c2a79c29362931f1f3f4eab51bb37943cafb14f8ead59d92233d725a7614aa78",
+    "releaseVersion": "0.2.11",
+    "guiVersionResource": {
+      "fileVersion": "0.2.11.0",
+      "productVersion": "0.2.11"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "d7e9babacdf63e76980d335d794873b68ed31da4c829ea2b007beb576e375c05"
+    },
+    "portable-tests.log": {
+      "bytes": 114031,
+      "sha256": "d3c20396b2ac048e99b1ba72107dcd05154611217a41eca314172166777eced9"
+    },
+    "wpf-build.log": {
+      "bytes": 2034,
+      "sha256": "ede34a3d4d193de77b7f5439b7b4a8256506ac32071a4630ae26128410f4ee4c"
+    }
+  }
+}

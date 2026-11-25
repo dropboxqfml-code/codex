@@ -111,7 +111,7 @@ internal static partial class Program
             using (var f = new Fixture())
             using (var vm = ManualVm(f, new ManualVmService()))
             {
-                Check(!vm.HasStatusNotice, "startup still shows a routine notice");
+                Check(vm.HasStatusNotice && vm.StatusMessage.Contains("준비되었습니다"), "0.2.9 startup feedback was not restored");
                 int changes = 0; vm.PropertyChanged += (sender, args) => { if (args.PropertyName == "HasStatusNotice") changes++; };
                 await vm.RefreshDiagnosticsAsync();
                 Check(vm.DiagnosticsSucceeded && !vm.HasStatusNotice && vm.StatusMessage == "", "successful diagnosis left a footer notice");
@@ -126,6 +126,25 @@ internal static partial class Program
                 System.IO.File.WriteAllText(f.Store.FilePath, "{\"schemaVersion\":99}");
                 using (var vm = ManualVm(f, new ManualVmService()))
                     Check(vm.HasStatusNotice && vm.SettingsWarning.Length > 0, "settings warning hidden");
+            }
+        });
+
+        Add("selected tab text formatting stays within its header and the whole rounded header uses normal panel measurement", () =>
+        {
+            XNamespace ui = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+            XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Beginner.App.xaml"))
+            {
+                var document = XDocument.Load(stream);
+                var tab = document.Descendants(ui + "Style").Single(e => (string)e.Attribute("TargetType") == "TabItem");
+                foreach (var setter in tab.Descendants(ui + "Setter").Where(e =>
+                    ((string)e.Attribute("Property") ?? "").EndsWith("Foreground") || ((string)e.Attribute("Property") ?? "").EndsWith("FontWeight")))
+                    Check((string)setter.Attribute("TargetName") == "TabHeaderContent", "header selection format can inherit into the page");
+                var navigation = document.Descendants(ui + "Style").Single(e => (string)e.Attribute(x + "Key") == "NavigationTabs");
+                Check(navigation.Descendants(ui + "WrapPanel").Any(e => (string)e.Attribute("IsItemsHost") == "True"), "rounded headers still use the special tab panel arrangement");
+                Check(navigation.Descendants(ui + "ContentPresenter").Any(e => (string)e.Attribute(x + "Name") == "PART_SelectedContentHost"
+                    && (string)e.Attribute("ContentSource") == "SelectedContent"), "selected page presenter missing");
+                Check(!navigation.Descendants(ui + "TabPanel").Any(), "clipping-prone tab panel still used");
             }
         });
 

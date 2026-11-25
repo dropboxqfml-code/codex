@@ -56,44 +56,63 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <!-- Header colors must never be set on TabItem: they inherit into the selected page. -->
         <Style TargetType="TabItem">
             <Setter Property="Padding" Value="14,9" />
             <Setter Property="FontSize" Value="15" />
             <Setter Property="MinHeight" Value="40" />
             <Setter Property="Margin" Value="0,0,8,8" />
-            <Setter Property="Background" Value="#F5F7FA" />
-            <Setter Property="Foreground" Value="#26364A" />
-            <Setter Property="BorderBrush" Value="#BDCAD9" />
-            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocus}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                              RecognizesAccessKey="True" />
+                        <Border x:Name="TabHeaderBorder" Background="#F5F7FA" BorderBrush="#BDCAD9"
+                                BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="TabHeaderContent" ContentSource="Header"
+                                              TextElement.Foreground="#26364A" TextElement.FontWeight="Normal"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabHeaderBorder" Property="Background" Value="#E7EDF5" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabHeaderBorder" Property="Background" Value="White" />
+                                <Setter TargetName="TabHeaderBorder" Property="BorderBrush" Value="#1D5CA8" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True" /><Condition Property="IsMouseOver" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="TabHeaderBorder" Property="Background" Value="#E7EDF5" />
+                            </MultiTrigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="TabHeaderBorder" Property="Background" Value="#EDF1F5" />
+                                <Setter TargetName="TabHeaderBorder" Property="BorderBrush" Value="#D4DDE7" />
+                                <Setter TargetName="TabHeaderContent" Property="TextElement.Foreground" Value="#64748B" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#E7EDF5" /></Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#1D5CA8" /><Setter Property="BorderBrush" Value="#1D5CA8" />
-                    <Setter Property="Foreground" Value="White" /><Setter Property="FontWeight" Value="SemiBold" />
-                </Trigger>
-                <MultiTrigger>
-                    <MultiTrigger.Conditions>
-                        <Condition Property="IsSelected" Value="True" /><Condition Property="IsMouseOver" Value="True" />
-                    </MultiTrigger.Conditions>
-                    <Setter Property="Background" Value="#164C8E" />
-                </MultiTrigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Background" Value="#EDF1F5" /><Setter Property="Foreground" Value="#64748B" />
-                    <Setter Property="BorderBrush" Value="#D4DDE7" />
-                </Trigger>
-            </Style.Triggers>
+        </Style>
+        <!-- A regular items panel measures the complete rounded headers and their margins. -->
+        <Style x:Key="NavigationTabs" TargetType="TabControl">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid SnapsToDevicePixels="True" KeyboardNavigation.TabNavigation="Local">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                            <WrapPanel x:Name="NavigationHeaders" IsItemsHost="True" KeyboardNavigation.TabIndex="0"
+                                       KeyboardNavigation.TabNavigation="Once" />
+                            <ContentPresenter x:Name="PART_SelectedContentHost" Grid.Row="1" ContentSource="SelectedContent"
+                                              Margin="{TemplateBinding Padding}" KeyboardNavigation.TabIndex="1"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
+                                              TextElement.FontWeight="{TemplateBinding FontWeight}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="Padding" Value="10,7" /><Setter Property="BorderBrush" Value="#BDCAD9" />

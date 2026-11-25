@@ -852,9 +852,15 @@ namespace ATIVBatteryGuard.ViewModels
 			settings = settingsLoadResult.Settings;
 			canSave = settingsLoadResult.CanSave;
 			SettingsWarning = settingsLoadResult.Warning;
-            settings.MockModeEnabled = false;
-            statusMessage = ManualProtectionAvailable ? ""
-                : "이 환경에서는 충전 제어를 사용할 수 없습니다. 기록과 진단은 사용할 수 있습니다.";
+			bool mockModeEnabled = settings.MockModeEnabled;
+			settings.MockModeEnabled = false;
+			statusMessage = ((!string.IsNullOrEmpty(settingsLoadResult.Warning)) ? settingsLoadResult.Warning :
+				ManualProtectionAvailable ? "준비되었습니다. 현재 설정 확인부터 시작하세요."
+				: "이 환경에서는 충전 제어를 사용할 수 없습니다. 기록과 진단은 사용할 수 있습니다.");
+			if (mockModeEnabled)
+			{
+				statusMessage += " 이전 개발용 모드는 꺼져 있습니다.";
+			}
 			ApplyCommand = new RelayCommand(Apply, () => mainViewModel.CanApply);
 			SaveCommand = new RelayCommand(Save, () => mainViewModel.canSave && !mainViewModel.disposed);
 			RefreshCommand = new RelayCommand(RefreshBattery, () => !mainViewModel.disposed);

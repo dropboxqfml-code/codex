@@ -27,7 +27,7 @@
                            AutomationProperties.LiveSetting="Polite" />
             </StackPanel>
         </Border>
-        <TabControl x:Name="MainSections" SelectedIndex="{Binding SelectedSection, Mode=TwoWay}"
+        <TabControl x:Name="MainSections" Style="{StaticResource NavigationTabs}" SelectedIndex="{Binding SelectedSection, Mode=TwoWay}"
                     Background="Transparent" BorderThickness="0" Padding="0,12,0,0"
                     AutomationProperties.Name="기능 선택">
             <TabItem Header="배터리" AutomationProperties.Name="배터리와 충전 제한">

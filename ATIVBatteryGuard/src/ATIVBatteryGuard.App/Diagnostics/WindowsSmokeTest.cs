@@ -90,11 +90,15 @@ namespace ATIVBatteryGuard.Diagnostics
             }
             public SavedBatteryObservation OpenRecentObservation(RecentObservationEntry entry) { return OpenBatteryObservation(); }
 
+            public int ObservationEndSeconds;
             public SavedBatteryObservation OpenBatteryObservation()
             {
                 var session = new BatteryObservationSession();
                 session.Start();
                 session.Record(TimeSpan.Zero, new BatterySnapshot(80, ExternalPowerStatus.Connected, BatteryChargeState.NotCharging, ""));
+                if (ObservationEndSeconds > 0)
+                    session.Record(TimeSpan.FromSeconds(ObservationEndSeconds),
+                        new BatterySnapshot(85, ExternalPowerStatus.Connected, BatteryChargeState.Charging, ""));
                 session.Stop();
                 return SavedBatteryObservation.Parse(session.ExportText(), "smoke-observation.txt");
             }
@@ -221,6 +225,28 @@ namespace ATIVBatteryGuard.Diagnostics
                 Require(savedChart.SelectedPointText.Contains("80%"), "SAVED_GRAPH_SELECTION_INVALID");
                 var savedPeer = UIElementAutomationPeer.CreatePeerForElement(savedChart);
                 Require(savedPeer.GetHelpText().Contains("파일에 저장된 과거"), "SAVED_GRAPH_PROVENANCE_INVALID");
+                interaction.ObservationEndSeconds = 120;
+                Execute(Find<Button>(window, "OpenComparisonObservationButton"));
+                await Idle(app);
+                window.UpdateLayout();
+                var comparisonChart = Find<BatteryObservationChart>(window, "ComparisonObservationChart");
+                Require(model.ComparisonObservationVisible && model.SavedObservationDomainSeconds == 120
+                    && savedChart.MinimumDomainSeconds == 120 && comparisonChart.MinimumDomainSeconds == 120,
+                    "COMPARISON_SHARED_AXIS_INVALID");
+                Require(savedChart.Graph.Points.Count == 1 && comparisonChart.Graph.Points.Count == 2,
+                    "COMPARISON_FILE_BINDING_INVALID");
+                SendChartKey(comparisonChart, Key.End);
+                Require(comparisonChart.SelectedPointText.Contains("2:00") && comparisonChart.SelectedPointText.Contains("85%"),
+                    "COMPARISON_SELECTION_INVALID");
+                comparisonChart.SelectAt(new Point(comparisonChart.ActualWidth - 18,
+                    32 + (comparisonChart.ActualHeight - 80) * 0.15));
+                Require(comparisonChart.SelectedPointText.Contains("2/2"), "COMPARISON_POINTER_SCALE_INVALID");
+                Execute(Find<Button>(window, "CloseComparisonObservationButton"));
+                await Idle(app);
+                Require(!model.ComparisonObservationVisible && model.SavedObservationVisible
+                    && savedChart.MinimumDomainSeconds == 60 && comparisonChart.Graph.Points.Count == 0,
+                    "COMPARISON_CLOSE_INVALID");
+                interaction.ObservationEndSeconds = 0;
                 model.CloseSavedObservationCommand.Execute(null);
                 await Idle(app);
                 Require(!model.SavedObservationVisible && savedChart.Graph.Points.Count == 0, "SAVED_GRAPH_CLOSE_INVALID");

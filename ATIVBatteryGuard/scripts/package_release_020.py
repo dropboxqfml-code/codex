@@ -33,11 +33,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test-report', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--release-version', choices=('0.2.0', '0.2.1', '0.2.2', '0.2.3', '0.2.4'), default=RELEASE_VERSION)
+    parser.add_argument('--release-version', choices=('0.2.0', '0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5'), default=RELEASE_VERSION)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     suite = json.loads(args.test_report.read_text())
-    if not (suite['passed'] >= {'0.2.0': 1120, '0.2.1': 1143, '0.2.2': 1150, '0.2.3': 1163, '0.2.4': 1179}[args.release_version] and suite['registered'] == suite['passed'] and
+    if not (suite['passed'] >= {'0.2.0': 1120, '0.2.1': 1143, '0.2.2': 1150, '0.2.3': 1163, '0.2.4': 1179, '0.2.5': 1186}[args.release_version] and suite['registered'] == suite['passed'] and
             suite['failed'] == 0 and suite.get('skipped', 0) == 0):
         raise ValueError('The previous and new usability regression groups must pass.')
     app = root/'src/ATIVBatteryGuard.App'
@@ -88,22 +88,26 @@ def main():
         'chartUnknownNoBatteryReadErrorAndGapsBreakSegments': True,
         'chartAxis': 'Elapsed seconds horizontally and observed battery percentage from 0 to 100 vertically.',
         'chartHoverUsesOnlyActualObservedPoints': True,
-        'chartKeyboardObservedPointNavigation': args.release_version in ('0.2.1', '0.2.2', '0.2.3', '0.2.4'),
-        'chartMouseClickFocusAndSelection': args.release_version in ('0.2.2', '0.2.3', '0.2.4'),
+        'chartKeyboardObservedPointNavigation': args.release_version in ('0.2.1', '0.2.2', '0.2.3', '0.2.4', '0.2.5'),
+        'chartMouseClickFocusAndSelection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5'),
         'chartMouseSelectionWindowsRuntimeTested': False,
-        'savedObservationTxtOpenAndHistoricalGraph': args.release_version in ('0.2.3', '0.2.4'),
+        'savedObservationTxtOpenAndHistoricalGraph': args.release_version in ('0.2.3', '0.2.4', '0.2.5'),
         'savedObservationMaximumBytes': 262144,
         'savedObservationStrictUtf8AndPreviousExportFormat': True,
         'savedObservationFilePickerWindowsRuntimeTested': False,
-        'unsavedObservationSaveDiscardCancelGuard': args.release_version == '0.2.4',
+        'unsavedObservationSaveDiscardCancelGuard': args.release_version in ('0.2.4', '0.2.5'),
         'recentObservationLocalIndexMaximumEntries': 10,
         'recentIndexFailureChangesTxtSaveOutcome': False,
         'recentIndexAndConfirmationWindowsRuntimeTested': False,
-        'previous023UserConfirmedHistoricalGraphAndInputSelection': args.release_version == '0.2.4',
-        'previous022UserConfirmedMouseSelection': args.release_version in ('0.2.3', '0.2.4'),
-        'previous021UserConfirmedTabSampleInspection': args.release_version in ('0.2.2', '0.2.3', '0.2.4'),
-        'observationFinalStatusCanBeSavedOnceWithoutNewRows': args.release_version in ('0.2.2', '0.2.3', '0.2.4'),
-        'observationTerminalReasonVisible': args.release_version in ('0.2.2', '0.2.3', '0.2.4'),
+        'twoSavedObservationGraphsWithCommonElapsedAxis': args.release_version == '0.2.5',
+        'comparisonPreservesIndependentTimestampsGapsAndSelection': args.release_version == '0.2.5',
+        'comparisonWindowsRuntimeTested': False,
+        'previous024UserConfirmedRecentSelectionGraphOpen': args.release_version == '0.2.5',
+        'previous023UserConfirmedHistoricalGraphAndInputSelection': args.release_version in ('0.2.4', '0.2.5'),
+        'previous022UserConfirmedMouseSelection': args.release_version in ('0.2.3', '0.2.4', '0.2.5'),
+        'previous021UserConfirmedTabSampleInspection': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5'),
+        'observationFinalStatusCanBeSavedOnceWithoutNewRows': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5'),
+        'observationTerminalReasonVisible': args.release_version in ('0.2.2', '0.2.3', '0.2.4', '0.2.5'),
         'chartKeyboardWindowsRuntimeTested': False,
         'chartStopPreservesHistoryAndClearResets': True,
         'chartHiddenWhileMockActive': True,

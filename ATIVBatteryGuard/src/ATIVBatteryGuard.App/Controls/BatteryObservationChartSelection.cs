@@ -10,11 +10,28 @@ namespace ATIVBatteryGuard.Controls
         public int Index { get; private set; } = -1;
         public BatteryObservationGraphPoint Point => Index < 0 ? null : Graph.Points[Index];
 
+        private double minimumDomainSeconds = 60;
+        public double MinimumDomainSeconds
+        {
+            get { return minimumDomainSeconds; }
+            set
+            {
+                if (!IsValidMinimumDomain(value)) throw new ArgumentOutOfRangeException(nameof(MinimumDomainSeconds));
+                minimumDomainSeconds = value;
+            }
+        }
+
+        public static bool IsValidMinimumDomain(double value)
+        {
+            return !double.IsNaN(value) && !double.IsInfinity(value) && value >= 60
+                && value <= BatteryObservationSession.MaxDuration.TotalSeconds;
+        }
+
         public double DomainSeconds
         {
             get
             {
-                double seconds = Math.Max(60, Graph.ElapsedSeconds);
+                double seconds = Math.Max(minimumDomainSeconds, Graph.ElapsedSeconds);
                 foreach (BatteryObservationGraphPoint point in Graph.Points)
                     seconds = Math.Max(seconds, point.ElapsedSeconds);
                 return seconds;

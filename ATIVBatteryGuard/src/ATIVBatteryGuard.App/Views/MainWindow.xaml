@@ -224,7 +224,9 @@
                     <TextBlock Text="저장된 관찰 기록" Style="{StaticResource SectionTitle}" />
                     <WrapPanel>
                         <Button x:Name="OpenSavedObservationButton" Content="관찰 TXT 열기" Command="{Binding OpenSavedObservationCommand}" />
-                        <Button Content="기록 닫기" Command="{Binding CloseSavedObservationCommand}" />
+                        <Button x:Name="OpenComparisonObservationButton" Content="비교 TXT 열기" Command="{Binding OpenComparisonObservationCommand}" />
+                        <Button x:Name="CloseComparisonObservationButton" Content="비교 닫기" Command="{Binding CloseComparisonObservationCommand}" />
+                        <Button Content="기록 모두 닫기" Command="{Binding CloseSavedObservationCommand}" />
                     </WrapPanel>
                     <TextBlock Text="{Binding SavedObservationOpenStatus}" TextWrapping="Wrap" Margin="0,2,0,8"
                                AutomationProperties.LiveSetting="Polite">
@@ -266,16 +268,37 @@
                     <TextBlock Text="{Binding RecentObservationNotice}" TextWrapping="Wrap" Foreground="#9C2F18"
                                AutomationProperties.LiveSetting="Polite" />
                     <StackPanel Visibility="{Binding SavedObservationVisible, Converter={StaticResource ObservationGraphVisibility}}">
-                        <TextBlock Text="{Binding SavedObservationName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding ComparisonAxisText}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Visibility="{Binding ComparisonObservationVisible, Converter={StaticResource ObservationGraphVisibility}}" />
+                        <TextBlock Text="{Binding SavedObservationTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding SavedObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
                         <Border Background="#F8FAFC" BorderBrush="#D3DCE6" BorderThickness="1" CornerRadius="6" Padding="8">
                             <StackPanel>
-                                <controls:BatteryObservationChart x:Name="SavedObservationChart" IsSavedRecord="True" Graph="{Binding SavedObservationGraph, Mode=OneWay}"
+                                <controls:BatteryObservationChart x:Name="SavedObservationChart" IsSavedRecord="True"
+                                                                  MinimumDomainSeconds="{Binding SavedObservationDomainSeconds}" Graph="{Binding SavedObservationGraph, Mode=OneWay}"
                                                                   Height="180" HorizontalAlignment="Stretch"
-                                                                  AutomationProperties.Name="저장된 Windows 배터리 잔량 변화" />
+                                                                  AutomationProperties.Name="{Binding SavedObservationTitle, StringFormat='기록 {0}의 배터리 잔량 변화'}" />
                                 <TextBlock Text="{Binding SelectedPointText, ElementName=SavedObservationChart, Mode=OneWay}"
                                            TextWrapping="Wrap" Margin="0,4,0,0" Foreground="#475569"
                                            AutomationProperties.Name="저장 기록 그래프 조작 안내와 선택 표본" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel Margin="0,16,0,0"
+                                Visibility="{Binding ComparisonObservationVisible, Converter={StaticResource ObservationGraphVisibility}}">
+                        <TextBlock Text="{Binding ComparisonObservationName}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding ComparisonObservationSummary}" TextWrapping="Wrap" Style="{StaticResource Detail}" />
+                        <Border Background="#F8FAFC" BorderBrush="#D3DCE6" BorderThickness="1" CornerRadius="6" Padding="8">
+                            <StackPanel>
+                                <controls:BatteryObservationChart x:Name="ComparisonObservationChart" IsSavedRecord="True"
+                                                                  MinimumDomainSeconds="{Binding SavedObservationDomainSeconds}"
+                                                                  Graph="{Binding ComparisonObservationGraph, Mode=OneWay}"
+                                                                  Height="180" HorizontalAlignment="Stretch"
+                                                                  AutomationProperties.Name="{Binding ComparisonObservationName, StringFormat='기록 {0}의 배터리 잔량 변화'}" />
+                                <TextBlock x:Name="ComparisonObservationSelectionText"
+                                           Text="{Binding SelectedPointText, ElementName=ComparisonObservationChart, Mode=OneWay}"
+                                           TextWrapping="Wrap" Margin="0,4,0,0" Foreground="#475569"
+                                           AutomationProperties.Name="비교 기록 B의 선택 표본" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

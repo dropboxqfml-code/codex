@@ -454,6 +454,7 @@ internal static partial class Program
         RegisterSavedObservationViewModelTests();
         RegisterObservationProtectionTests();
         RegisterRecentObservationTests();
+        RegisterObservationComparisonTests();
         RegisterProtectionPresentationAndGraphViewModelTests();
         RegisterManualProtectionClientSessionTests();
         RegisterWsabiWmiProtectionDisableAttemptTests();

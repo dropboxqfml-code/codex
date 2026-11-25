@@ -1,0 +1,65 @@
+{
+  "baseCommit": "d39e0c3165cf61c714b943ef5819ae83fb2f334a",
+  "dateKorea": "2026-11-25",
+  "releaseVersion": "0.2.5",
+  "previous024UserConfirmedRecentSelectionGraphOpen": true,
+  "portableTests": {
+    "passed": 1186,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1186,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 7,
+  "portableReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfReleaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "comparisonPresentation": "Stacked A and B historical graphs with full-width identical axis ranges.",
+  "comparisonAxisOrigin": "Each observation session start, using original elapsed seconds.",
+  "comparisonAxisMinimumSeconds": 60,
+  "comparisonAxisUsesMaximumLastSampleElapsed": true,
+  "originalTimestampsPercentagesGapsAndStatesPreserved": true,
+  "shorterRecordEndsAtLastActualSample": true,
+  "drawingAndHitTestingUseSameSharedDomain": true,
+  "perFileSelectionIndependent": true,
+  "comparisonCancellationAndErrorsRetainLastAcceptedPair": true,
+  "closeBRestoresAScaleAndCloseAllReleasesBoth": true,
+  "reentryAndLateDisposedPublicationBlocked": true,
+  "liveObservationAndProviderClockControlCountersTested": true,
+  "windowsComparisonSmokeChecksAddedAndCompiled": true,
+  "windowsSmokeChecksExecuted": false,
+  "newReleaseWindowsComparisonUiTested": false,
+  "newCloudOemOrFirmwareActions": 0,
+  "package": {
+    "file": "ATIVBatteryGuard-0.2.5-WIN10-X64.zip",
+    "bytes": 303631,
+    "sha256": "629ffaa408d57739f069fa19dc2367183359d8ee2c859398e2c05d93793fe94b",
+    "entries": 9,
+    "sourceFileCount": 203,
+    "productSourceFingerprintSha256": "f8abdbebe1a9589ac2b6cd8cecb5935c55a194914a8718d0fbce29cad564257e",
+    "releaseVersion": "0.2.5",
+    "guiVersionResource": {
+      "fileVersion": "0.2.5.0",
+      "productVersion": "0.2.5"
+    }
+  },
+  "logs": {
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "33ddb619b20a8092e63ca632991a8acb674ac95d92121edb2869a091210974d8"
+    },
+    "portable-tests.log": {
+      "bytes": 108004,
+      "sha256": "d3140b5241954f3b995b8e22e2ea61ad9cfe083f34abe64f10f6612c65796ed7"
+    },
+    "solution-build.log": {
+      "bytes": 2034,
+      "sha256": "c1e59bb8e3697c21a3b49f75b7f2cb98bae8a239eabc2e45981fe1490c6dad5b"
+    }
+  }
+}

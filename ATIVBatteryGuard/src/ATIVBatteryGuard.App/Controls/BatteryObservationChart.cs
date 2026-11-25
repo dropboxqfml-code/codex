@@ -20,6 +20,24 @@ namespace ATIVBatteryGuard.Controls
             new FrameworkPropertyMetadata(BatteryObservationGraph.Empty,
                 FrameworkPropertyMetadataOptions.AffectsRender, OnGraphChanged));
 
+        public static readonly DependencyProperty MinimumDomainSecondsProperty = DependencyProperty.Register(
+            nameof(MinimumDomainSeconds), typeof(double), typeof(BatteryObservationChart),
+            new FrameworkPropertyMetadata(60.0, FrameworkPropertyMetadataOptions.AffectsRender, OnMinimumDomainChanged),
+            value => BatteryObservationChartSelection.IsValidMinimumDomain((double)value));
+
+        public double MinimumDomainSeconds
+        {
+            get { return (double)GetValue(MinimumDomainSecondsProperty); }
+            set { SetValue(MinimumDomainSecondsProperty, value); }
+        }
+
+        private static void OnMinimumDomainChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        {
+            var chart = (BatteryObservationChart)sender;
+            chart.selection.MinimumDomainSeconds = (double)e.NewValue;
+            chart.ToolTip = null;
+        }
+
         private static readonly DependencyPropertyKey SelectedPointTextPropertyKey = DependencyProperty.RegisterReadOnly(
             nameof(SelectedPointText), typeof(string), typeof(BatteryObservationChart),
             new PropertyMetadata("클릭 또는 Tab으로 그래프 선택 · 점 클릭 또는 ←/→로 표본 확인 · Home/End 처음·마지막"));

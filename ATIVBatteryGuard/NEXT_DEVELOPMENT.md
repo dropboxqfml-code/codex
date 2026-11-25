@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — RC3 입력 보존 수정 / v4 닫기만 검사 준비 / 2026-11-25 한국 시간
+
+[RC3 변경과 한계](RELEASE_030_RC3.md), [새 닫기 검사 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.3-EXTENDED-CHECKS-v4.zip), [실행 순서](IME_CLOSE_030_RC3_USER_STEPS.txt), [검증 기록](reports/release-030-rc3-validation.json)을 먼저 읽습니다. v3 복합 오류의 정확한 항목은 아직 미확인이며 기존 원본을 보존합니다.
+
+화면에는 마지막 조합 글자가 있고 VM은 한 글자 전 상태인 지연 바인딩을 모사해 확인 진입의 Text 알림이 화면을 되돌리는 회귀를 재현했습니다. 수정 전1267통과/1실패였고, 닫기 전 현재 창의 편집 가능한 메모만 초안에 반영하는 TryCapturePendingText와 진입 시 불필요 Text 알림 생략을 구현했습니다. 저장은 명시 선택 때만 수행하며 기존 확인/읽기 전용·재진입/하드웨어 실행 차단은 유지합니다. 제품207소스 중 MainWindow.cs/ObservationNoteViewModel.cs/ApplicationRelease.cs만 RC2와 다릅니다. XAML/장치 제어/파일 형식은 유지합니다.
+
+도구v4는 --ime-close/닫기취소확인.cmd를 추가했습니다. 저장값은 합성 기준으로 미리 준비하고 사용자에게 닫기 문구 하나만 요구합니다. 실제 닫기 메시지 이전/제품 확인 가드 이전/취소 이후의 각각의 상태를 원문 없는 불리언으로 기록하고 실패 코드를 나눕니다. 새 저장 시험을 실행한 것처럼 표시하지 않으며 실제 입력기 이벤트/직접 확인을 요구합니다. 제품이 이미 닫기를 막았는지와 호스트가 안전하게 창을 유지했는지도 분리합니다.
+
+새 회귀5개 포함1272통과·실패/skip0, portable/전체 WPF/일반 검증 도구/추가 WPF 도구 빌드 경고/오류0입니다. 재현 JSON·원래 RC2/v1~v3 ZIP/사용자 결과를 보존합니다. 실제 RC3 Windows IME 확인은 미실행이며 모사 재현을 고객 기기 원인 확정으로 과장하지 않습니다. 다음은 닫기취소확인.cmd 한 동작의 startup/ime-close JSON을 받는 것입니다. 저장·빠른/20분/충전·같은 v3 검사는 반복하지 않습니다. 미서명/최종 출시는 계속 미완료입니다.
+
 ## 최신 — v3 IME 저장 통과 / 닫기 취소 후 데이터 불일치 수신 / 2026-11-25 한국 시간
 
 [사용자 결과](FIELD_IME_030_V3_RESULT.md), [원본2개와 평가](reports/field-ime-v3/assessment.json), [전체 현황](VALIDATION_030.md)을 먼저 읽습니다. 시작은 정상이나 본 검사 종료1/not-passed/IME_CANCEL_DRAFT_MISMATCH입니다. RC2/extended-v3/제품 지문과 포함 시각이 일치합니다. 저장·재열기는 통과했고 저장12/15·닫기6/12의 조합 시작/갱신, 양 단계 한국어 IME On/동작 시active 및 사용자 확인true를 받았습니다. 인위 입력/중단false, 파일 전후/정리true, 자동 취소1회입니다.

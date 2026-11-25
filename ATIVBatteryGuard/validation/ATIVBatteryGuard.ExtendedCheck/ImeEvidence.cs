@@ -21,6 +21,16 @@ namespace ATIVBatteryGuard.ExtendedValidation
         [DataMember] public bool CloseCancelPassed;
         [DataMember] public bool UserConfirmedCompositionActions;
         [DataMember] public bool SyntheticKoreanInputInjected = false;
+        public string CloseOnlyOutcome(bool stopped, bool filesBefore, bool filesAfter, bool cleanup, string error)
+        {
+            if (stopped) return "stopped-not-passed";
+            if (error != null || !filesBefore || !filesAfter || !cleanup || SyntheticKoreanInputInjected) return "not-passed";
+            if (!CloseCancelPassed) return "not-completed";
+            if (!UserConfirmedCompositionActions) return "user-confirmation-pending";
+            if (!CloseKoreanImeObserved || CloseCompositionStarts < 1 || CloseCompositionUpdates < 1)
+                return "close-passed-ime-evidence-incomplete";
+            return "user-assisted-ime-close-checks-passed-release-pending";
+        }
         public string Outcome(bool stopped, bool filesBefore, bool filesAfter, bool cleanup, string error)
         {
             if (stopped) return "stopped-not-passed";

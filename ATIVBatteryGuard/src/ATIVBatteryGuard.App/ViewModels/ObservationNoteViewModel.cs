@@ -98,12 +98,22 @@ namespace ATIVBatteryGuard.ViewModels
             finally { busy = false; Notify(); }
         }
 
+        // The focused WPF editor can still contain an IME syllable whose normal
+        // binding update is deferred. Capture it before entering confirmation.
+        // This changes only the draft; persistence still requires an explicit save.
+        public bool TryCapturePendingText(string displayedText)
+        {
+            if (disposed || busy || confirming || IsReadOnly) return false;
+            Text = displayedText;
+            return text == ObservationNote.Normalize(displayedText);
+        }
+
         public bool TryPrepareToClose(string action)
         {
             if (disposed || busy || confirming) return false;
             if (!HasChanges) return true;
             confirming = true;
-            Notify();
+            Notify(false);
             try
             {
                 var choice = interaction.ConfirmUnsavedObservationNote(record.FileName, action);
@@ -123,9 +133,9 @@ namespace ATIVBatteryGuard.ViewModels
             Notify();
         }
 
-        private void Notify()
+        private void Notify(bool textChanged = true)
         {
-            Changed("Text"); Changed("HasChanges"); Changed("IsReadOnly"); Changed("CanSave");
+            if (textChanged) Changed("Text"); Changed("HasChanges"); Changed("IsReadOnly"); Changed("CanSave");
             Changed("CanExport"); Changed("Preview"); Changed("CharacterCountText"); Changed("Status");
             SaveCommand.Refresh(); ReloadCommand.Refresh();
         }

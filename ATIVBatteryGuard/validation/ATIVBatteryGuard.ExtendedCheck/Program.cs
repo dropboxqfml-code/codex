@@ -42,9 +42,10 @@ namespace ATIVBatteryGuard.ExtendedValidation
         private static int RunChecked(string[] args, StartupJournal journal)
         {
             journal.Advance("arguments");
-            bool ime = ExtendedPolicy.IsIme(args);
+            bool imeClose = ExtendedPolicy.IsImeClose(args);
+            bool ime = imeClose || ExtendedPolicy.IsIme(args);
             bool soak = !ime && ExtendedPolicy.IsSoak(args);
-            if (ime) journal.SelectImeMode(); else journal.SelectMode(soak);
+            if (imeClose) journal.SelectImeCloseMode(); else if (ime) journal.SelectImeMode(); else journal.SelectMode(soak);
             journal.Advance("platform");
             var os = Environment.OSVersion;
             if (os.Platform != PlatformID.Win32NT || !Environment.Is64BitOperatingSystem
@@ -71,7 +72,7 @@ namespace ATIVBatteryGuard.ExtendedValidation
                 : "두 검증 창의 입력은 자동입니다. 중단하려면 검증 창의 X 또는 콘솔 Ctrl+C를 누르세요.");
             Console.CancelKeyPress += (sender, e) => { e.Cancel = true; StopRequested = true; };
             journal.Advance("application-create");
-            var app = new ExtendedApplication(root, manifest, soak, ime, journal);
+            var app = new ExtendedApplication(root, manifest, soak, ime, imeClose, journal);
             journal.Advance("resources-load"); app.InitializeResources();
             app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             journal.Advance("dispatcher-start");
@@ -83,10 +84,10 @@ namespace ATIVBatteryGuard.ExtendedValidation
     {
         private readonly string root;
         private readonly ValidationManifest manifest;
-        private readonly bool soak, ime;
+        private readonly bool soak, ime, imeClose;
         private readonly StartupJournal journal;
-        public ExtendedApplication(string root, ValidationManifest manifest, bool soak, bool ime, StartupJournal journal)
-        { this.root = root; this.manifest = manifest; this.soak = soak; this.ime = ime; this.journal = journal; }
+        public ExtendedApplication(string root, ValidationManifest manifest, bool soak, bool ime, bool imeClose, StartupJournal journal)
+        { this.root = root; this.manifest = manifest; this.soak = soak; this.ime = ime; this.imeClose = imeClose; this.journal = journal; }
         public void InitializeResources()
         {
             // The host owns this dictionary. Product App.InitializeComponent cannot
@@ -101,7 +102,7 @@ namespace ATIVBatteryGuard.ExtendedValidation
             try
             {
                 journal.Advance("runner-start");
-                code = ime ? await new ImeRunner(this, root, manifest).Run() : await new Runner(this, root, manifest, soak).Run();
+                code = ime ? await new ImeRunner(this, root, manifest, imeClose).Run() : await new Runner(this, root, manifest, soak).Run();
             }
             catch (Exception error)
             {

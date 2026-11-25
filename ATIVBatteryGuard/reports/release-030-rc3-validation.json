@@ -1,0 +1,136 @@
+{
+  "dateKorea": "2026-11-25",
+  "baseCommit": "ad9e7daac75564941647610b73806c737aa75d34",
+  "releaseVersion": "0.3.0-rc.3",
+  "toolRevision": "extended-v4",
+  "stage": "focused-close-windows-validation-pending",
+  "final030ReleaseApproved": false,
+  "previousFailureAssessment": "field-ime-v3/assessment.json",
+  "reproductionBeforeFix": {
+    "passed": 1267,
+    "failed": 1,
+    "skipped": 0,
+    "registered": 1268,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "reproducedMechanism": "Redundant Text notification overwrites a simulated displayed pending Hangul syllable before confirmation.",
+  "exactCustomerFailedSubconditionConfirmed": false,
+  "portableTests": {
+    "passed": 1272,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1272,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 5,
+  "portableBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48WpfBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "net48ValidationToolBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "extendedNet48WpfBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "productSourceCount": 207,
+  "applicationSourceChangesComparedToRc2": [
+    "src/ATIVBatteryGuard.App/ViewModels/ObservationNoteViewModel.cs",
+    "src/ATIVBatteryGuard.App/Views/MainWindow.cs",
+    "src/ATIVBatteryGuard.Core/Models/ApplicationRelease.cs"
+  ],
+  "allOtherAppHelperSourceFilesByteIdenticalToRc2": true,
+  "xamlHardwareControlAndDataFormatsUnchanged": true,
+  "focusedNoteOnlyCaptureBeforeExistingCloseGuard": true,
+  "pendingCaptureWritesDisk": false,
+  "confirmationEntryDoesNotNotifyUnchangedText": true,
+  "readonlyDisposedAndReentrantDraftBoundariesTested": true,
+  "helperExeBytesIdenticalToRc2": false,
+  "wmiInteropBytesIdenticalToRc2": false,
+  "previousRc2AndV3PackagesPreserved": true,
+  "priorSaveQuickSoakAndHardwareEvidenceRetained": true,
+  "newWindowsRuntimeExecuted": false,
+  "newActualImeCloseResultConfirmed": false,
+  "mode": "guided-ime-close",
+  "newSaveRoundtripFabricated": false,
+  "rawCharactersOrPathsPersistedByNewDiagnostics": false,
+  "diagnosticsStages": [
+    "BeforeProductClose",
+    "BeforeConfirmation",
+    "AfterCancellation"
+  ],
+  "individualMismatchCodesTested": true,
+  "newCloudHardwareOrFirmwareActions": 0,
+  "authenticodeSigned": false,
+  "newDefenderScanExecuted": false,
+  "previousSignedReleaseGateRegressions": {
+    "passed": 13,
+    "notRerunForThisChange": true
+  },
+  "package": {
+    "file": "ATIVBatteryGuard-0.3.0-rc.3-WIN10-X64.zip",
+    "bytes": 316414,
+    "sha256": "9af9dd9758b75a2e6449548be4a12ece42548d7b888c77698ffd64195e7096c5",
+    "entries": 9,
+    "sourceFileCount": 207,
+    "productSourceFingerprintSha256": "168416a20bea04c8299fa5844a282cf75370ef94cf0078a7ea446efc039ea775",
+    "releaseVersion": "0.3.0-rc.3",
+    "guiVersionResource": {
+      "fileVersion": "0.3.0.0",
+      "productVersion": "0.3.0-rc.3"
+    }
+  },
+  "extendedKit": {
+    "file": "ATIVBatteryGuard-0.3.0-rc.3-EXTENDED-CHECKS-v4.zip",
+    "bytes": 353102,
+    "sha256": "95ff4908574eaff866da4234e151dc3494c412733d6d48ba45e2a6cf35860fb7",
+    "entries": 20,
+    "releaseVersion": "0.3.0-rc.3",
+    "toolSourceFileCount": 15,
+    "toolSourceFingerprintSha256": "74a6f50c0e2abbb164d528b2875bfe8431e539ca9929f346720cb4131fd32899",
+    "productSourceFingerprintSha256": "168416a20bea04c8299fa5844a282cf75370ef94cf0078a7ea446efc039ea775"
+  },
+  "candidateSixProgramFilesMatchExtendedKit": true,
+  "manifestInternalHashesAndCrcVerified": true,
+  "hostBinaryAudit": {
+    "hostBase": "System.Windows.Application",
+    "ownResourceDictionaryBamlPresent": true
+  },
+  "logs": {
+    "extended-build.log": {
+      "bytes": 241,
+      "sha256": "8e1ba816451dbf82db43a544ec874e65606ce9f98a112257d64539930fd06139"
+    },
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "0e3932f9b15d8ea2a76d30588c0c68ca03bbaa82a995cab6d45c6e3e2a6bfc57"
+    },
+    "portable-tests.log": {
+      "bytes": 116735,
+      "sha256": "e8819a7b8bdd2a8cd711f481600fef48f81ad55ed95265e2d2987a0d082b7649"
+    },
+    "repro-build.log": {
+      "bytes": 206,
+      "sha256": "2496f57c089792ce98d8c761e95eabcc06f063611ac9701b37f7cb8dd53a70fd"
+    },
+    "repro-tests.log": {
+      "bytes": 116419,
+      "sha256": "37afb8b9d59c3ade692a95a16f8731d9d05bd48eb0ae5857bb0f3e0589d892e3"
+    },
+    "validator-build.log": {
+      "bytes": 247,
+      "sha256": "16524327dbcba76e62b3c97cdcb737182ef51fc8847195a72e19105a98917927"
+    },
+    "wpf-build.log": {
+      "bytes": 2034,
+      "sha256": "1bb9ee220683d2b45eb32e1c2e66a7305439c4cafd583ed91d4e811fc2cfe918"
+    }
+  },
+  "nextAction": "Only run 닫기취소확인.cmd with one manually composed close phrase. Send startup and ime-close JSON; do not repeat save, quick, soak or hardware trials."
+}

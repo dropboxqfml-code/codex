@@ -2,6 +2,8 @@ using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using ATIVBatteryGuard.Core.Services;
@@ -245,7 +247,20 @@ namespace ATIVBatteryGuard.Views
                 e.Cancel = true;
                 viewModel.NotifyManualCloseBlocked();
             }
+            else if (!TryCaptureFocusedNoteInput()) e.Cancel = true;
             base.OnClosing(e);
+        }
+
+        private bool TryCaptureFocusedNoteInput()
+        {
+            try
+            {
+                var editor = Keyboard.FocusedElement as TextBox ?? FocusManager.GetFocusedElement(this) as TextBox;
+                if (editor == null || Window.GetWindow(editor) != this || editor.IsReadOnly) return true;
+                var note = editor.DataContext as ObservationNoteViewModel;
+                return note == null || note.TryCapturePendingText(editor.Text);
+            }
+            catch { return false; } // Preserve the open draft if input cannot be captured.
         }
 
         [StructLayout(LayoutKind.Sequential)]

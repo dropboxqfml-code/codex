@@ -40,6 +40,7 @@
     <Compile Include="ExtendedStartupTests.cs" />
     <Compile Include="ImeEvidenceTests.cs" />
     <Compile Include="../validation/ATIVBatteryGuard.ExtendedCheck/ImeEvidence.cs" Link="ImeEvidence.cs" />
+    <Compile Include="../validation/ATIVBatteryGuard.ExtendedCheck/ImeCloseDiagnostics.cs" Link="ImeCloseDiagnostics.cs" />
     <Compile Include="../validation/ATIVBatteryGuard.ExtendedCheck/StartupJournal.cs" Link="StartupJournal.cs" />
     <EmbeddedResource Include="../validation/ATIVBatteryGuard.ExtendedCheck/ProductResources.xaml" LogicalName="Extended.ProductResources.xaml" />
     <Compile Include="../validation/ATIVBatteryGuard.ExtendedCheck/ExtendedPolicy.cs" Link="ExtendedPolicy.cs" />

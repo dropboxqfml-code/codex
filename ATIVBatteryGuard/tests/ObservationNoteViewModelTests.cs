@@ -178,6 +178,71 @@ internal static partial class Program
             }
         });
 
+        Add("entering note confirmation does not replace an uncommitted displayed Hangul syllable", () =>
+        {
+            using (var f = new Fixture())
+            {
+                var store = new ObservationNoteStore(f.DirectoryPath); ConfigureNotes(f, store);
+                var record = NoteRecord(Path.Combine(f.DirectoryPath, "pending.txt"));
+                using (var editor = new ObservationNoteViewModel(f.Interaction, record))
+                {
+                    editor.Text = "종료 취소 확";
+                    string displayed = "종료 취소 확인", observedAtPrompt = null;
+                    // Model WPF's target refresh while its source update is deferred by IME.
+                    editor.PropertyChanged += (sender, args) => { if (args.PropertyName == "Text") displayed = editor.Text; };
+                    f.Interaction.NoteConfirmer = (name, action) => { observedAtPrompt = displayed; return ObservationLossChoice.Cancel; };
+                    Check(!editor.TryPrepareToClose("앱 종료"), "cancel ignored");
+                    Equal("종료 취소 확인", observedAtPrompt);
+                }
+            }
+        });
+
+        Add("captured pending Hangul survives close cancellation and reentry without changing the saved note", () =>
+        {
+            using (var f = new Fixture())
+            {
+                var store = new ObservationNoteStore(f.DirectoryPath); ConfigureNotes(f, store);
+                var record = NoteRecord(Path.Combine(f.DirectoryPath, "pending.txt"));
+                store.Save(record.NoteKey, "한글 입력 확인", "missing");
+                using (var editor = new ObservationNoteViewModel(f.Interaction, record))
+                {
+                    editor.Text = "종료 취소 확";
+                    string displayed = "종료 취소 확인";
+                    editor.PropertyChanged += (sender, args) => { if (args.PropertyName == "Text") displayed = editor.Text; };
+                    Check(editor.TryCapturePendingText(displayed), "pending text capture failed");
+                    f.Interaction.NoteConfirmer = (name, action) => {
+                        Check(!editor.TryCapturePendingText("reentrant") && !editor.TryPrepareToClose("reentry"), "confirmation reentry allowed");
+                        editor.SaveCommand.Execute(null); return ObservationLossChoice.Cancel;
+                    };
+                    Check(!editor.TryPrepareToClose("앱 종료"), "cancel ignored");
+                    Equal("종료 취소 확인", displayed); Equal(displayed, editor.Text);
+                    Check(editor.HasChanges, "draft marked saved"); Equal("한글 입력 확인", store.Load(record.NoteKey).Text);
+                    Equal(0, f.Interaction.NoteSaves);
+                }
+            }
+        });
+        Add("pending input capture respects save discard readonly and disposed boundaries", () =>
+        {
+            using (var f = new Fixture())
+            {
+                var store = new ObservationNoteStore(f.DirectoryPath); ConfigureNotes(f, store);
+                var record = NoteRecord(Path.Combine(f.DirectoryPath, "pending.txt"));
+                using (var editor = new ObservationNoteViewModel(f.Interaction, record))
+                {
+                    Check(editor.TryCapturePendingText("한글\r\n확인"), "capture failed");
+                    f.Interaction.NoteConfirmer = (name, action) => ObservationLossChoice.Save;
+                    Check(editor.TryPrepareToClose("앱 종료"), "captured save failed"); Equal("한글\n확인", store.Load(record.NoteKey).Text);
+                    Check(editor.TryCapturePendingText("버릴 초안"), "second capture failed");
+                    f.Interaction.NoteConfirmer = (name, action) => ObservationLossChoice.Discard;
+                    Check(editor.TryPrepareToClose("앱 종료"), "discard blocked"); Equal("한글\n확인", store.Load(record.NoteKey).Text);
+                    editor.Dispose(); Check(!editor.TryCapturePendingText("late"), "disposed editor accepted text");
+                }
+                f.Interaction.NoteLoader = source => ObservationNote.Unavailable("unavailable");
+                using (var locked = new ObservationNoteViewModel(f.Interaction, record))
+                    Check(!locked.TryCapturePendingText("cannot edit"), "readonly baseline accepted input");
+            }
+        });
+
         Add("unavailable memo loads recover via reload and late memo loads cannot republish after disposal", () =>
         {
             using (var f = new Fixture())

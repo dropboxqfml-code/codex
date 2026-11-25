@@ -1,4 +1,4 @@
-"""Build an SDK-free, local Windows validation kit for the frozen 0.3.0 RC2 candidate."""
+"""Build an SDK-free, local Windows validation kit for the 0.3.0 RC3 candidate."""
 import argparse
 import json
 import zipfile
@@ -6,7 +6,7 @@ from pathlib import Path
 from package_manual_control_beta import PROGRAM_NAMES, execution_level, sha, source_closure
 from package_release_020 import gui_version
 
-VERSION = '0.3.0-rc.2'
+VERSION = '0.3.0-rc.3'
 
 
 def main():

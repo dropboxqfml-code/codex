@@ -1,0 +1,90 @@
+{
+  "dateKorea": "2026-11-25",
+  "baseCommit": "c69278f3c0bbfe4294eeb94d04a7098907cec6ed",
+  "releaseVersion": "0.3.0-rc.2",
+  "toolRevision": "extended-v2",
+  "stage": "v2-windows-startup-confirmation-pending",
+  "v1UserReport": {
+    "extractedToDesktop": true,
+    "quickAndSoakBothFailedAtStartup": true,
+    "noStartupJsonWasAvailable": true,
+    "exactCustomerExceptionKnown": false
+  },
+  "structuralDefectFound": {
+    "v1DerivedProductAppAcrossAssembly": true,
+    "v1CalledProductInitializeComponent": true,
+    "wpfRequiresBamlAndRootObjectAssembliesToMatch": true,
+    "referenceUrl": "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Application.cs",
+    "customerExactExceptionConfirmed": false
+  },
+  "fixedHostBinaryAudit": {
+    "hostBase": "System.Windows.Application",
+    "ownResourceDictionaryBamlPresent": true
+  },
+  "oldV1RejectedByNewHostBinaryGate": true,
+  "newV2AcceptedByHostBinaryGate": true,
+  "noProductAppTypeReferenceInV2": true,
+  "hostResourceDictionaryMatchesEveryProductResource": true,
+  "resourceDictionaryCompiledToOwnBaml": true,
+  "startupJournalBeforeProductWpfInitialization": true,
+  "startupFailureRecordsExcludeMessagesStacksPathsArgumentsAndIdentifiers": true,
+  "startupFailureCannotBeOverwrittenByCompletion": true,
+  "startupCompletionDoesNotApproveValidation": true,
+  "unicodeAndSpacePathJournalRegressionPassed": true,
+  "portableTests": {
+    "passed": 1263,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1263,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newRegressionGroups": 5,
+  "portableBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "extendedNet48WpfBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "toolVersionResource": {
+    "fileVersion": "0.3.0.0",
+    "productVersion": "0.3.0-rc.2"
+  },
+  "toolSha256": "a91591d93ceea9b0f9013c7181a3d74040e6997ec6f77e16262ed7f9df9cfc40",
+  "toolAsInvoker": true,
+  "productUnchanged": true,
+  "productSourceCount": 207,
+  "productSourceFingerprintSha256": "ebfa10658ccd42d482d1d26dd799e57af696f5e11e9be6a02398b8779d5bc18f",
+  "productSixBytesMatchReleasedRc2": true,
+  "oldRc2AndV1PackagesUnchanged": true,
+  "newToolWindowsExecuted": false,
+  "newImeDefenderSigningOrHardwareTestPerformed": false,
+  "finalReleaseApproved": false,
+  "zipCrcAndEveryInternalHashVerified": true,
+  "package": {
+    "file": "ATIVBatteryGuard-0.3.0-rc.2-EXTENDED-CHECKS-v2.zip",
+    "bytes": 347123,
+    "sha256": "2f2c3543df78f698b2ad9114be190f58f7253ebd2d839fa9266680aefc8ba6af",
+    "entries": 18,
+    "releaseVersion": "0.3.0-rc.2",
+    "toolSourceFileCount": 12,
+    "toolSourceFingerprintSha256": "31a965ed071d6f75feeefcadcff9b55978003a80a58adaf0ad7449a5f811f20b",
+    "productSourceFingerprintSha256": "ebfa10658ccd42d482d1d26dd799e57af696f5e11e9be6a02398b8779d5bc18f"
+  },
+  "logs": {
+    "build.log": {
+      "bytes": 241,
+      "sha256": "aed38f110bcd4d05366082ede325193092294f9033e96f80e3ada8966e2b8355"
+    },
+    "portable-build.log": {
+      "bytes": 206,
+      "sha256": "6f28d4c38565ad45c5db947ef73007afb5a11d62251b04a19c5d502d5d4a275e"
+    },
+    "portable-tests.log": {
+      "bytes": 115872,
+      "sha256": "e58034d3c69826a8500cf8aaadfe009c8f3ba318ebae374e9292cc1e6eace079"
+    }
+  },
+  "nextAction": "Run only v2 quick check first; provide startup JSON and extended JSON if created. Do not repeat the 20-minute check while startup fails."
+}

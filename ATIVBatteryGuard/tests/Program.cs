@@ -461,6 +461,7 @@ internal static partial class Program
         RegisterQualityAndUsabilityTests();
         RegisterFinalUsageValidationTests();
         RegisterExtendedValidationPolicyTests();
+        RegisterExtendedStartupTests();
         RegisterBeginnerExperienceTests();
         RegisterReleaseValidationEvidenceTests();
         RegisterProtectionPresentationAndGraphViewModelTests();

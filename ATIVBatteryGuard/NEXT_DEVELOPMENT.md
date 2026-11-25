@@ -1,5 +1,15 @@
 # 다음 개발 재개 메모
 
+## 최신 — v1 시작 실패 수신 / v2 호스트·시작 진단 수정 / 2026-11-25 한국 시간
+
+[시작 구조 수정](EXTENDED_030_STARTUP_FIX.md), [v2 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.2-EXTENDED-CHECKS-v2.zip), [새 기록](reports/extended-030-v2-validation.json)을 먼저 읽습니다. 사용자는 같은 바탕화면 압축 해제 방식으로 두 모드를 실행했으나 시작 실패 안내만 나왔다고 보고했습니다. v1 시작 단계 JSON이 없어 고객 기기의 정확한 예외/단계는 미확인입니다. 바탕화면 문제로 단정하지 않고 v1을 통과로 표시하지 않습니다.
+
+코드상 App 파생 객체와 제품 BAML의 어셈블리가 다른 InitializeComponent 사용을 찾았습니다. WPF의 해당 어셈블리 일치 조건에 위배됩니다. v2는 독립 Application + 원본과 구조가 동일한 별도 ProductResources 사전으로 바꿨습니다. MainWindow/ViewModel/제품6파일은 그대로 참조합니다. 일반 시작/폴링/실제 서비스는 호출하지 않습니다. BCL 시작 저널과 NoInlining 경계로 WPF/제품 로딩 전부터 단계·고정 오류 코드/분류/HResult를 저장하며 개인정보·예외 메시지·스택은 제외합니다.
+
+새 회귀5개 포함1263통과·실패/skip0, portable/별도 실제 XAML net48 WPF 빌드 경고/오류0입니다. 바탕화면 형태의 한글/공백 경로와 초기 JSON, 실패/이전 실행 보존도 검사했습니다. Linux에서는 새 Windows 시작/GUI/20분 실행을 하지 않았습니다. v1 구조 결함 수정과 고객 기기에서의 완전한 해결 확인을 구분합니다.
+
+다음은 v2 빠른추가검사.cmd만 먼저 실행한 startup-*.json과, 있으면 extended-*.json을 받는 것입니다. 시작이 실패하면20분을 반복하지 않습니다. 기존 RC2 GUI/충전 시험도 반복 요청하지 않습니다. 기존 RC2/v1 자료와207제품 소스를 보존하며 실제 IME/서명/최종 출시는 계속 미완료입니다.
+
 ## 최신 — 남은 실사용 검증 자동화 도구 v1 / 2026-11-25 한국 시간
 
 사용자가 남은 수동 검증을 위한 자동 코드를 요청했습니다. [구현 범위와 한계](EXTENDED_030_AUTOMATION.md), [실행 순서](EXTENDED_030_USER_STEPS.txt), [추가 검사 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.2-EXTENDED-CHECKS-v1.zip), [검증 기록](reports/extended-030-validation.json)을 먼저 읽습니다. 프로그램은 기존 RC2/e710446의207소스와6파일 그대로이며 별도의 net48 WPF 호스트/검사 도구만 추가했습니다.

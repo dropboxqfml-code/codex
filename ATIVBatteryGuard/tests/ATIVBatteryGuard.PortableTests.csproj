@@ -37,6 +37,9 @@
     <Compile Include="QualityAndUsabilityTests.cs" />
     <Compile Include="FinalUsageValidationTests.cs" />
     <Compile Include="ExtendedValidationPolicyTests.cs" />
+    <Compile Include="ExtendedStartupTests.cs" />
+    <Compile Include="../validation/ATIVBatteryGuard.ExtendedCheck/StartupJournal.cs" Link="StartupJournal.cs" />
+    <EmbeddedResource Include="../validation/ATIVBatteryGuard.ExtendedCheck/ProductResources.xaml" LogicalName="Extended.ProductResources.xaml" />
     <Compile Include="../validation/ATIVBatteryGuard.ExtendedCheck/ExtendedPolicy.cs" Link="ExtendedPolicy.cs" />
     <Compile Include="BeginnerExperienceTests.cs" />
     <Compile Include="ReleaseValidationEvidenceTests.cs" />

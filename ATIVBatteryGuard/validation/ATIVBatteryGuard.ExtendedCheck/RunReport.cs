@@ -8,7 +8,7 @@ namespace ATIVBatteryGuard.ExtendedValidation
     internal sealed class RunReport
     {
         [DataMember] public int SchemaVersion = 1;
-        [DataMember] public string ToolRevision = "extended-v1";
+        [DataMember] public string ToolRevision = "extended-v2";
         [DataMember] public string ReleaseVersion = "0.3.0-rc.2";
         [DataMember] public string SourceFingerprintSha256;
         [DataMember] public string StartedUtc = DateTime.UtcNow.ToString("O");

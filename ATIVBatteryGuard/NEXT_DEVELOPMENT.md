@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — RC3 닫기 현장 통과 / 서명 파일 검사·패키징 연결 / 2026-11-26 한국 시간
+
+[현장 결과](FIELD_IME_CLOSE_030_RC3_RESULT.md), [평가](reports/field-ime-close-rc3/assessment.json), [최종 파일 절차](FINAL_030_RELEASE_PIPELINE.md), [이번 판정 검사](reports/final-030-pipeline-validation.json)를 먼저 읽습니다. 시작/닫기 전용 검사 종료0입니다. 닫기 직전 화면은 완전하지만 VM은 지연된 상태였고 제품 확인 전 둘 다 일치했으며 취소 후 창/수정 초안/화면/VM/저장 기준값이 모두 유지됐습니다. 실제 조합8/17, 한국어 IME와 사용자 직접 확인, 파일 전후/정리 통과입니다. 새 저장 시험은 아니며 과거 저장 통과를 인계합니다. 같은 IME·빠른/20분·충전 시험은 반복하지 않습니다.
+
+제품 207소스·RC3 ZIP/버전은 그대로입니다. Python 새11+기존13=24개 통과. 최종 버전만 변경한 207소스와 정확히 같은 서명6파일의 신뢰·타임스탬프·Defender·GUI 원본/해시를 요구하는 검토 ZIP 경로를 준비했습니다. RC3/누락 증거는 최종 ZIP을 만들 수 없습니다. 검토는 자동 출시가 아닙니다. 실제 PowerShell/서명/Windows GUI·Defender·최종 패키징은 미실행입니다.
+
+사용자 답변: 인증서/서비스 아직 없음. 비용 없는 준비를 완료했으며 인증서 구매/발급/서명이나 보안 설정 변경은 없습니다. [Windows10/940X3G의 CMD 알 수 없는 게시자·EXE 인식할 수 없는 앱 차단](WINDOWS_STARTUP_WARNINGS.md)은 미해결이며 정확한 창 종류는 미확인입니다. 다음 실제 서명 단계는 정당한 인증서/환경 준비에 의존합니다. 개인 사용에 유료 서명이 필수라고 안내하지 않고 경고 우회나 즉시 해소를 약속하지 않습니다. 아래는 과거 시점 기록입니다.
+
 ## 최신 — RC3 입력 보존 수정 / v4 닫기만 검사 준비 / 2026-11-25 한국 시간
 
 [RC3 변경과 한계](RELEASE_030_RC3.md), [새 닫기 검사 ZIP](../downloads/ATIVBatteryGuard-0.3.0-rc.3-EXTENDED-CHECKS-v4.zip), [실행 순서](IME_CLOSE_030_RC3_USER_STEPS.txt), [검증 기록](reports/release-030-rc3-validation.json)을 먼저 읽습니다. v3 복합 오류의 정확한 항목은 아직 미확인이며 기존 원본을 보존합니다.

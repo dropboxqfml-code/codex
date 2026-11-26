@@ -1,0 +1,53 @@
+{
+  "dateKorea": "2026-11-26",
+  "releaseVersion": "0.3.0-rc.3",
+  "toolRevision": "extended-v4",
+  "candidateCommit": "53f82fab049db6091e85e5353d8c1421dc9d3559",
+  "uploadedFiles": [
+    {
+      "file": "startup-d806f89d674d460dab79c851d6545ede.json",
+      "bytes": 487,
+      "sha256": "0b411d62b7fb326a18e33eb610a6401ccaa63dc125f65545e23e287c2bc5667b"
+    },
+    {
+      "file": "ime-close-659d367c5afb4425be6eedcafc8fceb2.json",
+      "bytes": 2010,
+      "sha256": "809679227d0a3452e6774ad94ab766d037c83e28b669466015698429490ca723"
+    }
+  ],
+  "modeAndContainingTimestampsMatch": true,
+  "sourceFingerprintMatchesReleasedRc3": true,
+  "sourceFingerprintSha256": "168416a20bea04c8299fa5844a282cf75370ef94cf0078a7ea446efc039ea775",
+  "startupAndFocusedClosePassed": true,
+  "validationExitCode": 0,
+  "actualCloseCompositionObserved": true,
+  "closeCompositionStarts": 8,
+  "closeCompositionUpdates": 17,
+  "displayWasCompleteWhileModelWasPendingBeforeProductClose": true,
+  "displayAndModelMatchBeforeConfirmation": true,
+  "displayModelDraftAndSavedBaselineRetainedAfterCancel": true,
+  "guardBlockedClose": true,
+  "productPrematureCaptureFailure": false,
+  "cancelDialogCount": 1,
+  "freshSaveTestPerformed": false,
+  "priorSaveSuccessRetainedWithoutFabricatingNewPass": true,
+  "filesBeforeAfterAndCleanupPassed": true,
+  "hardwareWritesPerformed": false,
+  "batteryOrOemQueriesPerformed": false,
+  "newDefenderOrSigningEvidence": false,
+  "finalReleaseApproved": false,
+  "certificateAvailable": false,
+  "certificateStatusSource": "User replied not yet available on 2026-11-26.",
+  "startedKorea": "2026-11-26T14:16:37.947444+09:00",
+  "completedKorea": "2026-11-26T14:18:15.357517+09:00",
+  "nextAction": "Retain functional validation. Prepare final signed-file GUI/security and packaging gate without purchasing/signing or repeating manual IME/quick/soak/hardware trials.",
+  "userReportedWindowsWarnings": {
+    "os": "Windows 10",
+    "model": "940X3G",
+    "cmd": "unknown publisher warning",
+    "exe": "unrecognized app launch blocked",
+    "exactDialogTypeConfirmed": false,
+    "resolved": false,
+    "securitySettingsChanged": false
+  }
+}

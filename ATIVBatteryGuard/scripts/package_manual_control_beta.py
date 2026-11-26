@@ -32,7 +32,7 @@ def execution_level(data):
         raise ValueError('Both executable manifests must remain asInvoker/uiAccess=false.')
 
 
-def validate(files):
+def validate(files, *, signed=False):
     audits = {}
     for name in PROGRAM_NAMES:
         data = files[name]
@@ -44,8 +44,9 @@ def validate(files):
         pe = pefile.PE(data=data)
         if pe.FILE_HEADER.Machine != 0x8664 or not pe.OPTIONAL_HEADER.DATA_DIRECTORY[14].Size:
             raise ValueError('All assemblies must be managed Windows x64 builds.')
-        if pe.OPTIONAL_HEADER.DATA_DIRECTORY[4].Size or b'.NETFramework,Version=v4.8' not in data:
-            raise ValueError('Only the disclosed unsigned net48 build is supported.')
+        certificate_present = pe.OPTIONAL_HEADER.DATA_DIRECTORY[4].Size > 0
+        if certificate_present != signed or b'.NETFramework,Version=v4.8' not in data:
+            raise ValueError('Embedded signature presence or net48 target differs from the requested distribution.')
         metadata = dnfile.dnPE(data=data)
         methods = {str(row.Name) for row in metadata.net.mdtables.MethodDef.rows}
         fields = {str(row.Name) for row in metadata.net.mdtables.Field.rows}
@@ -75,7 +76,7 @@ def validate(files):
                 raise ValueError('The helper must not terminate an in-flight hardware process.')
         if name.endswith('.exe'):
             execution_level(data)
-        audits[name] = {'managedX64Net48': True, 'signed': False, 'portableOnlyHelpersAbsent': True}
+        audits[name] = {'managedX64Net48': True, 'signed': signed, 'portableOnlyHelpersAbsent': True}
     return audits
 
 

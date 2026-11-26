@@ -5,7 +5,8 @@ param(
     [Parameter(Mandatory=$true)][string]$BuildDirectory,
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{64}$')][string]$SourceFingerprint,
     [Parameter(Mandatory=$true)][string]$ReportPath,
-    [switch]$RequireTimestamp
+    [switch]$RequireTimestamp,
+    [switch]$RunGuiSelfTest
 )
 $ErrorActionPreference = 'Stop'
 $build = (Resolve-Path -LiteralPath $BuildDirectory).Path
@@ -59,6 +60,37 @@ $detections = @(Get-MpThreatDetection | Where-Object {
     $match
 })
 if ($detections.Count -ne 0) { throw 'Defender detection evidence exists for this build folder.' }
+# Optional final-file GUI self-test runs only the already signature-checked GUI.
+# Fixed arguments, ordinary launch; never starts the manual hardware helper.
+$gui = $null; $guiReportFile = $null; $guiReportSha256 = $null
+$guiExecuted = $false; $guiExitCode = $null; $guiFileHashes = $null; $guiCompletedUtc = $null
+if ($RunGuiSelfTest) {
+    $guiReportFile = 'final-gui-' + [Guid]::NewGuid().ToString('N') + '.json'
+    $guiPath = Join-Path ([IO.Path]::GetDirectoryName($reportFull)) $guiReportFile
+    if (Test-Path -LiteralPath $guiPath) { throw 'Use a new GUI evidence path.' }
+    $start = [Diagnostics.ProcessStartInfo]::new()
+    $start.FileName = Join-Path $build 'ATIVBatteryGuard.exe'
+    $start.WorkingDirectory = $build
+    $start.Arguments = '--self-test "' + $guiPath + '"'
+    $start.UseShellExecute = $false
+    $process = [Diagnostics.Process]::Start($start)
+    if (!$process) { throw 'GUI self-test could not start.' }
+    try {
+        $guiExecuted = $true
+        if (!$process.WaitForExit(120000)) { throw 'GUI self-test timed out. The process was not killed; no release evidence was approved.' }
+        $guiExitCode = $process.ExitCode
+    } finally { $process.Dispose() }
+    $guiItem = Get-Item -LiteralPath $guiPath
+    if (($guiItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $guiItem.Length -gt 65536) { throw 'GUI evidence size or path rejected.' }
+    $gui = Get-Content -LiteralPath $guiPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($guiExitCode -ne 0 -or $gui.schemaVersion -ne 1 -or $gui.status -ne 'passed' -or !$gui.guiPassed -or
+        $gui.hardwareWritesPerformed -ne $false -or $gui.bindingErrors -ne 0 -or @($gui.errors).Count -ne 0) {
+        throw 'The final-file GUI self-test did not pass.'
+    }
+    $guiReportSha256 = (Get-FileHash -LiteralPath $guiPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $guiFileHashes = $before
+    $guiCompletedUtc = [DateTime]::UtcNow.ToString('o')
+}
 foreach ($name in $names) {
     if ((Get-FileHash -LiteralPath (Join-Path $build $name) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $before[$name]) { throw 'Scanned artifact changed or was quarantined.' }
 }
@@ -71,6 +103,10 @@ $report = @{
     scanCompleted=$true; scanPassed=$true; detections=0
     defenderSignatureVersion=$after.AntivirusSignatureVersion
     fileHashes=$before; signatures=$signatures
+    releaseVersion=[Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $build 'ATIVBatteryGuard.exe')).ProductVersion
+    guiExecuted=$guiExecuted; guiExitCode=$guiExitCode; guiReportFile=$guiReportFile
+    guiReportSha256=$guiReportSha256; guiFileHashes=$guiFileHashes; guiCompletedUtc=$guiCompletedUtc
+    finalReleaseApproved=$false
 }
 $json = $report | ConvertTo-Json -Depth 6
 $stream = [IO.File]::Open($reportFull, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)

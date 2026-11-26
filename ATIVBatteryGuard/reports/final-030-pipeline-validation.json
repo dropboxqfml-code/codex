@@ -1,0 +1,65 @@
+{
+  "dateKorea": "2026-11-26",
+  "baseCommit": "53f82fab049db6091e85e5353d8c1421dc9d3559",
+  "releaseVersion": "0.3.0-rc.3",
+  "sourceFileCount": 207,
+  "sourceFingerprintSha256": "168416a20bea04c8299fa5844a282cf75370ef94cf0078a7ea446efc039ea775",
+  "productSourcesUnchanged": true,
+  "existingArtifacts": {
+    "ATIVBatteryGuard-0.3.0-rc.3-WIN10-X64.zip": {
+      "bytes": 316414,
+      "sha256": "9af9dd9758b75a2e6449548be4a12ece42548d7b888c77698ffd64195e7096c5"
+    },
+    "ATIVBatteryGuard-0.3.0-rc.3-EXTENDED-CHECKS-v4.zip": {
+      "bytes": 353102,
+      "sha256": "95ff4908574eaff866da4234e151dc3494c412733d6d48ba45e2a6cf35860fb7"
+    }
+  },
+  "fieldCloseEvidence": "field-ime-close-rc3/assessment.json",
+  "fieldClosePassed": true,
+  "pythonReleaseGateTests": {
+    "passed": 24,
+    "failed": 0,
+    "new": 11,
+    "existing": 13,
+    "logSha256": "ba1eff5aa4868c72d75c7ca920c34ef86a1ece06ed2e3086af37423e5133372b",
+    "scope": "Synthetic evidence validation plus actual unsigned RC3 audit/rejection; not Windows signing or Defender execution",
+    "logFile": "final-030-release-gates.log"
+  },
+  "priorProductRegression": {
+    "passed": 1272,
+    "failed": 0,
+    "skipped": 0,
+    "rerunThisChange": false,
+    "evidence": "release-030-rc3-validation.json"
+  },
+  "finalGate": {
+    "exactVersion": "0.3.0",
+    "sourceChangesAllowed": "Only exact RC3-to-final version constant change",
+    "sameSixSignedFilesForScanGuiPackage": true,
+    "allFourPePublisherAndTimestampEvidenceRequired": true,
+    "executedGuiRawHashRequired": true,
+    "staleOrMissingEvidenceRejected": true,
+    "actualRcCannotEmitFinalPackage": true
+  },
+  "certificateAvailable": false,
+  "certificatePurchasedOrIssued": false,
+  "actualSigningPerformed": false,
+  "newWindowsPowerShellExecuted": false,
+  "newWindowsGuiExecuted": false,
+  "newDefenderScanPerformed": false,
+  "newProductBuildPerformed": false,
+  "finalPackageProduced": false,
+  "publicationPerformed": false,
+  "finalReleaseApproved": false,
+  "securitySettingsChanged": false,
+  "userReportedWarnings": {
+    "os": "Windows 10",
+    "model": "940X3G",
+    "cmd": "unknown publisher warning",
+    "exe": "unrecognized app launch blocked",
+    "exactDialogTypeConfirmed": false,
+    "resolved": false,
+    "securitySettingsChanged": false
+  }
+}

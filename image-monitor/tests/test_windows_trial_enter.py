@@ -38,7 +38,8 @@ def _read_in_own_console():
         ctypes.POINTER(wintypes.DWORD),
     )
     write.restype = wintypes.BOOL
-    with open("CONIN$", encoding="utf-8") as input_stream:
+    fd = os.open("CONIN$", os.O_RDWR | os.O_BINARY)
+    with os.fdopen(fd, "rb", buffering=0) as input_stream:
         sys.stdin = input_stream
         keyboard = _console_stop()
         assert keyboard is not None

@@ -18,7 +18,7 @@ concurrency:
 jobs:
   windows-tests:
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     env:
       IMAGE_MONITOR_ALLOW_PATH_TESTS: '1'
       PYTHONUTF8: '1'

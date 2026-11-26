@@ -111,4 +111,13 @@ def describe_list_review(value):
         review["observation_ko"] = f"{pages}쪽의 목록 구조를 확인하지 못했습니다."
     elif review.get("transport") == "http_error" and "http_status" in review:
         review["observation_ko"] = f"목록 요청에서 HTTP {review['http_status']} 응답을 받았습니다."
+    if order := review.get("order_check"):
+        location = f"{order['page']}쪽"
+        review["observation_ko"] = {
+            "duplicate_on_page": f"{location} 안에서 같은 글번호가 반복됐습니다.",
+            "increase_on_page": f"{location} 안에서 글번호의 내림차순이 깨졌습니다.",
+            "increase_across_pages": (
+                f"{location}의 새 글번호가 앞쪽의 마지막 새 글번호보다 컸습니다."
+            ),
+        }[order["issue"]]
     return review

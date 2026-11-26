@@ -20,7 +20,7 @@ from image_monitor.watch_diagnosis import (
 )
 from image_monitor.watch_images_check import _read_mode, _UnstableDatabase
 from image_monitor.watch_lock import watch_list_lock
-from image_monitor.watch_planner import WatchPlanError, _list_url, _scope
+from image_monitor.watch_planner import WatchPlanError, _list_url, _page, _scope, page_order_issue
 from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
     PARTIAL_COVERAGE_GAPS,
@@ -86,6 +86,27 @@ _UNAVAILABLE = (
     CandidateFinishError,
     _UnstableDatabase,
 )
+
+
+_ORDER_ISSUES = {"duplicate_on_page", "increase_on_page", "increase_across_pages"}
+
+
+def _observed_order_check(pages, scan):
+    seen = {}
+    last_id = None
+    for visit, raw_page in enumerate(pages, start=1):
+        page = _page(
+            raw_page, _scope(MONITOR_SCOPE), _stored_time(scan["observed_at"]), "site_verified"
+        )
+        if not page["rows_complete"]:
+            return None
+        issue, last_id = page_order_issue(page["rows"], seen, last_id)
+        if issue:
+            if visit == len(pages):
+                return {"visit": visit, "page": page["page"], "issue": issue}
+            return None
+        seen.update((row["post_id"], row["canonical_url"]) for row in page["rows"])
+    return None
 
 
 def public_list_review(value):
@@ -158,6 +179,28 @@ def public_list_review(value):
                     if fields.get(key) is not None
                 }
             )
+    order = value.get("order_check")
+    if (
+        result.get("gap_reason") == "order_unverified"
+        and result.get("watch_status") == "watch_test_partial"
+        and result.get("transport") == "observed"
+        and 200 <= result.get("http_status", 0) < 300
+        and numbers
+        and len(result.get("pages", [])) == len(numbers)
+        and all(
+            p.get("page") == n and p.get("layout_status") == "site_verified"
+            for p, n in zip(result["pages"], numbers, strict=True)
+        )
+        and isinstance(order, dict)
+        and isinstance(order.get("issue"), str)
+        and order["issue"] in _ORDER_ISSUES
+        and type(order.get("visit")) is int
+        and order["visit"] == len(numbers)
+        and type(order.get("page")) is int
+        and order["page"] == numbers[-1]
+        and (order["issue"] != "increase_across_pages" or len(numbers) >= 2)
+    ):
+        result["order_check"] = {k: order[k] for k in ("visit", "page", "issue")}
     snapshots = value.get("snapshot_page_numbers")
     if (
         numbers
@@ -331,6 +374,11 @@ def _bound_review(database, queue, scan, raw, stage):
         )
         if "inspection_failure" in summary:
             position["inspection_failure"] = summary["inspection_failure"]
+    if scan["gap_reason"] == "order_unverified" and numbers and len(numbers) == len(pages):
+        try:
+            position["order_check"] = _observed_order_check(pages, scan)
+        except WatchPlanError:
+            pass  # The original review remains available without a row-order diagnosis.
     return public_list_review(
         {
             "stage": stage,

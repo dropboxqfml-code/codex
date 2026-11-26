@@ -372,6 +372,7 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
     retried_wait = False
     inspection_retry_pending = False
     pending_scan = None
+    order_retry_pending = False
     while True:
         if pending_scan is None and stop_requested(should_stop):
             return _finish(report, "stopped", "requested_stop")
@@ -430,6 +431,22 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
                 review := public_list_review(turn.get("review"))
             ):
                 report["last_list"]["review"] = review
+                if (
+                    status == "review"
+                    and reason == "list_scan_requires_review"
+                    and report["mode"] == "automatic_monitor_session"
+                    and closed is True
+                    and review.get("order_check")
+                    and turn.get("order_recheck_at")
+                    and not order_retry_pending
+                ):
+                    due = _stored_time(turn["order_recheck_at"])
+                    if due > turn_started_at:
+                        order_retry_pending = True
+                        report["order_retries_scheduled"] += 1
+                        report["last_order_retry"] = review
+                        report["last_list"].update(status="waiting", reason="order_retry_due")
+                        continue
         else:
             _record_collection(report, turn)
 
@@ -478,6 +495,7 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
             # Its candidate is durable and can be considered after the next scan.
         elif phase == "scanning" and status in {"complete", "partial", "baseline"}:
             inspection_retry_pending = False
+            order_retry_pending = False
             if closed is not True:
                 return _finish(report, "review", "owned_browser_cleanup_unconfirmed")
             try:
@@ -561,6 +579,7 @@ def run_auto_monitor(
         "list_checks": 0,
         "list_checks_during_save": 0,
         "inspection_retries_scheduled": 0,
+        "order_retries_scheduled": 0,
         "partial_list_checks": 0,
         "gap_followup_checks": 0,
         "gap_followups_completed": 0,

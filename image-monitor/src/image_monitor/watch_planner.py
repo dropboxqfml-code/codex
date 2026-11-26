@@ -320,6 +320,27 @@ def _page_record(page):
     }
 
 
+def page_order_issue(rows, seen, previous_id):
+    """Check ordinary rows and carry the last previously unseen ID across page boundaries."""
+    ids = [int(row["post_id"]) for row in rows]
+    issue = None
+    if len(ids) != len(set(ids)):
+        issue = "duplicate_on_page"
+    elif any(left < right for left, right in zip(ids, ids[1:], strict=False)):
+        issue = "increase_on_page"
+    for row in rows:
+        post_id = row["post_id"]
+        if post_id in seen:
+            if seen[post_id] != row["canonical_url"]:
+                raise WatchPlanError("One post ID has conflicting canonical URLs")
+        else:
+            current = int(post_id)
+            if previous_id is not None and current >= previous_id and issue is None:
+                issue = "increase_across_pages"
+            previous_id = current
+    return issue, previous_id
+
+
 def plan_scan(
     scope: WatchScope,
     state: Mapping,
@@ -462,20 +483,7 @@ def _plan_scan(
         ]
         result["unverified_cursor_candidates"].extend(historical)
         # Validate the whole page before treating any of its rows as candidates.
-        local_ids = [int(row["post_id"]) for row in current["rows"]]
-        descending = all(
-            left > right for left, right in zip(local_ids, local_ids[1:], strict=False)
-        )
-        pending_last = last_unique_id
-        for row in current["rows"]:
-            post_id = row["post_id"]
-            if post_id in seen:
-                if seen[post_id] != row["canonical_url"]:
-                    raise WatchPlanError("One post ID has conflicting canonical URLs")
-            else:
-                if pending_last is not None and int(post_id) >= pending_last:
-                    descending = False
-                pending_last = int(post_id)
+        order_issue, pending_last = page_order_issue(current["rows"], seen, last_unique_id)
         for row in current["rows"]:
             post_id = row["post_id"]
             metadata = {
@@ -495,7 +503,7 @@ def _plan_scan(
             }
             if not current["rows_complete"]:
                 role = "excluded_rows_unverified"
-            elif not descending:
+            elif order_issue:
                 role = "order_unverified"
             elif baseline is None:
                 role = "baseline"
@@ -515,7 +523,7 @@ def _plan_scan(
                 | {"role": role, "page": current["page"], "search_pos": current["search_pos"]}
             )
             seen[post_id] = row["canonical_url"]
-        if not current["rows_complete"] or not descending:
+        if not current["rows_complete"] or order_issue:
             gap_reason = (
                 "excluded_rows_unverified" if not current["rows_complete"] else ("order_unverified")
             )

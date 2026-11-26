@@ -223,6 +223,41 @@ def _verified_scan(database, queue, before, after, raw, page_limit, historical_s
     raise _ScanReview("partial_check")
 
 
+def _can_recheck_order(queue, before, after, review, bookmark, raw, page_limit):
+    """Permit one later read of the recent pages, without certifying this scan for collection."""
+    if not review or "order_check" not in review or review["stage"] != "partial_check":
+        return False
+    record = after["latest_scan"]["result"]
+    outcome = record["private_observation"]
+    numbers = review["visited_page_numbers"]
+    if (
+        len(numbers) < 2
+        or numbers != list(range(1, 1 + len(numbers)))
+        or not _observed_page_chain(outcome, page_limit)
+        or any(page.get("search_pos") is not None for page in outcome["pages"])
+        or any(visit.get("retry_after") is not None for visit in outcome["navigation"])
+        or outcome.get("retry_after") is not None
+        or before["baseline"] is None
+        or before["baseline"] != after["baseline"]
+        or before["checkpoint"] != after["checkpoint"]
+        or (bookmark and load_bookmark(queue, after) != bookmark)
+    ):
+        return False
+    plan = plan_scan(
+        MONITOR_SCOPE,
+        before,
+        outcome["pages"],
+        _stored_time(after["updated_at"]),
+        allow_verified_live=True,
+    )
+    if plan["gap_reason"] != "order_unverified" or any(
+        plan["scan_result"][k] != record.get(k) for k in ("observations", "pages", "follow_up")
+    ):
+        return False
+    matches, _ = scan_plan_candidates(queue, MONITOR_SCOPE, after, plan)
+    return matches is not None and matches["new_candidates"] == raw["new_candidates"]
+
+
 def _can_retry_inspection(queue, before, after, evidence, bookmark, raw):
     """Only a timed-out read of the proven bookmark's successor gets one later list check."""
     if not evidence or not isinstance(bookmark, dict) or "frontier" not in bookmark:
@@ -391,7 +426,12 @@ def run_auto_discovery(
                     and "closed_monitor_scan" not in raw
                 ):
                     evidence["stage"] = "partial_check"
-                return _review(stage, closed, evidence)
+                result = _review(stage, closed, evidence)
+                if eligibility == "waiting" and _can_recheck_order(
+                    queue, before, after, evidence, historical_source, raw, page_limit
+                ):
+                    result["order_recheck_at"] = _stamp(due)
+                return result
             latest = after["latest_scan"]
             record = latest["result"]
             numbers = [page["page"] for page in record["private_observation"]["pages"]]

@@ -168,7 +168,7 @@ def _describe_result(report):
         if checks and checks[-1]["status"] == "partial":
             summary += " 마지막 목록 확인에서 이전 완료 지점까지 미확인 구간이 남았습니다."
         result["auto_test_summary_ko"] = summary
-    for key in ("previous_list_review", "last_inspection_retry"):
+    for key in ("previous_list_review", "last_inspection_retry", "last_order_retry"):
         if key in result:
             review = describe_list_review(result.pop(key))
             if review:
@@ -256,6 +256,9 @@ def _progress_message(report):
         page = (last_list.get("review") or {}).get("failed_page")
         if type(page) is int:
             message += f" | {page}쪽 읽기 시간 초과 · 목록 한 번 재확인 예정"
+    if phase == "waiting" and last_list and last_list.get("reason") == "order_retry_due":
+        page = last_list["review"]["order_check"]["page"]
+        message += f" | {page}쪽 글번호 순서 미확인 · 첫 쪽부터 한 번 재확인 예정"
     due = report.get("next_eligible_at")
     if phase == "waiting" and due:
         local_time = datetime.fromisoformat(due).astimezone()

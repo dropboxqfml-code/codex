@@ -10,6 +10,8 @@ import time
 from collections.abc import Callable
 from pathlib import PureWindowsPath
 
+from image_monitor.monitor_trial_progress import trial_stage, trial_stop_requested
+
 _IMAGE_EXTENSION_FAMILIES = (
     ({".png"}, ".png"),
     ({".jpg", ".jpeg"}, ".jpg"),
@@ -141,6 +143,10 @@ class WindowsUI:
             ctypes.POINTER(wintypes.DWORD),
         ]
         self.user32.GetForegroundWindow.restype = wintypes.HWND
+        self.user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+        self.user32.SetForegroundWindow.restype = wintypes.BOOL
+        self.user32.IsIconic.argtypes = [wintypes.HWND]
+        self.user32.IsIconic.restype = wintypes.BOOL
         self.user32.GetWindowThreadProcessId.argtypes = [
             wintypes.HWND,
             ctypes.POINTER(wintypes.DWORD),
@@ -489,22 +495,48 @@ class WindowsUI:
         if type(timeout) not in (int, float) or not 0 < timeout <= 20:
             raise ValueError("Initial foreground wait must be within 20 seconds")
         deadline = time.monotonic() + timeout
+        first_missing = None
+        can_request = True
+        trial_stage("저장용 Chrome 전경 확인")
         while time.monotonic() < deadline:
             self._assert_bound_desktop()
             if not self.user32.IsWindowEnabled(self.target_hwnd):
                 raise NativeUIError("The bound browser window is disabled")
             foreground = self.user32.GetForegroundWindow()
             if foreground:
+                if can_request and self._root_window(foreground) != self.target_hwnd:
+                    trial_stage("다른 창이 앞에 있음 · 저장용 Chrome 전경 대기")
+                can_request = False
                 pid = self._window_pid(foreground)
                 if not self.user32.IsWindow(foreground) or not pid:
                     raise NativeUIError("The Windows foreground window is invalid")
                 if pid in self.process_ids():
                     if self._root_window(foreground) != self.target_hwnd:
                         raise NativeUIError("A different window of the owned browser is active")
+                    trial_stage("저장용 Chrome 전경 확인 완료")
                     return
+            elif first_missing is None:
+                first_missing = time.monotonic()
+                trial_stage("Windows 전경 창 미식별 · 전용 창 재확인")
+            elif can_request and time.monotonic() - first_missing >= 1.0:
+                can_request = False
+                if (
+                    self.user32.IsWindowVisible(self.target_hwnd)
+                    and not self.user32.IsIconic(self.target_hwnd)
+                    and not trial_stop_requested()
+                    and time.monotonic() < deadline
+                    and not self.user32.GetForegroundWindow()
+                ):
+                    # Activation may be refused. Only a subsequent, fully guarded
+                    # poll can authorize inspecting the page or sending native input.
+                    accepted = self.user32.SetForegroundWindow(self.target_hwnd)
+                    trial_stage(
+                        "전용 창 활성화 요청 · " + ("Windows 수락" if accepted else "Windows 거절")
+                    )
             remaining = deadline - time.monotonic()
             if remaining > 0:
                 time.sleep(min(0.2, remaining))
+        trial_stage("저장용 Chrome 전경 미확인 · 입력 전 중단")
         raise NativeFocusError("Foreground focus is outside the bound probe window; input stopped")
 
     def assert_control_ready(self, control, window) -> None:

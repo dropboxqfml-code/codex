@@ -11,6 +11,11 @@ _TRIAL_SECONDS = 300
 _HEARTBEAT_SECONDS = 60
 
 
+def trial_stop_requested():
+    trial = _CURRENT.get()
+    return trial is not None and trial.should_stop()
+
+
 def trial_stage(label):
     trial = _CURRENT.get()
     if trial is not None:

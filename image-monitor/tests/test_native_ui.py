@@ -472,3 +472,49 @@ def test_focus_snapshot_contains_no_input_when_foreground_inspection_fails():
     assert "Private error" not in str(result)
     ui.user32.GetWindowTextW.assert_not_called()
     ui.user32.SetForegroundWindow.assert_not_called()
+
+
+@pytest.mark.parametrize("accepted", [True, False])
+@pytest.mark.parametrize("confirmed", [True, False])
+def test_null_foreground_can_request_once_but_only_verified_focus_allows_input(
+    foreground_sleeps, accepted, confirmed
+):
+    ui = desktop_guard(foreground_hwnd=0)
+    ui.user32.IsIconic.return_value = False
+    ui.user32.IsWindowVisible.return_value = True
+
+    def request(hwnd):
+        assert hwnd == ui.target_hwnd and sum(foreground_sleeps) >= 1
+        # Even if Windows accepts, do not treat that return value as focus evidence.
+        if confirmed:
+            ui.user32.GetForegroundWindow.return_value = hwnd
+        return accepted
+
+    ui.user32.SetForegroundWindow.side_effect = request
+    if not confirmed:
+        with pytest.raises(NativeFocusError):
+            ui.wait_for_initial_foreground(timeout=2)
+    else:
+        # Windows can also foreground the right window independently after a refusal.
+        ui.wait_for_initial_foreground(timeout=2)
+    ui.user32.SetForegroundWindow.assert_called_once_with(ui.target_hwnd)
+    ui.user32.SendInput.assert_not_called()
+
+
+@pytest.mark.parametrize("case", ["other_seen", "other_at_request", "hidden", "minimized", "stop"])
+def test_foreground_request_respects_active_window_visibility_and_stop(
+    foreground_sleeps, monkeypatch, case
+):
+    ui = desktop_guard(foreground_hwnd=0)
+    ui.user32.IsWindowVisible.return_value = case != "hidden"
+    ui.user32.IsIconic.return_value = case == "minimized"
+    monkeypatch.setattr(native_ui, "trial_stop_requested", lambda: case == "stop")
+    if case == "other_seen":
+        ui.user32.GetForegroundWindow.side_effect = lambda: 999 if not foreground_sleeps else 0
+    if case == "other_at_request":
+        ui.user32.IsIconic.side_effect = lambda hwnd: (
+            setattr(ui.user32.GetForegroundWindow, "return_value", 999) or False
+        )
+    with pytest.raises(NativeFocusError):
+        ui.wait_for_initial_foreground(timeout=2)
+    ui.user32.SetForegroundWindow.assert_not_called()

@@ -24,6 +24,7 @@ from image_monitor.browser_completion import (
     completion_setup_reason,
 )
 from image_monitor.dcinside import DCSnapshotError, inspect_post, validate_post_url
+from image_monitor.monitor_trial_progress import trial_stage
 from image_monitor.native_body import save_body_image
 from image_monitor.native_probe import (
     browser_executable,
@@ -525,6 +526,7 @@ def run_post_save(
                     # inspecting the images, since the inspection can scroll the page.
                     title = f"Image Monitor automatic save {uuid.uuid4().hex}"
                     page.evaluate("title => { document.title = title; }", title)
+                    trial_stage("저장용 Chrome 창 식별")
                     ui = runtime.bind(process, title)
                     ui.wait_for_initial_foreground()
                     report["last_stage"] = "post_inspection"

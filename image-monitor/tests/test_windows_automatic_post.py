@@ -195,6 +195,29 @@ def test_automatic_save_requires_foreground_and_completes_one_native_file(monkey
                             )
                             wait()
 
+                        # The desktop is now owned by the dedicated Chrome. Model
+                        # the missing foreground readings and exercise the actual
+                        # Win32 activation and subsequent HWND check before saving.
+                        read_hwnd = ui.user32.GetForegroundWindow
+                        activate = ui.user32.SetForegroundWindow
+                        attempts = []
+
+                        def request_target(hwnd):
+                            assert not inspections and not native_calls
+                            assert hwnd == ui.target_hwnd and read_hwnd() == hwnd
+                            attempts.append(hwnd)
+                            return activate(hwnd)
+
+                        with monkeypatch.context() as absent:
+                            absent.setattr(
+                                ui.user32,
+                                "GetForegroundWindow",
+                                lambda: read_hwnd() if attempts else None,
+                            )
+                            absent.setattr(ui.user32, "SetForegroundWindow", request_target)
+                            wait()
+                        assert attempts == [ui.target_hwnd]
+
                     ui.wait_for_initial_foreground = wait_for_switch
                 return ui
 

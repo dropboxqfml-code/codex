@@ -56,7 +56,7 @@ def _count(result, key, maximum=None):
     return value
 
 
-def _record_list_pages(report, turn):
+def _record_list_pages(report, turn, *, during_native_save=False):
     limit = _count(turn, "page_limit", MAX_MONITOR_SCAN_PAGES)
     count = _count(turn, "pages_checked", limit)
     numbers = turn["visited_page_numbers"]
@@ -97,7 +97,10 @@ def _record_list_pages(report, turn):
         raise ValueError("Unexpected verified list page sequence")
     last.update(pages_checked=count, page_limit=limit, visited_page_numbers=numbers.copy())
     recovery_trial = report.get("mode") == "list_recovery_test"
-    if recovery_trial and report.get("max_cycles") in (2, MAX_CATCH_UP_SCANS):
+    if report.get("mode") == "automatic_monitor_session" and report.get("max_cycles") == 2:
+        last["during_native_save"] = during_native_save
+        last["new_candidates"] = _count(turn, "new_candidates")
+    elif recovery_trial and report.get("max_cycles") in (2, MAX_CATCH_UP_SCANS):
         last["new_candidates"] = _count(turn, "new_candidates")
     if checks := public_date_cell_checks(turn.get("date_cell_checks"), numbers):
         last["date_cell_checks"] = checks
@@ -123,8 +126,6 @@ def _record_list_pages(report, turn):
 
 
 def _record_collection(report, turn):
-    # Both adapters return public, bounded reports. Keep only the last outcome
-    # and last verified files; a multi-day session never accumulates a history.
     last = {key: turn[key] for key in ("status", "reason")}
     search = turn.get("search")
     if isinstance(search, dict) and search.get("previous_failure_reason") in (
@@ -170,6 +171,7 @@ def _record_collection(report, turn):
     elif report["native_save_tasks_started"] is not None:
         report["native_save_tasks_started"] += _count(turn, "native_save_tasks_started", 1)
     count = _count(turn, "files_verified", MAX_MONITOR_SAVE_IMAGES)
+    new_count = 0
     if turn["status"] == "monitor_collect_saved":
         if not (
             turn["browser_closed"] is True
@@ -202,11 +204,22 @@ def _record_collection(report, turn):
         report["last_saved_files"] = deepcopy(turn["saved_files"])
     elif count:
         raise ValueError("Unconfirmed collection returned verified files")
+    if "recent_collection_attempts" in report:
+        attempts = report["recent_collection_attempts"]
+        attempts.append(
+            {
+                "status": last["status"],
+                "reason": last["reason"],
+                "new_details_checked": turn["new_details_checked"],
+                "newly_saved_files": new_count,
+            }
+        )
+        del attempts[:-2]
 
 
-def _verified_list(report, turn, finished, interval):
+def _verified_list(report, turn, finished, interval, *, during_native_save=False):
     report["last_list"] = {"status": turn["status"], "reason": turn["reason"]}
-    _record_list_pages(report, turn)
+    _record_list_pages(report, turn, during_native_save=during_native_save)
     report["list_checks"] += 1
     report["partial_list_checks"] += int(turn["status"] == "partial")
     report["new_candidates"] += _count(turn, "new_candidates")
@@ -279,7 +292,11 @@ class _NativeSaveLists:
                             break
                         self.terminal = None
                         self.due = _verified_list(
-                            self.report, turn, self.clock.now(), self.interval
+                            self.report,
+                            turn,
+                            self.clock.now(),
+                            self.interval,
+                            during_native_save=True,
                         )
                         if self.checked:
                             # Its candidates are durable. The newest scan gets the next writer turn.
@@ -565,6 +582,8 @@ def run_auto_monitor(
     try:
         if max_cycles is not None and (type(max_cycles) is not int or max_cycles < 1):
             return _finish(report, "review", "invalid_cycle_limit")
+        if not list_only and max_cycles == 2:
+            report["recent_collection_attempts"] = []
         _progress(report, "starting", on_progress)
         if stop_requested(should_stop):
             return _finish(report, "stopped", "requested_stop")

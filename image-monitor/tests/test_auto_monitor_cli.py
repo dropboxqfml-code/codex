@@ -384,3 +384,22 @@ def test_changed_frontier_separates_visited_pages_from_candidate_pages(status, n
         assert (
             "candidate_eligible_visits" not in shown and "candidate_eligible_visits_ko" not in shown
         )
+
+
+def test_two_cycle_summary_distinguishes_partial_coverage_from_saved_files():
+    report = {
+        "mode": "automatic_monitor_session",
+        "max_cycles": 2,
+        "list_checks": 2,
+        "list_checks_during_save": 0,
+        "new_candidates": 20,
+        "new_details_checked": 1,
+        "posts_saved": 0,
+        "newly_saved_files": 0,
+        "recent_list_checks": [{"status": "partial"}],
+    }
+    summary = auto_monitor_cli._describe_result(report)["auto_test_summary_ko"]
+    assert "새 후보 20건" in summary and "이미지 0장" in summary and "미확인 구간" in summary
+    assert "auto_test_summary_ko" not in auto_monitor_cli._describe_result(
+        report | {"max_cycles": None}
+    )

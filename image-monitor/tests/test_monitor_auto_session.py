@@ -111,6 +111,10 @@ def test_baseline_skips_older_work_then_verified_partial_can_collect(tmp_path):
     assert (
         report["partial_list_checks"] == report["new_details_checked"] == report["posts_saved"] == 1
     )
+    assert [
+        (c["new_candidates"], c["during_native_save"]) for c in report["recent_list_checks"]
+    ] == [(0, False), (3, False)]
+    assert [a["newly_saved_files"] for a in report["recent_collection_attempts"]] == [10]
     assert report["new_candidates"] == 3 and report["files_verified"] == 10
     assert report["last_saved_files"][-1]["saved_filename"] == "010.png"
     assert report["status"] == "auto_monitor_completed" and auto_monitor_exit_code(report) == 0

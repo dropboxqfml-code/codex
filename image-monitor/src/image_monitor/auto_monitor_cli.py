@@ -154,6 +154,19 @@ def _describe_result(report):
         }.get(report.get("reason"))
         if summary:
             result["list_test_summary_ko"] = summary
+    if report.get("mode") == "automatic_monitor_session" and limit == 2:
+        summary = (
+            f"목록 확인 {report['list_checks']}회"
+            f"(이미지 저장 중 {report['list_checks_during_save']}회), "
+            f"새 후보 {report['new_candidates']}건, "
+            f"새 본문 확인 {report['new_details_checked']}건. "
+            f"저장 완료 게시글 {report['posts_saved']}건, 새로 저장을 확인한 이미지 "
+            f"{report['newly_saved_files']}장."
+        )
+        checks = report["recent_list_checks"]
+        if checks and checks[-1]["status"] == "partial":
+            summary += " 마지막 목록 확인에서 이전 완료 지점까지 미확인 구간이 남았습니다."
+        result["auto_test_summary_ko"] = summary
     for key in ("previous_list_review", "last_inspection_retry"):
         if key in result:
             review = describe_list_review(result.pop(key))

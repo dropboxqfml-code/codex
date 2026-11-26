@@ -276,6 +276,13 @@ def test_two_cycles_save_separate_owned_posts_and_resume_without_resaving(monkey
         result = session(max_cycles=cycles)
         assert result["status"] == "auto_monitor_completed", failure(result)
         assert result["list_checks_during_save"] == (0 if lose_focus else 1)
+        if cycles == 2:
+            assert [c["during_native_save"] for c in result["recent_list_checks"]] == [False, True]
+            assert [c["new_candidates"] for c in result["recent_list_checks"]] == [1, 1]
+            assert sorted(c["newly_saved_files"] for c in result["recent_collection_attempts"]) == [
+                1,
+                10,
+            ]
         for count in (
             "cycles_completed",
             "list_checks",

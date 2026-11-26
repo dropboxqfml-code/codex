@@ -403,3 +403,73 @@ def test_two_cycle_summary_distinguishes_partial_coverage_from_saved_files():
     assert "auto_test_summary_ko" not in auto_monitor_cli._describe_result(
         report | {"max_cycles": None}
     )
+
+
+@pytest.mark.parametrize("trigger", ["enter", "time_limit", "interrupt"])
+def test_windows_trial_keeps_live_checkpoints_before_the_final_json(monkeypatch, capsys, trigger):
+    from image_monitor import monitor_auto_session, monitor_trial_progress
+    from image_monitor.monitor_trial_progress import trial_stage
+
+    console = io.StringIO()
+    now = [0]
+    monkeypatch.setattr(monitor_trial_progress, "monotonic", lambda: now[0])
+    monkeypatch.setattr(auto_monitor_cli, "_console_stop", lambda: lambda: trigger == "enter")
+    monkeypatch.setattr(
+        auto_monitor_cli, "_progress_output", lambda: auto_monitor_cli.nullcontext(console)
+    )
+    monkeypatch.setenv("IMAGE_MONITOR_CONSOLE_PROGRESS", "1")
+    monkeypatch.setattr(sys, "platform", "win32")
+
+    def run(*args, on_progress, should_stop, **kwargs):
+        on_progress(
+            {"phase": "collecting", "cycles_completed": 1, "posts_saved": 1, "files_verified": 2}
+        )
+        trial_stage("저장 후보 선택")
+        before = capsys.readouterr()
+        assert before.out == ""
+        assert before.err == console.getvalue()
+        assert "완료 1주기 · 게시글 1건 · 검증 2장" in before.err
+        assert "[시험 0초] 저장 후보 선택" in before.err
+        if trigger == "interrupt":
+            raise KeyboardInterrupt
+        if trigger == "time_limit":
+            now[0] = 299
+            assert not should_stop()
+            now[0] = 300
+        assert should_stop()
+        return {"status": "auto_monitor_stopped", "reason": "requested_stop"}
+
+    monkeypatch.setattr(monitor_auto_session, "run_auto_monitor", run)
+    assert auto_monitor_cli.run_auto_monitor_cli(None, None, None, 2) == (
+        130 if trigger == "interrupt" else 0
+    )
+    result = json.loads(capsys.readouterr().out)
+    if trigger != "interrupt":
+        assert result["trial_stop_trigger"] == trigger
+    else:
+        assert result["status"] == "auto_monitor_cancelled"
+    trial_stage("must not escape the completed trial")
+    assert not capsys.readouterr().err
+
+
+def test_trial_timeout_emits_checkpoint_while_foreground_call_is_blocked(monkeypatch):
+    from threading import Event
+
+    from image_monitor import monitor_trial_progress as progress
+
+    announced = Event()
+
+    class Console(io.StringIO):
+        def flush(self):
+            if "종료 요청" in self.getvalue():
+                announced.set()
+            super().flush()
+
+    console = Console()
+    monkeypatch.setattr(progress, "_HEARTBEAT_SECONDS", 0.01)
+    monkeypatch.setattr(progress, "_TRIAL_SECONDS", 0)
+    trial = progress.MonitorTrial(console, None)
+    with trial.observe():
+        assert announced.wait(3)
+        assert trial.should_stop() and trial.stop_trigger == "time_limit"
+    assert "현재 단계가 안전하게 끝나기" in console.getvalue()

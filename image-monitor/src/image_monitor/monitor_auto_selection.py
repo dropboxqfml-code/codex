@@ -22,6 +22,7 @@ from image_monitor.monitor_setup_retry import (
     PARTIAL_RETRY_REASON,
     verify_setup_retry,
 )
+from image_monitor.monitor_trial_progress import trial_stage
 from image_monitor.native_ui import NativeSaveLock
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_image_search import MAX_NEW_DETAILS
@@ -163,6 +164,7 @@ def search_monitor_candidates(
         database = _plain_path(watch / "watch.sqlite")
         interval = load_monitor_settings(watch)["interval_seconds"]
         while True:
+            trial_stage("감시 기록 확인")
             ops = load_monitor_operations(*roots, now=clock.now(), should_stop=should_stop)
             if ops["status"] in {"busy", "cancelled"}:
                 report.update(status=ops["status"], reason=ops["reason"])
@@ -200,6 +202,7 @@ def search_monitor_candidates(
                     {d["post_id"] for d in details if d["status"] == "completed"}
                 ):
                     raise QueueError("Expected a durable completed body observation")
+                trial_stage("저장 후보 선택")
                 handoff, pending = _choice(
                     queue,
                     state,
@@ -234,6 +237,7 @@ def search_monitor_candidates(
                     report.update(status="waiting", reason="persisted_cooldown")
                     break
                 waited_for = choice
+                trial_stage("본문 요청 간격 대기")
                 if not wait_until(clock, due, should_stop):
                     report.update(status="cancelled", reason="requested_stop")
                     break
@@ -254,6 +258,7 @@ def search_monitor_candidates(
                 report.update(status="ready", reason=reason)
                 return report, handoff
             report["browser_closed"] = None
+            trial_stage("Chrome에서 게시글 본문 확인")
             trial = detail_runner(
                 watch,
                 "chrome",

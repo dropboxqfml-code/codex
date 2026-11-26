@@ -16,6 +16,7 @@ from image_monitor.monitor_gap_report import (
 )
 from image_monitor.monitor_list_review_text import describe_date_cells, describe_list_review
 from image_monitor.monitor_settings import MAX_CATCH_UP_SCANS
+from image_monitor.monitor_trial_progress import MonitorTrial
 from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
 
 _HEAD_JOIN_KO = {
@@ -206,7 +207,7 @@ def _progress_output():
     return nullcontext(sys.stderr)
 
 
-def _show_progress(report, stream):
+def _progress_message(report):
     phase = report["phase"]
     messages = {
         "starting": "자동 감시 시작",
@@ -259,7 +260,12 @@ def _show_progress(report, stream):
     if phase == "waiting" and due:
         local_time = datetime.fromisoformat(due).astimezone()
         message += f" | 재개 예정 {local_time:%m-%d %H:%M:%S}"
-    print(message, file=stream, flush=True)
+    return message
+
+
+def _show_progress(report, stream):
+    if message := _progress_message(report):
+        print(message, file=stream, flush=True)
 
 
 def run_auto_monitor_cli(watch_root, legacy_root, work_root, max_cycles, *, list_only=False):
@@ -268,8 +274,22 @@ def run_auto_monitor_cli(watch_root, legacy_root, work_root, max_cycles, *, list
 
         with _progress_output() as progress:
             catch_up = list_only and max_cycles == MAX_CATCH_UP_SCANS
-            should_stop = _console_stop() if max_cycles is None or catch_up else None
-            if should_stop:
+            trial = None
+            if (
+                not list_only
+                and max_cycles == 2
+                and sys.platform == "win32"
+                and os.environ.get("IMAGE_MONITOR_CONSOLE_PROGRESS") == "1"
+            ):
+                trial = MonitorTrial(progress, _console_stop())
+            should_stop = (
+                trial.should_stop
+                if trial
+                else (_console_stop() if max_cycles is None or catch_up else None)
+            )
+            if trial:
+                trial.record("두 주기 시험 · 5분 후 종료 요청 · 일찍 마치려면 실행 창에서 Enter")
+            elif should_stop:
                 print(
                     "목록 확인을 마치려면 이 창에서 Enter를 누르세요."
                     if catch_up
@@ -277,15 +297,32 @@ def run_auto_monitor_cli(watch_root, legacy_root, work_root, max_cycles, *, list
                     file=progress,
                     flush=True,
                 )
-            report = run_auto_monitor(
-                watch_root,
-                legacy_root,
-                work_root,
-                max_cycles=max_cycles,
-                should_stop=should_stop,
-                on_progress=lambda snapshot: _show_progress(snapshot, progress),
-                **({"list_only": True} if list_only else {}),
-            )
+
+            def show(snapshot):
+                if trial:
+                    if message := _progress_message(snapshot):
+                        # A background scan can finish while the writer is still saving.
+                        stage = (
+                            None
+                            if snapshot["phase"] == "scanned_during_save"
+                            else message.split(" | ")[0]
+                        )
+                        trial.record(message, stage=stage)
+                else:
+                    _show_progress(snapshot, progress)
+
+            with trial.observe() if trial else nullcontext():
+                report = run_auto_monitor(
+                    watch_root,
+                    legacy_root,
+                    work_root,
+                    max_cycles=max_cycles,
+                    should_stop=should_stop,
+                    on_progress=show,
+                    **({"list_only": True} if list_only else {}),
+                )
+            if trial and trial.stop_trigger:
+                report["trial_stop_trigger"] = trial.stop_trigger
             code = auto_monitor_exit_code(report)
     except (KeyboardInterrupt, Exception) as error:
         interrupted = isinstance(error, KeyboardInterrupt)

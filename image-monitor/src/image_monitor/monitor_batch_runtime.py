@@ -46,6 +46,7 @@ from image_monitor.monitor_setup_retry import (
     PARTIAL_RETRY_REASON,
     verify_setup_retry,
 )
+from image_monitor.monitor_trial_progress import trial_stage
 from image_monitor.native_probe import write_report
 from image_monitor.native_state import PendingSave, session_id, shared_state_path
 from image_monitor.native_ui import NativeSaveLock, NativeUIError, require_windows
@@ -960,6 +961,7 @@ def run_monitor_batch(
                                                     during_native_save(watch_lease, due)
                                                 ),
                                             )
+                                        trial_stage("Chrome에서 이미지 저장 및 파일 검증")
                                         worker = save_runner(
                                             task_work_root(active, batch_root, legacy_root),
                                             "chrome",

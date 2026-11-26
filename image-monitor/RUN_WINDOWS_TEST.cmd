@@ -616,7 +616,7 @@ start "" notepad.exe "%LOG_FILE%"
 exit /b 0
 
 :start_auto_monitor
-if defined AUTO_MONITOR_LIMIT echo The two-cycle test stops automatically and opens its result in Notepad.
+if defined AUTO_MONITOR_LIMIT echo The two-cycle test writes live progress to the result TXT. Press ENTER here to request a stop.
 if not defined AUTO_MONITOR_LIMIT echo Press ENTER in this window between saves to stop and open the result.
 echo Keep dedicated Chrome in front during a save.
 >>"%LOG_FILE%" echo STAGE: auto_monitor

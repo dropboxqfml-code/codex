@@ -12,6 +12,7 @@ from image_monitor.monitor_batch_runtime import run_monitor_batch, share_batch_r
 from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
+from image_monitor.monitor_trial_progress import trial_stage
 from image_monitor.post_worker import run_post_save
 from image_monitor.watch_image_search import MAX_NEW_DETAILS
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
@@ -127,6 +128,7 @@ def _collect(
         report.update(
             native_save_tasks_started=None, worker_images_completed=None, browser_closed=None
         )
+        trial_stage("저장 작업 준비")
         save = run_monitor_batch(
             *roots,
             max_tasks=1,
@@ -157,6 +159,7 @@ def _collect(
         remaining = (due - clock.now()).total_seconds()
         if remaining > max_wait:
             break
+        trial_stage("저장 요청 간격 대기")
         if not wait_until(clock, due, should_stop):
             report.update(status="monitor_collect_cancelled", reason="requested_stop")
             return

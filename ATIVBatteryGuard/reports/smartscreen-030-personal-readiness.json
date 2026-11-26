@@ -1,0 +1,52 @@
+{
+  "dateKorea": "2026-11-26",
+  "baseCommit": "89d77da4232acd67d20e68e75402c1ab4d7bb564",
+  "releaseVersion": "0.3.0-rc.3",
+  "userConfirmedWarning": "Microsoft Defender SmartScreen",
+  "deploymentScope": "Current personal laptop only",
+  "targetModel": "940X3G",
+  "targetOs": "Windows 10",
+  "certificateAvailable": false,
+  "recommendation": "Verify original RC3 ZIP hash; user may choose More info / Run anyway for that file if available and trusted. Paid certificate is not prerequisite for current personal use.",
+  "actualUserPcWarningResolutionVerified": false,
+  "runAnywayButtonObserved": false,
+  "securityPolicyModified": false,
+  "markOfTheWebAutomaticallyRemoved": false,
+  "sourceFileCount": 207,
+  "productSourcesMatchRc3": true,
+  "rc3ZipSha256": "9af9dd9758b75a2e6449548be4a12ece42548d7b888c77698ffd64195e7096c5",
+  "checksPerformed": [
+    "Current product 207-source closure equals RC3 manifest",
+    "Current RC3 ZIP matches published SHA256",
+    "Updated local document links exist",
+    "git diff whitespace check"
+  ],
+  "newBuildPerformed": false,
+  "newFunctionalTestsExecuted": false,
+  "newWindowsExecutionPerformed": false,
+  "actualSigningPerformed": false,
+  "certificatePurchased": false,
+  "externalSubmissionOrSignupPerformed": false,
+  "licenseChanged": false,
+  "priorReleaseGateTests": 24,
+  "priorTestsRerun": false,
+  "finalReleaseApproved": false,
+  "references": [
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation",
+      "finding": "Per-file execution choice can be available; signing is not instant reputation; no consumer reputation submission mechanism"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options",
+      "finding": "Store MSIX and public signing alternatives; EV does not instantly remove reputation warnings"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/azure/artifact-signing/quickstart",
+      "finding": "Product prerequisites include South Korea organizations; individuals limited to US/Canada. Product prerequisites more current than comparison page."
+    },
+    {
+      "url": "https://signpath.org/terms.html",
+      "finding": "Public OSS/license and approval prerequisites; no application or license change performed"
+    }
+  ]
+}

@@ -1,5 +1,11 @@
 # 다음 개발 재개 메모
 
+## 최신 — 0.3.1 개인용 검증 완료 / 2026-11-26 한국 시간
+
+[현장 결과](FIELD_031_PERSONAL_RESULT.md), [원본2개와 평가](reports/field-031-personal/assessment.json)를 먼저 읽습니다. 사용자 Windows10/940X3G에서0.3.1/배포지문 일치, 파일 전후 true, GUI 종료0/passed, 오류/바인딩0, 배터리available/WMIcomplete입니다. 내장/별도GUI와 파일명이 같고 합성 버튼 전환을 포함한 GUI 검사가 통과했습니다. 사용자는 버튼 강조가 잘 수정됐다고 별도로 확인했습니다.
+
+기존0.3.0/IME/반복/충전 근거와 함께 현재0.3.1을 개인용 안정판 기준으로 확정합니다. 프로그램207소스/ZIP/설정·기록은 변경하지 않았고 새 빌드/1275회귀/Python27검사를 반복하지 않았습니다. 원본·기존ZIP 내부의 대기 메타데이터는 보존하고 완료 판정은 별도 assessment에 기록했습니다. 도구의 ManualUserFlowsConfirmed/FinalReleaseApproved=false는 자동 도구 실행 범위이며 새 반복 시험을 요구하지 않습니다. 서명/새 Defender/공개 배포를 완료로 표시하지 않습니다. 다음은 실제로 발견되는 구체적 오류/불편의 유지보수입니다. 추가 실행·동일 JSON 재제출·새 다운로드는 필요 없습니다. 아래는 과거 기록입니다.
+
 ## 최신 — 0.3.0 현장 통과 / 0.3.1 상태 강조 수정 / 2026-11-26 한국 시간
 
 [사용자 결과](FIELD_030_PERSONAL_RESULT.md), [0.3.1 변경](RELEASE_031.md), [새 검증](reports/release-031-validation.json), [확인 순서](FINAL_031_PERSONAL_CHECK_USER_STEPS.txt)를 먼저 읽습니다. 사용자0.3.0의 지문/파일 전후/GUI/기본 배터리WMI 통과를 원본2개로 확인했습니다. 기존ZIP/대기 메타데이터는 변경하지 않습니다.

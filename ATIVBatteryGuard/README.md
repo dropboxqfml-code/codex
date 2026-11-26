@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 0.3.1 개인용 검증 완료 / 2026-11-26 한국 시간:** [현장 결과](FIELD_031_PERSONAL_RESULT.md)에서 배포 지문·실행 전후 파일·GUI·기본 조회가 통과했고 오류/바인딩 오류0입니다. 버튼 강조 정상이라는 사용자 확인까지 받아 현재 노트북의 개인용 안정판 기준으로 확정했습니다. 프로그램/ZIP은 그대로이며 새 다운로드나 같은 검사는 필요 없습니다. [현재 프로그램](../downloads/ATIVBatteryGuard-0.3.1-WIN10-X64.zip)을 계속 사용하고 이후 구체적인 문제가 발견되면 유지보수합니다. 아래는 이전 기록입니다.
+
 **최신 — 0.3.0 검사 통과·0.3.1 버튼 표시 수정 / 2026-11-26 한국 시간:** [수신 결과](FIELD_030_PERSONAL_RESULT.md)는 파일 전후/GUI/기본 조회 통과, 오류·바인딩 오류0입니다. [0.3.1 변경](RELEASE_031.md)은 마지막 확인된 상태의 버튼만 기존 파란색으로 강조합니다. 미확인/처리 중에는 양쪽 모두 기본 표시이며 화면 배치·글꼴·색상표·테두리·간격은 유지합니다. [프로그램](../downloads/ATIVBatteryGuard-0.3.1-WIN10-X64.zip) · [버튼 자동 확인](../downloads/ATIVBatteryGuard-0.3.1-FINAL-CHECK.zip). 1275회귀·Python27검사와 세 빌드 통과. 새 Windows GUI는 미실행입니다. 기존 충전/IME/20분 검사는 반복하지 않습니다. 아래는 이전 기록입니다.
 
 **최신 — 0.3.0 개인용 파일 준비 / 2026-11-26 한국 시간:** [프로그램 ZIP](../downloads/ATIVBatteryGuard-0.3.0-WIN10-X64.zip) · [마지막 화면 확인 ZIP](../downloads/ATIVBatteryGuard-0.3.0-FINAL-CHECK.zip) · [변경/검증 범위](RELEASE_030_PERSONAL.md). RC3에서 제품 버전 상수만 0.3.0으로 바꿨고 미서명 안내는 텍스트에만 넣었습니다. 화면·충전 제어·기록/메모 기능은 유지합니다. 1272회귀/배포27검사, 세 빌드 경고·오류0, ZIP 구성·CRC·해시 검사가 통과했습니다. 두 ZIP의 제품6파일은 동일합니다. 마지막 Windows GUI 확인은 미실행이며 FINAL-CHECK를 풀고 ValidationCheck.exe만 실행하면 됩니다. 기존 IME/충전/20분 검사는 반복하지 않습니다. 아래는 이전 기록입니다.

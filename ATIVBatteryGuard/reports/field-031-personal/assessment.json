@@ -1,0 +1,55 @@
+{
+  "dateKorea": "2026-11-26",
+  "releaseVersion": "0.3.1",
+  "validatedCommit": "522acdebb9c4fb8ac09611a31f00385a8ba94239",
+  "releaseDisposition": "personal-stable",
+  "personalUseValidationComplete": true,
+  "publicSignedReleaseApproved": false,
+  "validatedProgramZipSha256": "e300ea3ee3df643c966f1fb9ba3c51f4b938aa70afc62bcc7703924b19bf1f0c",
+  "validatedFinalCheckZipSha256": "ea9b0638fab0b9707caf2980e1b78c57867fb66b366f5a0b42cd50f0b068ad41",
+  "sourceFingerprintSha256": "5f3035f82d7eefb902198ea313ac81f664b4077c141ebef942120c900068bbfd",
+  "sourceMatchesReleased031": true,
+  "current207ProductSourcesUnchanged": true,
+  "filesVerifiedBeforeAndAfter": true,
+  "guiExecuted": true,
+  "guiExitCode": 0,
+  "guiPassed": true,
+  "bindingErrors": 0,
+  "errors": [],
+  "embeddedAndSeparateGuiEqual": true,
+  "guiReportFilenameMatches": true,
+  "nativePowerStatus": "available",
+  "nativeWmiStatus": "complete",
+  "stateButtonChecksIncludedInPassedGui": true,
+  "buttonEmphasisUserConfirmed": true,
+  "userConfirmation": "버튼 강조는 잘 수정되었어요.",
+  "startedKorea": "2026-11-26T15:48:07.761388+09:00",
+  "completedKorea": "2026-11-26T15:48:10.613642+09:00",
+  "hardwareWritesPerformed": false,
+  "newDefenderScanExecuted": false,
+  "authenticodeSigned": false,
+  "priorFieldEvidenceInherited": [
+    "field-030-personal/assessment.json",
+    "field-ime-close-rc3/assessment.json",
+    "field-ime-v3/assessment.json",
+    "field-extended-v2/assessment.json"
+  ],
+  "manualUserFlowsConfirmedInThisAutomatedRun": false,
+  "toolFinalReleaseApproved": false,
+  "newBuildOrProductTestsExecuted": false,
+  "artifactRebuilt": false,
+  "existingZipMetadataPreserved": true,
+  "rawFiles": [
+    {
+      "file": "validation-02f3efd1df0c471f858e13ebfdf598ce.json",
+      "bytes": 929,
+      "sha256": "b08618502a6f9c5c067fc4416d37a55cd9ee602caf7543ef4cb1eca800d734ba"
+    },
+    {
+      "file": "gui-39880f61b77d4fc5abac974335d08e67.json",
+      "bytes": 177,
+      "sha256": "2c6fdd4e0da09c31583aef18bd0f293c638253fc7fb997381a730e9d3210a41f"
+    }
+  ],
+  "next": "Continue using the existing personal 0.3.1 ZIP; no repeated validation requested. Future maintenance only when a concrete issue is found."
+}

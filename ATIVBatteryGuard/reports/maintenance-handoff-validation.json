@@ -1,0 +1,87 @@
+{
+  "dateKorea": "2026-11-26",
+  "baseCommit": "0ed9eea9e5e4a897ffd34111323b420da78fc5f6",
+  "releaseVersion": "0.3.1",
+  "scope": "Maintenance documentation/index organization; no product change",
+  "archivedDocuments": [
+    {
+      "original": "README.md",
+      "archived": "docs/history/README_20261126.md",
+      "originalSha256": "f03a743f9e4e49fa675c512e6fd11b3440bdd0e7671ffee577f3b7a878f5a135",
+      "archivedSha256": "4a1ae1aea62c738cc63caa3ae00756514ecae43c08aa726d7f0a9c4f99e23d96",
+      "relativeLinksRebased": true
+    },
+    {
+      "original": "NEXT_DEVELOPMENT.md",
+      "archived": "docs/history/NEXT_DEVELOPMENT_20261126.md",
+      "originalSha256": "86ad9f6b97e926661326d2cd218875d5765db99763cfb3e52ab1b3524b54f633",
+      "archivedSha256": "1348c605640060d1f3e094f39a8befd6ecdcafcdb3738348f19f292152399e21",
+      "relativeLinksRebased": true
+    }
+  ],
+  "archivedContentPreservedWithRelativeLinksRebased": true,
+  "agentsExistingPolicyAndProjectTextPreserved": true,
+  "canonicalDocumentLocalLinksChecked": 101,
+  "canonicalDocumentLinksPassed": true,
+  "sourceFileCount": 207,
+  "productSourcesMatchValidated031": true,
+  "programSourceFingerprintSha256": "5f3035f82d7eefb902198ea313ac81f664b4077c141ebef942120c900068bbfd",
+  "allThreeExisting031ArchivesUnchanged": true,
+  "existingProgramArtifacts": [
+    {
+      "file": "ATIVBatteryGuard-0.3.1-WIN10-X64-MANUAL.zip",
+      "bytes": 318838,
+      "sha256": "60b0fe4f6b16a73574e807cecad63fb2e2f66c000765a4770bb75a46b7447da2",
+      "entries": 9,
+      "programFilesByteIdentical": true,
+      "baseZipSha256": "e300ea3ee3df643c966f1fb9ba3c51f4b938aa70afc62bcc7703924b19bf1f0c",
+      "userManualFile": "사용자 매뉴얼.txt"
+    },
+    {
+      "file": "ATIVBatteryGuard-0.3.1-WIN10-X64.zip",
+      "bytes": 314991,
+      "sha256": "e300ea3ee3df643c966f1fb9ba3c51f4b938aa70afc62bcc7703924b19bf1f0c",
+      "entries": 9,
+      "sourceFileCount": 207,
+      "productSourceFingerprintSha256": "5f3035f82d7eefb902198ea313ac81f664b4077c141ebef942120c900068bbfd"
+    },
+    {
+      "file": "ATIVBatteryGuard-0.3.1-FINAL-CHECK.zip",
+      "bytes": 326664,
+      "sha256": "ea9b0638fab0b9707caf2980e1b78c57867fb66b366f5a0b42cd50f0b068ad41",
+      "entries": 14,
+      "releaseVersion": "0.3.1",
+      "candidateZipSha256": "e300ea3ee3df643c966f1fb9ba3c51f4b938aa70afc62bcc7703924b19bf1f0c",
+      "validatorSourceFileCount": 7,
+      "validatorSourceFingerprintSha256": "f19f77833fcd4879187c5f1f2cf88050e8deacc46136f0deac81208abe3f7508"
+    }
+  ],
+  "notesPackage": {
+    "file": "ATIVBatteryGuard-0.3.1-MAINTENANCE-NOTES.zip",
+    "bytes": 198598,
+    "sha256": "b63b0514c5ec7db492067bc86073859b6562abf559a66cd9fc4c6684bf6fe06c",
+    "entries": 22
+  },
+  "notesZipCrcManifestAllChecksumsPassed": true,
+  "notesZipContainsOnlyDocumentsAndSelectedEvidence": true,
+  "runtimeExecutablesPrivateKeysOrUserPersonalRecordsIncluded": false,
+  "environmentSnapshot": {
+    "dotnetSdk": "8.0.428",
+    "packagingPython": "3.12.14",
+    "pefile": "2024.8.26",
+    "dnfile": "0.18.0",
+    "windowsDesktopSdkFilesMatchOfficialArchive": 48,
+    "windowsSdkSha512": "cce1dc5cfb2c5b73ddd9d3658f6009deb85be3a58dbec44a6dfe3910bb32b044ad2fc6bb28c77aded70c73270a204d207fe790dcb82ffca6c7b42c1335b51c21"
+  },
+  "trackedFileInventory": "docs/maintenance/TRACKED_FILES_20261126.txt",
+  "newEnvironmentInstalled": false,
+  "newProductBuildExecuted": false,
+  "newProductOrPythonRegressionExecuted": false,
+  "newWindowsGuiExecuted": false,
+  "newHardwareCalls": false,
+  "currentDisposition": "Personal 0.3.1 stable; maintenance only for a reported issue",
+  "baselineCommitSemantics": "Product and manual commits are fixed baselines; new conversation must inspect latest branch HEAD and preserve uncommitted work.",
+  "trackedFileInventoryVerified": true,
+  "trackedFileInventoryCount": 905,
+  "productTestValidationAndPackagingCodeUnchanged": true
+}

@@ -1,5 +1,9 @@
 # ATIV Battery Guard — Codex Project Instructions
 
+## 유지보수 시작점
+
+현재 개인용 안정판은 **0.3.1**입니다. 먼저 [MAINTENANCE_HANDOFF.md](MAINTENANCE_HANDOFF.md), [NEXT_DEVELOPMENT.md](NEXT_DEVELOPMENT.md), [FILE_INDEX.md](FILE_INDEX.md)를 읽으세요. 새 환경은 [DEV_ENVIRONMENT.md](DEV_ENVIRONMENT.md)를 따릅니다. 아래 초기 단계 목표와 과거 문서는 현재 기능/검증 상태와 구분하며, 하드웨어·보안·개인정보 규칙은 계속 유지합니다.
+
 ## 프로젝트 정의
 - 목적: Samsung ATIV Book 9 Plus에서 구형 Samsung Settings의 Battery Life Extender와 유사한 Windows 충전 제한 앱 개발.
 - 대상 OS: **Windows 10 x64**. 실제 모델과 BIOS 버전은 실행 시 WMI로 감지하고, NP940X3G 계열을 연구 우선순위로 둔다.

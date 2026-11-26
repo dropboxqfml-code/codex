@@ -1,0 +1,3 @@
+# Developer-only packaging dependencies; not application runtime dependencies.
+pefile==2024.8.26
+dnfile==0.18.0

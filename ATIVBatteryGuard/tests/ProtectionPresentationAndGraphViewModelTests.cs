@@ -11,6 +11,87 @@ internal static partial class Program
 {
     private static void RegisterProtectionPresentationAndGraphViewModelTests()
     {
+        AddAsync("manual button emphasis follows the last accepted state and has no query or setting side effects", async () =>
+        {
+            using (var f = new Fixture())
+            {
+                var service = new ManualVmService(); var battery = new OfflineReviewCountingBattery();
+                using (var vm = ManualVm(f, service, battery))
+                {
+                    Check(!vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "unread state was emphasized");
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    Check(vm.IsManualLimitDisabled && !vm.IsManual80PercentActive, "disabled state emphasized the 80 percent action");
+                    service.Handler = (op, phase) => Task.FromResult(PresentationRead(1, 80, 75));
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    Check(vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "confirmed 80 percent state was not exclusive");
+                    int reads = battery.Calls, calls = service.Operations.Count;
+                    for (int i = 0; i < 100; i++)
+                        Check(vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "passive state changed");
+                    Equal(reads, battery.Calls); Equal(calls, service.Operations.Count);
+                    Check(service.Operations.TrueForAll(op => op == ManualProtectionOperation.ReadState), "emphasis invoked a setting");
+                    foreach (var pair in new[] { new[] { 90, 85 }, new[] { 80, 74 }, new[] { 255, 255 } })
+                    {
+                        service.Handler = (op, phase) => Task.FromResult(PresentationRead(1, pair[0], pair[1]));
+                        await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                        Check(!vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "different or unknown thresholds became 80 percent");
+                    }
+                    service.Handler = (op, phase) => Task.FromResult(PresentationRead(0, 80, 75));
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    Check(vm.IsManualLimitDisabled && !vm.IsManual80PercentActive, "old thresholds overrode disabled mode");
+                }
+            }
+        });
+
+        AddAsync("manual button emphasis clears during pending invalidated failed mock and disposed states", async () =>
+        {
+            using (var f = new Fixture())
+            {
+                var service = new ManualVmService { Handler = (op, phase) => Task.FromResult(PresentationRead(1, 80, 75)) };
+                using (var vm = ManualVm(f, service))
+                {
+                    int enableChanges = 0, disableChanges = 0;
+                    vm.PropertyChanged += (s, e) => { if (e.PropertyName == "IsManual80PercentActive") enableChanges++; if (e.PropertyName == "IsManualLimitDisabled") disableChanges++; };
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    var pending = new TaskCompletionSource<ManualProtectionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    service.Handler = (op, phase) => pending.Task;
+                    var run = vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    Check(!vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "pending query retained prior emphasis");
+                    vm.InvalidateManualState(); pending.SetResult(PresentationRead(1, 80, 75)); await run;
+                    Check(!vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "invalidated result revived emphasis");
+                    service.Handler = (op, phase) => Task.FromResult(PresentationRead(1, 80, 75));
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    vm.IsMockMode = true;
+                    Check(!vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "mock reused physical state");
+                    vm.IsMockMode = false;
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    service.Handler = (op, phase) => Task.FromResult(ManualProtectionResult.Failure(op, ManualProtectionStatus.Rejected, true));
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    Check(!vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "failed query reused physical state");
+                    Check(enableChanges > 0 && disableChanges > 0, "selection bindings were not notified");
+                    service.Handler = (op, phase) => Task.FromResult(PresentationRead(0, 80, 75));
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    vm.Dispose();
+                    Check(!vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "disposed state stayed emphasized");
+                }
+            }
+        });
+
+        AddAsync("already enabled without fresh threshold evidence does not emphasize the requested 80 percent setting", async () =>
+        {
+            using (var f = new Fixture())
+            {
+                var service = new ManualVmService { Handler = (op, phase) => Task.FromResult(PresentationRead(1, 80, 75)) };
+                using (var vm = ManualVm(f, service))
+                {
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    service.Handler = (op, phase) => Task.FromResult(new ManualProtectionResult(op,
+                        ManualProtectionStatus.AlreadyDesiredCandidate, true, true, 1, 0, 1, 1, 1));
+                    await vm.RunManualProtectionAsync(ManualProtectionOperation.Enable80);
+                    Check(!vm.IsManual80PercentActive && !vm.IsManualLimitDisabled, "desired operation was mistaken for measured thresholds");
+                }
+            }
+        });
+
         Add("friendly protection disabled label does not imply a full charge or threshold restoration", () =>
         {
             foreach (var value in new[] { PresentationRead(0, 80, 75), PresentationRead(0, 255, 255),

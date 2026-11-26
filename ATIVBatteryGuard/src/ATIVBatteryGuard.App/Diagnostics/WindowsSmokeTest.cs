@@ -244,6 +244,7 @@ namespace ATIVBatteryGuard.Diagnostics
                 Require(window.FindName("MockSwitch") == null && window.FindName("ProtectionResultInput") == null,
                     "DEVELOPMENT_TOOLS_STILL_PRESENT");
                 await CheckTabPresentationAsync(app, window, model);
+                await CheckProtectionButtonsAsync(app, window, model, temporary, interaction);
                 model.OpenRecordingSectionCommand.Execute(null);
                 await Idle(app);
                 await CheckChartInputAsync(app, window, model);
@@ -428,6 +429,58 @@ namespace ATIVBatteryGuard.Diagnostics
 		}
 
         // Native WPF checks: page text must stay dark; the complete header must fit its panel.
+        private sealed class ProtectionButtonService : IManualProtectionOperationService
+        {
+            public bool IsBlocked => false;
+            public ManualProtectionResult Result;
+            public Task<ManualProtectionResult> RunAsync(ManualProtectionOperation operation, Action<ManualProtectionPhase> progress)
+            {
+                Require(operation == ManualProtectionOperation.ReadState, "BUTTON_TEST_SETTING_REQUESTED");
+                return Task.FromResult(Result);
+            }
+        }
+
+        private static async Task CheckProtectionButtonsAsync(Application app, MainWindow window, MainViewModel original,
+            string temporary, SmokeInteraction interaction)
+        {
+            var service = new ProtectionButtonService();
+            using (var state = new MainViewModel(new SyntheticBattery(), new SettingsStore(temporary),
+                new LocalLog(temporary), interaction, manualProtectionService: service))
+            {
+                try
+                {
+                    window.DataContext = state;
+                    await Idle(app);
+                    var enable = Find<Button>(window, "ManualEnableProtectionButton");
+                    var disable = Find<Button>(window, "ManualDisableProtectionButton");
+                    Require(!enable.IsEnabled && !disable.IsEnabled, "UNREAD_PROTECTION_BUTTONS_ENABLED");
+                    foreach (int mode in new[] { 0, 1, 0 })
+                    {
+                        service.Result = new ManualProtectionResult(ManualProtectionOperation.ReadState,
+                            ManualProtectionStatus.StateRead, true, true, 3, 0, 3, mode, mode, 80, 75);
+                        await state.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                        await Idle(app);
+                        Require(enable.IsEnabled && disable.IsEnabled, "CHECKED_PROTECTION_BUTTONS_DISABLED");
+                        var active = mode == 1 ? enable : disable;
+                        var other = mode == 1 ? disable : enable;
+                        Require((active.BorderBrush as SolidColorBrush)?.Color == Color.FromRgb(29, 92, 168)
+                            && (active.Foreground as SolidColorBrush)?.Color == Colors.White
+                            && (other.BorderBrush as SolidColorBrush)?.Color == Color.FromRgb(189, 202, 217)
+                            && (other.Foreground as SolidColorBrush)?.Color == Color.FromRgb(38, 54, 74),
+                            "PROTECTION_BUTTON_EMPHASIS_INVALID");
+                    }
+                    service.Result = ManualProtectionResult.Failure(ManualProtectionOperation.ReadState, ManualProtectionStatus.Rejected, true);
+                    await state.RunManualProtectionAsync(ManualProtectionOperation.ReadState);
+                    await Idle(app);
+                    Require(!enable.IsEnabled && !disable.IsEnabled
+                        && (enable.BorderBrush as SolidColorBrush)?.Color == Color.FromRgb(212, 221, 231)
+                        && (disable.BorderBrush as SolidColorBrush)?.Color == Color.FromRgb(212, 221, 231),
+                        "UNKNOWN_PROTECTION_EMPHASIS_RETAINED");
+                }
+                finally { window.DataContext = original; await Idle(app); }
+            }
+        }
+
         private static async Task CheckTabPresentationAsync(Application app, MainWindow window, MainViewModel model)
         {
             var tabs = Find<TabControl>(window, "MainSections");

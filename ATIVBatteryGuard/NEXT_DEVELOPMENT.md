@@ -1,5 +1,13 @@
 # 다음 개발 재개 메모
 
+## 최신 — 0.3.0 현장 통과 / 0.3.1 상태 강조 수정 / 2026-11-26 한국 시간
+
+[사용자 결과](FIELD_030_PERSONAL_RESULT.md), [0.3.1 변경](RELEASE_031.md), [새 검증](reports/release-031-validation.json), [확인 순서](FINAL_031_PERSONAL_CHECK_USER_STEPS.txt)를 먼저 읽습니다. 사용자0.3.0의 지문/파일 전후/GUI/기본 배터리WMI 통과를 원본2개로 확인했습니다. 기존ZIP/대기 메타데이터는 변경하지 않습니다.
+
+사용자가 보고한 고정80% 파란 버튼을 수정했습니다. 모드0은 해제, 모드1/80/75 확인은80% 버튼만 강조합니다. 미조회/처리/실패/무효화/시뮬레이션/다른 임계값은 어느 쪽도80%로 단정하지 않습니다. 색상/hover/pressed/disabled/기존 템플릿을 유지하고 XAML의 로컬 상태 스타일과 두 버튼 Style/Tag 외 모든 노드·속성이 동일함을 확인했습니다. 제품207소스 중 ViewModel/XAML/WindowsSmokeTest/버전4개만 바꿨고 하드웨어/명령 활성화/파일 형식은 그대로입니다.
+
+1275회귀·Python27검사 통과, 세 빌드0경고/0오류. 새 GUI 검사는 실제창에 합성 ReadState0→1/80/75→0 및 실패를 전달해 버튼 색/글자색을 확인하도록 컴파일했습니다. 실제 OEM/쓰기/helper는 호출하지 않습니다. 개인용 패키징은 검증된0.3.0과4파일 범위만 허용합니다. 새ZIP9항목/FINAL-CHECK14항목의 제품6파일 동일·CRC/해시/버전/매니페스트 통과. 실제0.3.1 Windows GUI·새Defender/서명은 미실행이므로 personalReleaseApproved=false입니다. 다음은031 FINAL-CHECK/ValidationCheck.exe의 validation/gui JSON만 받습니다. 이미 통과한 충전/IME/20분은 반복하지 않습니다. 미서명 안내는 텍스트에만 있습니다. 아래는 과거 기록입니다.
+
 ## 최신 — 0.3.0 개인용 준비 / 마지막 Windows GUI 대기 / 2026-11-26 한국 시간
 
 [개인용 배포 기록](RELEASE_030_PERSONAL.md), [검증 근거](reports/release-030-personal-validation.json), [FINAL-CHECK 순서](FINAL_030_PERSONAL_CHECK_USER_STEPS.txt)를 먼저 읽습니다. 프로그램은0.3.0/파일0.3.0.0이며 RC3의207소스 중 ApplicationRelease.Version 상수만 변경됐음을 해시로 검증했습니다. 화면/도움말/충전/설정·기록·메모 형식은 그대로이고 미서명 안내는 텍스트 파일에만 있습니다. 세 빌드 경고·오류0, 전체1272통과·실패/skip0, Python27검사 통과입니다. 버전 불일치 예제의 초기1271/1실패는 현재버전+mismatch로 고쳐 거부 조건을 보존했습니다.

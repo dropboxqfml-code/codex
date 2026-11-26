@@ -1,5 +1,7 @@
 # 0.3.0 실사용 검증 — 진행 중
 
+2026-11-26 후속: [0.3.0 사용자 최종 파일 검사](FIELD_030_PERSONAL_RESULT.md)는 통과했습니다. 이후 상태 강조 혼동을 [0.3.1](RELEASE_031.md)로 수정했습니다. 현재 새0.3.1의 Windows 버튼 색/GUI 확인은 미실행이며 별도 FINAL-CHECK로 확인합니다. 기존 수동 시험은 반복하지 않습니다. 아래는0.3.0 준비 당시와 이전 이력입니다.
+
 2026-11-26 한국 시간. 현재 파일은 **0.3.0 개인용**(파일 버전 0.3.0.0)입니다. 최종 파일의 Windows GUI 확인은 아직 대기 중입니다.
 
 [RC2 검증 키트](../downloads/ATIVBatteryGuard-0.3.0-rc.2-VALIDATION-KIT.zip) · [RC2 프로그램](../downloads/ATIVBatteryGuard-0.3.0-rc.2-WIN10-X64.zip) · [남은 확인 순서](VALIDATION_030_REMAINING_USER_STEPS.txt) · [결과 양식](VALIDATION_030_REMAINING_RESPONSE.txt) · [새 회귀 기록](reports/final-030-readiness-validation.json) · [RC2 Windows 결과](FIELD_030_RC2_RESULT.md) · [RC1 실사용 결과](FIELD_030_RC1_RESULT.md) · [RC2 클라우드 검증](reports/release-030-rc2-validation.json) · [이전 RC1 빌드 근거](reports/release-030-rc1-validation.json)

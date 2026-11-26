@@ -1,0 +1,103 @@
+{
+  "dateKorea": "2026-11-26",
+  "baseCommit": "1bcb4f9a3213aede361d0d0e74363408a61460b6",
+  "releaseVersion": "0.3.1",
+  "fileVersion": "0.3.1.0",
+  "stage": "personal-validation-pending",
+  "received030FieldResult": "field-030-personal/assessment.json",
+  "received030GuiAndFileChecksPassed": true,
+  "sourceFileCount": 207,
+  "productSourceFingerprintSha256": "5f3035f82d7eefb902198ea313ac81f664b4077c141ebef942120c900068bbfd",
+  "productSourceChangesComparedTo030": [
+    "src/ATIVBatteryGuard.App/Diagnostics/WindowsSmokeTest.cs",
+    "src/ATIVBatteryGuard.App/ViewModels/MainViewModel.cs",
+    "src/ATIVBatteryGuard.App/Views/MainWindow.xaml",
+    "src/ATIVBatteryGuard.Core/Models/ApplicationRelease.cs"
+  ],
+  "allOtherProductSourcesMatch030": true,
+  "onlyTwoButtonStylesAndLocalStateStyleChangedInXaml": true,
+  "allOtherXamlNodesAndAttributesEqual": true,
+  "hardwareCallsWriteAdmissionAndDataFormatsUnchanged": true,
+  "buttonGettersHaveNoHardwareOrFileSideEffects": true,
+  "buttonEmphasisStates": {
+    "mode0": "disable button",
+    "mode1Upper80Lower75": "80 percent button",
+    "unreadBusyUnknownInvalidatedMockOtherThresholds": "neither"
+  },
+  "portableTests": {
+    "passed": 1275,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1275,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "newProductRegressionGroups": 3,
+  "pythonTests": {
+    "passed": 27,
+    "failed": 0
+  },
+  "initialPythonFailure": "One assertion expected old rejection reason; frozen signed-030 gate rejected the new UI source first. Updated expected reason; no gate logic relaxed.",
+  "builds": {
+    "portable": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "net48Wpf": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "net48ValidationCheck": {
+      "warnings": 0,
+      "errors": 0
+    }
+  },
+  "package": {
+    "file": "ATIVBatteryGuard-0.3.1-WIN10-X64.zip",
+    "bytes": 314991,
+    "sha256": "e300ea3ee3df643c966f1fb9ba3c51f4b938aa70afc62bcc7703924b19bf1f0c",
+    "entries": 9,
+    "sourceFileCount": 207,
+    "productSourceFingerprintSha256": "5f3035f82d7eefb902198ea313ac81f664b4077c141ebef942120c900068bbfd"
+  },
+  "finalCheckPackage": {
+    "file": "ATIVBatteryGuard-0.3.1-FINAL-CHECK.zip",
+    "bytes": 326664,
+    "sha256": "ea9b0638fab0b9707caf2980e1b78c57867fb66b366f5a0b42cd50f0b068ad41",
+    "entries": 14,
+    "releaseVersion": "0.3.1",
+    "candidateZipSha256": "e300ea3ee3df643c966f1fb9ba3c51f4b938aa70afc62bcc7703924b19bf1f0c",
+    "validatorSourceFileCount": 7,
+    "validatorSourceFingerprintSha256": "f19f77833fcd4879187c5f1f2cf88050e8deacc46136f0deac81208abe3f7508"
+  },
+  "sameSixProgramFilesInBothZips": true,
+  "zipCrcHashesAllowlistAndVersionPassed": true,
+  "previous030ArchivesPreserved": true,
+  "newWindowsGuiExecuted": false,
+  "newDefenderScan": false,
+  "actualSigningPerformed": false,
+  "securitySettingsChanged": false,
+  "personalReleaseApproved": false,
+  "next": "Run 0.3.1 FINAL-CHECK ValidationCheck.exe for synthetic read-only button color transitions; do not repeat hardware/IME/soak.",
+  "logs": [
+    {
+      "file": "portable-build.log",
+      "sha256": "8f2713efb9b9f8bf637ee377bdaadeb20673f9e73dc609378209778f76eda57f"
+    },
+    {
+      "file": "portable-tests.json",
+      "sha256": "1f67e3daaa73ebebeb1b1cb6dfb8d89186628db4659db47d71a36a186de186cc"
+    },
+    {
+      "file": "wpf-build.log",
+      "sha256": "47b1edc22a89524acdbec0ec83734acd7d297b904ee2bc3f8d9c44f9febda82e"
+    },
+    {
+      "file": "checker-build.log",
+      "sha256": "eb6fa085c7c7711760a598afb831838763d47c7432e96853bd03e85f2b48e3b3"
+    },
+    {
+      "file": "release-gates.log",
+      "sha256": "3a50308b042ab088824fb9c3be03d559fae5ef6fc0fa19f2ca5a9f72461d98d9"
+    }
+  ]
+}

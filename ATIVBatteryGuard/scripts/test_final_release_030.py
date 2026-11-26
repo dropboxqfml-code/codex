@@ -105,7 +105,7 @@ class Final030Tests(unittest.TestCase):
         self.assertTrue(all(entry['signed'] is False for entry in audit.values()))
         with self.assertRaises(ValueError):validate(files,signed=True)
 
-    def test_actual_current_sources_without_windows_evidence_cannot_emit_a_signed_review_package(self):
+    def test_actual_current_patch_cannot_reuse_the_frozen_signed_030_source_gate(self):
         root=Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             target=Path(directory)/'output'
@@ -115,8 +115,7 @@ class Final030Tests(unittest.TestCase):
                 '--test-report',str(tests),'--windows-report',str(Path(directory)/'absent-windows.json'),
                 '--gui-report',str(Path(directory)/'absent-gui.json'),'--output',str(target)],capture_output=True)
             self.assertNotEqual(0,result.returncode)
-            self.assertTrue(b'Input path or size rejected' in result.stderr
-                            or b'final source version must be exactly 0.3.0' in result.stderr)
+            self.assertIn(b'Changes beyond the final version require new validation',result.stderr)
             self.assertFalse(target.exists())
 
 

@@ -13,10 +13,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--candidate-zip', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--release-version', choices=(VERSION, '0.3.0'), default=VERSION)
+    parser.add_argument('--release-version', choices=(VERSION, '0.3.0', '0.3.1'), default=VERSION)
     args = parser.parse_args()
     version = args.release_version
-    personal = version == '0.3.0'
+    personal = version in ('0.3.0', '0.3.1')
     root = Path(__file__).resolve().parents[1]
     with zipfile.ZipFile(args.candidate_zip) as archive:
         if archive.testzip() is not None or len(archive.namelist()) != 9 or set(archive.namelist()) != set(PROGRAM_NAMES) | {'BUILD-INFO.json', '먼저 읽어주세요.txt', 'SHA256SUMS.txt'}:
@@ -61,7 +61,8 @@ def main():
                            prior0211TextVisibleConfirmedByUser=True, prior0211HeaderClippingConfirmedByUser=False)
     files['VALIDATION-INFO.json'] = (json.dumps(validation_info, indent=2)+'\n').encode()
     if personal:
-        files['최종 확인 순서.txt'] = (root/'FINAL_030_PERSONAL_CHECK_USER_STEPS.txt').read_text().replace('\r\n','\n').replace('\n','\r\n').encode('utf-8-sig')
+        guide = 'FINAL_031_PERSONAL_CHECK_USER_STEPS.txt' if version == '0.3.1' else 'FINAL_030_PERSONAL_CHECK_USER_STEPS.txt'
+        files['최종 확인 순서.txt'] = (root/guide).read_text().replace('\r\n','\n').replace('\n','\r\n').encode('utf-8-sig')
     else:
         files['검증시작.cmd'] = ('@echo off\r\nsetlocal\r\n"%~dp0ATIVBatteryGuard.ValidationCheck.exe"\r\necho.\r\npause\r\n').encode('ascii')
         files['실사용 검증 순서.txt'] = (root/'VALIDATION_030_USER_STEPS.txt').read_text().replace('\r\n','\n').replace('\n','\r\n').encode('utf-8-sig')

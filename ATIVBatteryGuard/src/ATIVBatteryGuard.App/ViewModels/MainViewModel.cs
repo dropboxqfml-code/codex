@@ -420,6 +420,12 @@ namespace ATIVBatteryGuard.ViewModels
         }
         public RelayCommand OpenRecordingSectionCommand { get; }
         public bool FirstUseGuidanceVisible => !disposed && !ManualProtectionBusy && manualProtectionResult == null;
+        private bool HasVisibleManualProtectionState => !disposed && !IsMockMode && !ManualProtectionBusy
+            && manualProtectionResult?.HasKnownMode == true;
+        public bool IsManual80PercentActive => HasVisibleManualProtectionState
+            && manualProtectionResult.ModeCandidate == 1 && manualProtectionResult.UpperCandidate == 80
+            && manualProtectionResult.LowerCandidate == 75;
+        public bool IsManualLimitDisabled => HasVisibleManualProtectionState && manualProtectionResult.ModeCandidate == 0;
         public string ProtectionSummaryText => !ManualProtectionAvailable ? "이 환경에서는 충전 제어를 사용할 수 없습니다."
             : ManualProtectionBusy || IsMockMode ? ManualProtectionStateText
             : manualProtectionResult?.HasKnownMode == true ? "마지막 확인 · " + ManualProtectionPresentation.GetStateLabel(manualProtectionResult)
@@ -1216,6 +1222,7 @@ namespace ATIVBatteryGuard.ViewModels
 
 		private void NotifyManualProtection()
 		{
+            Changed("IsManual80PercentActive"); Changed("IsManualLimitDisabled");
             Changed("FirstUseGuidanceVisible"); Changed("ProtectionSummaryText"); Changed("ProtectionActionHint");
 			Changed("ManualProtectionAvailable");
 			Changed("ManualProtectionBusy");

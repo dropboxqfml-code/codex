@@ -1,0 +1,33 @@
+{
+  "dateKorea": "2026-11-26",
+  "releaseVersion": "0.3.0",
+  "validatedZipSha256": "c5611d281d45ff316f30212291eb94bc485bc261f02452a088770601d83d1e2d",
+  "sourceFingerprintSha256": "9b6cee36eca561866a79dae6ed00a7cbe272be8dcae37069ee32bae70a8846c2",
+  "sourceMatchesReleasedPersonal030": true,
+  "filesBeforeAfterPassed": true,
+  "guiPassed": true,
+  "guiExitCode": 0,
+  "bindingErrors": 0,
+  "errors": [],
+  "embeddedGuiEqualsSeparateGui": true,
+  "nativePowerStatus": "available",
+  "nativeWmiStatus": "complete",
+  "hardwareWritesPerformed": false,
+  "newDefenderOrSigningEvidence": false,
+  "personal030FinalFileGuiPassed": true,
+  "personal030ValidationCompleteWithPriorFieldEvidence": true,
+  "publicSignedReleaseApproved": false,
+  "userReportedFollowup": "80 percent action has a fixed blue style even when the last checked state is disabled; preserve all design and correct state emphasis.",
+  "rawFiles": [
+    {
+      "file": "validation-c3fd56c7b4d04ed6aaddc68ff9d4592b.json",
+      "bytes": 929,
+      "sha256": "ac8fc3dadf5d385c5e205118c29818f7479d10fcabc4bfbe6d10a4ced18ac1c9"
+    },
+    {
+      "file": "gui-0261fabb71514babbde8f12aaa97ebc0.json",
+      "bytes": 177,
+      "sha256": "2c6fdd4e0da09c31583aef18bd0f293c638253fc7fb997381a730e9d3210a41f"
+    }
+  ]
+}

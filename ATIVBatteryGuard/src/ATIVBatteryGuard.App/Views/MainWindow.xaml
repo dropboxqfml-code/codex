@@ -8,6 +8,34 @@
         WindowStartupLocation="Manual" Language="ko-KR" UseLayoutRounding="True">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="ObservationGraphVisibility" />
+        <Style x:Key="ManualProtectionStateButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="True">
+                    <Setter Property="Background" Value="#1D5CA8" />
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="BorderBrush" Value="#1D5CA8" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="True" />
+                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsMouseOver}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="#164C8E" />
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="True" />
+                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsPressed}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="#123D73" />
+                </MultiDataTrigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#EDF1F5" />
+                    <Setter Property="Foreground" Value="#64748B" />
+                    <Setter Property="BorderBrush" Value="#D4DDE7" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Top" Margin="4,0,4,12">
@@ -64,9 +92,11 @@
                                 <TextBlock Text="{Binding ProtectionActionHint}" Style="{StaticResource Detail}" />
                                 <WrapPanel>
                                     <Button x:Name="ManualReadProtectionButton" Content="현재 설정 확인(_I)" Command="{Binding ManualReadProtectionCommand}" />
-                                    <Button x:Name="ManualEnableProtectionButton" Content="80% 충전 제한(_E)" Style="{StaticResource PrimaryButton}"
+                                    <Button x:Name="ManualEnableProtectionButton" Content="80% 충전 제한(_E)" Style="{StaticResource ManualProtectionStateButton}"
+                                            Tag="{Binding IsManual80PercentActive}"
                                             Command="{Binding ManualEnableProtectionCommand}" />
-                                    <Button x:Name="ManualDisableProtectionButton" Content="제한 해제(_U)" Command="{Binding ManualDisableProtectionCommand}" />
+                                    <Button x:Name="ManualDisableProtectionButton" Content="제한 해제(_U)" Style="{StaticResource ManualProtectionStateButton}"
+                                            Tag="{Binding IsManualLimitDisabled}" Command="{Binding ManualDisableProtectionCommand}" />
                                 </WrapPanel>
                                 <TextBlock x:Name="ManualProtectionNoticeLabel" Text="{Binding ManualProtectionNotice}" TextWrapping="Wrap"
                                            Foreground="#475569" AutomationProperties.LiveSetting="Polite" />

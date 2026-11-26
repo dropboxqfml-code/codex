@@ -3,7 +3,7 @@
     <TargetFramework>net48</TargetFramework><OutputType>Exe</OutputType>
     <AssemblyName>ATIVBatteryGuard.ValidationCheck</AssemblyName>
     <PlatformTarget>x64</PlatformTarget><LangVersion>7.3</LangVersion>
-    <Version>0.3.0</Version><FileVersion>0.3.0.0</FileVersion>
+    <Version>0.3.1</Version><FileVersion>0.3.1.0</FileVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>

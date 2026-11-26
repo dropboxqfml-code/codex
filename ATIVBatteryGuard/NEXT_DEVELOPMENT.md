@@ -1,5 +1,11 @@
 # 다음 개발 재개 메모
 
+## 최신 — 0.3.0 개인용 준비 / 마지막 Windows GUI 대기 / 2026-11-26 한국 시간
+
+[개인용 배포 기록](RELEASE_030_PERSONAL.md), [검증 근거](reports/release-030-personal-validation.json), [FINAL-CHECK 순서](FINAL_030_PERSONAL_CHECK_USER_STEPS.txt)를 먼저 읽습니다. 프로그램은0.3.0/파일0.3.0.0이며 RC3의207소스 중 ApplicationRelease.Version 상수만 변경됐음을 해시로 검증했습니다. 화면/도움말/충전/설정·기록·메모 형식은 그대로이고 미서명 안내는 텍스트 파일에만 있습니다. 세 빌드 경고·오류0, 전체1272통과·실패/skip0, Python27검사 통과입니다. 버전 불일치 예제의 초기1271/1실패는 현재버전+mismatch로 고쳐 거부 조건을 보존했습니다.
+
+일반ZIP9항목/FINAL-CHECK14항목의 CRC/내부 SHA/매니페스트와 제품6파일 동일성을 확인했습니다. 두 ZIP 모두 CMD가 없습니다. 기존RC3/도구/원본 결과는 보존합니다. 개인용 패키징 경로를 추가했으며 서명 배포 검증 조건은 유지합니다. 실제 Windows GUI/SmartScreen 허용/새 Defender/서명은 미실행입니다. personalReleaseApproved/windowsFinalFileGuiPassed/final030ReleaseApproved=false입니다. 다음은 FINAL-CHECK 새 폴더에서 ATIVBatteryGuard.ValidationCheck.exe 실행 후 validation/gui JSON만 받는 것입니다. 도구의 수동 검사 대기 문구는 이 실행의 범위이며 이미 통과한 IME/충전/20분 검사를 반복하지 않습니다. 본인 노트북 사용이며 인증서/공개 배포를 선행 조건으로 두지 않습니다. 아래는 과거 기록입니다.
+
 ## 최신 — SmartScreen 확인 / 본인 노트북 사용 / 2026-11-26 한국 시간
 
 사용자가 SmartScreen 경고임과 본인 노트북에서만 사용함을 확인했습니다. [개인 사용 안내](SMARTSCREEN_PERSONAL_USE.md)와 [조사 기록](reports/smartscreen-030-personal-readiness.json)을 먼저 읽습니다. 신뢰할 수 있는 원본 RC3 ZIP 해시 확인 후 추가 정보→실행 버튼이 있을 때 사용자가 개별 실행을 허용하는 절차를 안내합니다. 버튼이 없는 정책 차단은 이 절차로 해결됐다고 표시하지 않습니다. 실제 허용/경고 해소는 미확인입니다. 인증서 구매/외부 공개/라이선스 변경/서비스 가입/외부 제출은 하지 않습니다. 기존 서명 파이프라인은 향후 배포용 선택 사항이며 현재 개인 사용의 선행 조건이 아닙니다. 제품207소스/RC3 ZIP/검사 코드 변경과 새 빌드/기능 테스트는 없습니다. 해시/소스 동일성과 문서 링크를 확인합니다. 다음 확인은 현재 파일에 실행 버튼이 표시되는지와 직접 허용 후 실행 결과이며, 기존 IME/충전/반복 검사를 다시 요청하지 않습니다. 아래는 과거 기록입니다.

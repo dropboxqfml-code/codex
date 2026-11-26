@@ -1,0 +1,109 @@
+{
+  "dateKorea": "2026-11-26",
+  "baseCommit": "78b28a5",
+  "releaseVersion": "0.3.0",
+  "fileVersion": "0.3.0.0",
+  "scope": "personal-use",
+  "stage": "personal-validation-pending",
+  "productSourceCount": 207,
+  "productSourceFingerprintSha256": "9b6cee36eca561866a79dae6ed00a7cbe272be8dcae37069ee32bae70a8846c2",
+  "productSourceChangesComparedToRc3": [
+    "src/ATIVBatteryGuard.Core/Models/ApplicationRelease.cs"
+  ],
+  "onlyExactVersionConstantChanged": true,
+  "productUiOrHelpSigningNoticeAdded": false,
+  "signingNoticeLocation": "먼저 읽어주세요.txt",
+  "xamlHardwareControlAndDataFormatsUnchanged": true,
+  "portableTests": {
+    "passed": 1272,
+    "failed": 0,
+    "skipped": 0,
+    "registered": 1272,
+    "suite": "reconstructed-portable-safety-regressions"
+  },
+  "pythonReleaseGateTests": {
+    "passed": 27,
+    "failed": 0,
+    "newPersonalTests": 3,
+    "existingSignedGateTests": 24
+  },
+  "initialVersionFixtureFailure": {
+    "passed": 1271,
+    "failed": 1,
+    "reason": "Old invalid-version fixture equaled new final version; mismatch fixture corrected without changing product logic."
+  },
+  "builds": {
+    "portable": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "net48Wpf": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "net48ValidationCheck": {
+      "warnings": 0,
+      "errors": 0
+    }
+  },
+  "package": {
+    "file": "ATIVBatteryGuard-0.3.0-WIN10-X64.zip",
+    "bytes": 313306,
+    "sha256": "c5611d281d45ff316f30212291eb94bc485bc261f02452a088770601d83d1e2d",
+    "entries": 9,
+    "sourceFileCount": 207,
+    "productSourceFingerprintSha256": "9b6cee36eca561866a79dae6ed00a7cbe272be8dcae37069ee32bae70a8846c2",
+    "windowsFinalFileGuiPassed": false,
+    "personalReleaseApproved": false
+  },
+  "finalCheckPackage": {
+    "file": "ATIVBatteryGuard-0.3.0-FINAL-CHECK.zip",
+    "bytes": 325137,
+    "sha256": "f66a8f76bd62c92d07b04d22a80870d681765b6b9d6b416b9cca4926a7aa70ce",
+    "entries": 14,
+    "releaseVersion": "0.3.0",
+    "candidateZipSha256": "c5611d281d45ff316f30212291eb94bc485bc261f02452a088770601d83d1e2d",
+    "validatorSourceFileCount": 7,
+    "validatorSourceFingerprintSha256": "3566320abed3cfdfe0e9dad657533fefdad6ff773b0bc91577b0aa955b6440a2"
+  },
+  "sameSixProgramFilesInBothZips": true,
+  "archiveCrcAndInternalShaAndAllowlistPassed": true,
+  "previousRc3ArchivesPreserved": true,
+  "manualFieldEvidenceInherited": [
+    "field-ime-close-rc3/assessment.json",
+    "field-ime-v3/assessment.json",
+    "field-extended-v2/assessment.json"
+  ],
+  "repeatedManualImeOrHardwareOrSoakTests": false,
+  "newWindowsGuiExecution": false,
+  "newDefenderScan": false,
+  "actualSigningPerformed": false,
+  "securitySettingsChanged": false,
+  "certificatesPurchasedOrIssued": false,
+  "final030ReleaseApproved": false,
+  "personalReleaseApproved": false,
+  "windowsFinalFileGuiPassed": false,
+  "next": "Run only final-file ValidationCheck.exe on target Windows 10; review validation/gui JSONs before approving personal stable release.",
+  "evidenceLogs": [
+    {
+      "file": "portable-build.log",
+      "sha256": "0e735f9ae390455fee697e84795c8c95e8612b60a364645f14774f8a7c66dbd5"
+    },
+    {
+      "file": "portable-tests.json",
+      "sha256": "f7e7a7e4052cc1f6c9c384a25b0239da571044450e7b49cd053afd724f667dbe"
+    },
+    {
+      "file": "wpf-build.log",
+      "sha256": "45125c87943209e9dc8c4d708bd5244be7dad9c640b8d09ccf7438ffe3a89dc3"
+    },
+    {
+      "file": "checker-build.log",
+      "sha256": "02fe013847e99ce5e34b4c05614adab1c60e090b9229543f92a61477ba19066d"
+    },
+    {
+      "file": "release-gates.log",
+      "sha256": "e12c0325eca7a10a5f002115a04a3a467aa6300f25021b9bbd5c224af48f0e92"
+    }
+  ]
+}

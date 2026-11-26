@@ -1,0 +1,10 @@
+  ATIVBatteryGuard.Core -> /workspace/codex/ATIVBatteryGuard/src/ATIVBatteryGuard.Core/bin/Release/net48/ATIVBatteryGuard.Core.dll
+  ATIVBatteryGuard.WmiInterop -> /workspace/codex/ATIVBatteryGuard/src/ATIVBatteryGuard.WmiInterop/bin/Release/net48/ATIVBatteryGuard.WmiInterop.dll
+  ATIVBatteryGuard.ManualProtectionHelper -> /workspace/codex/ATIVBatteryGuard/src/ATIVBatteryGuard.ManualProtectionHelper/bin/Release/net48/ATIVBatteryGuard.ManualProtectionHelper.exe
+  ATIVBatteryGuard.App -> /workspace/codex/ATIVBatteryGuard/src/ATIVBatteryGuard.App/bin/Release/net48/ATIVBatteryGuard.exe
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:09.98

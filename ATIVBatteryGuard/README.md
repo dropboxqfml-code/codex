@@ -1,5 +1,7 @@
 # ATIV Battery Guard
 
+**최신 — 0.3.0 개인용 파일 준비 / 2026-11-26 한국 시간:** [프로그램 ZIP](../downloads/ATIVBatteryGuard-0.3.0-WIN10-X64.zip) · [마지막 화면 확인 ZIP](../downloads/ATIVBatteryGuard-0.3.0-FINAL-CHECK.zip) · [변경/검증 범위](RELEASE_030_PERSONAL.md). RC3에서 제품 버전 상수만 0.3.0으로 바꿨고 미서명 안내는 텍스트에만 넣었습니다. 화면·충전 제어·기록/메모 기능은 유지합니다. 1272회귀/배포27검사, 세 빌드 경고·오류0, ZIP 구성·CRC·해시 검사가 통과했습니다. 두 ZIP의 제품6파일은 동일합니다. 마지막 Windows GUI 확인은 미실행이며 FINAL-CHECK를 풀고 ValidationCheck.exe만 실행하면 됩니다. 기존 IME/충전/20분 검사는 반복하지 않습니다. 아래는 이전 기록입니다.
+
 **최신 — SmartScreen 확인·개인 사용 안내 / 2026-11-26 한국 시간:** 사용자는 경고가 SmartScreen임을 확인했고 현재 본인 노트북에서만 사용합니다. [현재 파일 확인과 실행 허용 안내](SMARTSCREEN_PERSONAL_USE.md)를 추가했습니다. 유료 인증서 구매는 개인 사용의 선행 조건이 아닙니다. 앱/ZIP은 그대로이고 실제 PC의 실행 허용·경고 해소는 아직 미확인입니다. 아래는 이전 기록입니다.
 
 **최신 — RC3 닫기 통과·최종 파일 검토 준비 / 2026-11-26 한국 시간:** [사용자 결과](FIELD_IME_CLOSE_030_RC3_RESULT.md)에서 조합 중 화면→VM 전달과 취소 후 초안/저장값 보존을 확인했습니다. [서명/보안/GUI와 패키징 연결](FINAL_030_RELEASE_PIPELINE.md)을 구현했고 Python 판정 24개가 통과했습니다. 제품 207소스와 RC3 배포물은 그대로입니다. 인증서는 아직 없고 [CMD 게시자 경고·EXE 차단](WINDOWS_STARTUP_WARNINGS.md)은 미해결입니다. 실제 서명/새 Windows 검사/최종 출시는 미완료입니다. 이전 성공 검사는 반복하지 않습니다. 아래는 이전 기록입니다.

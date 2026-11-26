@@ -28,7 +28,7 @@ internal static partial class Program
             using (var f = new Fixture())
             {
                 foreach (Action<ValidationManifest> change in new Action<ValidationManifest>[] {
-                    m => m.SchemaVersion = 2, m => m.ReleaseVersion = "0.3.0", m => m.SourceFingerprintSha256 = "bad",
+                    m => m.SchemaVersion = 2, m => m.ReleaseVersion = ApplicationRelease.Version + "-mismatch", m => m.SourceFingerprintSha256 = "bad",
                     m => m.ProgramFiles[0].Name = "../outside.exe", m => m.ProgramFiles[0].Name = m.ProgramFiles[1].Name,
                     m => m.ProgramFiles[0].Bytes = -1, m => m.ProgramFiles[0].Bytes = 33554433,
                     m => m.ProgramFiles[0].Sha256 = "uppercase-or-invalid", m => m.ProgramFiles.RemoveAt(0) })

@@ -1,8 +1,12 @@
 # 0.3.0 실사용 검증 — 진행 중
 
-2026-11-26 한국 시간. 현재 후보는 **0.3.0-rc.3**(파일 버전 0.3.0.0)입니다. 정식 0.3.0 출시 완료판이 아닙니다.
+2026-11-26 한국 시간. 현재 파일은 **0.3.0 개인용**(파일 버전 0.3.0.0)입니다. 최종 파일의 Windows GUI 확인은 아직 대기 중입니다.
 
 [RC2 검증 키트](../downloads/ATIVBatteryGuard-0.3.0-rc.2-VALIDATION-KIT.zip) · [RC2 프로그램](../downloads/ATIVBatteryGuard-0.3.0-rc.2-WIN10-X64.zip) · [남은 확인 순서](VALIDATION_030_REMAINING_USER_STEPS.txt) · [결과 양식](VALIDATION_030_REMAINING_RESPONSE.txt) · [새 회귀 기록](reports/final-030-readiness-validation.json) · [RC2 Windows 결과](FIELD_030_RC2_RESULT.md) · [RC1 실사용 결과](FIELD_030_RC1_RESULT.md) · [RC2 클라우드 검증](reports/release-030-rc2-validation.json) · [이전 RC1 빌드 근거](reports/release-030-rc1-validation.json)
+
+## 개인용 0.3.0 준비
+
+[일반 프로그램](../downloads/ATIVBatteryGuard-0.3.0-WIN10-X64.zip) · [FINAL-CHECK](../downloads/ATIVBatteryGuard-0.3.0-FINAL-CHECK.zip) · [결과](RELEASE_030_PERSONAL.md) · [근거](reports/release-030-personal-validation.json). 제품207소스는 RC3에서 버전 상수만 바뀌었습니다. 미서명 안내는 텍스트에만 있습니다. 1272회귀와 Python27검사 통과, 세 빌드 경고·오류0, ZIP/해시/버전/6파일 동일성을 확인했습니다. 실제 Windows의 이 최종 바이트에 대한 GUI 검사는 미실행입니다. FINAL-CHECK를 새 폴더에 풀고 ValidationCheck.exe로 마지막 자동 확인만 하며 기존 수동 검사는 반복하지 않습니다. 서명 배포는 별도 선택 사항입니다.
 
 ## 검증 상태
 
@@ -15,14 +19,14 @@
 | 기존 충전 제한·해제·재시작 유지 | 이전 사용자 근거 인계. 반복 시험 없음 |
 | RC2 portable 회귀 | 선택 유지·통합 품질·추가 정책·시작 진단 회귀를포함해1267통과·실패/skip0 |
 | 빌드 | portable·전체 net48 WPF·별도 net48 검증 도구, 경고/오류0 |
-| 서명 배포 조건 검사 | 현재6파일과 EXE/DLL4개 서명 범위로 보강. 최종 서명/GUI/패키징 연결까지24회귀 통과. 실제 서명·백신 실행 증거는 아님 |
+| 서명 배포 조건 검사 | 현재6파일과 EXE/DLL4개 서명 범위로 보강. 서명/GUI24개와 개인용 패키징3개로27검사 통과. 실제 서명·백신 실행 증거는 아님 |
 | RC2 Windows 자동 검사 | 사용자 JSON 통과: 파일 전후 확인 true, 종료0, GUI passed, 오류/바인딩 오류0. 기본 배터리 available / WMI complete, 하드웨어 쓰기 false |
 | 추가 검사 v2 | 사용자 JSON: 시작/본 검사 모두 통과, 빠른30회/20분533회, 오류·바인딩 오류0, 파일/정리 통과 |
 | 취소·두 창 충돌·잠금 재시도 | 같은 검사 호스트의 실제 화면/대화상자 검사 통과. 독립 프로세스 경쟁은 별도 |
 | 실제 IME 조합 | v3 저장·재열기 통과. RC3/v4 닫기 취소도 통과. 실제 지연된 화면→VM 전달과 초안/저장값 보존 확인 |
 | 더 긴 실사용 | 20분 관찰을 넘는 전체 장기 안정성 보증은 아님 |
 | 첫 실행 경고·서명 | Windows10/940X3G CMD 게시자 경고·EXE 실행 차단 보고. 미서명/인증서 없음. 차단 미해결・정확한 창 종류 미확인 |
-| 최종 0.3.0 | 미완료 |
+| 개인용 0.3.0 | 파일 준비 완료, 마지막 Windows GUI 대기. 서명/공개 배포는 하지 않음 |
 
 ## RC3 수정 후보와 닫기 전용 검사
 

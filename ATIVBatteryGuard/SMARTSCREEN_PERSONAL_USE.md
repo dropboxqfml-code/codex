@@ -10,11 +10,11 @@
 Get-FileHash -Algorithm SHA256 -LiteralPath '<ZIP 전체 경로>'
 ```
 
-현재 0.3.1 일반 프로그램 ZIP의 기준값:
+현재 0.3.1 매뉴얼 동봉 프로그램 ZIP의 기준값 (프로그램6파일은 기존 검증본과 동일):
 
 ```text
-ATIVBatteryGuard-0.3.1-WIN10-X64.zip
-e300ea3ee3df643c966f1fb9ba3c51f4b938aa70afc62bcc7703924b19bf1f0c
+ATIVBatteryGuard-0.3.1-WIN10-X64-MANUAL.zip
+60b0fe4f6b16a73574e807cecad63fb2e2f66c000765a4770bb75a46b7447da2
 ```
 
 이전 RC3의 원본 기준은 [당시 기록](reports/release-030-rc3-validation.json)에 보존합니다. 이 값은 ZIP 전체의 해시입니다. EXE 단독이나 추가 검사 ZIP과 비교하지 않습니다. 대소문자는 무관하며 일치하지 않으면 이 기준으로 실행을 허용하지 않습니다. 해시 일치는 전달한 배포물과 같은 바이트임을 확인하며 악성 코드 부재를 보증하는 검사는 아닙니다.

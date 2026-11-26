@@ -83,9 +83,10 @@ def test_console_stop_polls_without_waiting_and_latches_enter(monkeypatch):
     keys = deque()
     monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setattr(sys, "stdin", SimpleNamespace(isatty=lambda: True))
-    monkeypatch.setitem(
-        sys.modules, "msvcrt", SimpleNamespace(kbhit=lambda: bool(keys), getwch=keys.popleft)
-    )
+    import ctypes
+
+    crt = SimpleNamespace(_kbhit=lambda: bool(keys), _getwch=lambda: ord(keys.popleft()))
+    monkeypatch.setattr(ctypes, "CDLL", lambda name, *, winmode: crt)
     pressed = auto_monitor_cli._console_stop()
     assert not pressed()
     keys.extend(["x", "\r"])
@@ -407,13 +408,21 @@ def test_two_cycle_summary_distinguishes_partial_coverage_from_saved_files():
 
 @pytest.mark.parametrize("trigger", ["enter", "time_limit", "interrupt"])
 def test_windows_trial_keeps_live_checkpoints_before_the_final_json(monkeypatch, capsys, trigger):
+    from threading import Event
+
     from image_monitor import monitor_auto_session, monitor_trial_progress
     from image_monitor.monitor_trial_progress import trial_stage
 
     console = io.StringIO()
+    key_checked = Event()
     now = [0]
     monkeypatch.setattr(monitor_trial_progress, "monotonic", lambda: now[0])
-    monkeypatch.setattr(auto_monitor_cli, "_console_stop", lambda: lambda: trigger == "enter")
+
+    def keypress():
+        key_checked.set()
+        return trigger == "enter"
+
+    monkeypatch.setattr(auto_monitor_cli, "_console_stop", lambda: keypress)
     monkeypatch.setattr(
         auto_monitor_cli, "_progress_output", lambda: auto_monitor_cli.nullcontext(console)
     )
@@ -427,11 +436,18 @@ def test_windows_trial_keeps_live_checkpoints_before_the_final_json(monkeypatch,
         trial_stage("저장 후보 선택")
         before = capsys.readouterr()
         assert before.out == ""
-        assert before.err == console.getvalue()
+        # Every file checkpoint is synchronous even if screen updates coalesce.
         assert "완료 1주기 · 게시글 1건 · 검증 2장" in before.err
         assert "[시험 0초] 저장 후보 선택" in before.err
         if trigger == "interrupt":
             raise KeyboardInterrupt
+        if trigger == "enter":
+            from time import monotonic, sleep
+
+            assert key_checked.wait(2)
+            deadline = monotonic() + 2
+            while not should_stop() and monotonic() < deadline:
+                sleep(0.005)
         if trigger == "time_limit":
             now[0] = 299
             assert not should_stop()
@@ -446,6 +462,9 @@ def test_windows_trial_keeps_live_checkpoints_before_the_final_json(monkeypatch,
     result = json.loads(capsys.readouterr().out)
     if trigger != "interrupt":
         assert result["trial_stop_trigger"] == trigger
+        assert result["trial_stop_elapsed_seconds"] == (300 if trigger == "time_limit" else 0)
+        if trigger == "enter":
+            assert result["trial_enter_observed_seconds"] == 0
     else:
         assert result["status"] == "auto_monitor_cancelled"
     trial_stage("must not escape the completed trial")
@@ -468,7 +487,7 @@ def test_trial_timeout_emits_checkpoint_while_foreground_call_is_blocked(monkeyp
     console = Console()
     monkeypatch.setattr(progress, "_HEARTBEAT_SECONDS", 0.01)
     monkeypatch.setattr(progress, "_TRIAL_SECONDS", 0)
-    trial = progress.MonitorTrial(console, None)
+    trial = progress.MonitorTrial(lambda: auto_monitor_cli.nullcontext(console), None)
     with trial.observe():
         assert announced.wait(3)
         assert trial.should_stop() and trial.stop_trigger == "time_limit"

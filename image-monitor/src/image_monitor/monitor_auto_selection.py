@@ -164,6 +164,9 @@ def search_monitor_candidates(
         database = _plain_path(watch / "watch.sqlite")
         interval = load_monitor_settings(watch)["interval_seconds"]
         while True:
+            if stop_requested(should_stop):
+                report.update(status="cancelled", reason="requested_stop")
+                break
             trial_stage("감시 기록 확인")
             ops = load_monitor_operations(*roots, now=clock.now(), should_stop=should_stop)
             if ops["status"] in {"busy", "cancelled"}:
@@ -237,8 +240,7 @@ def search_monitor_candidates(
                     report.update(status="waiting", reason="persisted_cooldown")
                     break
                 waited_for = choice
-                trial_stage("본문 요청 간격 대기")
-                if not wait_until(clock, due, should_stop):
+                if not wait_until(clock, due, should_stop, label="본문 요청 간격 대기"):
                     report.update(status="cancelled", reason="requested_stop")
                     break
                 continue

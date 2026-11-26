@@ -184,14 +184,22 @@ def _describe_result(report):
 def _console_stop():
     if sys.platform != "win32" or not sys.stdin.isatty():
         return None
-    import msvcrt
+    import ctypes
 
+    # CDLL releases the GIL during both console calls, including a stalled poll.
+    crt = ctypes.CDLL("ucrtbase.dll", winmode=0x00000800)  # LOAD_LIBRARY_SEARCH_SYSTEM32
+    hit = crt._kbhit
+    hit.argtypes = []
+    hit.restype = ctypes.c_int
+    read = crt._getwch
+    read.argtypes = []
+    read.restype = ctypes.c_ushort
     requested = False
 
     def pressed():
         nonlocal requested
-        while not requested and msvcrt.kbhit():
-            requested = msvcrt.getwch() == "\r"
+        while not requested and hit():
+            requested = read() == 13
         return requested
 
     return pressed
@@ -275,16 +283,16 @@ def run_auto_monitor_cli(watch_root, legacy_root, work_root, max_cycles, *, list
     try:
         from image_monitor.monitor_auto_session import auto_monitor_exit_code, run_auto_monitor
 
-        with _progress_output() as progress:
+        trial = None
+        if (
+            not list_only
+            and max_cycles == 2
+            and sys.platform == "win32"
+            and os.environ.get("IMAGE_MONITOR_CONSOLE_PROGRESS") == "1"
+        ):
+            trial = MonitorTrial(_progress_output, _console_stop())
+        with nullcontext() if trial else _progress_output() as progress:
             catch_up = list_only and max_cycles == MAX_CATCH_UP_SCANS
-            trial = None
-            if (
-                not list_only
-                and max_cycles == 2
-                and sys.platform == "win32"
-                and os.environ.get("IMAGE_MONITOR_CONSOLE_PROGRESS") == "1"
-            ):
-                trial = MonitorTrial(progress, _console_stop())
             should_stop = (
                 trial.should_stop
                 if trial
@@ -326,6 +334,9 @@ def run_auto_monitor_cli(watch_root, legacy_root, work_root, max_cycles, *, list
                 )
             if trial and trial.stop_trigger:
                 report["trial_stop_trigger"] = trial.stop_trigger
+                report["trial_stop_elapsed_seconds"] = trial.stop_elapsed
+                if trial.enter_elapsed is not None:
+                    report["trial_enter_observed_seconds"] = trial.enter_elapsed
             code = auto_monitor_exit_code(report)
     except (KeyboardInterrupt, Exception) as error:
         interrupted = isinstance(error, KeyboardInterrupt)

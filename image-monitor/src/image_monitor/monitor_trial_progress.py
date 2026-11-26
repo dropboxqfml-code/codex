@@ -3,7 +3,7 @@
 import sys
 from contextlib import contextmanager
 from contextvars import ContextVar
-from threading import Event, Lock, Thread
+from threading import Condition, Event, Thread
 from time import monotonic
 
 _CURRENT = ContextVar("automatic_monitor_trial", default=None)
@@ -17,56 +17,128 @@ def trial_stage(label):
         trial.record(label, stage=label)
 
 
+@contextmanager
+def trial_wait(label, clock, now, due):
+    trial = _CURRENT.get()
+    if trial is None:
+        yield
+        return
+    start = monotonic()
+    trial.record(
+        f"{label} · 예정 {max(0, (due - now).total_seconds()):.1f}초 · "
+        f"요청 가능 시각 {due.isoformat(timespec='seconds')}",
+        stage=label,
+    )
+    try:
+        yield
+    finally:
+        trial.record(
+            f"{label} 복귀 · 실제 {monotonic() - start:.1f}초 · "
+            f"복귀 시각 {clock.now().isoformat(timespec='seconds')}"
+        )
+
+
 class MonitorTrial:
-    def __init__(self, console, keyboard):
-        self.console = console
+    def __init__(self, open_console, keyboard):
+        self.open_console = open_console
         self.keyboard = keyboard
         self.started = monotonic()
         self.stage = "자동 감시 시작"
         self.stop_trigger = None
-        self._output = Lock()
-        self._stop = Lock()
+        self.stop_elapsed = None
+        self.enter_elapsed = None
+        self._changed = Condition()
+        self._latest = None
+        self._done = Event()
 
     def record(self, text, *, stage=None):
-        with self._output:
+        with self._changed:
             if stage:
                 self.stage = stage
             elapsed = int(monotonic() - self.started)
             line = f"[시험 {elapsed}초] {text}"
-            # stderr is the CMD's open result TXT, including on a forced exit.
             print(line, file=sys.stderr, flush=True)
-            if self.console is not sys.stderr:
-                print(line, file=self.console, flush=True)
+            self._latest = line
+            self._changed.notify()
+
+    def _display(self):
+        # The display owns the console handle, including close. QuickEdit can
+        # suspend a console write for an arbitrary time.
+        try:
+            with self.open_console() as console:
+                if console is sys.stderr:
+                    return
+                while True:
+                    with self._changed:
+                        self._changed.wait_for(
+                            lambda: self._latest is not None or self._done.is_set()
+                        )
+                        line, self._latest = self._latest, None
+                        if line is None:
+                            return
+                    print(line, file=console, flush=True)
+        except (OSError, ValueError):
+            return
+
+    def _check_stop(self, *, enter=False):
+        with self._changed:
+            elapsed = monotonic() - self.started
+            if enter and self.enter_elapsed is None:
+                self.enter_elapsed = int(elapsed)
+                self.record("실행 창 Enter 입력 확인")
+            if self.stop_trigger is None and (enter or elapsed >= _TRIAL_SECONDS):
+                self.stop_trigger = "time_limit" if elapsed >= _TRIAL_SECONDS else "enter"
+                self.stop_elapsed = int(elapsed)
+                reason = "시험 시간제한" if self.stop_trigger == "time_limit" else "Enter 입력"
+                self.record(
+                    f"{reason} 종료 요청 · 현재 단계가 안전하게 끝나기를 기다립니다 · {self.stage}"
+                )
+            return self.stop_trigger is not None
 
     def should_stop(self):
-        with self._stop:
-            if self.stop_trigger is None:
-                if monotonic() - self.started >= _TRIAL_SECONDS:
-                    self.stop_trigger = "time_limit"
-                elif self.keyboard and self.keyboard():
-                    self.stop_trigger = "enter"
-            return self.stop_trigger is not None
+        return self._check_stop()
+
+    def _read_enter(self):
+        # Console input can also stall. Never hold a monitor lock while polling it.
+        try:
+            while not self._done.is_set():
+                if self.keyboard():
+                    with self._changed:
+                        if not self._done.is_set():
+                            self._check_stop(enter=True)
+                    return
+                self._done.wait(0.1)
+        except (OSError, ValueError):
+            return
+
+    def _heartbeat(self):
+        while not self.should_stop():
+            left = self.started + _TRIAL_SECONDS - monotonic()
+            if self._done.wait(max(0, min(_HEARTBEAT_SECONDS, left))):
+                return
+            if not self.should_stop():
+                self.record(f"진행 중 · 마지막 단계 {self.stage}")
 
     @contextmanager
     def observe(self):
-        done = Event()
-
-        def heartbeat():
-            while not done.wait(_HEARTBEAT_SECONDS):
-                if self.should_stop():
-                    self.record(
-                        f"종료 요청 · 현재 단계가 안전하게 끝나기를 기다립니다 · {self.stage}"
-                    )
-                    return
-                self.record(f"진행 중 · 마지막 단계 {self.stage}")
-
         token = _CURRENT.set(self)
-        thread = Thread(target=heartbeat, name="monitor-trial-progress", daemon=True)
+        heartbeat = Thread(target=self._heartbeat, name="monitor-trial-progress", daemon=True)
+        threads = [
+            Thread(target=self._display, name="monitor-trial-console", daemon=True),
+            heartbeat,
+        ]
+        if self.keyboard:
+            threads.append(Thread(target=self._read_enter, name="monitor-trial-input", daemon=True))
         try:
-            thread.start()
+            for thread in threads:
+                thread.start()
             yield
         finally:
-            done.set()
-            if thread.is_alive():
-                thread.join()
+            with self._changed:
+                self._done.set()
+                self._changed.notify_all()
+            # Only console I/O may still be blocked; it owns no report resource.
+            for thread in threads:
+                if thread.is_alive():
+                    thread.join(timeout=None if thread is heartbeat else 0.1)
             _CURRENT.reset(token)

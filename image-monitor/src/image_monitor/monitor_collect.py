@@ -159,8 +159,7 @@ def _collect(
         remaining = (due - clock.now()).total_seconds()
         if remaining > max_wait:
             break
-        trial_stage("저장 요청 간격 대기")
-        if not wait_until(clock, due, should_stop):
+        if not wait_until(clock, due, should_stop, label="저장 요청 간격 대기"):
             report.update(status="monitor_collect_cancelled", reason="requested_stop")
             return
 

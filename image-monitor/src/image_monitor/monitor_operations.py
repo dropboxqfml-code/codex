@@ -26,7 +26,6 @@ from image_monitor.candidate_save_selection import (
     selection_service_blocked,
 )
 from image_monitor.candidate_store import (
-    MAX_DETAIL_RESULT_BYTES,
     CandidateDetailStore,
     detail_service_blocked,
 )
@@ -38,7 +37,6 @@ from image_monitor.monitor_batch_runtime import (
 )
 from image_monitor.monitor_save_ledger import (
     LEDGER_NAME,
-    MAX_TASKS,
     LedgerStore,
     task_native_base,
     task_work_root,
@@ -175,7 +173,7 @@ def _add(snapshot, status, reason, image_count=None, *, count=True):
     )
 
 
-def _controls(queue, tasks, details, now, should_stop):
+def _controls(queue, tasks, now, should_stop):
     """Validate every persisted control before choosing a public priority."""
     state = WatchStore(queue).get_state(MONITOR_SCOPE)
     control = _control(state)
@@ -187,26 +185,10 @@ def _controls(queue, tasks, details, now, should_stop):
         selection = read_selection(_database_path(queue).parent / name)
         if selection is not None:
             controls.append(selection["control"])
-    for detail in details:
-        _stop(should_stop)
-        result = detail["result"]
-        if isinstance(result, dict) and "control" in result:
-            if not isinstance(result["control"], dict):
-                raise ValueError("Detail navigation control is invalid")
-            controls.append(result["control"])
     due, in_flight = now, False
     for item in controls:
         _stop(should_stop)
-        for key in ("blocked", "in_flight"):
-            if key in item and type(item[key]) is not bool:
-                raise ValueError("Navigation control is invalid")
-        blocked = blocked or item.get("blocked") is True
-        in_flight = in_flight or item.get("in_flight") is True
-        for key in ("started_at", "finished_at", "next_eligible_at"):
-            if key in item:
-                instant = _stored_time(item[key])
-                if key == "next_eligible_at":
-                    due = max(due, instant)
+        blocked, in_flight, due = _merge_control(item, blocked, in_flight, due)
     shared = queue.connection.execute(
         "SELECT not_before FROM service_limits WHERE scope=?", (SERVICE_SCOPE,)
     ).fetchone()
@@ -215,24 +197,23 @@ def _controls(queue, tasks, details, now, should_stop):
     return blocked, in_flight, due
 
 
-def _details(queue, should_stop):
-    if queue.schema_version < 5:
-        return []
-    rows = queue.connection.execute(
-        "SELECT attempt_id,length(CAST(result_json AS BLOB)) FROM candidate_details WHERE "
-        + _WHERE
-        + " ORDER BY started_at,attempt_id LIMIT ?",
-        (*MONITOR_SCOPE.key(), MAX_TASKS + 1),
-    ).fetchall()
-    if len(rows) > MAX_TASKS:
-        raise ValueError("Existing detail metadata exceeds its limit")
-    details = []
-    baseline = WatchStore(queue).get_state(MONITOR_SCOPE)["baseline"]
-    for row in rows:
+def _merge_control(item, blocked, in_flight, due):
+    if not isinstance(item, dict):
+        raise ValueError("Navigation control is invalid")
+    for key in ("blocked", "in_flight"):
+        if key in item and type(item[key]) is not bool:
+            raise ValueError("Navigation control is invalid")
+    for key in ("started_at", "finished_at", "next_eligible_at"):
+        if key in item:
+            instant = _stored_time(item[key])
+            if key == "next_eligible_at":
+                due = max(due, instant)
+    return blocked or item.get("blocked") is True, in_flight or item.get("in_flight") is True, due
+
+
+def _details(queue, baseline, should_stop):
+    for detail in CandidateDetailStore(queue).iter_details(MONITOR_SCOPE):
         _stop(should_stop)
-        if row[1] is not None and row[1] > MAX_DETAIL_RESULT_BYTES:
-            raise ValueError("Existing detail evidence exceeds its limit")
-        detail = CandidateDetailStore(queue).get(row[0])
         candidate = _candidate(queue, detail["post_id"])
         if detail["first_scan_id"] != candidate["first_scan_id"]:
             raise ValueError("Detail discovery binding changed")
@@ -254,11 +235,10 @@ def _details(queue, should_stop):
             detail["result"], dict
         ):
             raise ValueError("Finished detail evidence is invalid")
-        details.append(detail)
-    return details
+        yield detail, candidate
 
 
-def _detail_row(queue, detail):
+def _detail_row(queue, detail, candidate, baseline):
     if detail["status"] != "completed":
         return "candidate_detail_needs_review", "candidate_detail_requires_review", None
     result = detail["result"]
@@ -270,8 +250,6 @@ def _detail_row(queue, detail):
     snapshot = observation.get("snapshot")
     if observation.get("status") != "observed" or not isinstance(snapshot, dict):
         raise ValueError("Completed detail body evidence is missing")
-    candidate = _candidate(queue, detail["post_id"])
-    baseline = WatchStore(queue).get_state(MONITOR_SCOPE)["baseline"]
     classification = classify_candidate_detail(candidate, baseline, snapshot)
     if classification["time_status"] == "unknown":
         return "candidate_detail_needs_review", "candidate_detail_requires_review", None
@@ -400,7 +378,6 @@ def _load(watch, legacy, batch, now, should_stop):
 
 def _read(queue, tasks, pending, watch, legacy, batch, now, should_stop, *, standalone=False):
     result = _snapshot("ready", "no_existing_work")
-    details = _details(queue, should_stop)
     managed = {task["task_id"] for task in tasks if task["output_kind"] == "managed"}
     if _task_directories(batch) - managed:
         raise ValueError("Existing task output has no frozen binding")
@@ -456,11 +433,15 @@ def _read(queue, tasks, pending, watch, legacy, batch, now, should_stop, *, stan
         }.get(status, status)
         _add(result, status, reason, permit.image_count)
     detail_review = False
-    for detail in details:
-        _stop(should_stop)
+    blocked, in_flight, due = _controls(queue, tasks, now, should_stop)
+    baseline = WatchStore(queue).get_state(MONITOR_SCOPE)["baseline"]
+    for detail, candidate in _details(queue, baseline, should_stop):
+        evidence = detail["result"]
+        if isinstance(evidence, dict) and "control" in evidence:
+            blocked, in_flight, due = _merge_control(evidence["control"], blocked, in_flight, due)
         if detail["post_id"] in represented:
             continue
-        status, reason, images = _detail_row(queue, detail)
+        status, reason, images = _detail_row(queue, detail, candidate, baseline)
         detail_review = detail_review or status == "candidate_detail_needs_review"
         _add(result, status, reason, images)
     if queue.schema_version >= 4:
@@ -484,7 +465,6 @@ def _read(queue, tasks, pending, watch, legacy, batch, now, should_stop, *, stan
         result["rows_omitted"] += max(
             0, uninspected - sum(row["status"] == "candidate_uninspected" for row in result["rows"])
         )
-    blocked, in_flight, due = _controls(queue, tasks, details, now, should_stop)
     result["wait_until"] = _stamp(due) if due > now else None
     result["can_finish"] = _can_finish(queue, tasks, pending, legacy, batch, should_stop)
     if blocked:

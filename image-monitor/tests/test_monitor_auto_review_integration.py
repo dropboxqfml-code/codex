@@ -177,6 +177,7 @@ def test_segment_queued_empty_detail_then_layout_review_and_offline_report(
         "fresh_detail_outcome": "before_baseline",
         "detail_selection_order": "oldest_discovery",
         "uninspected_at_selection": 89,
+        "detail_attempts_at_selection": 1,
     }
     assert [item["historical_reason"] for item in result["previous_list_checks"]] == [
         "previous_head_not_matched",

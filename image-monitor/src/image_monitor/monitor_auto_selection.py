@@ -9,7 +9,6 @@ from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_operations import load_monitor_operations
 from image_monitor.monitor_save_ledger import (
     LEDGER_NAME,
-    MAX_TASKS,
     LedgerStore,
     _roots,
     other_monitor_save_claims,
@@ -48,7 +47,17 @@ def _handoff(permit):
 
 
 def _choice(
-    queue, state, roots, details, assessed, fresh_posts, report, *, setup_retry, alternate_order
+    queue,
+    state,
+    roots,
+    details,
+    assessed,
+    fresh_posts,
+    report,
+    *,
+    setup_retry,
+    alternate_order,
+    should_stop,
 ):
     watch, legacy, batch = roots
     report.pop("previous_failure_reason", None)
@@ -105,6 +114,9 @@ def _choice(
     elif setup_retry:
         raise QueueError("The prior monitor save ledger disappeared")
     for detail in details:
+        if stop_requested(should_stop):
+            report.update(status="cancelled", reason="requested_stop")
+            return None, None
         attempt = detail["attempt_id"]
         if detail["status"] != "completed" or detail["post_id"] in claimed:
             continue
@@ -205,23 +217,38 @@ def search_monitor_candidates(
                 if eligibility == "blocked":
                     report["reason"] = "service_access_blocked"
                     break
-                details = CandidateDetailStore(queue).list_details(MONITOR_SCOPE, limit=MAX_TASKS)
-                if not fresh_posts.issubset(
-                    {d["post_id"] for d in details if d["status"] == "completed"}
-                ):
+                store = CandidateDetailStore(queue)
+                outstanding = fresh_posts.copy()
+                last_finished = _control(state).get("finished_at")
+                latest = _stored_time(last_finished) if last_finished else None
+                attempts = 0
+                for post, status, finished in store.iter_detail_timing(MONITOR_SCOPE):
+                    attempts += 1
+                    if stop_requested(should_stop):
+                        report.update(status="cancelled", reason="requested_stop")
+                        return report, None
+                    if status == "completed":
+                        outstanding.discard(post)
+                    if finished:
+                        instant = _stored_time(finished)
+                        if latest is None or instant > latest:
+                            latest = instant
+                if outstanding:
                     raise QueueError("Expected a durable completed body observation")
+                report["detail_attempts_at_selection"] = attempts
                 report["uninspected_at_selection"] = ops["candidate_uninspected"]
                 trial_stage("저장 후보 선택")
                 handoff, pending = _choice(
                     queue,
                     state,
                     roots,
-                    details,
+                    store.iter_details(MONITOR_SCOPE),
                     assessed,
                     fresh_posts,
                     report,
                     setup_retry=setup_retry,
                     alternate_order=alternate_order,
+                    should_stop=should_stop,
                 )
                 if handoff is None and pending is None:
                     break
@@ -230,12 +257,8 @@ def search_monitor_candidates(
                     break
                 if ops["wait_until"] is not None:
                     due = max(due, _stored_time(ops["wait_until"]))
-                finished = [
-                    _control(state).get("finished_at"),
-                    *(d["finished_at"] for d in details),
-                ]
-                for value in filter(None, finished):
-                    due = max(due, next_poll_at(_stored_time(value), interval_seconds=interval))
+                if latest is not None:
+                    due = max(due, next_poll_at(latest, interval_seconds=interval))
                 wait = (due - now).total_seconds()
                 choice = handoff or pending
             if waited_for is not None and waited_for != choice:

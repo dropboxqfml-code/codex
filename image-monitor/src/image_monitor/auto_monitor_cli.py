@@ -189,6 +189,9 @@ def _describe_result(report):
             pending = last.get("uninspected_at_selection")
             if type(pending) is int and pending >= 0:
                 summary += f" 마지막 후보 선택 시점에 본문 미확인 글이 {pending}건 있었습니다."
+            history = last.get("detail_attempts_at_selection")
+            if type(history) is int and history >= 0:
+                summary += f" 같은 시점까지 누적 본문 확인 시도는 {history}건입니다."
             orders = {
                 "oldest_discovery": "오래 기다린 글",
                 "highest_post_id": "글번호가 가장 큰 글",

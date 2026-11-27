@@ -131,6 +131,29 @@ class CandidateDetailStore:
             ).fetchone()
         )
 
+    def iter_details(self, scope: WatchScope):
+        """Stream history in inspection order without sorting full body evidence in memory."""
+        key = _scope(scope)
+        if self.queue.schema_version < 5:
+            return
+        rows = self.queue.connection.execute(
+            f"SELECT attempt_id,length(CAST(result_json AS BLOB)) FROM candidate_details "
+            f"WHERE {_WHERE} ORDER BY started_at,attempt_id",
+            key,
+        )
+        for attempt_id, size in rows:
+            if size is not None and size > MAX_DETAIL_RESULT_BYTES:
+                raise QueueError("Existing detail evidence exceeds its limit")
+            yield self.get(attempt_id)
+
+    def iter_detail_timing(self, scope: WatchScope):
+        """Read completion evidence and cooldown times without loading the body reports."""
+        key = _scope(scope)
+        if self.queue.schema_version >= 5:
+            yield from self.queue.connection.execute(
+                f"SELECT post_id,status,finished_at FROM candidate_details WHERE {_WHERE}", key
+            )
+
     def list_details(self, scope: WatchScope, *, limit: int = 100) -> list[dict]:
         key, limit = _scope(scope), _limit(limit)
         if self.queue.schema_version < 5:

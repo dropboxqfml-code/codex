@@ -163,8 +163,9 @@ def _record_collection(report, turn):
                 last["focus_at_failure"] = flags
         last.update(share_setup_diagnostics(turn["save"], stage_key="worker_last_stage"))
     if isinstance(search, dict):
-        if "uninspected_at_selection" in search:
-            last["uninspected_at_selection"] = _count(search, "uninspected_at_selection")
+        for key in ("uninspected_at_selection", "detail_attempts_at_selection"):
+            if key in search:
+                last[key] = _count(search, key)
         if turn["new_details_checked"] == 1 and "detail_selection_order" in search:
             last["detail_selection_order"] = search["detail_selection_order"]
         if turn["new_details_checked"] == 1 and "last_fresh_detail_outcome" in search:
@@ -221,6 +222,7 @@ def _record_collection(report, turn):
                     k: last[k]
                     for k in (
                         "uninspected_at_selection",
+                        "detail_attempts_at_selection",
                         "fresh_detail_outcome",
                         "detail_selection_order",
                     )

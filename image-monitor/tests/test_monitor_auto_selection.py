@@ -13,7 +13,7 @@ from test_watch_image_search import body
 from test_watch_runtime import BrowserFactory, FakeClock, baseline_outcome, link, observed, snapshot
 
 from image_monitor import candidate_runtime, monitor_operations, watch_runtime
-from image_monitor.candidate_policy import classify_candidate_detail, unobserved_detail
+from image_monitor.candidate_policy import unobserved_detail
 from image_monitor.candidate_save_selection import MANIFEST_NAME, select_candidate_save
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.monitor_auto_selection import search_monitor_candidates
@@ -202,63 +202,86 @@ def test_newer_arrival_before_worker_releases_the_pinned_turn_without_navigation
     assert report["new_details_checked"] == 0 and "detail_selection_order" not in report
 
 
-def test_backlog_can_exceed_previous_batch_sixty_four_detail_limit(roots):
+def test_reopen_after_a_thousand_inspections_honors_last_deadline_and_finds_new_body(roots):
     watch, _, _, clock = roots
+    stamp = clock.now()
+    deadline = stamp + timedelta(minutes=4)
     with QueueStore(watch / "watch.sqlite") as queue:
         store = WatchStore(queue)
         state = store.get_state(MONITOR_SCOPE)
-        stamp = clock.now()
-        store.persist_scan(
+        candidates = [
+            {
+                "post_id": str(i),
+                "post_url": f"https://gall.dcinside.com/board/view/?id=comic_new6&no={i}",
+                "title": "Fixture",
+                "shown_metadata": {},
+            }
+            for i in range(300, 1301)
+        ]
+        scan = store.persist_scan(
             MONITOR_SCOPE,
             observed_at=stamp,
             expected_generation=state["generation"],
             scan_result=state["latest_scan"]["result"],
             complete=True,
-            candidates=[
-                {
-                    "post_id": str(i),
-                    "post_url": f"https://gall.dcinside.com/board/view/?id=comic_new6&no={i}",
-                    "title": "Invented",
-                    "shown_metadata": {},
-                }
-                for i in range(300, 362)
-            ],
+            candidates=candidates,
             checkpoint=state["checkpoint"],
         )
-        stored = CandidateDetailStore(queue)
-        baseline = state["baseline"]
-        for candidate in stored.list_pending(MONITOR_SCOPE, limit=100):
-            post = candidate["post_id"]
-            attempt = stored.start(
-                MONITOR_SCOPE,
-                post,
-                expected_first_scan_id=candidate["first_scan_id"],
-                baseline_observed_at=BASELINE,
-                started_at=stamp,
-            )
-            outcome = (body(1) if post == "361" else deleted)(candidate, stamp)
-            if outcome["status"] == "observed":
-                classification = classify_candidate_detail(candidate, baseline, outcome["snapshot"])
-            else:
-                classification = unobserved_detail("candidate_unavailable")
-            stored.finish(
-                attempt["attempt_id"],
-                finished_at=stamp,
-                result={
-                    "private_observation": outcome,
-                    "classification": classification,
-                    "control": {
-                        "blocked": False,
-                        "interval_seconds": 60,
-                        "finished_at": stamp.isoformat(),
-                        "http_status": outcome["http_status"],
-                        "next_eligible_at": (stamp + timedelta(seconds=60)).isoformat(),
-                    },
+        # Ordered frozen records put the longest service wait in the 1,001st row.
+        records = []
+        for i, candidate in enumerate(candidates):
+            due = deadline if i == 1000 else stamp + timedelta(minutes=1)
+            result = {
+                "private_observation": deleted(candidate, stamp),
+                "classification": unobserved_detail("candidate_unavailable"),
+                "control": {
+                    "blocked": False,
+                    "interval_seconds": 60,
+                    "http_status": 404,
+                    "finished_at": stamp.isoformat(),
+                    "next_eligible_at": due.isoformat(),
                 },
+            }
+            records.append(
+                (
+                    f"{i + 1:032x}",
+                    *MONITOR_SCOPE.key(),
+                    candidate["post_id"],
+                    scan["scan_id"],
+                    state["baseline"]["observed_at"],
+                    stamp.isoformat(),
+                    stamp.isoformat(),
+                    "completed",
+                    json.dumps(result),
+                )
+            )
+        with queue._write():
+            queue.connection.executemany(
+                "INSERT INTO candidate_details VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", records
             )
     report, exact = search(roots)
-    assert report["status"] == "ready", report
-    assert exact["post_id"] == "361" and report["new_details_checked"] == 0
+    assert exact is None and report["reason"] == "persisted_cooldown", report
+    assert report["next_eligible_at"] == deadline.isoformat(timespec="microseconds")
+    assert report["uninspected_at_selection"] == 6
+    assert report["detail_attempts_at_selection"] == 1001
+    clock.current = deadline
+    report, exact = search(roots, body(1))
+    assert report["status"] == "ready" and exact["post_id"] == "102", report
+    assert report["new_details_checked"] == 1 and report["uninspected_at_selection"] == 5
+    assert report["detail_attempts_at_selection"] == 1002
+    assert report["outcome_counts"] == {"unavailable": 1001, "save_ready": 1}
+    repeated, binding = search(roots)
+    assert binding == exact and repeated["new_details_checked"] == 0
+
+    with QueueStore(watch / "watch.sqlite") as queue, queue._write():
+        queue.connection.execute(
+            "UPDATE candidate_details SET result_json=json_set(result_json,'$.control.in_flight',1)"
+            " WHERE attempt_id=?",
+            (records[-1][0],),
+        )
+    stopped, binding = search(roots)
+    assert binding is None and stopped["reason"] == "operations_require_review"
+    assert stopped["new_details_checked"] == 0
 
 
 def test_longer_monitor_interval_preserves_next_deadline(roots):

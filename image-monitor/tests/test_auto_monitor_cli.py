@@ -410,12 +410,14 @@ def test_two_cycle_summary_distinguishes_partial_coverage_from_saved_files():
         {
             "detail_selection_order": "oldest_discovery",
             "uninspected_at_selection": 106,
+            "detail_attempts_at_selection": 1002,
             "reason": "fresh_detail_limit",
             "fresh_detail_outcome": "no_body_images_observed",
         },
     ]
     summary = auto_monitor_cli._describe_result(report)["auto_test_summary_ko"]
     assert "글번호가 가장 큰 글 → 오래 기다린 글" in summary
+    assert "누적 본문 확인 시도는 1002건" in summary
     assert "106건" in summary and "107건" not in summary
     assert "본문에서 이미지를 찾지 못했습니다" in summary and "한도(1건)" in summary
     assert "auto_test_summary_ko" not in auto_monitor_cli._describe_result(

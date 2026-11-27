@@ -114,8 +114,10 @@ def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setu
             assessed[attempt] = outcome
             counts = report["outcome_counts"]
             counts[outcome] = counts.get(outcome, 0) + 1
-            if outcome == "needs_review" and detail["post_id"] in fresh_posts:
-                raise QueueError("Stored body evidence requires review")
+            if detail["post_id"] in fresh_posts:
+                report["last_fresh_detail_outcome"] = outcome
+                if outcome == "needs_review":
+                    raise QueueError("Stored body evidence requires review")
         if permit is not None:
             report["eligible_body_images"] = permit.image_count
             return _handoff(permit), None
@@ -205,6 +207,7 @@ def search_monitor_candidates(
                     {d["post_id"] for d in details if d["status"] == "completed"}
                 ):
                     raise QueueError("Expected a durable completed body observation")
+                report["uninspected_at_selection"] = ops["candidate_uninspected"]
                 trial_stage("저장 후보 선택")
                 handoff, pending = _choice(
                     queue,

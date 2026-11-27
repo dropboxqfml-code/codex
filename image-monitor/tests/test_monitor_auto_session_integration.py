@@ -217,6 +217,10 @@ def test_two_auto_cycles_preserve_prior_recovery_and_reopen_without_duplicate(
     assert report["reason"] == "cycle_limit_reached" and report["browser_closed"]
     assert report["cycles_completed"] == report["list_checks"] == report["new_candidates"] == 2
     assert report["new_details_checked"] == report["posts_saved"] == report["files_verified"] == 2
+    assert [
+        (turn["uninspected_at_selection"], turn["fresh_detail_outcome"])
+        for turn in report["recent_collection_attempts"]
+    ] == [(0, "save_ready"), (0, "save_ready")]
     completed_files = saved_content(data)
     assert len(completed_files) == 6
     assert all(completed_files[p] == v for p, v in original_files.items())

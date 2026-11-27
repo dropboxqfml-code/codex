@@ -1,4 +1,4 @@
-﻿자동 감시 두 주기 시험 (0.5.0-alpha.23)
+﻿자동 감시 두 주기 시험 (0.5.0-alpha.24)
 
 1. 지난 시험과 같은 Windows PC에서 ZIP을 새 폴더에 풀고 image-monitor 안의 TEST_AUTO_MONITOR.cmd를 더블클릭하세요.
 2. 저장용 Chrome이 열리면 앞에 두세요. 시험이 끝나면 자동으로 열린 결과 TXT 하나만 보내주세요.

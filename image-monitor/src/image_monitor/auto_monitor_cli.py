@@ -19,6 +19,16 @@ from image_monitor.monitor_settings import MAX_CATCH_UP_SCANS
 from image_monitor.monitor_trial_progress import MonitorTrial
 from image_monitor.watch_history import HISTORICAL_ROUTE_REASONS
 
+_DETAIL_OUTCOME_KO = {
+    "unavailable": "게시글을 열 수 없었습니다.",
+    "before_baseline": "감시 시작 전에 작성된 글입니다.",
+    "no_body_images_observed": "본문에서 이미지를 찾지 못했습니다.",
+    "excluded_body_images_only": "본문에 수집 제외 이미지만 있었습니다.",
+    "outside_save_limit": "본문 이미지가 한 글의 저장 한도를 넘었습니다.",
+    "needs_review": "본문 확인 결과를 검토해야 합니다.",
+    "save_ready": "자동 저장 조건을 충족했습니다.",
+}
+
 _HEAD_JOIN_KO = {
     "clipped_prefix": (
         "지난 첫 쪽의 첫 글부터 세 건 이상이 현재 1·2쪽의 끝부분에 같은 순서로 이어졌습니다."
@@ -167,6 +177,23 @@ def _describe_result(report):
         checks = report["recent_list_checks"]
         if checks and checks[-1]["status"] == "partial":
             summary += " 마지막 목록 확인에서 이전 완료 지점까지 미확인 구간이 남았습니다."
+        attempts = report.get("recent_collection_attempts", [])
+        if attempts:
+            result["recent_collection_attempts"] = [
+                attempt | {"fresh_detail_outcome_ko": text}
+                if (text := _DETAIL_OUTCOME_KO.get(attempt.get("fresh_detail_outcome")))
+                else attempt
+                for attempt in attempts
+            ]
+            last = result["recent_collection_attempts"][-1]
+            pending = last.get("uninspected_at_selection")
+            if type(pending) is int and pending >= 0:
+                summary += f" 마지막 후보 선택 시점에 본문 미확인 글이 {pending}건 있었습니다."
+            outcome = last.get("fresh_detail_outcome_ko")
+            if outcome:
+                summary += f" 마지막 수집에서 새로 확인한 글의 판정 — {outcome}"
+            if last.get("reason") == "fresh_detail_limit":
+                summary += " 이번 주기의 새 본문 확인 한도(1건)에 도달했습니다."
         result["auto_test_summary_ko"] = summary
     for key in ("previous_list_review", "last_inspection_retry", "last_order_retry"):
         if key in result:

@@ -162,6 +162,11 @@ def _record_collection(report, turn):
             if flags:
                 last["focus_at_failure"] = flags
         last.update(share_setup_diagnostics(turn["save"], stage_key="worker_last_stage"))
+    if isinstance(search, dict):
+        if "uninspected_at_selection" in search:
+            last["uninspected_at_selection"] = _count(search, "uninspected_at_selection")
+        if turn["new_details_checked"] == 1 and "last_fresh_detail_outcome" in search:
+            last["fresh_detail_outcome"] = search["last_fresh_detail_outcome"]
     report["last_collection"] = last
     report["new_details_checked"] += _count(turn, "new_details_checked", 1)
     started = turn["native_save_tasks_started"]
@@ -210,6 +215,11 @@ def _record_collection(report, turn):
             {
                 "status": last["status"],
                 "reason": last["reason"],
+                **{
+                    k: last[k]
+                    for k in ("uninspected_at_selection", "fresh_detail_outcome")
+                    if k in last
+                },
                 "new_details_checked": turn["new_details_checked"],
                 "newly_saved_files": new_count,
             }

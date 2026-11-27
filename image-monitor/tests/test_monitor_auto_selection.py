@@ -71,6 +71,8 @@ def test_empty_or_oversized_deleted_then_real_typed_handoff(roots, skipped, coun
     assert report["status"] == "ready", report
     assert report["new_details_checked"] == 3 and report["eligible_body_images"] == 10
     assert report["outcome_counts"] == {count: 1, "unavailable": 1, "save_ready": 1}
+    assert report["last_fresh_detail_outcome"] == "save_ready"
+    assert report["uninspected_at_selection"] == 3
     assert len(roots[3].waits) == 3 and all(value == 60 for value in roots[3].waits)
     with QueueStore(roots[0] / "watch.sqlite", read_only=True) as queue:
         detail = CandidateDetailStore(queue).get(binding["attempt_id"])
@@ -85,12 +87,15 @@ def test_empty_or_oversized_deleted_then_real_typed_handoff(roots, skipped, coun
         value in public for value in (binding["attempt_id"], binding["fingerprint"], "https://")
     )
     repeat, exact = search(roots)
+    assert "last_fresh_detail_outcome" not in repeat and repeat["uninspected_at_selection"] == 3
     assert repeat["status"] == "ready" and repeat["new_details_checked"] == 0 and exact == binding
 
 
 def test_search_yields_to_next_invocation_after_three_empty_posts(roots):
-    for expected in ("limit", "no_candidates"):
+    for expected, remaining in (("limit", 3), ("no_candidates", 0)):
         report, exact = search(roots, body(0), body(0), body(0))
+        assert report["last_fresh_detail_outcome"] == "no_body_images_observed"
+        assert report["uninspected_at_selection"] == remaining
         assert report["status"] == expected and exact is None
         assert report["new_details_checked"] == 3 and report["browser_closed"]
     report, exact = search(roots)

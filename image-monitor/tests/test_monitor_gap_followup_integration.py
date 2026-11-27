@@ -143,14 +143,25 @@ def test_reopened_monitor_recovers_historical_posts_and_saves_each_once(
     assert all(
         all_posts[post]["first_scan_id"] == row["first_scan_id"] for post, row in middle.items()
     )
-    assert [post for event, post, _ in events if event == "save"] == ["209", "210", "208"]
+    assert [post for event, post, _ in events if event == "save"] == ["209", "211", "210"]
 
     ordinary = run([[212, 211], [210, 209]])
     assert ordinary["new_candidates"] == ordinary["partial_list_checks"] == 0
     assert ordinary["gap_followup_checks"] == ordinary["gap_followups_completed"] == 0
     assert ordinary["last_list"]["page_limit"] == 2
-    assert [post for event, post, _ in events if event == "save"] == ["209", "210", "208", "211"]
-    assert len(list(roots[2].glob("tasks/*/session-*/images/**/001.png"))) == 4
+    assert ordinary["last_collection"]["detail_selection_order"] == "highest_post_id"
+    for order in ("oldest_discovery", "highest_post_id"):
+        remaining = run([[212, 211], [210, 209]])
+        assert remaining["last_collection"]["detail_selection_order"] == order
+    assert [post for event, post, _ in events if event == "save"] == [
+        "209",
+        "211",
+        "210",
+        "212",
+        "208",
+        "207",
+    ]
+    assert len(list(roots[2].glob("tasks/*/session-*/images/**/001.png"))) == 6
     assert all(browser.browser_closed for browser in owned)
 
 

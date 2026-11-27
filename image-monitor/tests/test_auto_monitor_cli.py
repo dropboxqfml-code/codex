@@ -402,14 +402,20 @@ def test_two_cycle_summary_distinguishes_partial_coverage_from_saved_files():
     summary = auto_monitor_cli._describe_result(report)["auto_test_summary_ko"]
     assert "새 후보 20건" in summary and "이미지 0장" in summary and "미확인 구간" in summary
     report["recent_collection_attempts"] = [
-        {"uninspected_at_selection": 107, "fresh_detail_outcome": "save_ready"},
         {
+            "uninspected_at_selection": 107,
+            "fresh_detail_outcome": "save_ready",
+            "detail_selection_order": "highest_post_id",
+        },
+        {
+            "detail_selection_order": "oldest_discovery",
             "uninspected_at_selection": 106,
             "reason": "fresh_detail_limit",
             "fresh_detail_outcome": "no_body_images_observed",
         },
     ]
     summary = auto_monitor_cli._describe_result(report)["auto_test_summary_ko"]
+    assert "글번호가 가장 큰 글 → 오래 기다린 글" in summary
     assert "106건" in summary and "107건" not in summary
     assert "본문에서 이미지를 찾지 못했습니다" in summary and "한도(1건)" in summary
     assert "auto_test_summary_ko" not in auto_monitor_cli._describe_result(

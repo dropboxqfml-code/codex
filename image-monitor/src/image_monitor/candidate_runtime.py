@@ -170,6 +170,7 @@ def run_candidate_trial(
     recent_scan_only=False,
     recent_target=None,
     monitor_target=None,
+    alternate_monitor_order=False,
 ):
     require_windows()
     if browser not in {"chrome", "edge"}:
@@ -194,6 +195,10 @@ def run_candidate_trial(
         or not all(isinstance(key, str) and key for key in recent_target)
     ):
         raise NativeUIError("A pinned recent candidate requires its scan and post identities")
+    if type(alternate_monitor_order) is not bool or (
+        alternate_monitor_order and monitor_target is None
+    ):
+        raise NativeUIError("Alternating inspection requires a pinned monitor target")
     if monitor_target is not None and (
         scope != _MONITOR_SCOPE
         or max_candidates != 1
@@ -325,7 +330,11 @@ def run_candidate_trial(
                             claimed = other_monitor_save_claims(database) | monitor_save_claims(
                                 database
                             )
-                            batch = store.list_pending(scope, limit=1, exclude_posts=claimed)
+                            batch, order = store.next_monitor_pending(
+                                scope,
+                                exclude_posts=claimed,
+                                alternate_order=alternate_monitor_order,
+                            )
                             if (
                                 not batch
                                 or (
@@ -339,6 +348,8 @@ def run_candidate_trial(
                                     reason="monitor_candidate_changed",
                                 )
                                 return report
+                            if alternate_monitor_order:
+                                report["detail_selection_order"] = order
                         else:
                             batch = store.list_pending(scope, limit=max_candidates)
                         if recent_scan_only and report["source_scan"] is None:

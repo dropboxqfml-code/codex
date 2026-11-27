@@ -189,6 +189,17 @@ def _describe_result(report):
             pending = last.get("uninspected_at_selection")
             if type(pending) is int and pending >= 0:
                 summary += f" 마지막 후보 선택 시점에 본문 미확인 글이 {pending}건 있었습니다."
+            orders = {
+                "oldest_discovery": "오래 기다린 글",
+                "highest_post_id": "글번호가 가장 큰 글",
+            }
+            inspected = [
+                orders[a["detail_selection_order"]]
+                for a in attempts
+                if a.get("detail_selection_order") in orders
+            ]
+            if inspected:
+                summary += " 이번 본문 선택 순서는 " + " → ".join(inspected) + "입니다."
             outcome = last.get("fresh_detail_outcome_ko")
             if outcome:
                 summary += f" 마지막 수집에서 새로 확인한 글의 판정 — {outcome}"

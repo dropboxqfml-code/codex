@@ -104,6 +104,104 @@ def test_search_yields_to_next_invocation_after_three_empty_posts(roots):
     )
 
 
+def test_alternating_detail_turn_survives_reopening_a_large_queue(roots):
+    watch, legacy, batch, clock = roots
+    database = watch / "watch.sqlite"
+    with QueueStore(database) as queue:
+        store = WatchStore(queue)
+        state = store.get_state(MONITOR_SCOPE)
+        store.persist_scan(
+            MONITOR_SCOPE,
+            observed_at=clock.now(),
+            expected_generation=state["generation"],
+            scan_result=state["latest_scan"]["result"],
+            checkpoint=state["checkpoint"],
+            complete=True,
+            candidates=[
+                {
+                    "post_id": str(i),
+                    "post_url": f"https://gall.dcinside.com/board/view/?id=comic_new6&no={i}",
+                    "title": "Test",
+                    "shown_metadata": {},
+                }
+                for i in range(300, 1283)
+            ],
+        )
+    for attempt, (expected, order) in enumerate(
+        (("102", "oldest_discovery"), ("1282", "highest_post_id"), ("103", "oldest_discovery"))
+    ):
+        if attempt == 1:
+            with QueueStore(database, read_only=True) as queue:
+                rows, policy = CandidateDetailStore(queue).next_monitor_pending(
+                    MONITOR_SCOPE, alternate_order=True, exclude_posts={"1282"}
+                )
+                assert policy == order and rows[0]["post_id"] == "1281"
+        report, handoff = search_monitor_candidates(
+            watch,
+            legacy,
+            batch,
+            clock=clock,
+            alternate_order=True,
+            max_new_details=1,
+            detail_runner=partial(
+                candidate_runtime.run_candidate_trial, backend_factory=DetailBrowser(deleted)
+            ),
+        )
+        assert report["status"] == "limit" and handoff is None, report
+        assert report["detail_selection_order"] == order
+        assert report["uninspected_at_selection"] == 988 - attempt
+        with QueueStore(database, read_only=True) as queue:
+            details = CandidateDetailStore(queue).list_details(MONITOR_SCOPE)
+            assert len(details) == attempt + 1 and details[-1]["post_id"] == expected
+
+
+def test_newer_arrival_before_worker_releases_the_pinned_turn_without_navigation(roots):
+    watch, legacy, batch, clock = roots
+    search_monitor_candidates(
+        watch,
+        legacy,
+        batch,
+        clock=clock,
+        alternate_order=True,
+        max_new_details=1,
+        detail_runner=partial(
+            candidate_runtime.run_candidate_trial, backend_factory=DetailBrowser(deleted)
+        ),
+    )
+
+    def raced(root, browser, **options):
+        assert options["monitor_target"][1] == "107"
+        with QueueStore(watch / "watch.sqlite") as queue:
+            store = WatchStore(queue)
+            state = store.get_state(MONITOR_SCOPE)
+            store.persist_scan(
+                MONITOR_SCOPE,
+                observed_at=clock.now(),
+                expected_generation=state["generation"],
+                scan_result=state["latest_scan"]["result"],
+                checkpoint=state["checkpoint"],
+                complete=True,
+                candidates=[
+                    {"post_id": "108", "post_url": None, "title": None, "shown_metadata": {}}
+                ],
+            )
+        return candidate_runtime.run_candidate_trial(
+            root, browser, backend_factory=no_browser, **options
+        )
+
+    report, exact = search_monitor_candidates(
+        watch,
+        legacy,
+        batch,
+        clock=clock,
+        alternate_order=True,
+        max_new_details=1,
+        detail_runner=raced,
+    )
+    assert exact is None and report["reason"] == "monitor_candidate_changed", report
+    assert report["new_details_checked"] == 0 and "detail_selection_order" not in report
+
+
 def test_backlog_can_exceed_previous_batch_sixty_four_detail_limit(roots):
     watch, _, _, clock = roots
     with QueueStore(watch / "watch.sqlite") as queue:

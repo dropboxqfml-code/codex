@@ -165,6 +165,8 @@ def _record_collection(report, turn):
     if isinstance(search, dict):
         if "uninspected_at_selection" in search:
             last["uninspected_at_selection"] = _count(search, "uninspected_at_selection")
+        if turn["new_details_checked"] == 1 and "detail_selection_order" in search:
+            last["detail_selection_order"] = search["detail_selection_order"]
         if turn["new_details_checked"] == 1 and "last_fresh_detail_outcome" in search:
             last["fresh_detail_outcome"] = search["last_fresh_detail_outcome"]
     report["last_collection"] = last
@@ -217,7 +219,11 @@ def _record_collection(report, turn):
                 "reason": last["reason"],
                 **{
                     k: last[k]
-                    for k in ("uninspected_at_selection", "fresh_detail_outcome")
+                    for k in (
+                        "uninspected_at_selection",
+                        "fresh_detail_outcome",
+                        "detail_selection_order",
+                    )
                     if k in last
                 },
                 "new_details_checked": turn["new_details_checked"],

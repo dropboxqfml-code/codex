@@ -87,9 +87,25 @@ class CandidateDetailStore:
         self.queue = queue
 
     def list_pending(self, scope: WatchScope, *, limit: int = 2, exclude_posts=()) -> list[dict]:
+        return self._pending(scope, limit, exclude_posts, newest=False)
+
+    def next_monitor_pending(self, scope, *, exclude_posts, alternate_order):
+        """Use committed attempts so cooldown checks and restarts do not advance the turn."""
+        newest = False
+        if alternate_order and self.queue.schema_version >= 5:
+            attempts = self.queue.connection.execute(
+                f"SELECT COUNT(*) FROM candidate_details WHERE {_WHERE}", _scope(scope)
+            ).fetchone()[0]
+            newest = attempts % 2 == 1
+        batch = self._pending(scope, 1, exclude_posts, newest=newest)
+        return batch, "highest_post_id" if newest else "oldest_discovery"
+
+    def _pending(self, scope, limit, exclude_posts, *, newest):
         key, limit = _scope(scope), _limit(limit)
         if self.queue.schema_version < 5:
             return []
+        # Decimal post IDs can exceed SQLite's signed integer range.
+        order = "length(c.post_id) DESC,c.post_id DESC" if newest else "c.first_seen_at,c.post_id"
         return [
             _record(row)
             for row in self.queue.connection.execute(
@@ -100,7 +116,7 @@ class CandidateDetailStore:
                 "SELECT 1 FROM candidate_details d WHERE d.watch_name=c.watch_name "
                 "AND d.gallery_type=c.gallery_type AND d.gallery_id=c.gallery_id "
                 "AND d.keyword=c.keyword AND d.search_type=c.search_type AND d.post_id=c.post_id) "
-                "ORDER BY c.first_seen_at,c.post_id LIMIT ?",
+                f"ORDER BY {order} LIMIT ?",
                 (*key, json.dumps([_post_id(post) for post in exclude_posts]), limit),
             )
         ]

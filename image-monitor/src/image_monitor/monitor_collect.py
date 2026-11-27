@@ -93,6 +93,7 @@ def _collect(
         clock=clock,
         detail_runner=detail_runner,
         max_new_details=1 if session_turn else MAX_NEW_DETAILS,
+        alternate_order=session_turn,
         max_wait_seconds=max_wait,
         should_stop=should_stop,
     )

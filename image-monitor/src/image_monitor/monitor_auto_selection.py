@@ -47,7 +47,9 @@ def _handoff(permit):
     }
 
 
-def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setup_retry):
+def _choice(
+    queue, state, roots, details, assessed, fresh_posts, report, *, setup_retry, alternate_order
+):
     watch, legacy, batch = roots
     report.pop("previous_failure_reason", None)
     report.pop("previous_completion_setup_reason", None)
@@ -121,8 +123,8 @@ def _choice(queue, state, roots, details, assessed, fresh_posts, report, *, setu
         if permit is not None:
             report["eligible_body_images"] = permit.image_count
             return _handoff(permit), None
-    pending = CandidateDetailStore(queue).list_pending(
-        MONITOR_SCOPE, limit=1, exclude_posts=claimed
+    pending, _ = CandidateDetailStore(queue).next_monitor_pending(
+        MONITOR_SCOPE, exclude_posts=claimed, alternate_order=alternate_order
     )
     if pending:
         return None, (pending[0]["first_scan_id"], pending[0]["post_id"])
@@ -139,6 +141,7 @@ def search_monitor_candidates(
     detail_runner=run_candidate_trial,
     max_new_details=MAX_NEW_DETAILS,
     max_wait_seconds=60,
+    alternate_order=False,
     should_stop=None,
 ):
     """Return an anonymous summary and a private, exact handoff for one native save."""
@@ -218,6 +221,7 @@ def search_monitor_candidates(
                     fresh_posts,
                     report,
                     setup_retry=setup_retry,
+                    alternate_order=alternate_order,
                 )
                 if handoff is None and pending is None:
                     break
@@ -271,6 +275,7 @@ def search_monitor_candidates(
                 scope=MONITOR_SCOPE,
                 interval_seconds=interval,
                 monitor_target=pending,
+                **({"alternate_monitor_order": True} if alternate_order else {}),
                 clock=clock,
                 **({"should_stop": should_stop} if should_stop is not None else {}),
             )
@@ -287,6 +292,11 @@ def search_monitor_candidates(
             if status == "candidate_test_completed":
                 if checked != 1 or pending[1] in fresh_posts:
                     raise QueueError("Expected one new body observation")
+                if alternate_order and trial.get("detail_selection_order") in (
+                    "oldest_discovery",
+                    "highest_post_id",
+                ):
+                    report["detail_selection_order"] = trial["detail_selection_order"]
                 fresh_posts.add(pending[1])
                 continue
             report["status"] = {

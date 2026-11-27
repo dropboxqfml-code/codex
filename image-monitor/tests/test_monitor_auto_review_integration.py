@@ -174,6 +174,8 @@ def test_segment_queued_empty_detail_then_layout_review_and_offline_report(
     assert result["last_collection"] == {
         "status": "monitor_collect_limit",
         "reason": "fresh_detail_limit",
+        "fresh_detail_outcome": "before_baseline",
+        "uninspected_at_selection": 89,
     }
     assert [item["historical_reason"] for item in result["previous_list_checks"]] == [
         "previous_head_not_matched",

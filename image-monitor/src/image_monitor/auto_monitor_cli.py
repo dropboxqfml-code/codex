@@ -197,18 +197,23 @@ def _describe_result(report):
                 "highest_post_id": "글번호가 가장 큰 글",
                 "recent_picture_marker": "최근 후보 중 사진 표시가 있는 글",
             }
-            inspected = [
-                orders[a["detail_selection_order"]]
-                for a in attempts
-                if a.get("detail_selection_order") in orders
-            ]
+            inspected = []
+            for attempt in attempts:
+                if (
+                    attempt.get("unavailable_picture_followup_started")
+                    and attempt["new_details_checked"] == 2
+                ):
+                    inspected.append("열 수 없었던 사진 표시 글")
+                if attempt.get("detail_selection_order") in orders:
+                    inspected.append(orders[attempt["detail_selection_order"]])
             if inspected:
                 summary += " 이번 본문 선택 순서는 " + " → ".join(inspected) + "입니다."
             outcome = last.get("fresh_detail_outcome_ko")
             if outcome:
                 summary += f" 마지막 수집에서 새로 확인한 글의 판정 — {outcome}"
             if last.get("reason") == "fresh_detail_limit":
-                summary += " 이번 주기의 새 본문 확인 한도(1건)에 도달했습니다."
+                limit = 2 if last.get("unavailable_picture_followup_started") else 1
+                summary += f" 이번 주기의 새 본문 확인 한도({limit}건)에 도달했습니다."
         result["auto_test_summary_ko"] = summary
     for key in ("previous_list_review", "last_inspection_retry", "last_order_retry"):
         if key in result:

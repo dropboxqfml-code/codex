@@ -166,12 +166,15 @@ def _record_collection(report, turn):
         for key in ("uninspected_at_selection", "detail_attempts_at_selection"):
             if key in search:
                 last[key] = _count(search, key)
-        if turn["new_details_checked"] == 1 and "detail_selection_order" in search:
+        if search.get("unavailable_picture_followup_started") is True:
+            last["unavailable_picture_followup_started"] = True
+        if turn["new_details_checked"] and "detail_selection_order" in search:
             last["detail_selection_order"] = search["detail_selection_order"]
-        if turn["new_details_checked"] == 1 and "last_fresh_detail_outcome" in search:
+        if turn["new_details_checked"] and "last_fresh_detail_outcome" in search:
             last["fresh_detail_outcome"] = search["last_fresh_detail_outcome"]
     report["last_collection"] = last
-    report["new_details_checked"] += _count(turn, "new_details_checked", 1)
+    detail_limit = 2 if last.get("unavailable_picture_followup_started") else 1
+    report["new_details_checked"] += _count(turn, "new_details_checked", detail_limit)
     started = turn["native_save_tasks_started"]
     if started is None:
         # A writer may have started without returning a complete worker receipt.
@@ -225,6 +228,7 @@ def _record_collection(report, turn):
                         "detail_attempts_at_selection",
                         "fresh_detail_outcome",
                         "detail_selection_order",
+                        "unavailable_picture_followup_started",
                     )
                     if k in last
                 },

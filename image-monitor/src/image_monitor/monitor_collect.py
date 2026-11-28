@@ -94,6 +94,7 @@ def _collect(
         detail_runner=detail_runner,
         max_new_details=1 if session_turn else MAX_NEW_DETAILS,
         alternate_order=session_turn,
+        follow_unavailable_picture=session_turn,
         max_wait_seconds=max_wait,
         should_stop=should_stop,
     )
@@ -281,7 +282,7 @@ def collect_session_turn(
     detail_runner=run_candidate_trial,
     save_runner=run_post_save,
 ):
-    """Check up to one new body and save one post under the caller's monitor lease."""
+    """Allow one follow-up for a missing picture-marked post and save at most one post."""
     return _run_monitor_collect(
         watch_root,
         legacy_root,

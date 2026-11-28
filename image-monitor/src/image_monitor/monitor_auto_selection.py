@@ -154,6 +154,7 @@ def search_monitor_candidates(
     max_new_details=MAX_NEW_DETAILS,
     max_wait_seconds=60,
     alternate_order=False,
+    follow_unavailable_picture=False,
     should_stop=None,
 ):
     """Return an anonymous summary and a private, exact handoff for one native save."""
@@ -252,7 +253,13 @@ def search_monitor_candidates(
                 )
                 if handoff is None and pending is None:
                     break
-                if handoff is None and len(fresh_posts) >= max_new_details:
+                followup = (
+                    follow_unavailable_picture
+                    and max_new_details == len(fresh_posts) == 1
+                    and report.get("detail_selection_order") == "recent_picture_marker"
+                    and report.get("last_fresh_detail_outcome") == "unavailable"
+                )
+                if handoff is None and len(fresh_posts) >= max_new_details and not followup:
                     report.update(status="limit", reason="fresh_detail_limit")
                     break
                 if ops["wait_until"] is not None:
@@ -290,7 +297,11 @@ def search_monitor_candidates(
                 report.update(status="ready", reason=reason)
                 return report, handoff
             report["browser_closed"] = None
-            trial_stage("Chrome에서 게시글 본문 확인")
+            if followup:
+                report["unavailable_picture_followup_started"] = True
+                trial_stage("사진 표시 글을 열 수 없어 다음 후보 본문 확인")
+            else:
+                trial_stage("Chrome에서 게시글 본문 확인")
             trial = detail_runner(
                 watch,
                 "chrome",
@@ -308,6 +319,9 @@ def search_monitor_candidates(
             if type(checked) is not int or not 0 <= checked <= 1:
                 raise QueueError("A bounded detail worker returned invalid counts")
             report["new_details_checked"] += checked
+            if checked and followup:
+                report.pop("detail_selection_order", None)
+                report.pop("last_fresh_detail_outcome", None)
             if report["browser_closed"] is not True:
                 report["reason"] = "owned_browser_cleanup_unconfirmed"
                 break

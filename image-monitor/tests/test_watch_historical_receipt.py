@@ -238,7 +238,12 @@ def test_unverified_historical_layout_keeps_only_the_verified_recent_rows(
         ("0.6.0", 3, 3, 3),
         ("0.6.0", 4, 4, 4),
         ("0.6.0", 5, 5, 5),
-        ("0.6.0", 6, 6, None),
+        ("0.5.0-alpha.32", 6, 6, None),
+        ("0.5.0-alpha.33", 6, 6, 6),
+        ("0.5.0-alpha.33", 5, 6, None),
+        ("0.5.0-alpha.33", 6, 5, None),
+        ("0.6.0", 6, 6, 6),
+        ("0.6.0", 7, 7, None),
     ],
 )
 def test_bookmarked_route_version_requires_compatible_matching_capability(

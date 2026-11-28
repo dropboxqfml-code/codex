@@ -58,8 +58,18 @@ LONG_GAP_SCHEMA = 3
 PARTIAL_OVERLAP_SCHEMA = 4
 FRONTIER_OVERLAP_SCHEMA = 5
 FRONTIER_RESTART_SCHEMA = 6
+RECENT_RECOVERY_SCHEMA = 7
+_RECENT_RECOVERY_STATUSES = {
+    "recent_page_boundary": "head_rejoined",
+    "recent_head_changed": "restarted_from_head",
+}
 PARTIAL_OVERLAP_SCHEMAS = frozenset(
-    {PARTIAL_OVERLAP_SCHEMA, FRONTIER_OVERLAP_SCHEMA, FRONTIER_RESTART_SCHEMA}
+    {
+        PARTIAL_OVERLAP_SCHEMA,
+        FRONTIER_OVERLAP_SCHEMA,
+        FRONTIER_RESTART_SCHEMA,
+        RECENT_RECOVERY_SCHEMA,
+    }
 )
 DURABLE_GAP_SCHEMAS = PARTIAL_OVERLAP_SCHEMAS | {LONG_GAP_SCHEMA}
 _MIN_ROUTE_ALPHA = {
@@ -68,6 +78,7 @@ _MIN_ROUTE_ALPHA = {
     PARTIAL_OVERLAP_SCHEMA: 16,
     FRONTIER_OVERLAP_SCHEMA: 18,
     FRONTIER_RESTART_SCHEMA: 33,
+    RECENT_RECOVERY_SCHEMA: 34,
 }
 PARTIAL_COVERAGE_GAPS = (
     frozenset({"anchor_not_reached", "overlap_incomplete", "historical_boundary_changed"})
@@ -359,6 +370,7 @@ def _plan_observation(
     allow_partial_overlap=False,
     allow_frontier_overlap=False,
     allow_frontier_restart=False,
+    allow_recent_recovery=False,
 ):
     pages = outcome.get("pages", [])
     crossed = outcome.get("gap_seed_route") is True
@@ -405,6 +417,7 @@ def _plan_observation(
                         plan,
                         allow_partial_overlap=allow_partial_overlap,
                         allow_frontier_restart=allow_frontier_restart,
+                        allow_recent_recovery=allow_recent_recovery,
                     )
         elif crossed:
             plan = plan_gap_seed_route(scope, state, pages, observed_at)
@@ -756,8 +769,14 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
             and control.get("historical_route_schema") not in PARTIAL_OVERLAP_SCHEMAS
         ):
             return False
+        schema = control.get("historical_route_schema")
+        reason = recovery.get("recovery_reason") if isinstance(recovery, dict) else None
+        recent_status = _RECENT_RECOVERY_STATUSES.get(reason)
+        if (schema == RECENT_RECOVERY_SCHEMA) != (recent_status is not None):
+            return False
         if isinstance(recovery, dict) and (
-            recovery.get("status") in {"restart_pending", "restarted_from_head"}
+            recent_status is not None
+            or recovery.get("status") in {"restart_pending", "restarted_from_head"}
             or isinstance(recovery.get("bookmark"), dict)
             and "restart_from_head" in recovery["bookmark"]
         ):
@@ -765,12 +784,16 @@ def confirmed_monitor_scan(database: Path, latest: dict, *, expected_report=None
             pending = recovery.get("status") == "restart_pending"
             successor = recovery.get("bookmark")
             if (
-                control.get("historical_route_schema") != FRONTIER_RESTART_SCHEMA
+                schema != (RECENT_RECOVERY_SCHEMA if recent_status else FRONTIER_RESTART_SCHEMA)
                 or type(successor) is not dict
                 or complete is not False
                 or recovery.get("route") != ("bookmark" if pending else "recent")
                 or recovery.get("eligible_pages") != (2 if pending else MAX_MONITOR_SCAN_PAGES)
-                or recovery.get("status") not in {"restart_pending", "restarted_from_head"}
+                or (recent_status is not None and recovery.get("status") != recent_status)
+                or (
+                    recent_status is None
+                    and recovery.get("status") not in {"restart_pending", "restarted_from_head"}
+                )
                 or successor.get("restart_from_head", False) is not pending
                 or control.get("follow_up_page_limit") != MAX_MONITOR_SCAN_PAGES
                 or not _observed_page_chain(observed, MAX_MONITOR_SCAN_PAGES)
@@ -1136,6 +1159,7 @@ def run_watch_trial(
                             allow_partial_overlap=bookmark is not None,
                             allow_frontier_overlap=bookmark is not None,
                             allow_frontier_restart=bookmark is not None,
+                            allow_recent_recovery=bookmark is not None,
                         )
                         if (
                             allow_seed_crossing
@@ -1159,6 +1183,11 @@ def run_watch_trial(
                             == "restart_pending"
                         ):
                             route_schema = FRONTIER_RESTART_SCHEMA
+                        if (
+                            plan["scan_result"].get("gap_recovery", {}).get("recovery_reason")
+                            in _RECENT_RECOVERY_STATUSES
+                        ):
+                            route_schema = RECENT_RECOVERY_SCHEMA
                         if bookmark or "historical_follow_up" in plan["scan_result"]:
                             current = store.get_state(scope)
                             if (

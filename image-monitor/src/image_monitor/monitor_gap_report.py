@@ -22,6 +22,17 @@ RECOVERY_MESSAGES = {
 
 
 RECOVERY_REASON_MESSAGES = {
+    "head_rejoined": {
+        "recent_page_boundary": (
+            "지난 첫 쪽 끝의 글 세 건과 다음 쪽 첫 글이 연속으로 확인돼 "
+            "이전 복구 위치를 유지합니다."
+        )
+    },
+    "restarted_from_head": {
+        "recent_head_changed": (
+            "지난 첫 쪽과의 연결을 확인할 수 없어 이번에 확인한 네 번째 쪽부터 다시 탐색합니다."
+        )
+    },
     "frontier_relocated": {
         "frontier_prefix_overlap": (
             "저장한 목록 앞부분의 글 순서를 바로 다음 쪽 끝에서 확인했습니다. "

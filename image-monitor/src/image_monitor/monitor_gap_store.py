@@ -227,6 +227,7 @@ def replay_gap_scan(queue, scope, latest, previous_state, scan_time):
         FRONTIER_OVERLAP_SCHEMA,
         FRONTIER_RESTART_SCHEMA,
         PARTIAL_OVERLAP_SCHEMAS,
+        RECENT_RECOVERY_SCHEMA,
         _plan_observation,
         gap_seed,
     )
@@ -259,6 +260,7 @@ def replay_gap_scan(queue, scope, latest, previous_state, scan_time):
         allow_partial_overlap=schema in PARTIAL_OVERLAP_SCHEMAS,
         allow_frontier_overlap=schema == FRONTIER_OVERLAP_SCHEMA,
         allow_frontier_restart=schema == FRONTIER_RESTART_SCHEMA,
+        allow_recent_recovery=schema == RECENT_RECOVERY_SCHEMA,
     )
 
 

@@ -1,4 +1,4 @@
-﻿과거 목록 복구 시험 (0.5.0-alpha.33)
+﻿과거 목록 복구 시험 (0.5.0-alpha.34)
 
 1. 지난 시험과 같은 Windows PC에서 ZIP을 새 폴더에 풀고 image-monitor 안의 TEST_LIST_RECOVERY.cmd를 더블클릭하세요.
 2. 끝나면 자동으로 열린 결과 TXT 하나만 보내주세요.

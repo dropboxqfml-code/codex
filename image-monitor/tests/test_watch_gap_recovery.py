@@ -128,10 +128,17 @@ def test_second_disjoint_outage_rejoins_without_returning_to_stale_page_ordinal(
     assert seen_rejoin and m["status"] == "completed"
 
 
-def recent_fallback(state, pages, bookmark, *, allow_partial_overlap):
+def recent_fallback(state, pages, bookmark, *, allow_partial_overlap, allow_recent_recovery=False):
     recent = plan_scan(SCOPE, state, pages, NOW, allow_verified_live=True)
     return plan_gap_fallback(
-        SCOPE, state, pages, NOW, bookmark, recent, allow_partial_overlap=allow_partial_overlap
+        SCOPE,
+        state,
+        pages,
+        NOW,
+        bookmark,
+        recent,
+        allow_partial_overlap=allow_partial_overlap,
+        allow_recent_recovery=allow_recent_recovery,
     )["scan_result"]["gap_recovery"]
 
 
@@ -259,6 +266,13 @@ def test_unproven_tail_does_not_replace_the_active_or_deferred_bookmarks(
     marker = recent_fallback(state, pages, active, allow_partial_overlap=True)
     assert (marker["status"], marker["recovery_reason"]) == ("held", reason)
     assert marker["bookmark"] is None and active == before
+    if reason != "recent_overlap_unconfirmed":
+        assert (
+            recent_fallback(
+                state, pages, active, allow_partial_overlap=True, allow_recent_recovery=True
+            )
+            == marker
+        )
 
 
 def test_clipped_overlap_across_ranges_keeps_the_exact_observed_cursor(state, shifting_head):

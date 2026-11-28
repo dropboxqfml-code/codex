@@ -491,3 +491,49 @@ def test_displaced_eleventh_page_rebuilds_connected_route_after_restart(
             return
         assert current == checkpoint and turn["status"] == "partial", turn
     pytest.fail("The rebuilt route never reached the original checkpoint")
+
+
+@pytest.mark.parametrize("change", ["stable_boundary", "missing_boundary", "shifted_boundary"])
+def test_changed_recent_head_recovers_through_original_checkpoint(tmp_path, starting_watch, change):
+    feed, clock, checkpoint = starting_watch
+    feed.ids[:0] = range(OLD_HEAD + 160, OLD_HEAD, -1)
+    for _ in range(10):
+        turn = feed.run(tmp_path, clock)
+        if turn.get("recovery_depth") == 7:
+            break
+    assert turn["recovery_depth"] == 7
+    _, known = read_state(tmp_path)
+    deleted = {feed.ids[i] for i in (1, 3, 5)}
+    if change == "missing_boundary":
+        deleted.add(feed.ids[PAGE_SIZE])
+    feed.ids = [post for post in feed.ids if post not in deleted]
+    if change == "stable_boundary":
+        feed.ids[:0] = range(feed.ids[0] + 3, feed.ids[0], -1)
+    turn = feed.run(tmp_path, clock)
+    assert turn["visited_page_numbers"] == [1, 2, 3, 4]
+    assert turn["status"] == "partial" and read_state(tmp_path)[0] == checkpoint
+    if change == "stable_boundary":
+        assert (turn["recovery_status"], turn["recovery_reason"], turn["recovery_depth"]) == (
+            "head_rejoined",
+            "recent_page_boundary",
+            7,
+        )
+    else:
+        assert (turn["recovery_status"], turn["recovery_reason"], turn["recovery_depth"]) == (
+            "restarted_from_head",
+            "recent_head_changed",
+            4,
+        )
+    depth = turn["recovery_depth"]
+    turn = run_after_process_restart(tmp_path, feed, clock)
+    assert turn["visited_page_numbers"] == [1, 2, depth, depth + 1]
+    for _ in range(24):
+        turn = feed.run(tmp_path, clock)
+        current, found = read_state(tmp_path)
+        assert len(feed.visits) <= 4 and known.items() <= found.items()
+        if turn["status"] == "complete":
+            assert current != checkpoint
+            assert {str(n) for n in feed.ids if n > OLD_HEAD} <= found.keys()
+            return
+        assert current == checkpoint and turn["status"] == "partial", turn
+    pytest.fail("The changed recent head never rejoined the original checkpoint")

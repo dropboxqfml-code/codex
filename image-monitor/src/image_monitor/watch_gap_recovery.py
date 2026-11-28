@@ -15,6 +15,8 @@ from image_monitor.watch_store import MONITOR_SCOPE
 GAP_COVERAGE_REASONS = frozenset({"gap_successor_unconfirmed"})
 GAP_RECOVERY_REASONS = {
     "frontier_relocated": frozenset({"frontier_prefix_overlap"}),
+    "head_rejoined": frozenset({"recent_page_boundary"}),
+    "restarted_from_head": frozenset({"recent_head_changed"}),
     "segment_queued": frozenset({"recent_tail_overlap", "observed_frontier_shift"}),
     "held": frozenset(
         {
@@ -562,7 +564,9 @@ def _observed_frontier_shift(rows, recent_floor, checked, bookmark):
     )
 
 
-def _recent_rebase(scope, state, pages, observed_at, bookmark, allow_partial_overlap):
+def _recent_rebase(
+    scope, state, pages, observed_at, bookmark, allow_partial_overlap, allow_recent_recovery=False
+):
     if len(pages) != 4:
         return None, "recent_page_limit"
     checked = _checked(scope, state, pages, observed_at, bookmark)
@@ -578,14 +582,37 @@ def _recent_rebase(scope, state, pages, observed_at, bookmark, allow_partial_ove
         elif _observed_frontier_shift(rows, recent_floor, checked, bookmark):
             queue_reason = "observed_frontier_shift"
     if queue_reason is None:
-        if _head_join(rows, bookmark, True) or _surviving_window(rows, previous):
+        joined = _head_join(rows, bookmark, True) or _surviving_window(rows, previous)
+        boundary = False
+        if not joined and allow_recent_recovery and len(previous) >= 3:
+            following = bookmark.get("after_head_id")
+            if following in rows:
+                end = rows.index(following)
+                # A larger displacement can also move surviving frontier rows
+                # beyond the established two-row tolerance on its next visit.
+                boundary = (
+                    end >= 3
+                    and abs(end - len(previous)) <= 2
+                    and rows[end - 3 : end] == previous[-3:]
+                )
+        if joined or boundary:
             updated = _updated_head(bookmark, checked)
             updated.pop("source_scan_id", None)
             updated.pop("source_generation", None)
             if valid_gap_bookmark(scope, state, updated):
-                return updated, None
+                return updated, "recent_page_boundary" if boundary else None
             return None, "frontier_rebase_unverified"
         if int(rows[-1]) <= int(previous[0]):
+            # Keep the existing four-page seed when this check only clips its
+            # first page and offers no stronger evidence or deeper progress.
+            if allow_recent_recovery and (
+                bookmark["depth"] > len(pages) or int(rows[-1]) <= int(previous[-1])
+            ):
+                # These four pages form an independent route to the same checkpoint.
+                # Never carry a disconnected frontier or deferred shortcut onto it.
+                fresh = new_gap_bookmark(scope, state, pages, observed_at)
+                if fresh is not None:
+                    return fresh, "recent_head_changed"
             return None, "recent_overlap_unconfirmed"
     if len(bookmark.get("deferred", [])) >= _MAX_DEFERRED:
         return None, "deferred_limit"
@@ -630,6 +657,7 @@ def plan_gap_fallback(
     *,
     allow_partial_overlap=False,
     allow_frontier_restart=False,
+    allow_recent_recovery=False,
 ):
     """Record an ordinary recent scan while a gap is open. A failure keeps the earlier bookmark."""
     if not valid_gap_bookmark(scope, state, bookmark):
@@ -664,9 +692,11 @@ def plan_gap_fallback(
                     )
             return _mark(plan, "held", bookmark["depth"], eligible, "recent")
         updated, reason = _recent_rebase(
-            scope, state, pages, observed_at, bookmark, allow_partial_overlap
+            scope, state, pages, observed_at, bookmark, allow_partial_overlap, allow_recent_recovery
         )
-        if updated is not None:
+        if reason == "recent_head_changed":
+            status = "restarted_from_head"
+        elif updated is not None:
             status = (
                 "segment_queued"
                 if len(updated.get("deferred", [])) > len(bookmark.get("deferred", []))

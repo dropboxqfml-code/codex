@@ -214,6 +214,11 @@ def _describe_result(report):
             if last.get("reason") == "fresh_detail_limit":
                 limit = 2 if last.get("unavailable_picture_followup_started") else 1
                 summary += f" 이번 주기의 새 본문 확인 한도({limit}건)에 도달했습니다."
+        if report.get("reason") == "save_due_after_trial":
+            summary += (
+                " 저장 가능한 글을 확인했습니다. 요청 가능 시각이 5분 시험 범위를 벗어나"
+                " 다음 실행에서 저장을 이어갈 수 있습니다."
+            )
         result["auto_test_summary_ko"] = summary
     for key in ("previous_list_review", "last_inspection_retry", "last_order_retry"):
         if key in result:

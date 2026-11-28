@@ -1,5 +1,8 @@
 """The explicit collection handoff owns one exact post across cooldown races."""
 
+import sys
+import uuid
+from contextlib import nullcontext
 from datetime import timedelta
 
 import pytest
@@ -9,11 +12,13 @@ from test_monitor_save_ledger import plan
 
 from image_monitor import monitor_batch_runtime as batch
 from image_monitor import monitor_collect as collect
+from image_monitor import monitor_trial_progress
 from image_monitor.candidate_save_selection import (
     MANIFEST_NAME,
     MONITOR_MANIFEST_NAME,
     select_candidate_save,
 )
+from image_monitor.native_state import PendingSave
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
 from image_monitor.watch_runtime import DEFAULT_SCOPE, SERVICE_SCOPE
@@ -208,6 +213,55 @@ def test_a_save_claimed_during_the_wait_does_not_retarget_another_planned_post(d
     with ledger(data) as store:
         assert store.get_for_post(first["post_id"])["status"] == "completed"
         assert store.get_for_post(other["post_id"])["status"] == "planned"
+
+
+@pytest.mark.parametrize("seconds_left, deferred", [(16, True), (17, True), (18, False)])
+def test_trial_rechecks_available_time_after_save_selection(
+    data, monkeypatch, seconds_left, deferred
+):
+    selected, _ = targets(data)
+    due = data.clock.now() + timedelta(seconds=17)
+    elapsed = 0
+    monkeypatch.setattr(monitor_trial_progress, "monotonic", lambda: elapsed)
+    trial = monitor_trial_progress.MonitorTrial(lambda: nullcontext(sys.stderr), None)
+
+    def select(*_args, **_kwargs):
+        nonlocal elapsed
+        elapsed = 300 - seconds_left
+        with QueueStore(data.watch / "watch.sqlite") as queue:
+            queue.defer_service(SERVICE_SCOPE, due)
+        return ready(selected)
+
+    monkeypatch.setattr(collect, "search_monitor_candidates", select)
+    runner = Runner(data)
+
+    def save(root, browser, url, *, automatic_start, **options):
+        assert automatic_start
+        state = PendingSave(data.marker)
+        directory = root / "session-1" / "runs" / uuid.uuid4().hex
+        (directory / "browser-profile").mkdir(parents=True)
+        (root / "session-1" / "images").mkdir()
+        pending = state.begin(directory)
+        state.update_browser(pending, 202, 100.0)
+        result = runner(root, browser, url, **options)
+        state.finish(pending)
+        return result
+
+    with trial.observe():
+        result = collect.run_monitor_collect(
+            data.watch,
+            data.legacy,
+            data.batch,
+            clock=data.clock,
+            save_runner=forbidden if deferred else save,
+        )
+    if deferred:
+        assert result["reason"] == "save_due_after_trial" and not data.clock.waits
+        assert result["next_eligible_at"] == collect._stamp(due) and result["browser_closed"]
+        assert result["native_save_tasks_started"] == result["files_verified"] == 0
+    else:
+        assert result["status"] == "monitor_collect_saved" and result["files_verified"] == 1, result
+        assert data.clock.waits == [17]
 
 
 def test_extended_wait_after_selection_returns_without_native_input(data, monkeypatch):

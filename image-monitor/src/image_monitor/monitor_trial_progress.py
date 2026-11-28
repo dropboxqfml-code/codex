@@ -16,6 +16,22 @@ def trial_stop_requested():
     return trial is not None and trial.should_stop()
 
 
+def save_due_after_trial(clock, due):
+    trial = _CURRENT.get()
+    if trial is None or trial.should_stop():
+        return False
+    remaining = trial.started + _TRIAL_SECONDS - monotonic()
+    delay = (due - clock.now()).total_seconds()
+    if delay <= 0 or delay < remaining:
+        return False
+    trial.record(
+        f"저장 가능 시각이 시험 종료 시각 이후입니다 · 다음 실행에서 저장 재개 가능 · "
+        f"요청 가능 시각 {due.isoformat(timespec='seconds')}",
+        stage="저장 대기 이월",
+    )
+    return True
+
+
 def trial_stage(label):
     trial = _CURRENT.get()
     if trial is not None:

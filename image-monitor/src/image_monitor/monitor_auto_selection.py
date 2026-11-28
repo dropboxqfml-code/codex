@@ -21,7 +21,7 @@ from image_monitor.monitor_setup_retry import (
     PARTIAL_RETRY_REASON,
     verify_setup_retry,
 )
-from image_monitor.monitor_trial_progress import trial_stage
+from image_monitor.monitor_trial_progress import save_due_after_trial, trial_stage
 from image_monitor.native_ui import NativeSaveLock
 from image_monitor.queue import QueueError, QueueStore
 from image_monitor.watch_image_search import MAX_NEW_DETAILS
@@ -273,11 +273,15 @@ def search_monitor_candidates(
                 break
             if wait > 0:
                 report["next_eligible_at"] = _stamp(due)
+                if handoff is not None and save_due_after_trial(clock, due):
+                    report.update(status="waiting", reason="save_due_after_trial")
+                    break
                 if wait > max_wait_seconds or waited_for is not None:
                     report.update(status="waiting", reason="persisted_cooldown")
                     break
                 waited_for = choice
-                if not wait_until(clock, due, should_stop, label="본문 요청 간격 대기"):
+                label = "저장 요청 간격 대기" if handoff is not None else "본문 요청 간격 대기"
+                if not wait_until(clock, due, should_stop, label=label):
                     report.update(status="cancelled", reason="requested_stop")
                     break
                 continue

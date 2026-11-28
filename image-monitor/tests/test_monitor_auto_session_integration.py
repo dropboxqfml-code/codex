@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import socket
+import sys
 import tempfile
 from collections import deque
 from contextlib import nullcontext
@@ -32,9 +33,11 @@ from image_monitor import (
     monitor_collect,
     monitor_operations,
     monitor_setup_retry,
+    monitor_trial_progress,
     post_worker,
     watch_runtime,
 )
+from image_monitor.auto_monitor_cli import _describe_result
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.monitor_auto_discovery import run_auto_discovery
 from image_monitor.monitor_auto_session import run_auto_monitor
@@ -269,3 +272,56 @@ def test_two_auto_cycles_preserve_prior_recovery_and_reopen_without_duplicate(
         details = CandidateDetailStore(queue)
         assert [d["post_id"] for d in details.list_details(MONITOR_SCOPE)] == ["203", "204", "205"]
         assert not details.list_pending(MONITOR_SCOPE, limit=10)
+
+
+def test_trial_finishes_before_unreachable_save_and_reopens_same_post(
+    monkeypatch, pilot, session_data
+):
+    data = session_data
+    roots = data.watch, data.legacy, data.batch
+    clock = FakeClock(datetime.now(UTC) + timedelta(seconds=62))
+    events, owned = [], []
+    detail, save = local_workers(monkeypatch, pilot, clock, events, owned)
+    baseline = observed(lambda stamp: snapshot([200], stamp, links=[link()]))
+    assert run_scan(data.watch, clock, baseline)["status"] == "watch_test_completed"
+    clock.wait(60)
+    elapsed = 0
+
+    def inspect(*args, **options):
+        nonlocal elapsed
+        result = detail(*args, **options)
+        if options["monitor_target"][1] == "202":
+            elapsed = 267
+        return result
+
+    monkeypatch.setattr(monitor_trial_progress, "monotonic", lambda: elapsed)
+    pages = deque([listing(201, 200), listing(202, 201), listing(202, 201)])
+    session = auto_session(roots, clock, pages, events, owned, inspect, save)
+    trial = monitor_trial_progress.MonitorTrial(lambda: nullcontext(sys.stderr), None)
+    with trial.observe():
+        result = session(max_cycles=2, should_stop=trial.should_stop)
+    assert (
+        result["status"] == "auto_monitor_waiting" and result["reason"] == "save_due_after_trial"
+    ), result
+    assert result["cycles_completed"] == result["posts_saved"] == result["files_verified"] == 1
+    assert result["list_checks"] == result["new_details_checked"] == 2 and result["browser_closed"]
+    assert result["last_collection"]["fresh_detail_outcome"] == "save_ready"
+    assert (
+        trial.stop_trigger is None
+        and "다음 실행" in _describe_result(result)["auto_test_summary_ko"]
+    )
+    due = datetime.fromisoformat(result["next_eligible_at"])
+    assert due - clock.now() == timedelta(seconds=60)
+    original = saved_content(data)
+    assert original
+    clock.wait(60)
+    resumed = session(max_cycles=1)
+    assert resumed["status"] == "auto_monitor_completed", resumed
+    assert resumed["new_details_checked"] == 0 and resumed["newly_saved_files"] == 1
+    assert [(op, post) for op, post, _ in events if op in ("detail", "save")] == [
+        ("detail", "201"),
+        ("save", "201"),
+        ("detail", "202"),
+        ("save", "202"),
+    ]
+    assert all(saved_content(data)[path] == content for path, content in original.items())

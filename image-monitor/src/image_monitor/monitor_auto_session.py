@@ -493,6 +493,8 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
             # while this call finishes can be retried without a stale-deadline spin.
             if due is None or due <= turn_started_at:
                 return _finish(report, "review", "invalid_wait_deadline")
+            if phase == "collecting" and reason == "save_due_after_trial":
+                return _finish(report, "waiting", reason)
             if phase == "scanning" and reason == "inspection_retry_due":
                 if follow_gap and list_attempts >= report["max_cycles"]:
                     return _finish(report, "waiting", reason)

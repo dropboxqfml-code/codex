@@ -12,7 +12,7 @@ from image_monitor.monitor_batch_runtime import run_monitor_batch, share_batch_r
 from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
-from image_monitor.monitor_trial_progress import trial_stage
+from image_monitor.monitor_trial_progress import save_due_after_trial, trial_stage
 from image_monitor.post_worker import run_post_save
 from image_monitor.watch_image_search import MAX_NEW_DETAILS
 from image_monitor.watch_lock import WatchRunBusy, watch_run_lock
@@ -150,16 +150,18 @@ def _collect(
             browser_closed=save["browser_closed"],
         )
         if (
-            attempt
-            or save["status"] != "monitor_batch_waiting"
+            save["status"] != "monitor_batch_waiting"
             or save.get("reason") != "persisted_cooldown"
             or save["tasks_started"]
         ):
             break
         due = _stored_time(save["next_eligible_at_local"])
         report["next_eligible_at"] = _stamp(due)
+        if save["browser_closed"] is True and save_due_after_trial(clock, due):
+            report.update(status="monitor_collect_waiting", reason="save_due_after_trial")
+            return
         remaining = (due - clock.now()).total_seconds()
-        if remaining > max_wait:
+        if attempt or remaining > max_wait:
             break
         if not wait_until(clock, due, should_stop, label="저장 요청 간격 대기"):
             report.update(status="monitor_collect_cancelled", reason="requested_stop")

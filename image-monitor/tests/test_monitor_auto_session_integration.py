@@ -33,11 +33,9 @@ from image_monitor import (
     monitor_collect,
     monitor_operations,
     monitor_setup_retry,
-    monitor_trial_progress,
     post_worker,
     watch_runtime,
 )
-from image_monitor.auto_monitor_cli import _describe_result
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.monitor_auto_discovery import run_auto_discovery
 from image_monitor.monitor_auto_session import run_auto_monitor
@@ -277,6 +275,9 @@ def test_two_auto_cycles_preserve_prior_recovery_and_reopen_without_duplicate(
 def test_trial_finishes_before_unreachable_save_and_reopens_same_post(
     monkeypatch, pilot, session_data
 ):
+    from image_monitor import monitor_trial_progress
+    from image_monitor.auto_monitor_cli import _describe_result
+
     data = session_data
     roots = data.watch, data.legacy, data.batch
     clock = FakeClock(datetime.now(UTC) + timedelta(seconds=62))

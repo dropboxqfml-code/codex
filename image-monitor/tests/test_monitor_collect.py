@@ -12,7 +12,6 @@ from test_monitor_save_ledger import plan
 
 from image_monitor import monitor_batch_runtime as batch
 from image_monitor import monitor_collect as collect
-from image_monitor import monitor_trial_progress
 from image_monitor.candidate_save_selection import (
     MANIFEST_NAME,
     MONITOR_MANIFEST_NAME,
@@ -219,6 +218,8 @@ def test_a_save_claimed_during_the_wait_does_not_retarget_another_planned_post(d
 def test_trial_rechecks_available_time_after_save_selection(
     data, monkeypatch, seconds_left, deferred
 ):
+    from image_monitor import monitor_trial_progress
+
     selected, _ = targets(data)
     due = data.clock.now() + timedelta(seconds=17)
     elapsed = 0

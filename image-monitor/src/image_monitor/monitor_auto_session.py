@@ -12,6 +12,7 @@ from image_monitor.monitor_auto_discovery import run_auto_discovery
 from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_collect import collect_session_turn, list_checks_during_save
 from image_monitor.monitor_date_report import public_date_cell_checks
+from image_monitor.monitor_foreground import ForegroundControl
 from image_monitor.monitor_gap_report import checked_gap_route, checked_window_starts
 from image_monitor.monitor_list_history import previous_list_checks
 from image_monitor.monitor_list_review import previous_list_review, public_list_review
@@ -324,6 +325,10 @@ class _NativeSaveLists:
                         if self.checked:
                             # Its candidates are durable. The newest scan gets the next writer turn.
                             self.report["cycles_completed"] += 1
+                        if self.report["phase"] == "foreground_hold":
+                            self.report["list_checks_during_foreground_hold"] = (
+                                self.report.get("list_checks_during_foreground_hold", 0) + 1
+                            )
                         self.checked += 1
                         self.report["list_checks_during_save"] += 1
                         if self.on_progress is not None:
@@ -436,8 +441,23 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
                     list_due,
                     on_progress,
                 )
-            with list_checks_during_save(overlap.window if overlap else None):
+
+            def on_hold():
+                _progress(report, "foreground_hold", on_progress)
+
+            def hold_stopped(lists=overlap):
+                terminal = lists.terminal if lists is not None else None
+                return stop_requested(should_stop) or (
+                    terminal is not None and terminal[0]["status"] != "waiting"
+                )
+
+            control = ForegroundControl(
+                hold_stopped, on_hold, lambda: _progress(report, "collecting", on_progress)
+            )
+            with control.activate(), list_checks_during_save(overlap.window if overlap else None):
                 turn = collect_runner(*roots, clock=clock, should_stop=should_stop)
+            if control.waited:
+                report["foreground_resume_clicked"] = control.resumed
         status = turn["status"]
         reason = turn["reason"]
         closed = turn["browser_closed"]
@@ -472,6 +492,23 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
                         continue
         else:
             _record_collection(report, turn)
+            if (
+                control.waited
+                and not control.resumed
+                and closed is True
+                and (turn.get("save") or {}).get("foreground_retry_verified") is True
+            ):
+                if (
+                    overlap is not None
+                    and overlap.terminal is not None
+                    and overlap.terminal[0]["status"] != "waiting"
+                ):
+                    pending_scan = overlap.terminal
+                    phase = "scanning"
+                    due = None
+                    continue
+                if stop_requested(should_stop):
+                    return _finish(report, "stopped", "foreground_resume_deferred")
 
         if status in {"cancelled", "monitor_collect_cancelled"}:
             if closed is False or (phase == "collecting" and closed is not True):

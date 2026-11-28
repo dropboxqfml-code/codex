@@ -131,10 +131,15 @@ def no_initial_foreground(fault, *, windows):
 
 @pytest.mark.parametrize(
     "stage",
-    ["completion_setup", "automatic_foreground_check"],
-    ids=["alpha1_completion", "alpha5_foreground"],
+    ["completion_setup", "automatic_foreground_check", "exhausted"],
+    ids=["alpha1_completion", "alpha5_foreground", "alpha31_exhausted"],
 )
 def test_saved_preinput_task_retries_its_original_post_once(monkeypatch, request, stage):
+    manual = stage == "exhausted"
+    if manual:
+        from image_monitor.monitor_foreground import ForegroundControl, current_foreground_control
+
+        stage = "automatic_foreground_check"
     pytest.importorskip("playwright.sync_api")
     windows = sys.platform == "win32"
     if windows and (
@@ -291,7 +296,79 @@ def test_saved_preinput_task_retries_its_original_post_once(monkeypatch, request
             )
         retained = old_report.read_bytes()
         data.clock.next_ready()
-        recovered = collect()
+        if manual:
+            with monkeypatch.context() as fault:
+                no_initial_foreground(fault, windows=windows)
+                second = collect()
+            assert second["reason"] == "automatic_foreground_retry_exhausted", second
+            assert second["files_verified"] == 0 and saved_content(data) == previous_files
+            data.clock.next_ready()
+            # Simulate one test ending while the panel is open. Both that run
+            # and the two older reports must be provably pre-input on restart.
+            if not windows:
+
+                def fixture_wait(control, _page, _ui, _url, _title):
+                    from image_monitor.monitor_foreground import WAIT_CANCELLED
+
+                    control.waited = True
+                    control.on_hold()
+                    if control.should_stop():
+                        raise NativeFocusError(WAIT_CANCELLED)
+                    control.resumed = True
+                    control.on_resume()
+
+                monkeypatch.setattr(ForegroundControl, "wait", fixture_wait)
+                # The production guard sets this native stage at bind time.
+                bind = post_worker.NativeRuntime.bind
+
+                def fixture_bind(runtime, process, title):
+                    ui = bind(runtime, process, title)
+                    ui.stage = "desktop_guard"
+                    ui.focus_snapshot = lambda: dict(old["focus_at_failure"])
+                    return ui
+
+                monkeypatch.setattr(post_worker.NativeRuntime, "bind", fixture_bind)
+            control = ForegroundControl(lambda: True, lambda: None, lambda: None)
+            with control.activate():
+                deferred = collect()
+            assert deferred["reason"] == "automatic_foreground_retry_exhausted", deferred
+            assert control.waited and not control.resumed and deferred["files_verified"] == 0
+            assert not marker.exists() and saved_content(data) == previous_files
+            data.clock.next_ready()
+
+            # A private report with any image attempt must block a later click.
+            tampered = old | {"active_attempt": {"stage": "input_armed"}}
+            old_report.write_text(json.dumps(tampered), encoding="utf-8")
+            from time import monotonic
+
+            deadline = monotonic() + 90
+            control = ForegroundControl(lambda: monotonic() >= deadline, lambda: None, lambda: None)
+            with control.activate():
+                refused = collect()
+            assert (
+                refused["status"] == "monitor_collect_review"
+                and refused["native_save_tasks_started"] == 0
+            )
+            old_report.write_bytes(retained)
+            if windows:
+
+                def click_button(page, milliseconds):
+                    if (
+                        current_foreground_control()
+                        and page.get_by_role("button", name="저장 재개").count()
+                    ):
+                        page.get_by_role("button", name="저장 재개").click(timeout=5000)
+                    else:
+                        page._page.wait_for_timeout(milliseconds)
+
+                monkeypatch.setattr(
+                    CandidatePageView, "wait_for_timeout", click_button, raising=False
+                )
+            with control.activate():
+                recovered = collect()
+            assert control.resumed
+        else:
+            recovered = collect()
         assert recovered["status"] == "monitor_collect_saved", json.dumps(recovered, indent=2)
         assert recovered["setup_retry_started"] and recovered["new_details_checked"] == 0
         if stage == "completion_setup":
@@ -313,8 +390,10 @@ def test_saved_preinput_task_retries_its_original_post_once(monkeypatch, request
         data.clock.next_ready()
         repeated = collect()
         assert repeated["status"] == "monitor_collect_no_candidates", repeated
-        assert repeated["native_save_tasks_started"] == 0 and visits == [target, target]
-        assert len(list((base / "runs").glob("*/report.json"))) == 2
+        assert repeated["native_save_tasks_started"] == 0 and visits == [target] * (
+            4 if manual else 2
+        )
+        assert len(list((base / "runs").glob("*/report.json"))) == (4 if manual else 2)
         with QueueStore(database, read_only=True) as source:
             assert fixtures._source_records(source) == before
         with ledger(data) as records:

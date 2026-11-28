@@ -28,6 +28,7 @@ from image_monitor.candidate_save_selection import (
     select_candidate_save,
 )
 from image_monitor.candidate_store import CandidateDetailStore
+from image_monitor.monitor_foreground import WAIT_CANCELLED, current_foreground_control
 from image_monitor.monitor_save_ledger import (
     LEDGER_NAME,
     RECENT_LEDGER_NAME,
@@ -394,6 +395,24 @@ def _focus_stop_reason(worker, completed, total, retrying):
     return "native_batch_task_requires_review"
 
 
+def _check_foreground_retry_evidence(worker, reason):
+    if (
+        worker.get("browser_closed") is not True
+        or worker.get("shared_pending_retained") is not False
+    ):
+        return False
+    if worker.get("reason") == WAIT_CANCELLED:
+        return reason in (FOREGROUND_RETRY_REASON, FOREGROUND_RETRY_EXHAUSTED)
+    return reason == FOREGROUND_RETRY_REASON and _public_initial_focus(
+        worker.get("focus_at_failure")
+    ) == {
+        "target_exists": True,
+        "target_foreground": False,
+        "belongs_to_target": False,
+        "foreground_identified": False,
+    }
+
+
 def _verified_new_files(worker, verified, previous):
     """Match this invocation’s fresh native saves to exactly the verified suffix."""
     suffix = verified["saved_files"][previous:]
@@ -656,7 +675,15 @@ def run_monitor_batch(
     retrying = isinstance(monitor_handoff, dict) and set(monitor_handoff) in (
         retry_fields,
         retry_fields | {"previously_verified_files"},
+        retry_fields | {"manual_foreground"},
     )
+    manual = (
+        automatic and isinstance(monitor_handoff, dict) and "manual_foreground" in monitor_handoff
+    )
+    if manual and (
+        monitor_handoff["manual_foreground"] is not True or current_foreground_control() is None
+    ):
+        raise NativeUIError("Manual foreground recovery requires an interactive monitor session")
     if automatic and (
         recent_handoff is not None
         or max_tasks != 1
@@ -901,7 +928,10 @@ def run_monitor_batch(
                                     report["last_stage"] = "setup_retry_evidence"
                                     with NativeSaveLock():
                                         prior_run, prior_reason, previous = verify_setup_retry(
-                                            ledger, task, permit
+                                            ledger,
+                                            task,
+                                            permit,
+                                            **({"manual_foreground": True} if manual else {}),
                                         )
                                         expected_previous = monitor_handoff.get(
                                             "previously_verified_files", 0
@@ -917,7 +947,10 @@ def run_monitor_batch(
                                                 "The prior native run or verified prefix changed"
                                             )
                                         active = ledger.start_setup_retry(
-                                            task, prior_run=prior_run, now=clock.now()
+                                            task,
+                                            prior_run=prior_run,
+                                            now=clock.now(),
+                                            **({"manual_foreground": True} if manual else {}),
                                         )
                                     if prior_reason == PARTIAL_RETRY_REASON:
                                         report.update(
@@ -964,6 +997,11 @@ def run_monitor_batch(
                                                 ),
                                             )
                                         trial_stage("Chrome에서 이미지 저장 및 파일 검증")
+                                        foreground_click = (
+                                            report.get("previous_failure_reason")
+                                            == FOREGROUND_RETRY_REASON
+                                            and current_foreground_control() is not None
+                                        )
                                         worker = save_runner(
                                             task_work_root(active, batch_root, legacy_root),
                                             "chrome",
@@ -971,6 +1009,11 @@ def run_monitor_batch(
                                             candidate_permit=permit,
                                             navigation_observer=observer,
                                             **({"automatic_start": True} if automatic else {}),
+                                            **(
+                                                {"require_foreground_click": True}
+                                                if foreground_click
+                                                else {}
+                                            ),
                                         )
                                     if not isinstance(worker, dict):
                                         raise QueueError(
@@ -1086,23 +1129,16 @@ def run_monitor_batch(
                                         report.update(reason="service_retry_after")
                                     elif observer.http_status in {404, 410}:
                                         report.update(reason="selected_candidate_unavailable")
-                                    elif (
-                                        reason == FOREGROUND_RETRY_REASON
-                                        and worker.get("browser_closed") is True
-                                        and worker.get("shared_pending_retained") is False
-                                        and _public_initial_focus(worker.get("focus_at_failure"))
-                                        == {
-                                            "target_exists": True,
-                                            "target_foreground": False,
-                                            "belongs_to_target": False,
-                                            "foreground_identified": False,
-                                        }
-                                    ):
+                                    elif _check_foreground_retry_evidence(worker, reason):
                                         # Scheduling uses the same on-disk proof as the retry.
                                         # The next writer must verify it again under its locks.
                                         with NativeSaveLock():
                                             _, cause, prefix = verify_setup_retry(
-                                                ledger, failed_task, permit
+                                                ledger,
+                                                failed_task,
+                                                permit,
+                                                manual_foreground=reason
+                                                == FOREGROUND_RETRY_EXHAUSTED,
                                             )
                                         if cause == FOREGROUND_RETRY_REASON and prefix == 0:
                                             report["foreground_retry_verified"] = True

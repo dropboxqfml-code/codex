@@ -50,13 +50,25 @@ def routed_list_chrome(post_ids):
 
 
 @pytest.mark.parametrize(
-    ("http_status", "session_data"),
-    [(200, None), (429, None), (403, None), (200, "chromium_loopback")],
+    ("http_status", "session_data", "held"),
+    [
+        (200, None, False),
+        (429, None, False),
+        (403, None, False),
+        (200, "chromium_loopback", False),
+        (200, None, True),
+    ],
     indirect=["session_data"],
-    ids=["two_due_lists", "rate_limited", "access_blocked", "stop_after_chrome_list"],
+    ids=[
+        "two_due_lists",
+        "rate_limited",
+        "access_blocked",
+        "stop_after_chrome_list",
+        "list_while_foreground_held",
+    ],
 )
 def test_durable_list_work_while_writer_still_owns_its_post(
-    monkeypatch, pilot, session_data, http_status
+    monkeypatch, pilot, session_data, http_status, held
 ):
     stop_with_chrome = session_data.allow_loopback
     roots = session_data.watch, session_data.legacy, session_data.batch
@@ -86,7 +98,7 @@ def test_durable_list_work_while_writer_still_owns_its_post(
     regular_save = post_worker.save_body_image
 
     def slow_image(*args, **kwargs):
-        if not starts:
+        if not starts and not held:
             inside_first_save.set()
             for completed in checks[: 2 if http_status == 200 and not stop_with_chrome else 1]:
                 # Simulate a busy disk/dialog at the point where the post worker owns the
@@ -104,6 +116,26 @@ def test_durable_list_work_while_writer_still_owns_its_post(
         starts.append(kwargs["post_url"])
         return regular_save(*args, **kwargs)
 
+    if held:
+        from image_monitor.monitor_foreground import ForegroundControl
+
+        pilot.focus_ready = False
+
+        def manual_resume(control, page, ui, url, title):
+            control.waited = True
+            control.on_hold()
+            inside_first_save.set()
+            for checked in checks:
+                clock.wait(61)
+                assert checked.wait(8)
+                assert not pilot.saves and not starts
+            inside_first_save.clear()
+            pilot.focus_ready = True
+            ui.assert_target_ready()
+            control.resumed = True
+            control.on_resume()
+
+        monkeypatch.setattr(ForegroundControl, "wait", manual_resume)
     monkeypatch.setattr(post_worker, "save_body_image", slow_image)
     outcomes = iter(
         [
@@ -171,6 +203,11 @@ def test_durable_list_work_while_writer_still_owns_its_post(
     )
     assert all(thread != owner for thread in threads[1:]) and threads[0] == owner
     assert all(browser.browser_closed for browser in owned)
+    if held:
+        assert (
+            report["foreground_resume_clicked"] is True
+            and report["list_checks_during_foreground_hold"] == 2
+        )
     if stop_with_chrome:
         assert report["status"] == "auto_monitor_stopped", report
         assert report["list_checks"] == report["new_candidates"] == 2

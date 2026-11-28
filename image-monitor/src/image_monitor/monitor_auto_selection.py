@@ -6,6 +6,7 @@ from image_monitor.candidate_save_policy import classify_stored_candidate_image
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.monitor_batch_runtime import _candidate, reconstruct_permit
 from image_monitor.monitor_clock import stop_requested, wait_until
+from image_monitor.monitor_foreground import current_foreground_control
 from image_monitor.monitor_operations import load_monitor_operations
 from image_monitor.monitor_save_ledger import (
     LEDGER_NAME,
@@ -87,16 +88,25 @@ def _choice(
                         "reason": exhausted,
                     }
                 ):
-                    report.update(status="review", reason=exhausted)
-                    return None, None
+                    if (
+                        exhausted != FOREGROUND_RETRY_EXHAUSTED
+                        or current_foreground_control() is None
+                    ):
+                        report.update(status="review", reason=exhausted)
+                        return None, None
                 permit = reconstruct_permit(queue, task)
                 with NativeSaveLock():
-                    prior_run, prior_reason, previous = verify_setup_retry(ledger, task, permit)
+                    manual = exhausted == FOREGROUND_RETRY_EXHAUSTED
+                    prior_run, prior_reason, previous = verify_setup_retry(
+                        ledger, task, permit, **({"manual_foreground": True} if manual else {})
+                    )
                 report["eligible_body_images"] = permit.image_count
                 handoff = _handoff(permit) | {
                     "retry_task_id": task["task_id"],
                     "prior_run": prior_run,
                 }
+                if manual:
+                    handoff["manual_foreground"] = True
                 if prior_reason in (FOREGROUND_RETRY_REASON, PARTIAL_RETRY_REASON):
                     report["previous_failure_reason"] = prior_reason
                     if prior_reason == PARTIAL_RETRY_REASON:

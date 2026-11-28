@@ -242,6 +242,24 @@ def task_native_base(task, batch_root, legacy_root):
     return _root(task_work_root(task, batch_root, legacy_root) / f"session-{session}")
 
 
+def is_exhausted_foreground_task(task):
+    control = task["control"]
+    return (
+        task["status"] == "needs_review"
+        and task["output_kind"] == "managed"
+        and task["result"]
+        == {
+            "worker_status": "manual_review",
+            "error_type": "NativeFocusError",
+            "reason": "automatic_foreground_retry_exhausted",
+        }
+        and isinstance(control.get("setup_retry"), dict)
+        and control.get("blocked") is False
+        and control.get("in_flight") is False
+        and control.get("http_status") == 200
+    )
+
+
 def is_setup_retry_candidate(task):
     """This ledger shape is necessary but not sufficient proof of a pre-input failure."""
     return (
@@ -575,13 +593,19 @@ class LedgerStore:
             _require(changed == 1, "The planned task changed before starting")
             return self.get_task(task_id)
 
-    def start_setup_retry(self, task, *, prior_run, now):
+    def start_setup_retry(self, task, *, prior_run, now, manual_foreground=False):
         """Consume the proved setup-only retry under the caller's watch and native locks."""
         stamp = _stamp(now)
         with self._write():
             latest = self.get_task(task["task_id"])
             _require(
-                self.scope == MONITOR_SCOPE and latest == task and is_setup_retry_candidate(latest),
+                self.scope == MONITOR_SCOPE
+                and latest == task
+                and (
+                    is_exhausted_foreground_task(latest)
+                    if manual_foreground
+                    else is_setup_retry_candidate(latest)
+                ),
                 "The failed setup task changed before retry",
             )
             control = latest["control"]
@@ -613,6 +637,12 @@ class LedgerStore:
                 "prior_finished_at": latest["finished_at"],
                 "prior_control": control,
             }
+            if manual_foreground:
+                original = control["setup_retry"]
+                previous = {k: v for k, v in control.items() if k != "setup_retry"}
+                receipt = original | {
+                    "manual_prior_controls": [*original.get("manual_prior_controls", []), previous]
+                }
             self.connection.execute(
                 "UPDATE save_tasks SET status='started',started_at=?,finished_at=NULL,"
                 "result_json=NULL,control_json=? WHERE task_id=?",

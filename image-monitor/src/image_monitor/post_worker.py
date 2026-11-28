@@ -24,6 +24,7 @@ from image_monitor.browser_completion import (
     completion_setup_reason,
 )
 from image_monitor.dcinside import DCSnapshotError, inspect_post, validate_post_url
+from image_monitor.monitor_foreground import current_foreground_control
 from image_monitor.monitor_trial_progress import trial_stage
 from image_monitor.native_body import save_body_image
 from image_monitor.native_probe import (
@@ -407,12 +408,16 @@ def run_post_save(
     candidate_permit: "CandidateSavePermit | None" = None,
     navigation_observer=None,
     automatic_start: bool = False,
+    require_foreground_click: bool = False,
 ) -> dict:
     require_windows()
     if browser != "chrome":
         raise NativeUIError("Integrated completion is currently verified for Chrome only")
     if type(automatic_start) is not bool:
         raise NativeUIError("Automatic start must be an explicit boolean")
+    control = current_foreground_control()
+    if require_foreground_click and (not automatic_start or control is None):
+        raise NativeUIError("Foreground recovery requires an interactive monitor session")
     target = validate_post_url(url)
     if candidate_permit is not None:
         from image_monitor.candidate_save_policy import CandidateSavePermit
@@ -528,7 +533,15 @@ def run_post_save(
                     page.evaluate("title => { document.title = title; }", title)
                     trial_stage("저장용 Chrome 창 식별")
                     ui = runtime.bind(process, title)
-                    ui.wait_for_initial_foreground()
+                    if require_foreground_click:
+                        control.wait(page, ui, target["canonical_url"], title)
+                    else:
+                        try:
+                            ui.wait_for_initial_foreground()
+                        except NativeFocusError:
+                            if control is None:
+                                raise
+                            control.wait(page, ui, target["canonical_url"], title)
                     report["last_stage"] = "post_inspection"
                 snapshot = _inspect_for_save(
                     runtime,

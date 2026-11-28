@@ -11,7 +11,12 @@ from image_monitor.candidate_finish import (
     verify_partial_candidate_files,
 )
 from image_monitor.candidate_save_policy import MONITOR_SCOPE
-from image_monitor.monitor_save_ledger import is_setup_retry_candidate, task_native_base
+from image_monitor.monitor_foreground import WAIT_CANCELLED
+from image_monitor.monitor_save_ledger import (
+    is_exhausted_foreground_task,
+    is_setup_retry_candidate,
+    task_native_base,
+)
 from image_monitor.native_state import (
     PendingSave,
     browser_still_running,
@@ -131,6 +136,7 @@ def _verify_foreground_failure(report, native, run, base):
         not in (
             "Foreground focus is outside the bound probe window; input stopped",
             "The probe page itself is not in the foreground",
+            WAIT_CANCELLED,
         )
     ):
         raise QueueError("The original report does not prove an initial foreground check failure")
@@ -178,7 +184,7 @@ def _partial_completed_count(report, native, permit, run, base):
     return len(proofs)
 
 
-def verify_setup_retry(ledger, task, permit):
+def verify_setup_retry(ledger, task, permit, *, manual_foreground=False):
     """Return the original run, safe cause and preserved file count under watch and native locks.
 
     Nothing here claims a job, mutates the ledger or removes a previous report.
@@ -187,23 +193,47 @@ def verify_setup_retry(ledger, task, permit):
     if (
         ledger.get_task(task["task_id"]) != task
         or ledger.scope != MONITOR_SCOPE
-        or not is_setup_retry_candidate(task)
+        or not (
+            is_exhausted_foreground_task(task)
+            if manual_foreground
+            else is_setup_retry_candidate(task)
+        )
         or task["native_session"] != session_id()
         or task["permit_fingerprint"] != permit.fingerprint
         or task["detail_attempt_id"] != permit.detail_attempt_id
         or task["post_url"] != permit.post_url
     ):
         raise QueueError("The failed task does not match this session and frozen post")
-    identity = task["control"]["browser_identity"]
     base = task_native_base(task, ledger.batch_root, ledger.legacy_root)
-    _, run, images = _paths(base, identity)
     PendingSave(shared_state_path()).assert_clear()
-    if browser_still_running(identity) is not False:
-        raise QueueError("The previous owned Chrome session is not confirmed closed")
-    runs = run.parent.iterdir()
-    if next(runs, None) != run or next(runs, None) is not None:
-        raise QueueError("The failed task has a different run or multiple runs")
+    controls = [task["control"]]
+    if manual_foreground:
+        receipt = task["control"]["setup_retry"]
+        controls = [receipt["prior_control"], *receipt.get("manual_prior_controls", []), *controls]
+    seen = set()
+    for control in controls:
+        if (
+            control.get("blocked") is not False
+            or control.get("in_flight") is not False
+            or control.get("http_status") != 200
+        ):
+            raise QueueError("The prior browser navigation was not confirmed")
+        identity = control["browser_identity"]
+        _, run, images = _paths(base, identity)
+        if run in seen or (manual_foreground and not seen and run.name != receipt["prior_run"]):
+            raise QueueError("The foreground retry history does not match the owned runs")
+        seen.add(run)
+        if browser_still_running(identity) is not False:
+            raise QueueError("The previous owned Chrome session is not confirmed closed")
+        result = _verify_run(base, run, images, permit, task["result"]["error_type"])
+        if manual_foreground and result[1:] != (FOREGROUND_RETRY_REASON, 0):
+            raise QueueError("Manual foreground resume requires only closed pre-input failures")
+    if set((base / "runs").iterdir()) != seen:
+        raise QueueError("The failed task contains an unbound native run")
+    return result
 
+
+def _verify_run(base, run, images, permit, error_type):
     path = run / "report.json"
     report = _read_json(path)
     count = permit.image_count
@@ -214,7 +244,7 @@ def verify_setup_retry(ledger, task, permit):
         or report.get("mode") != "reviewed_candidate_native_context_menu"
         or report.get("browser") != "chrome"
         or report.get("status") != "manual_review"
-        or report.get("error_type") != task["result"]["error_type"]
+        or report.get("error_type") != error_type
         or report.get("browser_closed") is not True
         or report.get("shared_pending_retained") is not False
         or report.get("report_path") != str(path)

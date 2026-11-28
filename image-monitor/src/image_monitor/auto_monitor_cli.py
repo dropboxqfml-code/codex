@@ -224,6 +224,12 @@ def _describe_result(report):
                 " Windows에서 저장용 Chrome이 앞에 있는지 확인할 수 없어 입력 전에 멈췄습니다."
                 " 다음 실행에서 같은 글의 저장을 한 번 재시도할 수 있습니다."
             )
+        if held := report.get("list_checks_during_foreground_hold"):
+            summary += f" 저장 보류 중 목록을 {held}회 확인했습니다."
+        if report.get("reason") == "foreground_resume_deferred":
+            summary += " 저장 재개를 기다리다 종료했습니다. 보류된 글은 다음 감시에 이어집니다."
+        elif report.get("foreground_resume_clicked"):
+            summary += " 전용 Chrome에서 저장 재개를 확인했습니다."
         result["auto_test_summary_ko"] = summary
     for key in ("previous_list_review", "last_inspection_retry", "last_order_retry"):
         if key in result:
@@ -278,6 +284,7 @@ def _progress_message(report):
         "starting": "자동 감시 시작",
         "scanning": "목록 확인 중",
         "collecting": "게시글 이미지 확인 및 저장 중",
+        "foreground_hold": "저장 보류 · 전용 Chrome에서 저장 재개를 누르세요",
         "scanned_during_save": "이미지 저장 중 목록 확인 완료",
         "waiting": "다음 확인 대기 중",
     }

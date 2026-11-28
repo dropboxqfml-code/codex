@@ -39,6 +39,7 @@ from image_monitor.browser_completion import BrowserCompletionError
 from image_monitor.candidate_store import CandidateDetailStore
 from image_monitor.native_ui import NativeFocusError
 from image_monitor.queue import QueueStore
+from image_monitor.watch_lock import watch_run_lock
 from image_monitor.watch_store import MONITOR_SCOPE
 
 
@@ -220,8 +221,13 @@ def test_saved_preinput_task_retries_its_original_post_once(monkeypatch, request
                 visits.append(url)
             return post_worker.run_post_save(root, browser, url, **options)
 
-        def collect():
-            return monitor_collect.run_monitor_collect(
+        def collect(*, session_turn=False):
+            runner = (
+                monitor_collect.collect_session_turn
+                if session_turn
+                else monitor_collect.run_monitor_collect
+            )
+            return runner(
                 data.watch,
                 data.legacy,
                 data.batch,
@@ -230,13 +236,24 @@ def test_saved_preinput_task_retries_its_original_post_once(monkeypatch, request
                 detail_runner=lambda *a, **kw: pytest.fail("Checked a different candidate"),
             )
 
+        monkeypatch.setattr(monitor_setup_retry, "shared_state_path", lambda: marker)
+        if not windows:
+            monkeypatch.setattr(monitor_auto_selection, "NativeSaveLock", nullcontext)
+            monkeypatch.setattr(monitor_setup_retry, "session_id", lambda: 1)
+            monkeypatch.setattr(monitor_setup_retry, "browser_still_running", lambda _: False)
         with monkeypatch.context() as fault:
             if stage == "completion_setup":
                 fault.setattr(post_worker.BrowserCompletion, "__enter__", failed_enter)
             else:
                 no_initial_foreground(fault, windows=windows)
-            first = collect()
-        assert first["status"] == "monitor_collect_review", first
+            with watch_run_lock(database, MONITOR_SCOPE, purpose="monitor"):
+                first = collect(session_turn=True)
+        expected = (
+            "monitor_collect_review"
+            if stage == "completion_setup"
+            else "monitor_collect_foreground_retry_pending"
+        )
+        assert first["status"] == expected, first
         assert first["save"]["worker_last_stage"] == stage, json.dumps(first, indent=2)
         assert first["files_verified"] == 0 and saved_content(data) == previous_files
         assert first["browser_closed"] and not marker.exists()
@@ -263,6 +280,7 @@ def test_saved_preinput_task_retries_its_original_post_once(monkeypatch, request
         else:
             assert first["worker_images_completed"] is None
             assert first["save"]["error_type"] == "NativeFocusError"
+            assert first["save"]["foreground_retry_verified"] is True
             assert old["native_stage"] == "desktop_guard" and "job_counts" not in old
             assert old["focus_at_failure"]["target_exists"] is True
             assert old["focus_at_failure"]["foreground_hwnd"] is None
@@ -272,11 +290,6 @@ def test_saved_preinput_task_retries_its_original_post_once(monkeypatch, request
                 old["reason"] == "Foreground focus is outside the bound probe window; input stopped"
             )
         retained = old_report.read_bytes()
-        monkeypatch.setattr(monitor_setup_retry, "shared_state_path", lambda: marker)
-        if not windows:
-            monkeypatch.setattr(monitor_auto_selection, "NativeSaveLock", nullcontext)
-            monkeypatch.setattr(monitor_setup_retry, "session_id", lambda: 1)
-            monkeypatch.setattr(monitor_setup_retry, "browser_still_running", lambda _: False)
         data.clock.next_ready()
         recovered = collect()
         assert recovered["status"] == "monitor_collect_saved", json.dumps(recovered, indent=2)

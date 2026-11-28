@@ -148,6 +148,48 @@ def test_session_keeps_only_safe_initial_foreground_flags_in_last_collection(tmp
     assert last["focus_at_failure"] == {"target_exists": True, "foreground_identified": False}
 
 
+def test_verified_initial_focus_failure_reaches_next_scheduled_turn(tmp_path):
+    clock = Clock()
+    pending = collection(
+        "foreground_retry_pending", reason="automatic_foreground_unconfirmed", due=clock.stamp(95)
+    )
+    pending.update(native_save_tasks_started=1, new_details_checked=1)
+    recovered = collection("saved", files=1)
+    recovered["setup_retry_started"] = True
+    # Simulate a service deadline later than the ordinary list interval.
+    clock.wait(30)
+
+    def wait_for_foreground():
+        clock.wait(20)
+        return pending
+
+    report, events = session(tmp_path, clock, [scan(), scan()], [wait_for_foreground, recovered])
+    assert events == [("scan", 30), ("collect", 30), ("scan", 95), ("collect", 95)]
+    assert report["status"] == "auto_monitor_completed"
+    assert report["native_save_tasks_started"] == 2
+    assert report["new_details_checked"] == report["newly_saved_files"] == 1
+    assert report["last_collection"]["setup_retry_started"] is True
+
+
+def test_last_trial_collection_defers_verified_foreground_failure(tmp_path):
+    from image_monitor.auto_monitor_cli import _describe_result
+
+    clock = Clock()
+    pending = collection(
+        "foreground_retry_pending", reason="automatic_foreground_unconfirmed", due=clock.stamp(154)
+    )
+    pending["native_save_tasks_started"] = 1
+    report, events = session(
+        tmp_path, clock, [scan(), scan()], [collection("saved", files=1), pending]
+    )
+    assert events[-1] == ("collect", 60) and len(events) == 4
+    assert report["status"] == "auto_monitor_waiting"
+    assert report["reason"] == "foreground_retry_next_run" and auto_monitor_exit_code(report) == 0
+    assert report["next_eligible_at"] == clock.stamp(154)
+    assert report["cycles_completed"] == report["posts_saved"] == report["files_verified"] == 1
+    assert "같은 글의 저장을 한 번" in _describe_result(report)["auto_test_summary_ko"]
+
+
 def test_session_retains_verified_prefix_and_new_file_totals_across_subsequent_cycles(tmp_path):
     resumed = collection("saved", files=10)
     resumed.update(

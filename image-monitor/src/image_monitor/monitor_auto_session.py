@@ -18,6 +18,7 @@ from image_monitor.monitor_list_review import previous_list_review, public_list_
 from image_monitor.monitor_save_ledger import _root, _roots
 from image_monitor.monitor_settings import MAX_CATCH_UP_SCANS, load_monitor_settings
 from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON, PARTIAL_RETRY_REASON
+from image_monitor.monitor_trial_progress import save_due_after_trial
 from image_monitor.post_worker import share_setup_diagnostics
 from image_monitor.queue import QueueStore
 from image_monitor.watch_history import (
@@ -517,6 +518,20 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
                 continue
             # A detail/navigation attempt already spent this list's budget.
             # Its candidate is durable and can be considered after the next scan.
+        elif phase == "collecting" and status == "monitor_collect_foreground_retry_pending":
+            if closed is not True or due is None or reason != FOREGROUND_RETRY_REASON:
+                return _finish(report, "review", reason)
+            if stop_requested(should_stop):
+                return _finish(report, "stopped", "requested_stop")
+            # A list already checked during the save still owns a collection turn.
+            # A terminal list result must also go through the normal handler below.
+            if overlap is None or (not overlap.checked and overlap.terminal is None):
+                due = max(list_due, due)
+                report["next_eligible_at"] = _stamp(due)
+                if report["list_checks"] == report["max_cycles"] or save_due_after_trial(
+                    clock, due
+                ):
+                    return _finish(report, "waiting", "foreground_retry_next_run")
         elif phase == "scanning" and status in {"complete", "partial", "baseline"}:
             inspection_retry_pending = False
             order_retry_pending = False

@@ -495,6 +495,8 @@ def share_batch_report(report):
         "shutdown",
     )
     public = {key: report[key] for key in fields if key in report}
+    if report.get("foreground_retry_verified") is True:
+        public["foreground_retry_verified"] = True
     if (
         report.get("setup_retry_started") is True
         and report.get("previous_failure_reason") == FOREGROUND_RETRY_REASON
@@ -1061,7 +1063,7 @@ def run_monitor_batch(
                                             PARTIAL_RETRY_EXHAUSTED,
                                         ):
                                             failure["reason"] = reason
-                                    ledger.finish(
+                                    failed_task = ledger.finish(
                                         active["task_id"],
                                         status="needs_review",
                                         result=failure,
@@ -1084,6 +1086,26 @@ def run_monitor_batch(
                                         report.update(reason="service_retry_after")
                                     elif observer.http_status in {404, 410}:
                                         report.update(reason="selected_candidate_unavailable")
+                                    elif (
+                                        reason == FOREGROUND_RETRY_REASON
+                                        and worker.get("browser_closed") is True
+                                        and worker.get("shared_pending_retained") is False
+                                        and _public_initial_focus(worker.get("focus_at_failure"))
+                                        == {
+                                            "target_exists": True,
+                                            "target_foreground": False,
+                                            "belongs_to_target": False,
+                                            "foreground_identified": False,
+                                        }
+                                    ):
+                                        # Scheduling uses the same on-disk proof as the retry.
+                                        # The next writer must verify it again under its locks.
+                                        with NativeSaveLock():
+                                            _, cause, prefix = verify_setup_retry(
+                                                ledger, failed_task, permit
+                                            )
+                                        if cause == FOREGROUND_RETRY_REASON and prefix == 0:
+                                            report["foreground_retry_verified"] = True
                                     break
                                 try:
                                     with NativeSaveLock():

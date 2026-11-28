@@ -12,6 +12,7 @@ from image_monitor.monitor_batch_runtime import run_monitor_batch, share_batch_r
 from image_monitor.monitor_clock import stop_requested, wait_until
 from image_monitor.monitor_save_ledger import _roots
 from image_monitor.monitor_settings import load_monitor_settings
+from image_monitor.monitor_setup_retry import FOREGROUND_RETRY_REASON
 from image_monitor.monitor_trial_progress import save_due_after_trial, trial_stage
 from image_monitor.post_worker import run_post_save
 from image_monitor.watch_image_search import MAX_NEW_DETAILS
@@ -169,6 +170,13 @@ def _collect(
 
     public = share_batch_report(save)
     status = _save_status(public, expected_images, search.get("previously_verified_files"))
+    if (
+        session_turn
+        and status == "monitor_collect_review"
+        and public.get("reason") == FOREGROUND_RETRY_REASON
+        and public.get("foreground_retry_verified") is True
+    ):
+        status = "monitor_collect_foreground_retry_pending"
     files = public["saved_files"] if status == "monitor_collect_saved" else []
     due = public.get("next_eligible_at_local")
     report.update(

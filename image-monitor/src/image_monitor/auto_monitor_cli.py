@@ -219,6 +219,11 @@ def _describe_result(report):
                 " 저장 가능한 글을 확인했습니다. 요청 가능 시각이 5분 시험 범위를 벗어나"
                 " 다음 실행에서 저장을 이어갈 수 있습니다."
             )
+        if report.get("reason") == "foreground_retry_next_run":
+            summary += (
+                " Windows에서 저장용 Chrome이 앞에 있는지 확인할 수 없어 입력 전에 멈췄습니다."
+                " 다음 실행에서 같은 글의 저장을 한 번 재시도할 수 있습니다."
+            )
         result["auto_test_summary_ko"] = summary
     for key in ("previous_list_review", "last_inspection_retry", "last_order_retry"):
         if key in result:

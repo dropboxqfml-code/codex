@@ -706,10 +706,10 @@ def run_post_save(
                     raise NativeUIError("Some image jobs require review before another save")
                 report["last_stage"] = "browser_shutdown"
                 runtime.close(process)
-                if not _confirm_browser_closed(pending):
+                runtime.disconnect()
+                if not _confirm_browser_closed(pending, timeout=15):
                     raise NativeUIError("The dedicated profile remains active")
                 report["browser_closed"] = True
-                runtime.disconnect()
                 state.finish(pending)
                 report.update(
                     status="post_completed", last_stage="complete", shared_pending_retained=False

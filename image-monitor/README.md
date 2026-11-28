@@ -1,10 +1,12 @@
-# Image Monitor 0.5.0-alpha.30
+# Image Monitor 0.5.0-alpha.31
 
 Windows에서 공개 검색 결과를 감시하고 본문 이미지를 수집하는 프로그램입니다.
 
 **같은 Windows PC에서 새 ZIP을 새 폴더에 풀고
 `image-monitor/TEST_AUTO_MONITOR.cmd`를 더블클릭하세요.**
 저장용 Chrome이 열리면 앞에 둔 채 기다리세요. 시험이 끝나면 자동으로 열린 결과 TXT 하나를 보내주세요.
+
+alpha.31은 저장 후 Chrome 연결을 먼저 해제하고, 등록한 프로세스의 종료와 해당 프로필을 쓰는 다른 프로세스가 있는지 확인합니다.
 
 alpha.30은 저장용 Chrome 창은 열렸지만 Windows가 전경 창을 식별하지 못했을 때, 입력 전 중단과 창 종료를 기록에서 검증한 뒤 같은 글의 저장을 한 번 재시도합니다. 마지막 시험 주기에 발생하면 다음 실행으로 이월합니다.
 

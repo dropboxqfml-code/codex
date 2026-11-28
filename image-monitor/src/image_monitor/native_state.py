@@ -123,8 +123,13 @@ def browser_still_running(value: dict) -> bool:
     pid, created = value.get("browser_pid"), value.get("browser_create_time")
     if pid is not None:
         try:
-            if psutil.Process(pid).create_time() == created:
-                return True
+            process = psutil.Process(pid)
+            if process.create_time() == created:
+                # An open Windows handle can outlive the process it identifies.
+                # Test exit without waiting before inspecting other profile users.
+                process.wait(timeout=0)
+        except psutil.TimeoutExpired:
+            return True
         except psutil.NoSuchProcess:
             pass
         except psutil.Error as error:

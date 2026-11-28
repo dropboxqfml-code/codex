@@ -278,6 +278,20 @@ def test_controller_saves_frozen_observation_and_rerun_never_repeats_native_inpu
     assert again["saved_files"] == []
 
 
+def test_completed_writer_disconnects_before_checking_for_remaining_profile_users(
+    pilot, monkeypatch
+):
+    def profile_still_open(_pending):
+        runtime = pilot.runtimes[-1]
+        assert not runtime.alive and runtime.disconnects > 0
+        return False
+
+    monkeypatch.setattr(worker, "browser_still_running", profile_still_open)
+    result = worker.run_post_save(pilot.root)
+    assert result["status"] == "post_completed" and result["browser_closed"]
+    assert not pilot.pending.exists()
+
+
 def test_uncertain_writer_preserves_browser_pending_staging_and_blocks_another_root(pilot):
     pilot.failure = "completion"
     report = worker.run_post_save(pilot.root)

@@ -259,6 +259,7 @@ def mock_process_scan(monkeypatch, processes, *, registered_create_time=999.0):
         Process=lookup,
         process_iter=lambda _attrs: processes,
         Error=ProcessError,
+        TimeoutExpired=type("TimeoutExpired", (ProcessError,), {}),
         NoSuchProcess=NoSuchProcess,
     )
     monkeypatch.setitem(sys.modules, "psutil", psutil)
@@ -305,3 +306,23 @@ def test_uninspectable_same_session_browser_blocks_recovery(tmp_path, monkeypatc
     value = {"browser_pid": None, "browser_profile": str(tmp_path / "profile")}
     with pytest.raises(NativeUIError, match="recovery blocked"):
         native_state.browser_still_running(value)
+
+
+@pytest.mark.parametrize(
+    "registered_live,profile_elsewhere", [(False, False), (True, False), (False, True)]
+)
+def test_registered_process_handle_can_outlive_browser(
+    tmp_path, monkeypatch, registered_live, profile_elsewhere
+):
+    profile = str(tmp_path / "profile")
+    other = SimpleNamespace(
+        pid=5678, info={"name": "chrome.exe", "cmdline": ["--user-data-dir", profile]}
+    )
+    lookup = mock_process_scan(monkeypatch, [other] if profile_elsewhere else [])
+    wait = MagicMock(
+        side_effect=sys.modules["psutil"].TimeoutExpired() if registered_live else None
+    )
+    lookup.return_value = SimpleNamespace(create_time=lambda: 999.0, wait=wait)
+    value = {"browser_pid": 4567, "browser_create_time": 999.0, "browser_profile": profile}
+    assert native_state.browser_still_running(value) is (registered_live or profile_elsewhere)
+    wait.assert_called_once_with(timeout=0)

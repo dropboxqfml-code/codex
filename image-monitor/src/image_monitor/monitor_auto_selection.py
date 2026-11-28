@@ -318,6 +318,7 @@ def search_monitor_candidates(
                 if alternate_order and trial.get("detail_selection_order") in (
                     "oldest_discovery",
                     "highest_post_id",
+                    "recent_picture_marker",
                 ):
                     report["detail_selection_order"] = trial["detail_selection_order"]
                 fresh_posts.add(pending[1])

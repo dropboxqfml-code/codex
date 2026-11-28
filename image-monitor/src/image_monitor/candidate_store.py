@@ -13,6 +13,7 @@ from datetime import datetime
 from image_monitor.queue import QueueError, QueueStore, _json_data, _text, _time
 from image_monitor.watch_store import WatchScope, WatchStore, _limit, _record, _scope
 
+RECENT_PICTURE_CANDIDATES = 20
 MAX_DETAIL_RESULT_BYTES = 4 * 1024 * 1024
 _WHERE = "watch_name=? AND gallery_type=? AND gallery_id=? AND keyword=? AND search_type=?"
 
@@ -97,8 +98,13 @@ class CandidateDetailStore:
                 f"SELECT COUNT(*) FROM candidate_details WHERE {_WHERE}", _scope(scope)
             ).fetchone()[0]
             newest = attempts % 2 == 1
-        batch = self._pending(scope, 1, exclude_posts, newest=newest)
-        return batch, "highest_post_id" if newest else "oldest_discovery"
+        if not newest:
+            return self._pending(scope, 1, exclude_posts, newest=False), "oldest_discovery"
+        recent = self._pending(scope, RECENT_PICTURE_CANDIDATES, exclude_posts, newest=True)
+        for candidate in recent:
+            if candidate["shown_metadata"].get("picture_marker") is True:
+                return [candidate], "recent_picture_marker"
+        return recent[:1], "highest_post_id"
 
     def _pending(self, scope, limit, exclude_posts, *, newest):
         key, limit = _scope(scope), _limit(limit)

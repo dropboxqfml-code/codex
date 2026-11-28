@@ -244,6 +244,8 @@ def _page(value, expected, observed_at, layout_status):
                 )
             }
         )
+        if row.get("picture_marker") is True:
+            rows[-1]["picture_marker"] = True
     excluded = []
     row_orders = {row["row_order"] for row in rows}
     for exclusion in _sequence(value.get("excluded_rows", []), "excluded_rows"):
@@ -495,6 +497,8 @@ def _plan_scan(
                 "baseline_observed_at": baseline["observed_at"] if baseline else stamp,
                 "empty_baseline_ambiguous": baseline is not None and not anchor_ids,
             }
+            if row.get("picture_marker") is True:
+                metadata["picture_marker"] = True
             candidate = {
                 "post_id": post_id,
                 "post_url": row["canonical_url"],

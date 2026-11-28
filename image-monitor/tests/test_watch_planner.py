@@ -212,6 +212,7 @@ def test_live_baseline_partial_scan_and_recent_overlap_use_complete_checkpoint(t
             live_snapshot(range(302, 282, -1), links=[live_link()], observed_at=scan_at),
             live_snapshot(range(282, 262, -1), page=2, observed_at=scan_at),
         ]
+        pages[0]["rows"][0]["picture_marker"] = True
         partial = live_plan(
             pages, state=store.get_state(LIVE_SCOPE), observed_at=scan_at, max_pages=1
         )
@@ -230,6 +231,9 @@ def test_live_baseline_partial_scan_and_recent_overlap_use_complete_checkpoint(t
         assert store.persist_scan(LIVE_SCOPE, **final)["candidates_added"] == 0
         assert store.get_state(LIVE_SCOPE)["baseline"] == baseline
         for candidate in store.list_candidates(LIVE_SCOPE):
+            assert (candidate["shown_metadata"].get("picture_marker") is True) == (
+                candidate["post_id"] == "302"
+            )
             assert candidate["shown_metadata"]["baseline_observed_at"] == baseline["observed_at"]
             assert candidate["shown_metadata"]["requires_published_at_filter"] is True
         assert queue.summary()["posts"] == 0

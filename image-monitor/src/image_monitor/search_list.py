@@ -405,6 +405,7 @@ def _ordinary_row(raw, target, row_order, *, expected_date_cells=1):
         "row_order": row_order,
         "post_id": post["post_id"],
         "canonical_url": post["canonical_url"],
+        **({"picture_marker": True} if raw.get("picture_marker") is True else {}),
         "title": title,
         "author_raw": _public_text(raw.get("author_raw"), 500),
         "published_at_raw": _public_text(raw.get("published_at_raw"), 100),
@@ -965,7 +966,8 @@ LIST_DOM_JS = r"""(options) => {
    const date=unique(row,selectors.date),numberText=text(number.node,100);
    const links=rowOwned(row,selectors.title_links);
    const allLinks=rowOwned(row,'a');
-   return {number_raw:numberText,
+   const picture=links.length===1 && visible(links[0].querySelector(':scope > .icon_pic'));
+   return {number_raw:numberText, picture_marker:picture,
     is_ad:row.matches('.ad,.ad-row,.ad_row,.ub-ad,.gall_ad,[data-ad]')||
      /^(AD|광고)$/i.test(numberText||''),
     is_pinned:row.matches('.notice,.ub-notice,.notice_row')||numberText==='공지',

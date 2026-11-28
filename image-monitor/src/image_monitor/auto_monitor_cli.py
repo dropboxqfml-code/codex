@@ -195,6 +195,7 @@ def _describe_result(report):
             orders = {
                 "oldest_discovery": "오래 기다린 글",
                 "highest_post_id": "글번호가 가장 큰 글",
+                "recent_picture_marker": "최근 후보 중 사진 표시가 있는 글",
             }
             inspected = [
                 orders[a["detail_selection_order"]]

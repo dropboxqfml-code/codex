@@ -104,7 +104,8 @@ def test_search_yields_to_next_invocation_after_three_empty_posts(roots):
     )
 
 
-def test_alternating_detail_turn_survives_reopening_a_large_queue(roots):
+@pytest.mark.parametrize("marked", [False, True])
+def test_alternating_detail_turn_survives_reopening_a_large_queue(roots, marked):
     watch, legacy, batch, clock = roots
     database = watch / "watch.sqlite"
     with QueueStore(database) as queue:
@@ -122,20 +123,23 @@ def test_alternating_detail_turn_survives_reopening_a_large_queue(roots):
                     "post_id": str(i),
                     "post_url": f"https://gall.dcinside.com/board/view/?id=comic_new6&no={i}",
                     "title": "Test",
-                    "shown_metadata": {},
+                    "shown_metadata": {"picture_marker": True}
+                    if marked and i in (1250, 1263, 1280)
+                    else {},
                 }
                 for i in range(300, 1283)
             ],
         )
+    recent = ("1280", "recent_picture_marker") if marked else ("1282", "highest_post_id")
     for attempt, (expected, order) in enumerate(
-        (("102", "oldest_discovery"), ("1282", "highest_post_id"), ("103", "oldest_discovery"))
+        (("102", "oldest_discovery"), recent, ("103", "oldest_discovery"))
     ):
         if attempt == 1:
             with QueueStore(database, read_only=True) as queue:
                 rows, policy = CandidateDetailStore(queue).next_monitor_pending(
-                    MONITOR_SCOPE, alternate_order=True, exclude_posts={"1282"}
+                    MONITOR_SCOPE, alternate_order=True, exclude_posts={"1280", "1263", "1282"}
                 )
-                assert policy == order and rows[0]["post_id"] == "1281"
+                assert policy == "highest_post_id" and rows[0]["post_id"] == "1281"
         report, handoff = search_monitor_candidates(
             watch,
             legacy,
@@ -144,10 +148,13 @@ def test_alternating_detail_turn_survives_reopening_a_large_queue(roots):
             alternate_order=True,
             max_new_details=1,
             detail_runner=partial(
-                candidate_runtime.run_candidate_trial, backend_factory=DetailBrowser(deleted)
+                candidate_runtime.run_candidate_trial,
+                backend_factory=DetailBrowser(body(0) if marked and attempt == 1 else deleted),
             ),
         )
         assert report["status"] == "limit" and handoff is None, report
+        if marked and attempt == 1:
+            assert report["last_fresh_detail_outcome"] == "no_body_images_observed"
         assert report["detail_selection_order"] == order
         assert report["uninspected_at_selection"] == 988 - attempt
         with QueueStore(database, read_only=True) as queue:

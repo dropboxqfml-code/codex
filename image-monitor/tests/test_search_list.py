@@ -895,7 +895,9 @@ def test_browser_fixture_reads_visible_metadata_without_hidden_attributes_or_res
     page = load("""<!doctype html><html><body>
       <table class="gall_list"><tbody>
        <tr class="ub-content"><td class="gall_num">7036949</td>
-        <td class="gall_tit"><a href="/board/view/?id=comic_new6&amp;no=7036949">ai 그림</a>
+        <td class="gall_tit"><a href="/board/view/?id=comic_new6&amp;no=7036949"><em
+         class="icon_img icon_pic"
+         style="display:inline-block;width:12px;height:12px"></em>ai 그림</a>
          <a class="reply_numbox" href="/board/view/?id=comic_new6&amp;no=7036949#comment">[7]</a>
         </td>
         <td class="gall_writer" data-nick="hidden nickname" data-ip="hidden full IP">
@@ -915,6 +917,7 @@ def test_browser_fixture_reads_visible_metadata_without_hidden_attributes_or_res
     snapshot = inspect_list(page, expected_url=URL, observed_at=NOW)
     assert snapshot["status"] == "observed"
     assert snapshot["rows"][0]["post_id"] == "7036949"
+    assert snapshot["rows"][0]["picture_marker"] is True
     assert snapshot["rows"][0]["title"] == "ai 그림"
     assert "공개이름" in snapshot["rows"][0]["author_raw"]
     assert "(123.45)" in snapshot["rows"][0]["author_raw"]
@@ -927,6 +930,15 @@ def test_browser_fixture_reads_visible_metadata_without_hidden_attributes_or_res
     assert page.url == URL
     assert snapshot["layout_status"] == "unverified"
     assert not snapshot["queue_eligible"] and not snapshot["end_of_results"]
+    icon = page.locator("em.icon_pic")
+    icon.evaluate("icon => icon.style.display = 'none'")
+    assert "picture_marker" not in inspect_list(page, expected_url=URL, observed_at=NOW)["rows"][0]
+    icon.evaluate("""icon => {
+        icon.style.display = 'inline-block';
+        document.querySelector('.reply_numbox').appendChild(icon);
+    }""")
+    assert "picture_marker" not in inspect_list(page, expected_url=URL, observed_at=NOW)["rows"][0]
+    assert requests == [URL]
 
 
 @pytest.mark.parametrize(

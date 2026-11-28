@@ -224,22 +224,45 @@ def test_malformed_ordinary_or_unproven_row_stays_unverified(unrecognized, field
     assert not snapshot["queue_eligible"]
 
 
-@pytest.mark.parametrize("field", ["number", "title_links"])
-def test_other_shape_checks_still_apply_to_proven_special_rows(field):
-    special = row("공지", is_pinned=True)
-    special["field_counts"]["author"] = 0
-    if field == "title_links":
-        special.update(links=[], link_total=0, all_links=[], all_link_total=0)
-    else:
-        special["field_counts"][field] = 0
+@pytest.mark.parametrize("role,label", [("is_ad", "광고"), ("is_pinned", "공지")])
+@pytest.mark.parametrize("count", [0, 2])
+def test_title_links_on_labelled_special_rows_must_match_the_table(role, label, count):
+    links = [{"href": "/excluded", "text_raw": "excluded"}] * count
+    special = row(label, **{role: True}, links=links, link_total=count)
     raw = reviewed_raw([profile_row(101), special])
-    raw["diagnostics"]["list_candidates"][0]["writer_field_count"] = 1
     snapshot = parse(raw)
-    assert snapshot["layout_status"] == "unverified"
-    assert snapshot["selector_evidence"]["profile_issue"] in {
-        "row_number_count",
-        "row_title_link_count",
-    }
+    assert snapshot["layout_status"] == "site_verified" and snapshot["rows_complete"]
+    assert snapshot["selector_evidence"]["source"] == "reviewed_special_row_titles_alpha35"
+    assert [r["post_id"] for r in snapshot["rows"]] == ["101"]
+    assert snapshot["excluded_rows"][0]["field_counts"]["title_links"] == count
+    raw["diagnostics"]["list_candidates"][0]["title_link_count"] += 1
+    assert parse(raw)["selector_evidence"]["profile_issue"] == "main_title_link_count"
+
+
+@pytest.mark.parametrize(
+    "number,flags",
+    [
+        ("42", {"is_pinned": True}),
+        ("공지", {"is_ad": True}),
+        ("광고", {"is_ad": True, "is_pinned": True}),
+        ("설문", {}),
+    ],
+)
+def test_title_link_exception_requires_matching_role_and_label(number, flags):
+    special = row(number, **flags, links=[], link_total=0)
+    assert (
+        parse(reviewed_raw([profile_row(101), special]))["selector_evidence"]["profile_issue"]
+        == "row_title_link_count"
+    )
+
+
+def test_number_check_still_applies_to_proven_special_rows():
+    special = row("공지", is_pinned=True, links=[], link_total=0)
+    special["field_counts"]["number"] = 0
+    assert (
+        parse(reviewed_raw([profile_row(101), special]))["selector_evidence"]["profile_issue"]
+        == "row_number_count"
+    )
 
 
 @pytest.mark.parametrize("bad_count", [None, False, -1, 1_000_001])

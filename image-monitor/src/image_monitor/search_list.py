@@ -54,6 +54,7 @@ NAVIGATION_KINDS = {
 }
 LINK_SCHEMES = {"https", "http", "javascript", "relative", "other", "missing"}
 SAFE_EXCLUSIONS = {"ad", "pinned", "survey"}
+SPECIAL_TITLE_PROFILE_SOURCE = "reviewed_special_row_titles_alpha35"
 SPECIAL_DATE_PROFILE_SOURCE = "reviewed_special_row_dates_alpha15"
 
 
@@ -456,7 +457,8 @@ def _raw_row_issue(rows_raw, special_counts):
             expected = special_counts.get(key, {}).get(ordinal, 1)
             if type(value) is not int or value != expected:
                 return "row_" + key + "_count"
-        if type(row.get("link_total")) is not int or row["link_total"] != 1:
+        expected_links = special_counts.get("title_links", {}).get(ordinal, 1)
+        if type(row.get("link_total")) is not int or row["link_total"] != expected_links:
             return "row_title_link_count"
     return None
 
@@ -472,6 +474,7 @@ def reviewed_structure_issue(
     *,
     writer_field_total=None,
     date_field_total=None,
+    title_link_total=None,
 ):
     """Return the first reviewed profile check that failed, or None on an exact match."""
     if (
@@ -515,6 +518,7 @@ def reviewed_structure_issue(
     metadata_totals = {
         "writer_field_count": writer_field_total,
         "date_field_count": date_field_total,
+        "title_link_count": title_link_total,
     }
     for key in _MAIN_COLUMNS:
         expected = metadata_totals.get(key)
@@ -737,12 +741,18 @@ def parse_list_snapshot(
         status = "empty"
     else:
         status = "unrecognized_empty"
-    # Only proven special rows may have a different writer or date cell count.
+    # A title-link exception also requires the visible label to confirm the role.
     # Each table inventory must independently match the sum of its owned row fields.
-    special_counts = {"author": {}, "date": {}}
+    special_counts = {"author": {}, "date": {}, "title_links": {}}
     for exclusion in excluded:
         if recognized_special_row(exclusion):
             for field, per_row in special_counts.items():
+                if field == "title_links" and (
+                    (exclusion["reason"], exclusion["number_kind"])
+                    not in {("ad", "ad_label"), ("pinned", "notice_label")}
+                    or sum(exclusion["role_flags"].values()) != 1
+                ):
+                    continue
                 count = exclusion["field_counts"].get(field)
                 if count is not None and count != 1:
                     per_row[exclusion["row_order"]] = count
@@ -762,6 +772,7 @@ def parse_list_snapshot(
             status,
             writer_field_total=totals["author"],
             date_field_total=date_total,
+            title_link_total=totals["title_links"],
         )
 
     profile_issue = profile_issue_for(special_counts, totals["date"])
@@ -786,6 +797,8 @@ def parse_list_snapshot(
         layout_status = "site_verified"
         if special_counts["date"]:
             source = SPECIAL_DATE_PROFILE_SOURCE
+        elif special_counts["title_links"]:
+            source = SPECIAL_TITLE_PROFILE_SOURCE
         elif special_counts["author"]:
             source = "user_list_diagnosis_alpha3"
         else:
@@ -840,6 +853,15 @@ def parse_list_snapshot(
             "source": source,
             "verification_scope": "reviewed_search_structure" if site_verified else None,
             "profile_issue": profile_issue,
+            **(
+                {
+                    "ordinary_multiple_title_links": sum(
+                        rows_raw[row["row_order"] - 1]["link_total"] > 1 for row in rows
+                    )
+                }
+                if profile_issue == "row_title_link_count"
+                else {}
+            ),
             "rows_complete": rows_complete,
             "selectors": dict(SELECTORS),
             "scope": {"gallery_type": target["gallery_type"], "gallery_id": target["gallery_id"]},

@@ -48,6 +48,16 @@ def dated_list_chrome(variant, visits, unexpected):
                     excluded_html=ad + notice + survey if n == 1 else survey,
                     extra_page_urls=[link(4)["canonical_url"]] if n == 2 else [],
                 )
+                if variant == "special_title_links" and n == 1:
+                    html = html.replace(ad, ad.replace('<a href="/fixture/ad">광고</a>', "광고"))
+                    html = html.replace(
+                        notice, notice.replace("</a>", '</a><a href="/extra">공지</a>')
+                    )
+                if variant == "ordinary_title_links" and n == 1:
+                    post = page_rows(1)[0]
+                    href = f"/board/view/?id=comic_new6&amp;no={post}"
+                    extra = f'<a href="{href}">Invented title {post}</a>'
+                    html = html.replace(extra, extra + extra, 1)
                 if variant == "ordinary_missing" and n == 1:
                     row = '<td class="gall_writer">Invented author</td>' + DATE_CELL
                     html = html.replace(row, '<td class="gall_writer">Invented author</td>', 1)
@@ -63,7 +73,16 @@ def dated_list_chrome(variant, visits, unexpected):
     return ListChrome
 
 
-@pytest.mark.parametrize("variant", ["recognized", "ordinary_missing", "ambiguous_survey"])
+@pytest.mark.parametrize(
+    "variant",
+    [
+        "recognized",
+        "ordinary_missing",
+        "ambiguous_survey",
+        "special_title_links",
+        "ordinary_title_links",
+    ],
+)
 def test_reopen_list_recovery_with_three_special_rows(tmp_path, monkeypatch, capsys, variant):
     pytest.importorskip("playwright.sync_api")
     if sys.platform != "win32":
@@ -132,7 +151,7 @@ def test_reopen_list_recovery_with_three_special_rows(tmp_path, monkeypatch, cap
         state = WatchStore(queue).get_state(MONITOR_SCOPE)
         pages = state["latest_scan"]["result"]["private_observation"]["pages"]
         assert queue.summary()["jobs"] == queue.summary()["posts"] == 0
-    if variant == "recognized":
+    if variant in ("recognized", "special_title_links"):
         assert (code, report["status"]) == (0, "auto_monitor_completed"), report
         assert visits == [1, 2, 4, 5] and report["list_checks"] == 1
         assert (
@@ -163,6 +182,22 @@ def test_reopen_list_recovery_with_three_special_rows(tmp_path, monkeypatch, cap
         assert failure["visited_page_numbers"] == [1] and failure["stage"] == "partial_check"
         assert failure["evidence"] == "committed_scan"
         [problem] = failure["pages"]
+        if variant == "ordinary_title_links":
+            assert problem["profile_issue"] == "row_title_link_count"
+            assert (
+                problem["ordinary_rows"],
+                problem["excluded_rows"],
+                problem["unsafe_exclusions"],
+            ) == (20, 3, 0)
+            assert problem["title_link_mismatches"] == {"ordinary": {"multiple": 1}}
+            assert "일반 글 1건에서 제목 링크가 둘 이상" in failure["observation_ko"]
+            monkeypatch.setattr(
+                sys, "argv", ["image-monitor", "monitor-diagnosis", "--work-root", str(watch)]
+            )
+            assert cli.main() == 0
+            stored = json.loads(capsys.readouterr().out)
+            assert stored["previous_list_review"]["pages"] == [problem]
+            return
         assert problem["profile_issue"] == "row_date_count" and problem["unsafe_exclusions"] == 1
         role = "ambiguous_row_fields" if variant == "ordinary_missing" else "other_excluded"
         assert problem["date_cell_mismatches"] == {

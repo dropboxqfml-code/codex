@@ -7,6 +7,7 @@ from image_monitor.search_list import (
     PROFILE_ISSUES,
     SAFE_EXCLUSIONS,
     SPECIAL_DATE_PROFILE_SOURCE,
+    SPECIAL_TITLE_PROFILE_SOURCE,
     reviewed_structure_issue,
 )
 from image_monitor.watch_history import MAX_HISTORICAL_PAGE
@@ -79,6 +80,7 @@ _SETTLE_ISSUES = {
     "ordinary_author_missing",
     "ordinary_date_missing",
     "row_date_count",
+    "row_title_link_count",
     "secondary_table_empty",
 }
 _EXCLUDED_ROW_GROUPS = ("ad", "pinned", "survey", "ambiguous_row_fields", "other_excluded")
@@ -114,7 +116,11 @@ def _excluded_cell_mismatches(excluded, field):
         if cells is None or cells == 1:
             continue
         group = _category(row.get("reason"), _EXCLUDED_ROW_GROUPS) or "other_excluded"
-        if field == "date" and group in SAFE_EXCLUSIONS and not _known_safe_exclusion(row, group):
+        if (
+            field in ("date", "title_links")
+            and group in SAFE_EXCLUSIONS
+            and not _known_safe_exclusion(row, group)
+        ):
             group = "other_excluded"
         counts = result.setdefault(group, {})
         kind = "missing" if cells == 0 else "multiple"
@@ -200,6 +206,14 @@ def _public_page(page, number):
         or result["layout_status"] == "site_verified"
     ) and isinstance(page.get("date_cells"), dict):
         result.update(_public_date_cells(page, result))
+    if result["profile_issue"] == "row_title_link_count":
+        raw = _mapping(page.get("title_link_mismatches"))
+        counts = _public_cell_mismatches(raw, result["excluded_rows"])
+        ordinary = _mapping(raw.get("ordinary")).get("multiple")
+        if result["ordinary_rows"] is not None and _count(ordinary, result["ordinary_rows"], 1):
+            counts["ordinary"] = {"multiple": ordinary}
+        if counts:
+            result["title_link_mismatches"] = counts
     return result
 
 
@@ -318,6 +332,16 @@ def date_cell_diagnosis(page, issue):
     return result
 
 
+def title_link_diagnosis(page, issue):
+    if issue != "row_title_link_count":
+        return {}
+    counts = _excluded_cell_mismatches(page.get("excluded_rows"), "title_links")
+    ordinary = _mapping(page.get("selector_evidence")).get("ordinary_multiple_title_links")
+    if _count(ordinary, MAX_ROWS, 1):
+        counts["ordinary"] = {"multiple": ordinary}
+    return {"title_link_mismatches": counts}
+
+
 def _stored_page(page):
     counts = _mapping(page.get("counts"))
     evidence = _mapping(page.get("selector_evidence"))
@@ -373,7 +397,11 @@ def _stored_page(page):
         or (
             page.get("layout_status") == "site_verified"
             and evidence.get("source")
-            in ("user_list_diagnosis_alpha3", SPECIAL_DATE_PROFILE_SOURCE)
+            in (
+                "user_list_diagnosis_alpha3",
+                SPECIAL_DATE_PROFILE_SOURCE,
+                SPECIAL_TITLE_PROFILE_SOURCE,
+            )
         )
         else {},
     }
@@ -416,6 +444,7 @@ def diagnose_list_page(
     stored = _stored_page(page)
     if include_date_cells:
         stored.update(date_cell_diagnosis(page, stored["profile_issue"]))
+        stored.update(title_link_diagnosis(page, stored["profile_issue"]))
     return _public_page(stored, number)
 
 

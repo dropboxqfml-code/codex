@@ -47,7 +47,7 @@ _INSPECTION_REASON_TEXT = {
 }
 
 
-_DATE_ROWS = {
+_ROW_GROUP_LABELS = {
     "pinned": "공지 행",
     "ad": "광고 행",
     "survey": "설문 행",
@@ -69,7 +69,7 @@ def describe_date_cells(page):
     ):
         groups = [
             f"{label} {counts[role][kind]}개"
-            for role, label in _DATE_ROWS.items()
+            for role, label in _ROW_GROUP_LABELS.items()
             if kind in counts.get(role, {})
         ]
         if groups:
@@ -109,6 +109,25 @@ def describe_list_review(value):
     elif numbers:
         pages = "·".join(str(number) for number in numbers)
         review["observation_ko"] = f"{pages}쪽의 목록 구조를 확인하지 못했습니다."
+        for page in review.get("pages", []):
+            if page.get("profile_issue") != "row_title_link_count":
+                continue
+            groups = {"ordinary": "일반 글", **_ROW_GROUP_LABELS}
+            counts = page.get("title_link_mismatches", {})
+            if not counts:
+                review["observation_ko"] += (
+                    f" {page['page']}쪽에서 제목 링크를 한 개로 확인하지 못했습니다."
+                )
+            for kind, label in (("missing", "없습니다"), ("multiple", "둘 이상입니다")):
+                affected = [
+                    f"{name} {counts[role][kind]}건"
+                    for role, name in groups.items()
+                    if kind in counts.get(role, {})
+                ]
+                if affected:
+                    review["observation_ko"] += (
+                        f" {page['page']}쪽의 {', '.join(affected)}에서 제목 링크가 {label}."
+                    )
     elif review.get("transport") == "http_error" and "http_status" in review:
         review["observation_ko"] = f"목록 요청에서 HTTP {review['http_status']} 응답을 받았습니다."
     if order := review.get("order_check"):

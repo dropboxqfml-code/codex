@@ -433,3 +433,61 @@ def test_short_initial_window_requires_a_unique_visible_forward_control(
         visited.update(feed.visits)
     assert visited == set(range(1, window_size + 1))
     assert list_link(1, WINDOW_CURSORS[1])["canonical_url"] in feed.offered
+
+
+@pytest.mark.parametrize("movement", ["displaced", "deleted_with_arrivals", "deleted"])
+def test_displaced_eleventh_page_rebuilds_connected_route_after_restart(
+    tmp_path, starting_watch, movement
+):
+    feed, clock, checkpoint = starting_watch
+    feed.window_size = 11
+    feed.ids[:0] = range(OLD_HEAD + 160, OLD_HEAD, -1)
+    for _ in range(15):
+        turn = feed.run(tmp_path, clock)
+        assert turn["status"] == "partial", turn
+        if turn.get("recovery_depth") == 11:
+            break
+    assert turn["recovery_depth"] == 11
+    _, known = read_state(tmp_path)
+    if movement.startswith("deleted"):
+        # None of the original page survives. The global checkpoint still does.
+        del feed.ids[10 * PAGE_SIZE : 11 * PAGE_SIZE]
+        if movement == "deleted_with_arrivals":
+            feed.ids[:0] = range(feed.ids[0] + PAGE_SIZE, feed.ids[0], -1)
+    else:
+        # Two and a half pages arrive. The old head can be rejoined on the
+        # recent route, but its formerly valid eleventh page now points elsewhere.
+        feed.ids[:0] = range(feed.ids[0] + 25, feed.ids[0], -1)
+        assert feed.run(tmp_path, clock)["recovery_status"] == "head_rejoined"
+    turn = feed.run(tmp_path, clock)
+    expected = [1, 2, 11] if movement == "deleted" else [1, 2, 11, 1]
+    assert turn["visited_page_numbers"] == expected and turn["status"] == "partial", turn
+    assert turn["recovery_status"] == "restart_pending"
+    assert turn["candidate_eligible_visits"] == 2
+    if movement != "deleted":
+        assert turn["frontier_overlap"]["matched_rows"] == 0
+    assert turn["recovery_depth"] == 11 and read_state(tmp_path)[0] == checkpoint
+
+    # A rate limit while re-reading the recent chain cannot certify a replacement.
+    feed.rate_limit_url = link(3)["canonical_url"]
+    assert feed.run(tmp_path, clock)["status"] == "waiting"
+    assert read_state(tmp_path)[0] == checkpoint
+    clock.wait(180)
+    turn = run_after_process_restart(tmp_path, feed, clock)
+    assert turn["recovery_status"] == "restarted_from_head", turn
+    assert turn["visited_page_numbers"] == [1, 2, 3, 4] and turn["recovery_depth"] == 4
+    for i in range(30):
+        if i == 3:
+            feed.ids.insert(0, feed.ids[0] + 1)
+        turn = feed.run(tmp_path, clock)
+        current, found = read_state(tmp_path)
+        assert known.items() <= found.items()
+        known = found
+        assert feed.visits[:2] == [1, 2] and len(feed.visits) <= 4
+        assert str(feed.ids[0]) in found
+        if turn["status"] == "complete":
+            assert current != checkpoint
+            assert {str(n) for n in feed.ids if n > OLD_HEAD} <= found.keys()
+            return
+        assert current == checkpoint and turn["status"] == "partial", turn
+    pytest.fail("The rebuilt route never reached the original checkpoint")

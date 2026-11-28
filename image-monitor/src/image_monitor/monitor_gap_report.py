@@ -9,6 +9,8 @@ RECOVERY_MESSAGES = {
     "advanced": "지난번에 확인한 위치에서 다음 쪽까지 이어서 확인했습니다.",
     "completed": "이전 완료 지점과 그다음 쪽을 확인해 밀린 구간을 모두 연결했습니다.",
     "frontier_relocated": "목록의 연결을 확인해 복구 위치를 한 쪽 옮겼습니다.",
+    "restart_pending": "이전 글을 찾지 못했습니다. 다음 주기에 첫 쪽부터 다시 확인합니다.",
+    "restarted_from_head": "첫 쪽부터 네 쪽이 이어졌습니다. 여기서 과거 글을 계속 찾습니다.",
     "frontier_changed": "목록의 연결을 확인하지 못해 이전 복구 위치를 유지했습니다.",
     "successor_unconfirmed": "다음 쪽으로 이어지는 경로를 확인하지 못했습니다.",
     "overlap_pending": "연결 여부를 확정하려면 뒤쪽 목록을 더 확인해야 합니다.",
@@ -155,6 +157,13 @@ def checked_gap_route(turn, numbers, limit):
         or turn["status"] not in ("complete", "partial")
     ):
         raise ValueError("Invalid recovery page sequence or progress")
+    if status in {"restart_pending", "restarted_from_head"} and (
+        len(numbers) not in ((3, 4) if status == "restart_pending" else (4,))
+        or turn["status"] != "partial"
+        or route != ("bookmark" if status == "restart_pending" else "recent")
+        or (status == "restarted_from_head" and depth != MAX_MONITOR_SCAN_PAGES)
+    ):
+        raise ValueError("Invalid frontier restart route")
     relocated = status == "frontier_relocated"
     if relocated and (
         route != "bookmark"
@@ -192,18 +201,24 @@ def checked_gap_route(turn, numbers, limit):
         reason_fields["recovery_observation"] = "disjoint_recent_rows"
     if "frontier_overlap" in turn:
         if (
-            status not in ("frontier_changed", "frontier_relocated")
+            status not in ("frontier_changed", "frontier_relocated", "restart_pending")
             or route != "bookmark"
             or len(numbers) != 4
         ):
             raise ValueError("Invalid frontier observation for the reported route")
         overlap = _checked_frontier_overlap(turn["frontier_overlap"])
+        if status == "restart_pending" and overlap["matched_rows"] != 0:
+            raise ValueError("Unexpected surviving rows for frontier restart")
         if relocated and not 3 <= overlap["matched_rows"] < overlap["previous_rows"]:
             raise ValueError("Inconsistent overlap for a relocated frontier")
         reason_fields["frontier_overlap"] = overlap
     if "candidate_eligible_visits" in turn:
         eligible = turn["candidate_eligible_visits"]
-        expected = {"frontier_changed": 2, "frontier_relocated": MAX_MONITOR_SCAN_PAGES}
+        expected = {
+            "frontier_changed": 2,
+            "restart_pending": 2,
+            "frontier_relocated": MAX_MONITOR_SCAN_PAGES,
+        }
         if type(eligible) is not int or route != "bookmark" or eligible != expected.get(status):
             raise ValueError("Invalid candidate page count for the verified frontier")
         reason_fields["candidate_eligible_visits"] = eligible
@@ -271,7 +286,7 @@ def _frontier_overlap(record, prior):
     ref = record["control"].get("gap_bookmark_before")
     if (
         record["complete"] is not False
-        or marker.get("status") not in ("frontier_changed", "frontier_relocated")
+        or marker.get("status") not in ("frontier_changed", "frontier_relocated", "restart_pending")
         or marker.get("route") != "bookmark"
         or len(pages) != 4
         or not isinstance(prior, dict)
@@ -322,7 +337,7 @@ def gap_route_details(record, *, prior_bookmark=None):
             **({"frontier_overlap": overlap} if overlap is not None else {}),
             **(
                 {"candidate_eligible_visits": marker["eligible_pages"]}
-                if marker["status"] in {"frontier_changed", "frontier_relocated"}
+                if marker["status"] in {"frontier_changed", "frontier_relocated", "restart_pending"}
                 else {}
             ),
             "status": "complete" if record["complete"] else "partial",

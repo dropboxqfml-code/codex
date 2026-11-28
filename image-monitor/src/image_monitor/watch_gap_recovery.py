@@ -32,6 +32,8 @@ GAP_STATUSES = frozenset(
         "advanced",
         "completed",
         "frontier_changed",
+        "restart_pending",
+        "restarted_from_head",
         "frontier_relocated",
         "successor_unconfirmed",
         "overlap_pending",
@@ -92,9 +94,9 @@ def valid_gap_bookmark(scope, state, bookmark):
         allowed = (
             _SEGMENT_KEYS
             | _OPTIONAL_SEGMENT_KEYS
-            | {"target_ids", "deferred", "source_scan_id", "source_generation"}
+            | {"target_ids", "deferred", "source_scan_id", "source_generation", "restart_from_head"}
         )
-        if not bookmark.keys() <= allowed:
+        if not bookmark.keys() <= allowed or bookmark.get("restart_from_head", True) is not True:
             return False
         targets = bookmark["target_ids"]
         expected = _scope(scope)
@@ -302,7 +304,9 @@ def gap_next_url(scope, state, pages, observed_at, bookmark):
         return None
     try:
         checked = _checked(scope, state, pages, observed_at, bookmark)
-        if not _head_ready(scope, state, pages, checked, observed_at, bookmark):
+        if bookmark.get("restart_from_head") or not _head_ready(
+            scope, state, pages, checked, observed_at, bookmark
+        ):
             return None
         if len(pages) == 2:
             if any(page["url"] == bookmark["frontier"]["canonical_url"] for page in checked):
@@ -374,7 +378,16 @@ def _advance(bookmark, head, frontier):
     return next_bookmark
 
 
-def plan_gap_scan(scope, state, pages, observed_at, bookmark, *, allow_frontier_overlap=False):
+def plan_gap_scan(
+    scope,
+    state,
+    pages,
+    observed_at,
+    bookmark,
+    *,
+    allow_frontier_overlap=False,
+    allow_frontier_restart=False,
+):
     """Replay 1, 2, exact bookmarked frontier and, when observed, its linked successor."""
     if len(pages) not in (3, 4):
         raise WatchPlanError("Expected a revisited gap frontier")
@@ -404,7 +417,31 @@ def plan_gap_scan(scope, state, pages, observed_at, bookmark, *, allow_frontier_
         and int(_ids(frontier)[-1]) > int(previous[0])
         and _clipped_prefix_at_end(tail, _ids(frontier)[-1], previous)
     ):
-        return _held_head(scope, state, pages, checked, observed_at, bookmark, "frontier_changed")
+        plan = _held_head(scope, state, pages, checked, observed_at, bookmark, "frontier_changed")
+        if (
+            allow_frontier_restart
+            and set(previous).isdisjoint(tail)
+            and (len(pages) == 4 or int(tail[0]) < int(previous[-1]))
+        ):
+            # A linked, ordered pair with no survivors cannot establish coverage.
+            # Keep the original checkpoint and frontier until a connected recent
+            # route can replace this failed shortcut, including across restarts.
+            pending = {
+                k: v
+                for k, v in bookmark.items()
+                if k not in ("source_scan_id", "source_generation")
+            }
+            pending["restart_from_head"] = True
+            return _mark(
+                plan,
+                "restart_pending",
+                bookmark["depth"],
+                2,
+                "bookmark",
+                next_bookmark=pending,
+                crossed=len(pages) == 4 and checked[3]["search_pos"] != frontier["search_pos"],
+            )
+        return plan
     hops = {index - 1: _cursor(checked[index]) for index in range(1, len(pages))}
     plan = _plan_scan(
         scope,
@@ -584,7 +621,15 @@ def plan_gap_seed(scope, state, pages, observed_at, plan):
 
 
 def plan_gap_fallback(
-    scope, state, pages, observed_at, bookmark, plan, *, allow_partial_overlap=False
+    scope,
+    state,
+    pages,
+    observed_at,
+    bookmark,
+    plan,
+    *,
+    allow_partial_overlap=False,
+    allow_frontier_restart=False,
 ):
     """Record an ordinary recent scan while a gap is open. A failure keeps the earlier bookmark."""
     if not valid_gap_bookmark(scope, state, bookmark):
@@ -599,6 +644,25 @@ def plan_gap_fallback(
         "anchor_not_reached",
         "overlap_incomplete",
     }:
+        if bookmark.get("restart_from_head"):
+            if not allow_frontier_restart:
+                raise WatchPlanError("Unsupported frontier restart policy")
+            checked = _checked(scope, state, pages, observed_at, bookmark)
+            if len(checked) == 4 and _latest_rows(pages, checked):
+                # The route now covers the entire recent prefix, including any
+                # previously deferred gaps there. Older gaps still lead to the
+                # same global checkpoint. Never inherit a disconnected shortcut.
+                updated = new_gap_bookmark(scope, state, pages, observed_at)
+                if updated is not None:
+                    return _mark(
+                        plan,
+                        "restarted_from_head",
+                        updated["depth"],
+                        eligible,
+                        "recent",
+                        next_bookmark=updated,
+                    )
+            return _mark(plan, "held", bookmark["depth"], eligible, "recent")
         updated, reason = _recent_rebase(
             scope, state, pages, observed_at, bookmark, allow_partial_overlap
         )

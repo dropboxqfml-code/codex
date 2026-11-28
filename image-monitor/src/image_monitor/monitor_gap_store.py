@@ -225,6 +225,7 @@ def replay_gap_scan(queue, scope, latest, previous_state, scan_time):
     from image_monitor.watch_runtime import (
         DURABLE_GAP_SCHEMAS,
         FRONTIER_OVERLAP_SCHEMA,
+        FRONTIER_RESTART_SCHEMA,
         PARTIAL_OVERLAP_SCHEMAS,
         _plan_observation,
         gap_seed,
@@ -257,6 +258,7 @@ def replay_gap_scan(queue, scope, latest, previous_state, scan_time):
         allow_seed_crossing=True,
         allow_partial_overlap=schema in PARTIAL_OVERLAP_SCHEMAS,
         allow_frontier_overlap=schema == FRONTIER_OVERLAP_SCHEMA,
+        allow_frontier_restart=schema == FRONTIER_RESTART_SCHEMA,
     )
 
 

@@ -21,6 +21,7 @@ from image_monitor.watch_runtime import (
     DEFAULT_SCOPE,
     DURABLE_GAP_SCHEMAS,
     FRONTIER_OVERLAP_SCHEMA,
+    FRONTIER_RESTART_SCHEMA,
     HEAD_OVERLAP_SCHEMA,
     PARTIAL_OVERLAP_SCHEMAS,
     _control,
@@ -122,6 +123,7 @@ def _completed_scan(queue, before, after, raw, page_limit, historical_source):
             allow_seed_crossing=True,
             allow_partial_overlap=schema in PARTIAL_OVERLAP_SCHEMAS,
             allow_frontier_overlap=schema == FRONTIER_OVERLAP_SCHEMA,
+            allow_frontier_restart=schema == FRONTIER_RESTART_SCHEMA,
         )
         if plan != verified_recent_plan(queue, MONITOR_SCOPE, after):
             raise _ScanReview("planner_check")

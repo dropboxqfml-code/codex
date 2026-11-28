@@ -362,9 +362,15 @@ def _catch_up_pause(checks):
     current = checks[-1]
     previous = checks[-2] if len(checks) >= 2 else None
     status = current.get("recovery_status")
+    if status == "restart_pending":
+        return None
     if current["pages_checked"] != MAX_MONITOR_SCAN_PAGES:
         return "recovery_followup_deferred"
-    if current.get("recovery_route") == "recent" and status in {"segment_queued", "head_rejoined"}:
+    if current.get("recovery_route") == "recent" and status in {
+        "segment_queued",
+        "head_rejoined",
+        "restarted_from_head",
+    }:
         if previous and previous.get("recovery_route") == "recent":
             return "recovery_progress_stalled"
         return None
@@ -617,6 +623,8 @@ def _session(roots, report, *, clock, should_stop, on_progress, scan_runner, col
                 return _finish(report, "completed", "cycle_limit_reached")
             if not catch_up and report["last_list"].get("recovery_status") not in {
                 "head_rejoined",
+                "restart_pending",
+                "restarted_from_head",
                 "frontier_relocated",
                 "segment_rejoined",
                 "segment_queued",
